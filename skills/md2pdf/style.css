@@ -1,0 +1,219 @@
+/* md2pdf default style — clean, professional document layout */
+
+@page {
+    size: A4;
+    margin: 25mm 20mm 25mm 20mm;
+
+    @bottom-center {
+        content: counter(page);
+        font-size: 9pt;
+        color: #999;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+}
+
+@page :first {
+    @bottom-center { content: none; }
+}
+
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    color: #1a1a1a;
+    -webkit-font-smoothing: antialiased;
+}
+
+article {
+    max-width: 100%;
+}
+
+/* Headings */
+h1 {
+    font-size: 22pt;
+    font-weight: 700;
+    color: #111;
+    margin-top: 0;
+    margin-bottom: 6pt;
+    padding-bottom: 6pt;
+    border-bottom: 2px solid #333;
+}
+
+h2 {
+    font-size: 15pt;
+    font-weight: 600;
+    color: #222;
+    margin-top: 20pt;
+    margin-bottom: 6pt;
+    padding-bottom: 3pt;
+    border-bottom: 1px solid #ddd;
+}
+
+h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #333;
+    margin-top: 14pt;
+    margin-bottom: 4pt;
+}
+
+h4 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #444;
+    margin-top: 10pt;
+    margin-bottom: 3pt;
+}
+
+/* Paragraphs */
+p {
+    margin-top: 0;
+    margin-bottom: 8pt;
+    orphans: 3;
+    widows: 3;
+}
+
+/* Links — print-friendly */
+a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+/* Lists */
+ul, ol {
+    margin-top: 4pt;
+    margin-bottom: 8pt;
+    padding-left: 20pt;
+}
+
+li {
+    margin-bottom: 3pt;
+}
+
+li > ul, li > ol {
+    margin-top: 2pt;
+    margin-bottom: 2pt;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8pt;
+    margin-bottom: 12pt;
+    font-size: 9.5pt;
+    page-break-inside: auto;
+}
+
+thead {
+    display: table-header-group;
+}
+
+tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+}
+
+th {
+    background: #f5f5f5;
+    font-weight: 600;
+    text-align: left;
+    padding: 6pt 8pt;
+    border-bottom: 2px solid #ccc;
+}
+
+td {
+    padding: 5pt 8pt;
+    border-bottom: 1px solid #e5e5e5;
+    vertical-align: top;
+}
+
+tr:nth-child(even) td {
+    background: #fafafa;
+}
+
+/* Code */
+code {
+    font-family: "SF Mono", "Fira Code", Menlo, monospace;
+    font-size: 9pt;
+    background: #f4f4f4;
+    padding: 1pt 4pt;
+    border-radius: 3pt;
+}
+
+pre {
+    background: #f4f4f4;
+    padding: 10pt 12pt;
+    border-radius: 4pt;
+    overflow-x: auto;
+    font-size: 8.5pt;
+    line-height: 1.5;
+    margin-bottom: 10pt;
+    page-break-inside: avoid;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+/* Blockquotes */
+blockquote {
+    border-left: 3px solid #ddd;
+    margin: 8pt 0;
+    padding: 4pt 12pt;
+    color: #555;
+    font-style: italic;
+}
+
+/* Horizontal rules */
+hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 16pt 0;
+}
+
+/* Strong / emphasis */
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+/* Mermaid diagrams */
+.mermaid-diagram {
+    text-align: center;
+    margin: 12pt 0;
+    page-break-inside: avoid;
+}
+
+.mermaid-diagram img,
+.mermaid-diagram svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Page break utility */
+.page-break {
+    page-break-after: always;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+/* Task lists */
+ul li input[type="checkbox"] {
+    margin-right: 6pt;
+}
+
+/* Definition-style items with bold lead */
+li > strong:first-child {
+    color: #222;
+}
+
+/* Print optimizations */
+h1, h2, h3, h4 {
+    page-break-after: avoid;
+}
+
+table, figure, .mermaid-diagram {
+    page-break-inside: avoid;
+}

@@ -1,0 +1,744 @@
+---
+name: ops
+description: Process meeting content into structured documentation -- summaries, decision tracking, action propagation, file updates. Config-driven for any organization. Replaces project-ops, bravo-ops, management-ops, marketing-ops.
+user-invocable: true
+argument-hint: [status | help | prepare [type] | meeting content, transcript, or standup notes]
+---
+
+# Operations Framework
+
+Unified meeting and operations processing. Behaviour is driven by org config -- the same skill handles Bravo veckosynk, Acme management meetings, marketing standups, and project dev standups.
+
+**Base framework:** Extends `ops-base` -- read `~/.claude/skills/ops-base/SKILL.md` for shared standards (meeting formats, task management, workflows, archive policy).
+
+**IMPORTANT:** The project CLAUDE.md is the single source of truth for vault-specific details. This skill defines the processing workflow; CLAUDE.md defines file locations and naming conventions.
+
+---
+
+## SUBCOMMANDS
+
+### `status` -- Show available configurations
+
+**Trigger:** `/ops status`
+
+Parse the user's input. If the first word is `status`, execute this subcommand instead of the normal processing flow (Steps 1-9).
+
+**Steps:**
+
+1. **Scan for org configs:**
+   - List directories in `~/.claude/skills/` matching `*-ops-config`
+   - For each, find the YAML file inside (`{org}.yaml`)
+   - Read and parse each config
+
+2. **Detect active config:**
+   - Check for project-level `.claude/ops-config.yaml` in current working directory
+   - Determine org from CLAUDE.md `organization` field or folder name pattern
+   - Report which config would be loaded for the current directory
+
+3. **Present report** for each org config:
+   - Organization name, language, swedish_chars
+   - Team members (name + role, abbreviated if >4 members)
+   - Workflows: update_files list, action_propagation status, agenda_management status, post_processing status
+   - Domain additions count
+   - Summary sections (custom or default TWO-TIER)
+   - Templates (if configured)
+   - Strings (custom or default)
+
+4. **Show base defaults** from `~/.claude/skills/ops-config/base.yaml`
+
+**Output format:** Structured markdown report:
+
+```
+## /ops Configuration Status
+
+### Active Config (current directory)
+Organization: Acme
+Config source: ~/.claude/skills/acme-ops-config/acme.yaml
+Project override: none
+
+### Available Organizations
+
+#### Acme
+Language: per_claude_md | Swedish chars: strict
+Team: Bob (CEO), Carol (COO), Alex (CAIO), +9 more
+Workflows:
+  update_files: summary, changelog, readme, task_matrix, meetings_index
+  action_propagation: disabled
+  agenda_management: disabled
+  post_processing: task_import (enabled), dashboard_refresh (enabled, org: acme)
+Domain additions: 8 sections configured
+Summary sections: default (TWO-TIER)
+Strings: default (per language)
+
+#### Bravo
+Language: swedish | Swedish chars: strict
+Team: Alex (Affärsutveckling), Hank (CTO)
+Workflows:
+  update_files: summary, changelog
+  action_propagation: enabled -> BRAVO.md, ALEX.md, HANK.md
+  agenda_management: enabled -> BRAVO.md / "Nästa veckosynk"
+  post_processing: disabled
+Domain additions: 4 sections configured
+Summary sections: default (TWO-TIER)
+Templates: meeting_reflection
+
+### Base Defaults
+Language: input
+Team: (none -- must be defined in org config)
+Workflows: summary only
+```
+
+---
+
+### `help` -- Show usage guide
+
+**Trigger:** `/ops help`
+
+If the first word is `help`, present a usage guide instead of processing content.
+
+**Include:**
+1. One-line description of what /ops does
+2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops status`, `/ops help`
+3. Skill comparison table: when to use /ops vs /ops prepare vs /transcript, /preparation, /tasks, /daily-dashboard
+4. Skill connection diagram: how /ops feeds into /tasks, /daily-dashboard, and how /ops prepare creates pre-meeting docs
+5. Config loading summary (3-line version, point to `/ops status` for details)
+6. Processing flow summary (9 steps, one line each)
+7. Common usage patterns (examples including prepare)
+
+**Output:** Markdown printed directly. No files created.
+
+---
+
+### `prepare` -- Create pre-meeting preparation
+
+**Trigger:** `/ops prepare [type] [async-updates]`
+
+Generate a structured preparation document for an upcoming team meeting. Pulls context from recent meetings, tasks, and optionally incorporates pre-submitted async updates from team members.
+
+**Arguments:**
+- `type` (optional): Meeting type hint (e.g., `standup`, `war-room`, `weekly`). Default: `standup`
+- `async-updates` (optional): Pre-submitted text updates from team members to incorporate
+
+**Examples:**
+```
+/ops prepare standup
+/ops prepare war-room
+/ops prepare standup [paste team updates here]
+```
+
+---
+
+#### Step P1: Gather Context
+
+1. **Load org config** (same as normal /ops flow)
+2. **Read recent meetings:**
+   - Find last 1-3 meeting summaries in the target folder
+   - Extract action items assigned to each team member
+   - Note decisions made, blockers identified
+3. **Read `_tasks.yaml`:**
+   - Pull active tasks per person (status: pending, in_progress, blocked)
+   - Identify blockers and their owners
+4. **Read CHANGELOG.md:**
+   - Scan recent entries for context
+
+---
+
+#### Step P2: Parse Async Updates (if provided)
+
+If the user provides pre-submitted team updates:
+
+1. **Identify team members** using the name resolution algorithm:
+   - Match against org config `team[]` (name, aliases)
+   - Match against `_contacts/*/_meta.yaml` (display_name, aliases) for external contacts
+   - Matching is case-insensitive with Swedish character folding
+   - See [Contact Metadata Schema](../ops-config/contact-meta-schema.md)
+2. **Extract per-person updates:**
+   - What they report as done
+   - What they're working on today
+   - Issues/blockers mentioned
+   - Decisions or announcements
+3. **Correlate with yesterday's tasks:**
+   - Match reported items against action items from previous meeting
+   - Determine status: DONE, IN PROGRESS, NOT STARTED, NO UPDATE
+
+---
+
+#### Step P3: Generate Preparation Document
+
+Create the file using the **Standup Preparation Template**:
+
+```markdown
+# [Organization/Project] [Meeting Type] -- [DD] [Month] [YYYY]
+
+**[Next event note if relevant, e.g., "War room tomorrow: Wednesday March 12, 10:00-12:00 CET"]**
+
+---
+
+## Status Overview
+
+| Person | Yesterday | Done | Today |
+|--------|-----------|------|-------|
+| **[Name]** | [Tasks assigned] | [What's done] | [Today's plan] |
+| ... | ... | ... | ... |
+
+**[Key metric if relevant, e.g., "Test results: 4 PASS / 4 FAIL (50%)"]**
+
+---
+
+## Key Updates
+
+| Update | Source |
+|--------|--------|
+| [Important update or decision] | [Person] |
+| ... | ... |
+
+---
+
+## Agenda
+
+- [ ] 1. **[Person]** -- [Key questions]
+- [ ] 2. **[Person]** -- [Key questions]
+- [ ] ...
+- [ ] N. **[Topic]** -- [Confirm/discuss]
+
+---
+
+## Reported Updates
+
+**[Person]:**
+> "[Their exact update text]"
+
+**[Person]:**
+> "[Their exact update text]"
+
+...
+
+---
+
+## Blockers
+
+| Issue | Status | Owner |
+|-------|--------|-------|
+| [Blocker description] | [Status] | [Owner] |
+| ... | ... | ... |
+
+---
+
+## Decisions
+
+**Made:**
+- [Decision] -- [brief rationale]
+
+**Pending:**
+- [Decision needed]
+
+---
+
+# Reference
+
+## [Relevant reference section, e.g., Test Results]
+
+[Tables or details as needed]
+
+## Builds / Versions
+
+- [Current build info]
+
+---
+
+*Created: [YYYY-MM-DD]*
+```
+
+---
+
+#### Step P4: Template Variations
+
+**For standup:**
+- Focus on Status Overview (Yesterday → Done → Today)
+- Keep agenda person-by-person
+- Include reported updates if async input provided
+
+**For war-room:**
+- Add "Focus Areas" section after agenda
+- Include test matrix reference
+- Add "Participants" confirmation
+
+**For weekly/planning:**
+- Add "Sprint Goals" or "Week Priorities" section
+- Include metrics summary
+- Add "Carry-over Items" from previous week
+
+---
+
+#### Step P5: Save and Report
+
+1. **Determine filename:**
+   - Format: `YYMMDD-preparation-[org/project]-[type].md`
+   - Include the organization or project name to distinguish preparations created the same day for different orgs/projects
+   - English context: `preparation`
+   - Swedish context: `förberedelse`
+   - Examples: `260311-preparation-acme-mobile-daily-standup.md`, `260311-förberedelse-delta-veckosynk.md`
+
+2. **Save to meetings folder** (per CLAUDE.md MEETING ROUTING)
+
+3. **Report what was created:**
+   ```
+   Created: meetings/260311-preparation-acme-mobile-daily-standup.md
+
+   Status Overview:
+   - Dev1: 1 done, 4 in progress
+   - Dev2: 1 done, 1 not started
+   - Dev3: 2 done, 1 in progress
+   - Dev4: 1 done, 1 in progress, 1 no update
+   - Dev5: no update
+
+   Blockers: 4 items
+   Agenda: 7 items
+   ```
+
+---
+
+#### Step P6: Lifecycle
+
+After the meeting, when `/ops [transcript]` is run:
+- The preparation file is automatically marked as superseded (per Step 9 of normal flow)
+- No manual action needed
+
+---
+
+#### Notes
+
+- **No CHANGELOG update** for preparation files (they're pre-meeting)
+- **Language:** Follow same rules as normal /ops (per_claude_md, etc.)
+- **If no async updates provided:** Generate preparation from historical context only, with empty "Reported Updates" section or skip it
+- **If team member missing from updates:** Show "No update" in Status Overview
+
+---
+
+### `normalize` -- Restore Swedish characters in hand-written docs (CR-007)
+
+**Trigger:** `/ops normalize <path> [--dry-run] [--strict-no-ambiguous]`
+
+Lint pass that scans markdown and YAML files for known Swedish character drift (`ar` → `är`, `for` → `för`, `pa` → `på`, `mote` → `möte`, etc.) and restores the correct characters. Use it on hand-written ops documents that bypassed the `/transcript` and `/ops` pipelines and accumulated character errors.
+
+**Use cases:**
+- A folder of pasted notes (e.g., `_projects/<client>/ops/*.md`) was created without going through `/ops` and never got a Swedish-character pass
+- A legacy file from before CR-007 inheritance was added still contains old drift
+- Bulk remediation across a sub-tree
+
+**Arguments:**
+
+| Argument | Meaning |
+|---|---|
+| `<path>` | A single file OR a folder. If a folder, scans all `.md` and `.yaml` files recursively. |
+| `--dry-run` | Show the diff without writing. Use to preview before applying. |
+| `--strict-no-ambiguous` | Skip substitutions marked `ambiguous: true` in `swedish_substitutions.yaml` (e.g., `ar` → `är`, `bor` → `bör`, `Andre` → `André`). Recommended for first-pass scans. |
+
+**Examples:**
+
+```
+/ops normalize _projects/bravo-project/ops/annonsering.md
+/ops normalize _projects/bravo-project/ --dry-run
+/ops normalize _projects/bravo-project/_insights.yaml --strict-no-ambiguous
+```
+
+#### Step N1: Load substitution map
+
+Read `~/.claude/skills/ops-config/swedish_substitutions.yaml`. This file contains the seed substitution list (from MEMORY.md) and is the single source of truth for the linter.
+
+#### Step N2: Scan target file(s)
+
+For each file:
+
+1. **Detect language.** Treat the file as Swedish-context if any of:
+   - The file already contains å, ä, or ö characters
+   - The file is in a folder configured for Swedish (per CLAUDE.md or `language_inheritance` in base.yaml)
+   - The user explicitly passed `--lang sv`
+2. **Skip if not Swedish-context** -- this is a Swedish-character normaliser, nothing else
+3. **Tokenize the file** while preserving:
+   - Code blocks (```...```) -- skip
+   - Inline code (`...`) -- skip
+   - URLs and file paths -- skip
+   - YAML keys (only `value:` parts are scanned, not keys) -- skip keys
+   - Lines containing `<!-- no-normalize -->` -- skip the entire line
+4. **For each token**, look up against the substitution map. Use word-boundary matching (`\bword\b`).
+5. **Skip ambiguous substitutions** if `--strict-no-ambiguous` is set.
+
+#### Step N3: Apply or report
+
+**If `--dry-run`:**
+- Print a unified diff to stdout showing all proposed substitutions
+- Print a summary: total substitutions, ambiguous skipped, files affected
+- Do not write anything
+
+**If not dry-run:**
+- Apply substitutions to each file
+- Write the file back atomically (write to temp, rename)
+- Update or create a `CHANGELOG.md` entry in the file's parent folder (if a CHANGELOG exists):
+
+  ```markdown
+  - **YYMMDD: Normalize** [filename] -- restored Swedish characters (N substitutions). -> [file]
+  ```
+
+#### Step N4: Report
+
+```
+Normalized 4 files, 23 substitutions applied:
+  _projects/bravo-project/_insights.yaml         8 substitutions
+  _projects/bravo-project/ops/annonsering.md     7 substitutions
+  _projects/bravo-project/ops/byrasamarbete.md   5 substitutions
+  _projects/bravo-project/ops/c56-krav.md        3 substitutions
+
+Ambiguous substitutions skipped (use without --strict-no-ambiguous to apply):
+  ar -> är: 14 occurrences
+  bor -> bör: 2 occurrences
+
+Backup: none (use git to revert if needed)
+```
+
+#### Notes
+
+- **No backup files written.** Rely on git for revert. If the target is not a git repo, the user is warned and asked to confirm.
+- **The substitution list is data, not code.** New common drifts can be added to `swedish_substitutions.yaml` without changing skill code.
+- **Defence in depth:** the same substitution map is used by `/insights` pre-write validation (see insights/SKILL.md). The normaliser is the after-the-fact remediation; the validator is the at-write-time gate.
+
+---
+
+## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT
+
+- **`/ops prepare`**: Use **before** a team meeting to create a structured preparation with status tracking. Pulls context from recent meetings and tasks. Optionally incorporates pre-submitted async updates from team members.
+- **`/ops`**: Use **after** a meeting to process content into structured documentation (summary, changelog, README, task matrix, meetings index, task import, dashboard). Recommended default for all org meetings. Automatically marks any preparation file as superseded.
+- **`/transcript`**: Use for ad-hoc recordings, personal calls, or contexts without an ops config. Produces summary + changelog + optional task import only.
+
+**Flow:**
+```
+/ops prepare standup     → creates preparation (before meeting)
+[meeting happens]
+/ops [transcript]        → creates summary, marks prep as superseded (after meeting)
+```
+
+When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `/transcript` functionality.
+
+---
+
+## CONFIGURATION
+
+### Config Loading
+
+1. **Determine organization** from:
+   - Explicit `organization` field in project CLAUDE.md
+   - Project folder name pattern (e.g., `bravo-*` -> bravo, `acme-*` -> acme)
+   - Participant names matching team members in configs
+2. **Load config** following resolution order:
+   - Project-level: `.claude/ops-config.yaml`
+   - Org config: `~/.claude/skills/{org}-ops-config/{org}.yaml`
+   - Base defaults: `~/.claude/skills/ops-config/base.yaml`
+3. **Merge layers** -- project overrides org, org overrides base
+
+### What Config Controls
+
+| Setting | Effect |
+|---------|--------|
+| `language` | Output language (english/swedish/input/per_claude_md) |
+| `swedish_chars` | Swedish character enforcement (strict) |
+| `team` | Participant recognition and attribution |
+| `responsibility_matrix` | Owner assignments |
+| `terminology` | Domain-specific terms |
+| `summary_sections` | Custom summary structure (overrides TWO-TIER) |
+| `status_terminology` | Domain-specific status terms |
+| `issue_id_format` | Issue ID pattern |
+| `workflows.update_files` | Which files to update |
+| `workflows.action_propagation` | Propagate actions to external files |
+| `workflows.agenda_management` | Post-meeting agenda updates |
+| `workflows.post_processing` | Task import and dashboard refresh after meeting |
+| `domain_additions` | Extra sections to add to summaries |
+| `templates` | Custom template paths |
+| `strings` | i18n string overrides |
+
+---
+
+## PROCESSING FLOW
+
+### Step 1: Parse Input
+
+Extract from the input (transcript, notes, standup content):
+- Participants and their roles -- use name resolution algorithm:
+  - Match against org config `team[]` (name, aliases) for internal team
+  - Match against `_contacts/*/_meta.yaml` (display_name, aliases) for external contacts
+  - Use resolved canonical names in output (correct spelling, Swedish characters)
+- Completed work items (who did what)
+- In-progress work (current status)
+- Decisions made (with rationale)
+- Action items (with owners and deadlines)
+- Issues/blockers discovered
+- Technical updates
+- Version/build information (if mentioned)
+- Metrics and KPIs (if mentioned)
+
+### Step 2: Determine Summary Format
+
+**If `summary_sections` is defined in config** (non-empty list):
+Use the configured section structure. Each section becomes a numbered heading with the specified type (table/subsections/freeform). Only include sections whose trigger condition is met.
+
+**If `summary_sections` is empty or not defined:**
+Use the TWO-TIER SUMMARY FORMAT from CLAUDE.md:
+- **Concise Operational** for weekly syncs, quick calls, standups
+- **Detailed Strategic** for quarterly reviews, major decisions, milestones
+
+### Step 3: Create Meeting Summary
+
+1. Determine date from transcript/content or use today
+2. Determine filename and location from CLAUDE.md MEETING ROUTING
+3. Build summary using the format from Step 2
+4. Include metadata header (date, time, participants, format)
+5. Write executive summary (2-3 sentences)
+6. Populate all applicable sections
+7. Attribute actions to correct people using `responsibility_matrix`
+
+### Step 4: Apply Domain Additions
+
+For each entry in `domain_additions` from config:
+- `trigger: always` -- always include the section
+- `trigger: if_mentioned` -- include if the topic appears in the input
+- `trigger: if_relevant` -- include if contextually appropriate
+
+Append domain-specific sections after the standard summary structure.
+
+### Step 5: Update Files
+
+Update files per `workflows.update_files` from config:
+
+| File key | Target | Action |
+|----------|--------|--------|
+| `summary` | Meeting summary | Always created (Step 3) |
+| `changelog` | CHANGELOG.md | Add dated entry at top |
+| `readme` | README.md | Update Current Status, Active Tasks, Recent Meetings |
+| `task_yaml` | _tasks.yaml | Update/create per-folder task file (v2 schema) |
+| `meetings_index` | meetings/README.md | Add entry to meeting index |
+
+For `changelog`, follow the format in ops-base. Always reference the meeting summary file.
+
+### Step 5.5: Knowledge Extraction (silent)
+
+After updating files, scan the meeting summary for durable insights worth accumulating. This step writes to `_insights.yaml` in the same folder as the CHANGELOG -- it is a silent accumulation layer that never surfaces in any skill output.
+
+**Same extraction logic as `/transcript` Step 3.5** (insight types, threshold, format, dedup). See the transcript skill for the full `_insights.yaml` schema and extraction criteria.
+
+**Privacy:** NEVER include personal names or company names in `summary`, `rationale`, or `tags`. The `context` and `source.file` fields provide the connection. Write generic, reusable knowledge.
+
+**Swedish characters:** When writing Swedish content in `_insights.yaml`, ALL words MUST use correct å, ä, ö. YAML files are equally prone to missing characters.
+
+**Additional ops-specific sources:**
+- Strategic decisions from `domain_additions` -> `decision` type
+- Cleared agenda items with resolution -> `learning` or `decision` type
+- Configuration or workflow changes discussed -> `decision` type
+
+**Process:**
+1. Scan the meeting summary (including domain addition sections) for qualifying insights
+2. Write to `_insights.yaml` in the same folder as the CHANGELOG
+3. Dedup by `source.file` -- if insights from this meeting file already exist, skip
+
+**Skip conditions:**
+- No CHANGELOG.md in the target folder
+- Pure standup (short status updates without decisions)
+- User explicitly said "skip insights"
+
+**Output:** Same brief format as transcript Step 3.5:
+```
+Extracted [N] insights to _insights.yaml:
+- [type] summary sentence
+```
+
+### Step 6: Propagate Actions
+
+If `workflows.action_propagation.enabled` is true:
+- Decisions -> `targets.decisions` file
+- Per-person actions -> `targets.actions_by_person.{name}` file
+
+### Step 7: Manage Agenda
+
+If `workflows.agenda_management.enabled` is true:
+- Open the file at `agenda_management.file`
+- Find the section matching `agenda_management.section`
+- Clear items that were addressed in this meeting
+- Add new follow-up items from this meeting
+- Update date to next scheduled meeting (if determinable)
+
+### Step 8: Apply Language and Output
+
+1. **Resolve the output language** for the target file path:
+   - If `language: per_claude_md`, look up the **target file path** in the project CLAUDE.md LANGUAGE POLICY table. Different paths within the same vault may require different languages (e.g., `meetings/management/` = Swedish, `projects/acme-mobile-v3/meetings/` = English).
+   - If `language: english` or `language: swedish`, use that language for all output.
+   - If `language: input`, match the transcript/input language.
+2. **Apply the resolved language** to all output: summary content, section headings, filename keywords, CHANGELOG entries. When creating preparation files (`/ops prepare`), the preparation must use the language matching its target path -- not a vault-wide default.
+3. **CRITICAL: If `swedish_chars: strict`, verify ALL Swedish text uses correct å, ä, ö before writing any file.** Never write "for" instead of "för", "ar" instead of "är", "mote" instead of "möte", etc. See ops-base for full list. This is a blocking requirement.
+4. Include suggested CHANGELOG entry
+5. Include cross-references to related documents
+6. Include next steps or follow-up items
+
+### Step 9: Post-Processing
+
+If `workflows.post_processing` is configured:
+
+#### Task Import (if `task_import.enabled`)
+1. Extract action items from the meeting summary (same logic as /transcript Step 4)
+2. Find the local `_tasks.yaml` in the folder where the meeting summary was saved (or nearest ancestor). Create with v2 schema if missing.
+3. Match extracted items against existing tasks -- update status/notes for tasks mentioned
+4. Present NEW action items and offer to import (yes/no/select)
+5. For imported tasks: assign defaults (P1, source = meeting file, context from folder)
+6. Mark completed items from the meeting in the local _tasks.yaml
+
+#### Dashboard Refresh (if `dashboard_refresh.enabled`)
+1. After all file updates and task imports are complete
+2. Regenerate the org dashboard using the same logic as `/daily-dashboard {org}`
+3. Update symlinks
+
+#### Mark Preparation as Superseded + Bidirectional Link (CR-005, always)
+
+After the meeting summary is created, check if a preparation file exists for this meeting:
+
+1. **Search** the same folder as the meeting summary for files matching `YYMMDD-förberedelse-*` or `YYMMDD-preparation-*` where `YYMMDD` matches the meeting date
+2. **If found**, insert a blockquote at the very top of the preparation file (before the H1 heading):
+
+```markdown
+> **Superseded** by [YYMMDD-meeting-summary-filename.md](YYMMDD-meeting-summary-filename.md)
+
+```
+
+3. **Also write a back-link in the meeting summary** (CR-005): add a line in the metadata footer of the summary file pointing to the preparation file:
+
+```markdown
+*Preparation: [YYMMDD-förberedelse-filename.md](YYMMDD-förberedelse-filename.md)*
+```
+
+This creates **bidirectional traceability** -- prep -> transcript and transcript -> prep -- so a reader landing on either file can navigate to its counterpart.
+
+4. **Do not** move, archive, or delete the preparation file -- it stays in place to preserve cross-reference links
+5. **Do not** modify any other content in the preparation file (only the supersede blockquote is added). The preparation file is **frozen** per the `/preparation` Step 0 rule -- do not edit it post-meeting beyond the supersede marker.
+
+This marking makes it immediately clear that the meeting has been processed, while keeping the preparation available for historical reference. Monthly cleanup (per archive policy) can later move old superseded preparations to `.archive/` in bulk.
+
+#### Check Verticals (if configured)
+
+If `workflows.verticals` is configured, check whether any vertical documents should be updated with new information from this meeting.
+
+**Verticals** are living documents that aggregate insights across multiple meetings on a single strategic topic (e.g. a product tracker, a methodology insights document). Unlike meeting summaries (point-in-time), verticals are topic-longitudinal.
+
+1. For each vertical in the config, check if the `trigger` condition is met:
+   - `if_mentioned`: scan the meeting summary for any of the `topics` keywords (case-insensitive)
+   - `always`: always suggest
+2. If one or more verticals are triggered, present a suggestion to the user:
+   ```
+   Verticals to update:
+   - Voice Lake (ops/management/voice-lake-vertikal.md) -- topics matched: voice lake, samtalssammanfattningar
+   - AI i utvecklingsorganisationen (ops/management/insikter-ai-utvecklingsorganisation.md) -- topics matched: utvecklingshastighet
+
+   Update now? (yes/no/select)
+   ```
+3. If user confirms (yes or select), read the vertical document and update relevant sections with new information from this meeting. Preserve the document's existing structure -- add to existing sections, update timelines, append new entries.
+4. If vertical file does not exist at the specified path, skip silently (no error).
+5. If no verticals are triggered, do not mention verticals at all.
+
+---
+
+## STATUS TERMINOLOGY
+
+### Default (from ops-base)
+
+When no `status_terminology` is configured:
+- Priority: P0 (critical), P1 (high), P2 (important), P3 (research)
+- Status: BLOCKED, IN PROGRESS, ON TRACK, TODO, PLANNED, COMPLETE
+
+### Custom (from config)
+
+When `status_terminology` is configured, use the provided terms in summary tables:
+- `work_status` terms for current state of work items
+- `resolution_status` terms for resolution/outcome of issues
+
+### Issue IDs
+
+When `issue_id_format` is configured, assign IDs to discovered issues following the pattern. Otherwise, no structured issue IDs.
+
+---
+
+## FILE NAMING
+
+- Follow project CLAUDE.md conventions for all file paths and names
+- Only CHANGELOG.md and README.md are uppercase; all other files use lowercase
+- Use hyphens between words in filenames
+- Default meeting filename: `YYMMDD-participants-description.md`
+
+---
+
+## FALLBACK BEHAVIOUR
+
+When no org config is found:
+- Use base.yaml defaults
+- Create meeting summary only (`update_files: [summary]`)
+- Use TWO-TIER format from CLAUDE.md (or sensible default if no CLAUDE.md)
+- Match input language
+- No action propagation
+- No agenda management
+- No domain additions
+
+When a target file does not exist:
+- For CHANGELOG.md: create with initial entry
+- For README.md: create basic structure
+- For _tasks.yaml: create with v2 schema (version: 2, context from folder, scope from path)
+- For meetings/README.md: create basic index
+
+---
+
+## OUTPUT REQUIREMENTS
+
+### Accuracy
+- Verify participant attribution before finalizing
+- Cross-check numbers, dates, and technical specs
+- Ensure all decisions are captured with rationale
+
+### Cross-References
+- Link to meeting summary from CHANGELOG
+- Link to related documents where relevant
+- Use relative paths for all links
+
+### Always Include
+- Owner assignment per `responsibility_matrix`
+- Follow-up commitments with deadlines
+- Suggested CHANGELOG entry
+- Next steps
+
+---
+
+## ATTACHMENTS AND MEDIA
+
+When processing meetings that reference presentations, PDFs, or other binary files:
+
+### Detection
+- Look for mentions of "presentation", "slides", "PDF", "deck", "demo", "recording" in transcript
+- Check if Deep Thought metadata includes a recording reference
+- Ask user if attachment exists and where it is located
+
+### Placement
+- Project-specific attachments: `.attachments/` within the project folder
+- Vault-level attachments: `.attachments/` at vault root (per vault CLAUDE.md)
+- Follow the project CLAUDE.md if it specifies a different location
+
+### Naming Convention
+- Format: `YYMMDD-description.ext` or `description-YYYY-MM-DD.ext`
+- Use lowercase with hyphens
+- Match the meeting date when the attachment was presented
+
+### Linking
+In meeting summaries, add a "Related:" section after the preview/context links:
+
+```markdown
+**Related:**
+- [Presentation Title (PDF)](../.attachments/YYMMDD-filename.pdf)
+- [Preparation](YYMMDD-preparation-org-type.md)
+```
+
+### Workflow
+1. If attachment is mentioned but location unknown, ask user
+2. If attachment exists in wrong location (e.g., `assets/`), suggest moving to `.attachments/`
+3. Add link to meeting summary under "Related:"
+4. Ensure project CLAUDE.md documents `.attachments/` in folder structure

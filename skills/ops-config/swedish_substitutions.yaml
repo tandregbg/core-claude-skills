@@ -1,0 +1,109 @@
+# Swedish character substitutions for CR-007 /ops normalize and pre-write validators
+#
+# Format: each entry is a literal-word substitution from the (incorrect) ASCII
+# form to the (correct) Swedish form. Word-boundary matching is used at scan time.
+# Seeded from MEMORY.md "Common failures" list.
+#
+# False-positive handling: scanners must skip code blocks (```...```), inline
+# code (`...`), URLs, file paths, YAML keys, and lines marked with the comment
+# `<!-- no-normalize -->`. Ambiguous cases (where the word could be Swedish or
+# English) are reported but not auto-fixed when running with --strict-no-ambiguous.
+#
+# This file is loaded by:
+# - /ops normalize subcommand
+# - /insights pre-write Swedish character validator
+# - /transcript and /ops summary writers (defence in depth)
+
+version: 1
+last_updated: 260407
+
+substitutions:
+  # Verb "to be" / common short verbs
+  - { from: "ar", to: "är", category: verb, ambiguous: true }     # English "ar" rare; verify context
+  - { from: "an", to: "än", category: comparison, ambiguous: true } # also a name; ambiguous
+
+  # Prepositions
+  - { from: "for", to: "för", category: preposition }
+  - { from: "fore", to: "före", category: preposition }
+  - { from: "fran", to: "från", category: preposition }
+  - { from: "pa", to: "på", category: preposition }
+  - { from: "till", to: "till", category: skip }                   # already correct, no substitution
+
+  # Common nouns
+  - { from: "mote", to: "möte", category: noun }
+  - { from: "moten", to: "möten", category: noun }
+  - { from: "manaden", to: "månaden", category: noun }
+  - { from: "manader", to: "månader", category: noun }
+  - { from: "manad", to: "månad", category: noun }
+  - { from: "hostas", to: "höstas", category: noun }
+  - { from: "hosten", to: "hösten", category: noun }
+  - { from: "varlden", to: "världen", category: noun }
+  - { from: "ovrigt", to: "övrigt", category: noun }
+  - { from: "halsa", to: "hälsa", category: noun }
+  - { from: "losning", to: "lösning", category: noun }
+  - { from: "troskel", to: "tröskel", category: noun }
+  - { from: "troskeln", to: "tröskeln", category: noun }
+  - { from: "kolla", to: "kolla", category: skip }
+  - { from: "borjan", to: "början", category: noun }
+  - { from: "ogonblick", to: "ögonblick", category: noun }
+  - { from: "atgard", to: "åtgärd", category: noun }
+  - { from: "atgarder", to: "åtgärder", category: noun }
+  - { from: "arende", to: "ärende", category: noun }
+  - { from: "anvandare", to: "användare", category: noun }
+  - { from: "anvandning", to: "användning", category: noun }
+  - { from: "anvandbar", to: "användbar", category: noun }
+  - { from: "leverantor", to: "leverantör", category: noun }
+  - { from: "leverantorer", to: "leverantörer", category: noun }
+  - { from: "aterforsaljare", to: "återförsäljare", category: noun }
+  - { from: "besokare", to: "besökare", category: noun }
+  - { from: "ateranvandbar", to: "återanvändbar", category: noun }
+  - { from: "varumarke", to: "varumärke", category: noun }
+  - { from: "valgorenhet", to: "välgörenhet", category: noun }
+  - { from: "andamal", to: "ändamål", category: noun }
+  - { from: "agande", to: "ägande", category: noun }
+  - { from: "stod", to: "stöd", category: noun }
+  - { from: "matare", to: "mätare", category: noun }
+  - { from: "doman", to: "domän", category: noun }
+  - { from: "karnteam", to: "kärnteam", category: noun }
+  - { from: "affarsutveckling", to: "affärsutveckling", category: noun }
+  - { from: "prissattning", to: "prissättning", category: noun }
+  - { from: "forandring", to: "förändring", category: noun }
+  - { from: "overgang", to: "övergång", category: noun }
+  - { from: "fragor", to: "frågor", category: noun }
+  - { from: "fragan", to: "frågan", category: noun }
+  - { from: "fraga", to: "fråga", category: noun }
+  - { from: "tva", to: "två", category: numeral }
+
+  # Adjectives / participles
+  - { from: "nasta", to: "nästa", category: adjective }
+  - { from: "forsta", to: "första", category: adjective }
+  - { from: "pagaende", to: "pågående", category: adjective }
+  - { from: "mojligt", to: "möjligt", category: adjective }
+  - { from: "forutsagbart", to: "förutsägbart", category: adjective }
+  - { from: "overhypad", to: "överhypad", category: adjective }
+  - { from: "overens", to: "överens", category: adjective }
+  - { from: "forbattrats", to: "förbättrats", category: verb }
+  - { from: "behovs", to: "behövs", category: verb }
+  - { from: "behover", to: "behöver", category: verb }
+  - { from: "kraver", to: "kräver", category: verb }
+  - { from: "krävs", to: "krävs", category: skip }
+  - { from: "stallas", to: "ställas", category: verb }
+  - { from: "stodja", to: "stödja", category: verb }
+  - { from: "forstar", to: "förstår", category: verb }
+  - { from: "gora", to: "göra", category: verb }
+  - { from: "gor", to: "gör", category: verb }
+  - { from: "bor", to: "bör", category: verb, ambiguous: true }    # also "bor" = lives
+  - { from: "aterbesoker", to: "återbesöker", category: verb }
+  - { from: "aterbesok", to: "återbesök", category: noun }
+  - { from: "foretag", to: "företag", category: noun }
+  - { from: "forberedelse", to: "förberedelse", category: noun }
+  - { from: "samtalsamnen", to: "samtalsämnen", category: noun }
+  - { from: "oppna", to: "öppna", category: adjective }
+
+  # Names
+  - { from: "Andre", to: "André", category: name, ambiguous: true } # English name; ambiguous
+
+  # Notes:
+  # - Categories are advisory; the scanner uses the substitution map regardless
+  # - "ambiguous: true" entries are flagged but not auto-fixed under --strict-no-ambiguous
+  # - "category: skip" entries exist for documentation; the scanner skips them

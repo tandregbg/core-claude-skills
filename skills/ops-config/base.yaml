@@ -1,0 +1,228 @@
+# ops-config base defaults
+# Schema version: 1.3
+# These values are used when no org-specific or project-level config exists
+
+schema_version: "1.3"
+organization: Generic
+language: input  # Match transcript language by default
+
+# Swedish character enforcement (CR-007)
+# When strict, ALL Swedish text MUST use correct å, ä, ö
+swedish_chars: strict
+
+# Sub-tree inheritance (CR-007)
+# When writing files under these paths, treat swedish_chars as strict
+# regardless of local config. This catches sub-trees like _projects/<client>/
+# that have no CLAUDE.md of their own.
+language_inheritance:
+  enabled: true
+  apply_swedish_chars_strict_to:
+    - "_projects/**"
+    - "_contacts/**"
+    - "_private/**"
+    - "_inbox/**"
+  override_via: "CLAUDE.md per folder, or _meta.yaml swedish_chars override"
+
+# Contact privacy defaults (CR-009)
+# When _meta.yaml is absent or has no classification field, these globs apply.
+# Override per contact via _meta.yaml classification field.
+privacy_defaults:
+  family:
+    - "_contacts/a1-*"
+    - "_contacts/a2*"
+  personal:
+    - "_private/**"
+  professional: "**"  # default fallback
+
+# Empty team - must be defined in org config
+team: []
+
+# No responsibility matrix by default
+responsibility_matrix: {}
+
+# Common terminology across all organizations
+terminology:
+  - term: P0
+    definition: Critical blocker affecting operations/revenue
+  - term: P1
+    definition: High priority, needed this week
+  - term: P2
+    definition: Important, needed within 2 weeks
+  - term: P3
+    definition: Research/exploration, flexible timing
+  - term: BLOCKED
+    definition: External dependency preventing progress
+  - term: IN PROGRESS
+    definition: Active work underway
+  - term: ON TRACK
+    definition: Progressing as expected
+  - term: TODO
+    definition: Planned but not started
+  - term: COMPLETE
+    definition: Finished
+
+# No custom summary sections by default (uses TWO-TIER format from CLAUDE.md)
+summary_sections: []
+
+# No domain-specific status terms by default (uses ops-base P0-P3 + standard terms)
+status_terminology: {}
+
+# No structured issue IDs by default
+issue_id_format: null
+
+# Minimal workflow by default
+workflows:
+  update_files:
+    - summary
+  action_propagation:
+    enabled: false
+  agenda_management:
+    enabled: false
+  post_processing:
+    task_import:
+      enabled: false
+    dashboard_refresh:
+      enabled: false
+  knowledge_extraction:
+    enabled: true
+    min_insights: 1
+    types: [decision, preference, learning, opportunity, pattern, edge_case, correction, skill_pattern]
+    max_per_meeting: 10
+    evolution:
+      enabled: true
+      auto_apply: false
+      compile_threshold: 3
+      propose_threshold: 5
+
+# No custom templates by default
+templates: {}
+
+# No domain additions by default
+domain_additions: []
+
+# --- String tables (i18n) ---
+# English defaults
+strings:
+  metadata:
+    created: "Document created"
+    updated: "Updated"
+    generated: "Generated"
+  annotations:
+    outcome: "[OUTCOME]"
+  preparation:
+    context: "Context"
+    agenda: "Agenda (60-second walk-in)"
+    cross_references: "Cross-references"
+    open_actions: "Open actions"
+    your_actions: "Yours"
+    their_actions: "Theirs"
+    suggested_topics: "Suggested topics"
+    background: "Background"
+    new_actions_post: "New action items after the meeting"
+    reflections: "Reflections"
+    post_meeting_note: "post-meeting insights"
+    deep_dive_separator: "Deep dive (read if you have 5 more minutes)"
+  agenda_tags:
+    decision: "DECISION"
+    demo: "DEMO"
+    status: "STATUS"
+    question: "QUESTION"
+    fyi: "FYI"
+  transcript:
+    next_steps: "Next Steps"
+    decisions: "Decisions"
+    outcome: "Outcome"
+    discussion: "Discussion"
+    background: "Background"
+    blockers: "Blockers"
+    no_decisions_marker: "*(No formal decisions -- discussion was orientational.)*"
+    action_table_headers: ["#", "Action", "Owner", "Priority", "Deadline"]
+  dashboard:
+    preparations_today: "Preparations today"
+    meetings_today: "Today's meetings and summaries"
+    standup_section: "Standup/Projects"
+    preparations_tomorrow: "Tomorrow's preparations"
+    no_meetings: "No meetings today"
+    topics_label: "Topics"
+    file_label: "File"
+  changelog:
+    preparation_label: "Preparation"
+    transcript_label: "Call"
+  meeting_types:
+    call: "Call"
+    meeting: "Meeting"
+  filename_keywords:
+    preparation: "preparation"
+    call: "call"
+    summary: "summary"
+    standup: "standup"
+  insights:
+    section_label: "Key Insights"
+    decisions_label: "Decisions & Rationale"
+    preferences_label: "Working Preferences"
+    opportunities_label: "Opportunities & Ideas"
+    patterns_label: "Observed Patterns"
+    learnings_label: "Learnings"
+
+# Swedish defaults
+strings_sv:
+  metadata:
+    created: "Dokument skapat"
+    updated: "Uppdaterad"
+    generated: "Genererad"
+  annotations:
+    outcome: "[UTFALL]"
+  preparation:
+    context: "Kontext"
+    agenda: "Agenda (60-sekunders walk-in)"
+    cross_references: "Korsreferenser"
+    open_actions: "Öppna åtgärder"
+    your_actions: "Dina"
+    their_actions: "Deras"
+    suggested_topics: "Föreslagna samtalsämnen"
+    background: "Bakgrund"
+    new_actions_post: "Nya åtgärdspunkter efter mötet"
+    reflections: "Reflektioner"
+    post_meeting_note: "insikter från genomfört möte"
+    deep_dive_separator: "Fördjupning (läs om du har 5 minuter till)"
+  agenda_tags:
+    decision: "BESLUT"
+    demo: "DEMO"
+    status: "STATUS"
+    question: "FRÅGA"
+    fyi: "FYI"
+  transcript:
+    next_steps: "Nästa steg"
+    decisions: "Beslut"
+    outcome: "Konklusion"
+    discussion: "Diskussion"
+    background: "Bakgrund"
+    blockers: "Blockers"
+    no_decisions_marker: "*(Inga formella beslut -- diskussionen var orienterande.)*"
+    action_table_headers: ["#", "Åtgärd", "Ägare", "Prio", "Deadline"]
+  dashboard:
+    preparations_today: "Förberedelser idag"
+    meetings_today: "Dagens samtal och sammanfattningar"
+    standup_section: "Standup/Projekt"
+    preparations_tomorrow: "Morgondagens förberedelser"
+    no_meetings: "Utan träffar idag"
+    topics_label: "Samtalsämnen"
+    file_label: "Fil"
+  changelog:
+    preparation_label: "Förberedelse"
+    transcript_label: "Samtal"
+  meeting_types:
+    call: "Samtal"
+    meeting: "Möte"
+  filename_keywords:
+    preparation: "förberedelse"
+    call: "samtal"
+    summary: "sammanfattning"
+    standup: "standup"
+  insights:
+    section_label: "Nyckelinsikter"
+    decisions_label: "Beslut och motivering"
+    preferences_label: "Arbetspreferenser"
+    opportunities_label: "Möjligheter och ideer"
+    patterns_label: "Observerade mönster"
+    learnings_label: "Lärdomar"
