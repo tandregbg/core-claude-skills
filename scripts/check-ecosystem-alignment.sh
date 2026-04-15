@@ -32,7 +32,7 @@ else
 fi
 
 # Check visualiser CLAUDE.md
-VIS_DIR="${VIS_DIR:-$HOME/Projects/core-skills-visualisation}"
+VIS_DIR="${VIS_DIR:-$HOME/repos/core-skills-visualisation}"
 if [ -d "$VIS_DIR" ]; then
     VIS_REF=$(grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' "$VIS_DIR/CLAUDE.md" 2>/dev/null | head -1 | tr -d 'v')
     if [ "$VIS_REF" = "$CONTRACT_VERSION" ]; then
