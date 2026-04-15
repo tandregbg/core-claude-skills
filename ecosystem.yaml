@@ -1,0 +1,124 @@
+# ecosystem.yaml — Shared contract for core-skills ecosystem
+# Single source of truth for type enums, skill metadata, and schema versions.
+# The visualisation app and landing page reference this file.
+# No PII. Public-safe.
+
+contract_version: 1
+core_skills_version: "1.15.9"
+
+# --- Schema versions ---
+schemas:
+  ops_config: "1.3"
+  contact_meta: "1.1"
+  tasks: 2
+  insights: 1
+
+# --- Insight type enums ---
+insight_types:
+  content:
+    - decision
+    - preference
+    - learning
+    - opportunity
+    - pattern
+    - quote
+  evolution:
+    - edge_case
+    - correction
+    - skill_pattern
+
+# --- Contact classification (CR-009) ---
+contact_classification:
+  levels:
+    - family
+    - personal
+    - professional
+    - confidential
+  default: professional
+  private_mapping:
+    family: true
+    personal: true
+    professional: false
+    confidential: false
+  folder_pattern_defaults:
+    family:
+      - "_contacts/a1-*"
+      - "_contacts/a2*"
+    personal:
+      - "_private/**"
+
+# --- Skills registry ---
+skills:
+  user_invocable:
+    - name: ops
+      description: "Unified meeting and operations processing — config-driven for any organization."
+      badge: Primary
+      subcommands: [status, prepare, normalize, help]
+    - name: transcript
+      description: "Process and summarize transcriptions from calls, meetings, or voice recordings."
+      badge: Lightweight
+    - name: preparation
+      description: "Create structured meeting preparation documents with walk-in agenda card."
+      badge: Context
+    - name: tasks
+      description: "Personal task tracker with cross-project correlation."
+      badge: Tracking
+      subcommands: [show, add, done, import, weekly, archive, migrate]
+    - name: daily-dashboard
+      description: "Daily meeting and task dashboard with quick-access symlinks."
+      badge: Overview
+    - name: insights
+      description: "Knowledge extraction manager and skill evolution engine."
+      badge: Knowledge
+      subcommands: [reprocess, scan-claude-md, compile, propose, status, help]
+    - name: analytics
+      description: "Vault-level content analytics — trends, skill adoption, contact engagement, backlog."
+      badge: Knowledge
+      subcommands: [overview, skills, contacts, backlog, help]
+    - name: inbox
+      description: "Universal entry point for unstructured content — classifies and routes."
+      badge: Capture
+    - name: md2pdf
+      description: "Convert markdown to styled PDFs. Supports Mermaid, tables, outbox packaging."
+      badge: Utility
+    - name: update-skills
+      description: "Skill repo management — fetch, pull, symlink, health audit."
+      badge: Utility
+  non_invocable:
+    - name: ops-base
+      description: "Shared operational framework (meeting formats, task management, workflows)."
+    - name: ops-config
+      description: "Configuration system — schema definition and base defaults."
+
+# --- Output artifacts ---
+output_artifacts:
+  per_folder:
+    - "_insights.yaml"
+    - "_tasks.yaml"
+    - "CHANGELOG.md"
+  vault_root:
+    - "_analytics/"
+    - "_inbox/"
+    - "_outbox/"
+    - "_Dashboard.md"
+    - "_tasks.yaml"
+    - "_tasks-history.md"
+
+# --- Visualisation app features ---
+visualisation_features:
+  - id: dashboard
+    label: Dashboard
+  - id: inbox
+    label: Inbox
+  - id: tasks
+    label: Task Board
+  - id: projects
+    label: Projects
+  - id: documents
+    label: Documents
+  - id: insights
+    label: Insights
+  - id: analytics
+    label: Analytics
+  - id: mcp
+    label: MCP Server

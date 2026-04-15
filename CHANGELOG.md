@@ -2,6 +2,19 @@
 
 All notable changes to core-skills will be documented in this file.
 
+<!-- Release checklist:
+1. Update ecosystem.yaml core_skills_version
+2. Run scripts/check-ecosystem-alignment.sh
+3. Update visualiser if contract fields changed
+4. Update landing page if skill list or descriptions changed
+-->
+
+## [1.15.9] - 2026-04-15
+
+### Added
+- **`ecosystem.yaml` shared contract:** Machine-readable single source of truth for type enums, skill metadata, schema versions, and contact classification. Referenced by core-skills-visualisation and landing page to prevent drift. Includes: insight types (content + evolution), contact classification levels, skills registry with badges and subcommands, output artifacts, visualisation feature list.
+- **`scripts/check-ecosystem-alignment.sh`:** Version alignment checker that reads ecosystem.yaml and verifies visualiser CLAUDE.md and landing page i18n reference the same core-skills version. Run after version bumps to detect drift.
+
 ## [1.15.8] - 2026-04-15
 
 ### Added

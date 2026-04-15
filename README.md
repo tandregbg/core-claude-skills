@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.15.8
+**Version:** 1.15.9
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
 
