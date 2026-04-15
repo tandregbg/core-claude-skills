@@ -142,31 +142,30 @@ Before including a contact in named output:
 **Steps:**
 
 1. Run file discovery (scan vault)
-2. Compute metrics:
-   - Total YYMMDD files
-   - Date range (earliest → latest)
-   - Unique active dates
-   - Active months count
-3. Compute time series:
-   - **Yearly totals** with year-over-year growth multiplier
-   - **Quarterly totals** with quarter-over-quarter delta
-   - **Monthly totals** (last 12 months only, with bar chart)
-4. Compute distributions:
+2. Compute summary metrics:
+   - Total YYMMDD files, date range, unique active dates, active months
+   - Current pace (files/day for current quarter)
+   - Trend direction (current quarter rate vs previous quarter rate)
+3. Compute yearly totals with year-over-year growth multiplier
+4. Compute **content type × quarter pivot** — the core analytical view showing how each skill type's volume evolves over time. Columns: transcript, ops/meeting, preparation, ops, travel, raw-text, uncategorized, other. Use `·` for zero cells.
+5. Compute **content type × month pivot** (last 12 months) — same columns, monthly granularity for recent trends
+6. Compute monthly activity bar chart (last 12 months)
+7. Compute quarterly trend table with deltas
+8. Compute distributions:
    - **By skill type** — table with count and percentage
-   - **By top-level directory** — top 15 areas with count
+   - **By top-level directory** — top 15 areas with count (private contacts aggregated as single anonymous row)
    - **By file extension** — count per extension
-   - **By day of week** — weekday vs weekend pattern
-5. Compute highlights:
-   - **Top 5 busiest dates** — date, day of week, count
-   - **Current pace** — files/day for current quarter
-   - **Trend direction** — comparing current quarter rate to previous quarter rate
-6. Write to `_analytics/YYMMDD-vault-overview.md`
+   - **By day of week** — weekday vs weekend pattern with bar chart
+9. Compute **top 5 busiest dates** — date, day of week, count
+10. Write to `_analytics/YYMMDD-vault-overview.md`
 
 **Output format:**
 
 ```markdown
 # Vault Analytics — Overview
 Generated: YYYY-MM-DD
+
+---
 
 ## Summary
 
@@ -180,6 +179,8 @@ Generated: YYYY-MM-DD
 | Current pace | N.N files/day (QN YYYY) |
 | Trend | ↑ N% vs previous quarter |
 
+---
+
 ## Yearly Growth
 
 | Year | Files | Growth |
@@ -187,13 +188,44 @@ Generated: YYYY-MM-DD
 | YYYY | N | — |
 | YYYY | N | N.Nx |
 
-## Quarterly Trend
+---
 
-[Table with quarter, count, delta]
+## Content Type × Quarter
+
+| Quarter | transcript | ops/meeting | preparation | ops | travel | raw-text | uncategorized | other | **Total** |
+|---------|------:|------:|------:|------:|------:|------:|------:|------:|------:|
+| YYYY-QN | N| N| ·| N| ·| N| N| ·| **N** |
+| YYYY-QN * | N| N| N| ·| N| ·| N| N| **N** |
+
+\* partial quarter
+
+---
+
+## Content Type × Month (Last 12)
+
+| Month | transcript | ops/meeting | preparation | ops | travel | raw-text | uncategorized | other | **Total** |
+|-------|------:|------:|------:|------:|------:|------:|------:|------:|------:|
+| YYYY-MM | N| N| ·| N| ·| N| N| ·| **N** |
+
+---
 
 ## Monthly Activity (Last 12 Months)
 
-[Table with month, count, visual bar]
+| Month | Files | |
+|-------|------:|---|
+| YYYY-MM | N | ████████████ |
+
+---
+
+## Quarterly Trend
+
+| Quarter | Files | Delta |
+|---------|------:|------:|
+| YYYY-QN | N | — |
+| YYYY-QN | N | +N |
+| YYYY-QN (partial) | N | -N |
+
+---
 
 ## Content Distribution
 
@@ -201,22 +233,38 @@ Generated: YYYY-MM-DD
 
 | Type | Files | % |
 |------|------:|----:|
-| transcript | N | N% |
 | ops/meeting | N | N% |
+| transcript | N | N% |
 | preparation | N | N% |
 | ... | | |
 
-### By Directory
+### By Directory (Top 15)
 
-[Top 15 directories with count]
+| Directory | Files |
+|-----------|------:|
+| org/meetings | N |
+| *(private contacts, N folders)* | *N* |
+
+### By File Extension
+
+| Extension | Files |
+|-----------|------:|
+| .md | N |
+| .txt | N |
 
 ### By Day of Week
 
-[Weekday distribution with bar chart]
+| Day | Files | |
+|-----|------:|---|
+| Monday | N | █████████████ |
+
+---
 
 ## Busiest Dates
 
-[Top 5 dates with count and day of week]
+| Date | Day | Files |
+|------|-----|------:|
+| YYYY-MM-DD | Thu | N |
 ```
 
 ---
@@ -228,13 +276,15 @@ Generated: YYYY-MM-DD
 **Steps:**
 
 1. Run file discovery
-2. For each skill type, compute:
-   - **Quarterly file count** time series
-   - **Quarterly share percentage** (what % of that quarter's files came from this skill)
-   - **First appearance** — which quarter the skill type first produced files
-   - **Growth trajectory** — is the skill's share growing, stable, or shrinking (compare last 2 quarters)
-3. Compute **unstructured-to-structured ratio** — what percentage of files are classified vs uncategorized, by quarter
-4. Write to `_analytics/YYMMDD-skill-adoption.md`
+2. Build **skill share pivot (absolute)** — same columns as the overview pivot (transcript, ops/meeting, preparation, ops, travel, raw-text, uncategorized, other), one row per quarter. Use `·` for zero cells.
+3. Build **skill share pivot (percentage)** — same layout but percentages per quarter.
+4. For each skill type, compute per-skill summary:
+   - **First appeared** — which quarter the skill type first produced files
+   - **Total files** across all time
+   - **Current share** — percentage in the most recent full quarter, with ↑/↓/→ arrow vs previous quarter
+   - **Peak quarter** — quarter with most files from this skill
+5. Compute **structured vs unstructured ratio** by quarter. Structured = transcript + ops/meeting + preparation + ops. Unstructured = everything else. Show absolute counts, and a trend line from first to last full quarter.
+6. Write to `_analytics/YYMMDD-skill-adoption.md`
 
 **Output format:**
 
@@ -242,37 +292,43 @@ Generated: YYYY-MM-DD
 # Vault Analytics — Skill Adoption
 Generated: YYYY-MM-DD
 
-## Skill Share Over Time
+---
 
-| Quarter | transcript | ops/meeting | preparation | other | total |
-|---------|-----------|-------------|-------------|-------|-------|
-| YYYY-QN | N (N%) | N (N%) | N (N%) | N (N%) | N |
+## Skill Share Over Time (absolute)
+
+| Quarter | transcript | ops/meeting | preparation | ops | travel | raw-text | uncategorized | other | Total |
+|---------|------:|------:|------:|------:|------:|------:|------:|------:|------:|
+| YYYY-QN | N| N| ·| N| ·| N| N| ·| N |
+| YYYY-QN * | N| N| N| ·| N| ·| N| N| N |
+
+## Skill Share Over Time (%)
+
+| Quarter | transcript | ops/meeting | preparation | ops | travel | raw-text | uncategorized | other |
+|---------|------:|------:|------:|------:|------:|------:|------:|------:|
+| YYYY-QN | N%| N%| ·| N%| ·| N%| N%| · |
+
+---
 
 ## Per-Skill Trends
 
 ### transcript
 - First appeared: YYYY-QN
 - Total files: N
-- Current share: N% (↑/↓/→ vs previous quarter)
+- Current share: N% (↑ vs previous quarter N%)
 - Peak quarter: YYYY-QN (N files)
 
 ### ops/meeting
-[Same structure]
+[Same structure for each skill with >0 files]
 
-### preparation
-[Same structure]
+---
 
 ## Structured vs Unstructured
 
-| Quarter | Structured (%) | Unstructured (%) |
-|---------|---------------|------------------|
-| YYYY-QN | N% | N% |
+| Quarter | Structured | Unstructured | Structured % |
+|---------|----------:|-------------:|-------------:|
+| YYYY-QN | N | N | N% |
 
-Trend: Structured content share is [growing/stable/shrinking] — from N% to N%.
-
-## Unstructured Content Breakdown
-
-[Sub-classification of the "other" bucket: raw-text, travel, marketing, etc.]
+Trend: Structured content share grew from **N%** (YYYY-QN) to **N%** (YYYY-QN).
 ```
 
 ---
@@ -284,20 +340,20 @@ Trend: Structured content share is [growing/stable/shrinking] — from N% to N%.
 **Steps:**
 
 1. Run file discovery, filtered to `_contacts/` paths
-2. Apply privacy filter — exclude contacts with `private: true` in `_meta.yaml`
-3. For each remaining contact, compute:
+2. Apply privacy filter — resolve `classification` per contact (see Privacy Filtering section). Exclude `family` and `personal` contacts from named output. Report count and total files of excluded contacts as an anonymous summary line.
+3. For each remaining (professional) contact, compute:
    - Total file count
-   - First and last file dates
+   - First and last file dates (as YYYY-MM)
    - Active months count
-   - Peak month (month with most files)
+   - Peak month (month with most files, with count)
    - Average files per active month
-   - Quarterly activity timeline (sparse representation)
+   - Quarterly activity map (for timeline visualisation)
 4. Compute contact lifecycle metrics:
-   - **New contacts by year** — when contacts first appeared
-   - **Network growth rate** — how many new contacts per quarter
+   - **New contacts by year** — when contacts first appeared, with cumulative total
    - **Active contacts per quarter** — contacts with at least 1 file in the quarter
 5. Sort contacts by total file count descending
-6. Write to `_analytics/YYMMDD-contact-engagement.md`
+6. Generate **activity timelines** — a monospace block showing quarterly engagement density for top 20 contacts using heat notation: `·` = 0, `░` = 1-2, `▒` = 3-5, `▓` = 6-10, `█` = 11+
+7. Write to `_analytics/YYMMDD-contact-engagement.md`
 
 **Output format:**
 
@@ -305,38 +361,40 @@ Trend: Structured content share is [growing/stable/shrinking] — from N% to N%.
 # Vault Analytics — Contact Engagement
 Generated: YYYY-MM-DD
 
+*N private contacts excluded (N files in aggregate totals only)*
+
+---
+
 ## Top Contacts (by file count)
 
-| Contact | Files | Span | Active months | Peak month | Avg/month |
-|---------|------:|------|------:|-----------|----------:|
-| name | N | MMM YY → MMM YY | N | MMM YY (N) | N.N |
+| Contact | Files | Span | Active mo | Peak month | Avg/mo |
+|---------|------:|------|----------:|-----------|-------:|
+| name | N | YYYY-MM → YYYY-MM | N | YYYY-MM (N) | N.N |
+
+---
 
 ## Activity Timelines
 
-[Visual quarterly timelines using · ░ ▒ ▓ █ notation]
-
 ```
-                     [quarter labels across top]
-contact-name (N)     [· · · ░ ▒ ▓ █ · ·]
-```
+Contact                              Q4   Q1   Q2   Q3   Q4   Q1   Q2
+contact-name (N)                     ·    ░    ▒    ▓    █    ▒    ·
 
 Legend: · = 0  ░ = 1-2  ▒ = 3-5  ▓ = 6-10  █ = 11+
+```
+
+---
 
 ## Network Growth
 
 | Year | New contacts | Cumulative |
-|------|-------------|-----------|
+|------|------------:|----------:|
 | YYYY | N | N |
 
 ## Active Contacts Per Quarter
 
 | Quarter | Active contacts |
-|---------|----------------|
+|---------|----------------:|
 | YYYY-QN | N |
-
-## Contact Lifecycle Patterns
-
-[Group contacts by start year with file counts]
 ```
 
 ---
@@ -351,27 +409,32 @@ Identifies content that may benefit from processing through existing skills.
 
 1. Run file discovery
 2. **Detect unprocessed transcriptions:**
-   - Find `.txt` files with YYMMDD prefix
+   - Find `.txt` files with YYMMDD prefix (classified as `raw-text`)
    - These are likely raw transcriptions that haven't been processed through `/transcript`
-   - Group by directory, show count and date range
+   - Group by directory, sorted by count descending, show count and date range
 3. **Detect orphaned content:**
-   - Find YYMMDD-prefixed files in directories that have no `CHANGELOG.md`
-   - These files exist outside the normal skill pipeline
+   - Find directories containing YYMMDD-prefixed files but no `CHANGELOG.md`
+   - Only include directories with 2+ files (single files are likely intentional one-offs)
+   - Show top 15 by file count, with `*(+ N more)*` if truncated
 4. **Detect stale inbox items:**
    - Read `_inbox/_inbox.yaml` if it exists
    - Count items with `status: pending`
    - Report age of oldest pending item
 5. **Detect insight gaps:**
    - Find folders with `CHANGELOG.md` but no `_insights.yaml`
-   - These folders could benefit from `/insights reprocess`
-   - Count transcript files in each (potential insight yield)
-6. Write to `_analytics/YYMMDD-backlog-report.md`
+   - Count YYMMDD-prefixed files in each (potential insight yield)
+   - Only include folders with 1+ transcript files
+   - Show top 15 by transcript count, with `*(+ N more)*` if truncated
+6. Write summary table at top with all four categories and suggested actions
+7. Write to `_analytics/YYMMDD-backlog-report.md`
 
 **Output format:**
 
 ```markdown
 # Vault Analytics — Backlog Report
 Generated: YYYY-MM-DD
+
+---
 
 ## Summary
 
@@ -382,25 +445,41 @@ Generated: YYYY-MM-DD
 | Pending inbox items | N | `/inbox` process |
 | Folders missing _insights.yaml | N dirs, ~N transcripts | `/insights reprocess` |
 
+---
+
 ## Raw Text Files (Likely Unprocessed Transcriptions)
 
 | Directory | Count | Date range |
 |-----------|------:|-----------|
-| path/ | N | YYMMDD → YYMMDD |
+| _contacts/name | N | YYMMDD → YYMMDD |
+| _projects/name | N | YYMMDD → YYMMDD |
+
+---
 
 ## Folders Without CHANGELOG
 
-[Directories containing YYMMDD files but no CHANGELOG.md]
+| Folder | YYMMDD files |
+|--------|-------------:|
+| org/meetings/area | N |
+| _contacts/name/subfolder | N |
+| *(+ N more)* | |
+
+---
 
 ## Pending Inbox Items
 
-[List from _inbox.yaml with age]
+N items pending. Oldest: YYYY-MM-DD
+(or: No pending items.)
+
+---
 
 ## Insight Reprocessing Opportunities
 
 | Folder | Transcripts | Has _insights.yaml |
-|--------|------------|-------------------|
-| path/ | N | No |
+|--------|------------:|-------------------:|
+| _contacts/name | N | No |
+| org/_projects/name | N | No |
+| *(+ N more)* | | |
 ```
 
 ---
