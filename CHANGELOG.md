@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.15.10] - 2026-04-16
+
+### Fixed
+- **`md2pdf` orphaned headings fix:** Headings (h2/h3/h4) no longer appear alone at the bottom of pages. New `wrap_heading_sections()` function wraps each heading + its following content (up to ~3000 chars) in a `<section class="heading-group">` with `break-inside: avoid`. CSS updated with `break-after: avoid`, adjacent sibling rules, and heading-group container styling. Weasyprint's limited support for `page-break-after: avoid` is now worked around at the HTML level.
+
 ## [1.15.9] - 2026-04-15
 
 ### Added

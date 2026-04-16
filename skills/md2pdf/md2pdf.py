@@ -111,7 +111,49 @@ def md_to_html(md_path: Path, work_dir: Path) -> str:
 
     # Restore mermaid diagrams
     html = restore_mermaid_placeholders(html, mermaid_placeholders)
+
+    # Wrap heading + following content in <section> to prevent orphaned headings
+    html = wrap_heading_sections(html)
+
     return html
+
+
+def wrap_heading_sections(html: str) -> str:
+    """Wrap each heading and its following content in a <section> element.
+
+    This allows CSS `break-inside: avoid` to keep short heading groups together,
+    preventing orphaned headings at the bottom of pages.
+    """
+    # Split on h2/h3/h4 boundaries (not h1 — that's the document title)
+    pattern = re.compile(r'(<h[234][^>]*>)')
+    parts = pattern.split(html)
+
+    if len(parts) <= 1:
+        return html
+
+    result = []
+    # parts[0] is everything before the first heading
+    result.append(parts[0])
+
+    i = 1
+    while i < len(parts):
+        heading_tag = parts[i]
+        content = parts[i + 1] if i + 1 < len(parts) else ""
+
+        # Get content up to the next heading of same or higher level
+        content_before_next = content.split('<h')[0] if '<h' in content else content
+        stripped = content_before_next.strip()
+
+        # Always wrap — weasyprint will break the section across pages if needed,
+        # but will try to keep it together when it fits
+        if len(stripped) < 3000:
+            result.append(f'<section class="heading-group">{heading_tag}{content}</section>')
+        else:
+            result.append(f'{heading_tag}{content}')
+
+        i += 2
+
+    return "".join(result)
 
 
 def wrap_html(body: str, title: str, css_path: Path) -> str:

@@ -209,11 +209,45 @@ li > strong:first-child {
     color: #222;
 }
 
-/* Print optimizations */
+/* Heading groups — keep heading + short content together */
+section.heading-group {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* Print optimizations — prevent orphaned headings at page bottom */
 h1, h2, h3, h4 {
     page-break-after: avoid;
+    break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* Keep headings together with following content */
+h1 + *, h2 + *, h3 + *, h4 + * {
+    page-break-before: avoid;
+    break-before: avoid;
+}
+
+/* Keep heading + next two siblings together as a group */
+h2, h3, h4 {
+    orphans: 4;
+    widows: 2;
 }
 
 table, figure, .mermaid-diagram {
     page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* Keep list items with their heading */
+h3 + ul, h3 + ol, h4 + ul, h4 + ol {
+    page-break-before: avoid;
+    break-before: avoid;
+}
+
+/* Keep table with its heading */
+h3 + table, h4 + table, h2 + table {
+    page-break-before: avoid;
+    break-before: avoid;
 }
