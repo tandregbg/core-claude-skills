@@ -4,7 +4,7 @@
 # No PII. Public-safe.
 
 contract_version: 1
-core_skills_version: "1.15.9"
+core_skills_version: "1.15.10"
 
 # --- Schema versions ---
 schemas:

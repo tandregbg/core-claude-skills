@@ -85,7 +85,13 @@ Outbox mode produces:
 └── strategi.pdf
 ```
 
-The manifest and email stub are skeletons -- fill in Beskrivning/Målgrupp cells, the email body, and Syfte manually. After sending, flip `**Status:** ej skickad` to `skickad` in the manifest. Combining `--outbox` with `--combined paket.pdf` produces a single PDF inside the outbox folder instead of one per source file.
+The manifest and email stub are skeletons. After generating, you MUST fill in:
+
+1. **Email body** (`mejl.txt`): Write a complete email with context — what's attached and why, key decisions or outcomes, open questions, and what's expected from the recipient. Never leave the body as `<!-- fyll i meddelandetext -->`.
+2. **Manifest**: Fill in Beskrivning/Målgrupp cells and Syfte. Remove references to internal-only documents that should not be sent to the recipient.
+3. **Bilaga-listan**: Verify that only recipient-appropriate files are listed — remove internal CRs, question logs with internal IDs, or other non-customer-facing documents.
+
+After sending, flip `**Status:** ej skickad` to `skickad` in the manifest. Combining `--outbox` with `--combined paket.pdf` produces a single PDF inside the outbox folder instead of one per source file.
 
 ## Dependencies
 
