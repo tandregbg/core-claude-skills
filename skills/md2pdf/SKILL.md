@@ -87,7 +87,7 @@ Outbox mode produces:
 
 The manifest and email stub are skeletons. After generating, you MUST fill in:
 
-1. **Email body** (`mejl.txt`): Write a complete email with context — what's attached and why, key decisions or outcomes, open questions, and what's expected from the recipient. Never leave the body as `<!-- fyll i meddelandetext -->`.
+1. **Email body** (`mejl.txt`): Write a complete email with context — what's attached and why, key decisions or outcomes, open questions, and what's expected from the recipient. Never leave the body as `<!-- fyll i meddelandetext -->`. **IMPORTANT: The email file must be plain text only — no markdown syntax.** Do not use `##`, `**`, `---`, backticks, or any other markdown formatting. Use UPPERCASE for section headings, plain dashes/numbers for lists, and spaces for alignment. The text is copied directly into a mail client where markdown renders as ugly raw syntax.
 2. **Manifest**: Fill in Beskrivning/Målgrupp cells and Syfte. Remove references to internal-only documents that should not be sent to the recipient.
 3. **Bilaga-listan**: Verify that only recipient-appropriate files are listed — remove internal CRs, question logs with internal IDs, or other non-customer-facing documents.
 
