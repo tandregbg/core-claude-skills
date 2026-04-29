@@ -601,7 +601,7 @@ Resolution: org config > language defaults (`strings_sv` / `strings`) > hardcode
 
 #### Knowledge Extraction (`_insights.yaml`)
 
-`/ops` (Step 5.5) and `/transcript` (Step 3.5) silently extract durable knowledge from new conversations. `/insights` backfills from existing transcripts (`reprocess`) and extracts embedded knowledge from CLAUDE.md files (`scan-claude-md`). All three write to `_insights.yaml` -- a pure accumulation layer that never appears in any skill output. The `core-skills-visualisation` app is the only consumer.
+`/ops` (Step 5.5) and `/transcript` (Step 3.5) silently extract durable knowledge from new conversations. `/insights` backfills from existing transcripts (`reprocess`) and extracts embedded knowledge from CLAUDE.md files (`scan-claude-md`). All three write to `_insights.yaml` -- a pure accumulation layer that never appears in any skill output. **Marvin** (formerly `core-skills-visualisation`, renamed per its CR-010) is the only consumer.
 
 **What gets extracted:**
 
@@ -649,7 +649,7 @@ Source                                    Storage               Consumer
 ──────                                    ───────               ────────
 
 /transcript (Step 3.5)  ──┐
-                          ├── _insights.yaml ──▶  core-skills-visualisation
+                          ├── _insights.yaml ──▶  Marvin (web dashboard)
 /ops (Step 5.5)  ─────────┤   (per folder)          /insights page
                           │
 /insights reprocess  ─────┤

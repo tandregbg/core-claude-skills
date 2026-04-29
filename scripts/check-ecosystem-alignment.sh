@@ -31,15 +31,22 @@ else
     ((DRIFTED++))
 fi
 
-# Check visualiser CLAUDE.md
-VIS_DIR="${VIS_DIR:-$HOME/repos/core-skills-visualisation}"
+# Check Marvin CLAUDE.md (formerly core-skills-visualisation, renamed 2026-04-29)
+# Default tries the new path first, falls back to the old one until the directory rename is complete.
+if [ -z "${VIS_DIR:-}" ]; then
+    if [ -d "$HOME/repos/marvin" ]; then
+        VIS_DIR="$HOME/repos/marvin"
+    else
+        VIS_DIR="$HOME/repos/core-skills-visualisation"
+    fi
+fi
 if [ -d "$VIS_DIR" ]; then
     VIS_REF=$(grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' "$VIS_DIR/CLAUDE.md" 2>/dev/null | head -1 | tr -d 'v')
     if [ "$VIS_REF" = "$CONTRACT_VERSION" ]; then
-        echo "[OK] visualiser CLAUDE.md: v$VIS_REF"
+        echo "[OK] Marvin CLAUDE.md: v$VIS_REF"
         ((ALIGNED++))
     else
-        echo "[DRIFT] visualiser CLAUDE.md: v${VIS_REF:-missing} (expected v$CONTRACT_VERSION)"
+        echo "[DRIFT] Marvin CLAUDE.md: v${VIS_REF:-missing} (expected v$CONTRACT_VERSION)"
         ((DRIFTED++))
     fi
 else
