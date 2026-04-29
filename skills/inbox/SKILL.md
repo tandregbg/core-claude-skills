@@ -13,10 +13,20 @@ Universal capture and classification for unstructured content. Accepts voice mem
 
 ```
 vault/_inbox/
-  _inbox.yaml           # Index: metadata + lifecycle state
-  YYMMDD-type-slug.md   # Active items
+  _inbox.yaml           # Derived index (rebuilt from frontmatter)
+  YYMMDD-HHMMSS[-slug].md   # Active items (frontmatter is canonical)
+  .audio/               # Raw audio captured by Trillian, paired by basename
+    YYMMDD-HHMMSS[-slug].m4a
   .archive/             # Processed items (moved here after downstream skill runs)
+    .audio/             # Audio archived alongside transcript
 ```
+
+**Schema**: see [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) for
+the canonical `<id>.md` frontmatter shape, `.audio/` convention, and
+lifecycle states. The schema is the source of truth; this SKILL.md
+documents skill behaviour. Other tools (Trillian, Deep Thought, Marvin,
+external skills) write directly to `_inbox/` against the schema; `/inbox`
+is one of several producers.
 
 ## Subcommands
 
@@ -65,9 +75,10 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    Wait for user confirmation or override. Keep it brief -- one question, then go.
 
 5. **Store in `_inbox/`**:
-   - Write content to `_inbox/YYMMDD-type-slug.md`
-   - Update `_inbox.yaml`: add item with status `classified`
-   - Use YYMMDD date format, type as the category, slug from title
+   - Write content to `_inbox/YYMMDD-HHMMSS[-slug].md` with frontmatter per [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md)
+   - Set `id`, `created`, `classification`, `confidence`, `status: pending`, and routing fields in frontmatter
+   - Rebuild `_inbox.yaml` index from the new frontmatter
+   - If the input was paired audio, set `source.audio_path` and ensure the audio is at `_inbox/.audio/<id>.m4a`
 
 6. **Execute the downstream skill automatically:**
    - `transcript` -> Run `/transcript` with the content, passing the target folder
@@ -78,59 +89,66 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    - The downstream skill handles all its own processing (summary, changelog, task import, insights, history)
 
 7. **Archive the inbox item** after the downstream skill completes:
-   - Set `status: done`, `processed.date` to today
-   - Set `processed.output_file` to the path of the downstream skill's output
-   - Move the .md file to `_inbox/.archive/`
+   - Set frontmatter `status: processed`, `processed_at` to now (ISO 8601), `processed_by` to the downstream skill name, `output_file` to its output path
+   - Move the .md file to `_inbox/.archive/<id>.md` and set `archived_to`
+   - If paired audio exists, also move `_inbox/.audio/<id>.m4a` to `_inbox/.archive/.audio/<id>.m4a`
+   - Rebuild `_inbox.yaml` to reflect the new state
 
 ### `/inbox status` -- Show Inbox State
 
-Display counts by status:
+Display counts by status (per [schema](../../docs/schemas/inbox.md)):
 ```
 Inbox Status:
-  New:        3 items
-  Classified: 1 item
-  Done:       5 items
-  Archived:   12 items
+  pending:    3 items
+  processing: 1 item
+  processed:  5 items (will archive on next process run)
+  skipped:    1 item
+  archived:   12 items (in .archive/)
   ---
-  Active:     4 items (non-archived)
+  Active:     4 items (pending + processing + skipped)
+  Orphan audio: 1 file (audio in .audio/ with no matching .md yet)
 ```
 
-Also show classification breakdown of active items.
+Also show classification breakdown of active items, and flag any orphan
+audio waiting in `.audio/` for a matching transcript.
 
 ### `/inbox process [id|all]` -- Process Stored Items
 
 Process one item by ID, or all unprocessed items (status `new` or `classified`) with `all`.
 
-**Single item (`/inbox process 3`):**
+**Single item (`/inbox process <id>`):**
 
-1. Read the item metadata and content file
-2. If not yet classified, run classification (Step 2 from default flow)
+1. Read the item's frontmatter and body from `_inbox/<id>.md`
+2. If `classification` is missing or `confidence: low`, run classification (Step 2 from default flow); update frontmatter
 3. Show classification and target, ask user to confirm or override
-4. **Execute the downstream skill** -- actually run `/transcript`, `/ops`, or `/tasks add` as appropriate
-5. After the downstream skill completes, update `_inbox.yaml`:
-   - Set `status: done`, `processed.date` to today
-   - Set `processed.output_file` to the path of the downstream skill's output
-6. Move the .md file to `_inbox/.archive/`
+4. Set frontmatter `status: processing`
+5. **Execute the downstream skill** -- actually run `/transcript`, `/ops`, or `/tasks add` as appropriate
+6. After the downstream skill completes, update frontmatter:
+   - `status: processed`, `processed_at`, `processed_by`, `output_file`
+7. Move `<id>.md` to `_inbox/.archive/<id>.md` (and paired audio to `.archive/.audio/<id>.m4a` if present); set `archived_to`
+8. Rebuild `_inbox.yaml` from current frontmatter
 
 **All items (`/inbox process all`):**
 
-1. Load `_inbox.yaml` and filter items with status `new` or `classified`
+1. Glob `_inbox/*.md`, read each frontmatter, filter to `status: pending` or `processing`
 2. If no items to process, report "Inbox is empty" and stop
 3. Read and classify all items, then present a single confirmation table:
    ```
-   | ID | Title | Classification | Target | Folder |
-   |----|-------|---------------|--------|--------|
-   | 1  | samtal med bob | transcript | /transcript | _contacts/bob/ |
-   | 2  | samtal med sara | transcript | /transcript | _contacts/sara/ |
+   | ID                       | Title          | Classification | Target      | Folder              |
+   |--------------------------|----------------|----------------|-------------|---------------------|
+   | 250428-091803-bob        | samtal med bob | transcript     | /transcript | _contacts/bob/      |
+   | 250428-103044-sara       | samtal med sara| transcript     | /transcript | _contacts/sara/     |
    ```
    Ask: "Process all? (or list IDs to skip/override)"
 4. **Execute each item sequentially** -- for each confirmed item:
-   a. Run the downstream skill with the content and target folder
-   b. Let the skill complete its full processing (summary, changelog, tasks, insights)
-   c. Update `_inbox.yaml`: status=done, processed.date, processed.output_file
-   d. Move the .md file to `_inbox/.archive/`
-   e. Brief status line: "Item 1 done -- processed as transcript -> _contacts/tim/"
-5. Print final summary: "Processed N items, M archived"
+   a. Set frontmatter `status: processing`
+   b. Run the downstream skill with the body content and target folder
+   c. Let the skill complete its full processing (summary, changelog, tasks, insights)
+   d. Update frontmatter: `status: processed`, `processed_at`, `processed_by`, `output_file`, `archived_to`
+   e. Move `<id>.md` to `.archive/`; move paired audio (if any) to `.archive/.audio/`
+   f. Brief status line: "Item 250428-091803-bob done -- processed as transcript -> _contacts/bob/"
+5. Rebuild `_inbox.yaml` once at the end
+6. Print final summary: "Processed N items, M archived, K orphan audio still pending"
 
 **Key principle:** `/inbox process` is an automation pipeline, not a suggestion engine. It actually runs the downstream skills. Human-in-the-loop is limited to:
 - Confirming the classification table before execution begins
@@ -153,39 +171,46 @@ Items are stored in vault/_inbox/ and tracked in _inbox.yaml.
 After processing with the downstream skill, items are archived.
 ```
 
-## `_inbox.yaml` Schema
+## `_inbox.yaml` -- derived index
 
-```yaml
-version: 1
-last_updated: YYMMDD
-next_id: 1
-items:
-  - id: 1
-    title: "Descriptive title"
-    type: voice_memo          # voice_memo | quick_note | email | raw_text | clipboard
-    classification: transcript # null | transcript | ops | task | note | idea
-    status: new               # new | classified | done | archived
-    file: "YYMMDD-type-slug.md"
-    created: YYMMDD
-    source_method: skill       # skill | web_ui
-    routing:
-      target_skill: null       # null | transcript | ops | tasks
-      target_folder: null      # vault-relative path
-      confidence: null         # null | high | medium | low
-    processed:
-      date: null
-      output_file: null
-    tags: []
-```
+`_inbox.yaml` is a derived index, rebuilt from the frontmatter of every
+`_inbox/*.md`. It exists for fast batch listing (Marvin, `/inbox status`)
+without parsing every markdown file.
+
+The canonical metadata for any single item lives in that item's
+frontmatter, not here. If frontmatter and index disagree, frontmatter wins.
+
+`/inbox` rebuilds the index on every `status` or `process` invocation.
+External tools writing items directly into `_inbox/<id>.md` MAY also append
+to the index, but they are not required to -- the next `/inbox` call picks
+up new files from frontmatter automatically.
+
+See [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) for the index
+schema (`version: 2`, post-CR-012). v1 files are detected and rewritten
+lazily on first run.
 
 ## Content File Format
 
-Standard markdown. Self-contained, renderable in Obsidian. No frontmatter required -- the yaml index handles all metadata.
+Markdown with **YAML frontmatter** (canonical metadata) and a body. See
+[`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) for the full
+frontmatter spec.
 
-Filename: `YYMMDD-type-slug.md` where:
-- `YYMMDD` is creation date
-- `type` is the content type (voice-memo, quick-note, email, raw-text, clipboard)
-- `slug` is a short descriptive slug from the title
+Filename: `YYMMDD-HHMMSS[-slug].md` where:
+- `YYMMDD-HHMMSS` is creation timestamp (vault-local)
+- `slug` is optional, kebab-case, derived from a short title
+
+Minimal valid frontmatter:
+
+```yaml
+---
+id: 250428-091803
+created: 2026-04-28T09:18:03+02:00
+status: pending
+---
+```
+
+`/inbox` populates additional fields (classification, target_skill,
+target_folder, confidence) when the item is classified.
 
 ## Integration
 
@@ -193,21 +218,27 @@ Filename: `YYMMDD-type-slug.md` where:
 - **Reads** CLAUDE.md MEETING ROUTING for folder suggestions
 - **Reads** `_contacts/` folder structure for participant matching
 - **Executes** downstream skills (`/transcript`, `/ops`, `/tasks`) -- not just suggestions
-- **core-skills-visualisation** provides a web UI for the same data (create, view, classify, archive)
+- **Marvin** (formerly core-skills-visualisation) provides a web UI for the same data (create, view, classify, archive)
+- **Trillian** (vault-pulse) writes raw audio to `_inbox/.audio/` and frontmatter-only stub markdown to `_inbox/<id>.md`; the matching transcript arrives later from Deep Thought
+- **Deep Thought** writes transcript markdown back to `_inbox/<id>.md` with `source.external_id` set to the DT job id
 
 ## Archive Policy
 
 Follows the core-skills archive pattern: never delete, always archive.
-- Processed files move to `_inbox/.archive/`
-- `_inbox.yaml` retains the item entry with `status: archived`
+- Processed markdown moves to `_inbox/.archive/<id>.md`
+- Paired audio (if any) moves to `_inbox/.archive/.audio/<id>.m4a`
+- The pairing-by-basename rule is preserved across the move
+- `_inbox.yaml` retains the item entry with `status: processed` and `archived_to` set
 - Archive is browsable but not shown in active views
+- Retention for archived audio is user-configurable (default: keep indefinitely; future `/inbox prune --older-than Nd` will reclaim space)
 
 ## Rules
 
 - Confirm classification with user before executing -- one brief confirmation, then go
 - **Execute downstream skills automatically** after confirmation -- do not just print instructions
 - Minimize questions -- classify, confirm, execute, archive. No back-and-forth.
-- Use YYMMDD date format consistently
-- One content file per inbox item
-- Items created via the web UI (source_method: web_ui) follow the same schema
-- After downstream skill completes, archive the inbox item automatically
+- **Frontmatter is canonical**; `_inbox.yaml` is a derived index. If they disagree, frontmatter wins.
+- Use the `YYMMDD-HHMMSS[-slug]` identifier format (per [schema](../../docs/schemas/inbox.md))
+- One content file per inbox item; pair with `.audio/<id>.m4a` if audio captured
+- Items created via Marvin web UI, Trillian, or Deep Thought follow the same schema
+- After downstream skill completes, archive the inbox item automatically (and its paired audio)

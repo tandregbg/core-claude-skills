@@ -124,18 +124,17 @@ vault_conventions:
   vault_root:
     - path: "_inbox/"
       purpose: "Capture: unprocessed input awaiting classification"
-      # schema: docs/schemas/inbox.md — proposed in CR-012, not yet created.
-      schema: null
-      writers: ["/inbox", "trillian", "deep-thought"]
+      schema: "docs/schemas/inbox.md"
+      writers: ["/inbox", "trillian", "deep-thought", "marvin"]
       readers: ["/inbox", "trillian", "marvin"]
       lifecycle: "append; items move to .archive/ after processing"
 
     - path: "_inbox/.audio/"
-      purpose: "Raw audio captured by Trillian, awaiting transcription"
-      schema: null  # raw m4a, no markdown schema; convention defined by CR-012
+      purpose: "Raw audio captured by Trillian, paired by basename with _inbox/<id>.md"
+      schema: "docs/schemas/inbox.md"
       writers: ["trillian"]
-      readers: ["trillian", "user (manual)"]
-      lifecycle: "ephemeral — deleted after transcript confirmed (configurable retention)"
+      readers: ["trillian", "deep-thought", "user (manual)"]
+      lifecycle: "kept indefinitely by default; user-configurable retention; archived to .archive/.audio/ alongside transcript"
 
     - path: "_outbox/"
       purpose: "Delivery: PDFs and packages ready to send"

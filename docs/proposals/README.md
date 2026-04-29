@@ -10,18 +10,17 @@ Next available CR number: **CR-013**
 
 ## Proposed (Ready to Implement)
 
-| CR | Title | Priority | Description |
-|----|-------|----------|-------------|
-| [CR-012](CR-012-inbox-schema.md) | Formal `_inbox/` schema + `.audio/` subfolder | Medium | `docs/schemas/inbox.md`; document `_inbox/.audio/` for Trillian-captured audio |
+_None._
 
 ---
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-011** (org-config move, v1.16.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-012** (`_inbox/` schema, v1.16.0).
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| [CR-012](CR-012-inbox-schema.md) | Formal `_inbox/` schema + `.audio/` subfolder | v1.16.0 (2026-04-29) | `docs/schemas/inbox.md` is the canonical contract. Frontmatter is canonical, `_inbox.yaml` is derived. Identifier upgraded to `YYMMDD-HHMMSS[-slug]`. `.audio/` pairing-by-basename rule formalised. |
 | [CR-011](CR-011-org-config-move.md) | Org-config move from skill repos to vault folders | v1.16.0 (2026-04-29) | Phase 1+2 done. New chain: project > folder-local `<vault>/<org>/_ops.yaml` > vault-wide `_config/base.yaml` > skill base.yaml. Pre-v1.16.0 `*-ops-config` skill chain deprecated, removed v1.17.0 (Phase 5, deferred). |
 | [CR-010](CR-010-vault-conventions.md) | `vault_conventions:` block in `ecosystem.yaml` | v1.16.0 (2026-04-29) | contract_version 1 -> 2; authoritative path/writer/reader/lifecycle declarations for vault files |
 | CR-009 | Contact classification taxonomy | v1.15.8 | `_meta.yaml` `classification` field with four levels |
@@ -53,4 +52,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-04-29 — CR-011 implemented Phase 1+2 (resolution chain rewrite + Alex's vault migrated: acme, bravo, delta). Phase 5 (retire `*-ops-config` skills) deferred to v1.17.0.*
+*Last updated: 2026-04-29 — CR-012 implemented (`docs/schemas/inbox.md` formal contract). All proposed CRs through CR-012 now implemented in v1.16.0; queue is empty.*
