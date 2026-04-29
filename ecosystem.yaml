@@ -1,10 +1,16 @@
 # ecosystem.yaml — Shared contract for core-skills ecosystem
-# Single source of truth for type enums, skill metadata, and schema versions.
-# The visualisation app and landing page reference this file.
+# Single source of truth for type enums, skill metadata, schema versions,
+# and vault file conventions.
+# Marvin (formerly core-skills-visualisation) and the landing page reference
+# this file. Future tools (Trillian, external skills, third-party clients)
+# should also use it as the authoritative contract.
 # No PII. Public-safe.
 
-contract_version: 1
-core_skills_version: "1.15.10"
+# contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
+# Bumps are additive — clients on contract_version 1 ignore the new block;
+# clients on version 2 get the additional structured-vault-file declarations.
+contract_version: 2
+core_skills_version: "1.16.0"
 
 # --- Schema versions ---
 schemas:
@@ -91,6 +97,9 @@ skills:
       description: "Configuration system — schema definition and base defaults."
 
 # --- Output artifacts ---
+# (Legacy flat list kept for back-compat with contract_version 1 clients.
+#  Newer clients should consume vault_conventions below for full semantics —
+#  writers, readers, schemas, lifecycle.)
 output_artifacts:
   per_folder:
     - "_insights.yaml"
@@ -103,6 +112,128 @@ output_artifacts:
     - "_Dashboard.md"
     - "_tasks.yaml"
     - "_tasks-history.md"
+
+# --- Vault file conventions (CR-010) ---
+# Authoritative declaration of every file the suite produces or consumes
+# in a user's vault. Includes path pattern, purpose, schema link (when one
+# exists), writers, readers, and lifecycle. Tools like Marvin, Trillian,
+# Deep Thought adapters, and future skills should read this as the contract.
+vault_conventions:
+
+  # Files and folders that live at the vault root.
+  vault_root:
+    - path: "_inbox/"
+      purpose: "Capture: unprocessed input awaiting classification"
+      # schema: docs/schemas/inbox.md — proposed in CR-012, not yet created.
+      schema: null
+      writers: ["/inbox", "trillian", "deep-thought"]
+      readers: ["/inbox", "trillian", "marvin"]
+      lifecycle: "append; items move to .archive/ after processing"
+
+    - path: "_inbox/.audio/"
+      purpose: "Raw audio captured by Trillian, awaiting transcription"
+      schema: null  # raw m4a, no markdown schema; convention defined by CR-012
+      writers: ["trillian"]
+      readers: ["trillian", "user (manual)"]
+      lifecycle: "ephemeral — deleted after transcript confirmed (configurable retention)"
+
+    - path: "_outbox/"
+      purpose: "Delivery: PDFs and packages ready to send"
+      schema: null  # filesystem layout, not YAML
+      writers: ["/md2pdf", "user (manual)"]
+      readers: ["vaultpulse/trillian", "mail.app", "user"]
+      lifecycle: "user-managed; nothing auto-deletes"
+
+    - path: "_config/"
+      purpose: "Vault-wide overrides for skill defaults (optional)"
+      schema: "skills/ops-config/schema.md"
+      writers: ["user (manual)"]
+      readers: ["/ops", "/insights", "/tasks", "/analytics"]
+      lifecycle: "stable; rarely changes"
+      # Becomes load-bearing in CR-011 (org-config move) for vault-wide defaults.
+
+    - path: "_analytics/"
+      purpose: "Dated snapshots of vault-level analytics"
+      schema: null  # markdown reports + YAML data files
+      writers: ["/analytics"]
+      readers: ["marvin", "user"]
+      lifecycle: "append; older snapshots auto-archived"
+
+    - path: "_tasks.yaml"
+      purpose: "Vault-root task aggregation (legacy from v1 schema)"
+      schema: "tasks v2"
+      writers: ["/tasks"]
+      readers: ["/tasks", "/daily-dashboard", "marvin"]
+      lifecycle: "deprecated in favour of per-folder _tasks.yaml; kept for back-compat"
+
+    - path: "_Dashboard.md"
+      purpose: "Daily dashboard composition"
+      schema: null  # markdown; structure documented in /daily-dashboard SKILL.md
+      writers: ["/daily-dashboard"]
+      readers: ["user", "marvin"]
+      lifecycle: "regenerated daily"
+
+  # Files that may appear in any folder in the vault.
+  per_folder:
+    - path: "<folder>/_ops.yaml"
+      purpose: "Per-folder ops config (org config, team, language, terminology)"
+      schema: "skills/ops-config/schema.md"
+      writers: ["user (manual)"]
+      readers: ["/ops", "/insights", "/tasks", "/analytics", "/daily-dashboard"]
+      lifecycle: "stable; rarely changes"
+      # Path becomes the canonical location once CR-011 (org-config move) lands.
+
+    - path: "<folder>/_tasks.yaml"
+      purpose: "Per-folder open tasks (v2 distributed)"
+      schema: "tasks v2"
+      writers: ["/tasks", "/transcript", "/ops"]
+      readers: ["/tasks", "/daily-dashboard", "marvin"]
+      lifecycle: "live; tasks added/completed/archived in place"
+
+    - path: "<folder>/_insights.yaml"
+      purpose: "Extracted decisions, learnings, patterns, evolution feedback"
+      schema: "insights v1"
+      writers: ["/insights", "/ops", "/transcript"]
+      readers: ["/insights", "/analytics", "marvin"]
+      lifecycle: "append-mostly; auto-applied edits via /insights propose"
+
+    - path: "<folder>/_meta.yaml"
+      purpose: "Folder metadata (esp. _contacts/<name>/ classification)"
+      schema: "contact-meta v1.1"
+      writers: ["user (manual)", "/ops"]
+      readers: ["/ops", "/insights", "/analytics", "/daily-dashboard"]
+      lifecycle: "stable"
+
+    - path: "<folder>/_summary.yaml"
+      purpose: "Folder-level narrative summary (CR-008, generated by Ollama)"
+      schema: "docs/schemas/summary-yaml.md"
+      writers: ["scripts/generate_summaries.py (Marvin)"]
+      readers: ["marvin", "user"]
+      lifecycle: "regenerated when stale (cron-restart 04:00 daily)"
+
+    - path: "<folder>/CHANGELOG.md"
+      purpose: "Per-folder changelog of structural changes"
+      schema: null  # plain markdown
+      writers: ["/ops normalize", "user", "/ops"]
+      readers: ["user"]
+      lifecycle: "append"
+
+  # Cross-cutting rules that govern multiple files.
+  rules:
+    - id: "vault_relative"
+      rule: "All paths above are vault-relative. The vault root is determined by walking up from CWD until _inbox/, _outbox/, or .obsidian/ is found, or by VAULT_ROOT env var, or by a tool-specific override."
+
+    - id: "single_inbox_outbox"
+      rule: "Exactly one _inbox/ and exactly one _outbox/ per vault, both at vault root. Per-folder inboxes/outboxes are not part of this contract."
+
+    - id: "config_resolution_order"
+      rule: "/ops resolves config in this order: project-level .claude/ops-config.yaml > nearest <folder>/_ops.yaml walking up from CWD > <vault>/_config/base.yaml > skill base.yaml. First match wins. CR-011 implements this resolution chain."
+
+    - id: "yaml_naming"
+      rule: "Folder-level metadata files use leading underscore (_tasks.yaml, _insights.yaml, _ops.yaml). Hidden/transient subfolders use leading dot (.archive/, _inbox/.audio/)."
+
+    - id: "audio_transcript_pairing"
+      rule: "Audio in _inbox/.audio/<basename>.m4a and the matching transcript at _inbox/<basename>.md are paired by basename. Tools that rename one must rename the other. Detailed in CR-012."
 
 # --- Visualisation app features ---
 visualisation_features:

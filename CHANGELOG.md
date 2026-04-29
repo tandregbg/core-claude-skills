@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.0] - 2026-04-29
+
+### Added
+- **`vault_conventions` block in `ecosystem.yaml` (CR-010):** Authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link (when one exists), writers, readers, and lifecycle. Three sections: `vault_root` (7 entries -- `_inbox/`, `_inbox/.audio/`, `_outbox/`, `_config/`, `_analytics/`, `_tasks.yaml`, `_Dashboard.md`), `per_folder` (6 entries -- `_ops.yaml`, `_tasks.yaml`, `_insights.yaml`, `_meta.yaml`, `_summary.yaml`, `CHANGELOG.md`), and `rules` (5 cross-cutting rules covering vault root resolution, inbox/outbox singularity, config resolution order, naming conventions, audio/transcript pairing). Bumps `contract_version` 1 -> 2; additive change, contract_version=1 clients ignore the new block. Marvin, Trillian (vault-pulse), and future external skills should read this as the contract.
+
 ## [1.15.10] - 2026-04-16
 
 ### Fixed

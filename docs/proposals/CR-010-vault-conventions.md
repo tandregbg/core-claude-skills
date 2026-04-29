@@ -5,7 +5,8 @@
 | **CR Number** | CR-010 |
 | **Date** | 2026-04-27 |
 | **Author** | Alex + Claude Code |
-| **Status** | Proposed |
+| **Status** | Implemented |
+| **Implementation Date** | 2026-04-29 |
 | **Priority** | Medium |
 | **Complexity** | Low |
 | **Estimated Scope** | `ecosystem.yaml`, schema doc |

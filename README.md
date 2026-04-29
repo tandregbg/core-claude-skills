@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.15.9
+**Version:** 1.16.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
 
@@ -30,6 +30,21 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. | Yes (`/inbox`) |
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `backlog`, `help`. | Yes (`/analytics`) |
+
+## Shared contract: `ecosystem.yaml`
+
+[`ecosystem.yaml`](ecosystem.yaml) is the single source of truth for the suite. Marvin (formerly core-skills-visualisation), the landing page, Trillian (vault-pulse), and any future external tools should read it instead of hard-coding skill lists, schema versions, or vault file paths.
+
+It declares:
+
+- **Schema versions** -- `ops_config`, `contact_meta`, `tasks`, `insights`
+- **Insight type enums** -- content vs evolution
+- **Contact classification** -- levels, defaults, folder pattern defaults (CR-009)
+- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands
+- **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `rules` (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
+- **Visualisation features** -- the page list Marvin renders
+
+The contract is versioned (`contract_version: 2`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`.
 
 ## Architecture
 
