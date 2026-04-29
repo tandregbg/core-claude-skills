@@ -5,7 +5,8 @@
 | **CR Number** | CR-011 |
 | **Date** | 2026-04-27 |
 | **Author** | Alex + Claude Code |
-| **Status** | Proposed |
+| **Status** | Implemented (Phase 1+2; Phase 5 deferred to v1.17.0) |
+| **Implementation Date** | 2026-04-29 |
 | **Priority** | Medium |
 | **Complexity** | Low-Medium |
 | **Estimated Scope** | `/ops` skill resolution, three org configs migrated, three skills retired |

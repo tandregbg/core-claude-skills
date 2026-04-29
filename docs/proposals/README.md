@@ -12,17 +12,17 @@ Next available CR number: **CR-013**
 
 | CR | Title | Priority | Description |
 |----|-------|----------|-------------|
-| [CR-011](CR-011-org-config-move.md) | Org-config move from skill repos to vault folders | Medium | `*-ops-config/<org>.yaml` → `<vault>/<org>/_ops.yaml`; retire three `*-ops-config` skills |
 | [CR-012](CR-012-inbox-schema.md) | Formal `_inbox/` schema + `.audio/` subfolder | Medium | `docs/schemas/inbox.md`; document `_inbox/.audio/` for Trillian-captured audio |
 
 ---
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-010** (vault_conventions block, v1.16.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-011** (org-config move, v1.16.0).
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| [CR-011](CR-011-org-config-move.md) | Org-config move from skill repos to vault folders | v1.16.0 (2026-04-29) | Phase 1+2 done. New chain: project > folder-local `<vault>/<org>/_ops.yaml` > vault-wide `_config/base.yaml` > skill base.yaml. Pre-v1.16.0 `*-ops-config` skill chain deprecated, removed v1.17.0 (Phase 5, deferred). |
 | [CR-010](CR-010-vault-conventions.md) | `vault_conventions:` block in `ecosystem.yaml` | v1.16.0 (2026-04-29) | contract_version 1 -> 2; authoritative path/writer/reader/lifecycle declarations for vault files |
 | CR-009 | Contact classification taxonomy | v1.15.8 | `_meta.yaml` `classification` field with four levels |
 | CR-008 | (folder summary generator) | (in code at `scripts/generate_summaries.py`) | Generates `_summary.yaml` per folder via Ollama |
@@ -53,4 +53,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-04-29 — CR-010 implemented (vault_conventions block in ecosystem.yaml, contract_version 1 -> 2)*
+*Last updated: 2026-04-29 — CR-011 implemented Phase 1+2 (resolution chain rewrite + Alex's vault migrated: acme, bravo, delta). Phase 5 (retire `*-ops-config` skills) deferred to v1.17.0.*
