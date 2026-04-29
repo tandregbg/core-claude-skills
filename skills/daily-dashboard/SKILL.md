@@ -282,7 +282,7 @@ When an org config is loaded (e.g. `acme`):
 
 ### Config Loading
 
-Load config from `~/.claude/skills/{org}-ops-config/{org}.yaml`. This provides:
+Load config from `<vault>/<org>/_ops.yaml` (CR-011). Falls back to `~/.claude/skills/{org}-ops-config/{org}.yaml` with a deprecation warning until v1.17.0. This provides:
 - Team structure
 - Terminology
 - Workflow settings

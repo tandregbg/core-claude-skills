@@ -14,6 +14,24 @@ All notable changes to core-skills will be documented in this file.
 ### Added
 - **`vault_conventions` block in `ecosystem.yaml` (CR-010):** Authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link (when one exists), writers, readers, and lifecycle. Three sections: `vault_root` (7 entries -- `_inbox/`, `_inbox/.audio/`, `_outbox/`, `_config/`, `_analytics/`, `_tasks.yaml`, `_Dashboard.md`), `per_folder` (6 entries -- `_ops.yaml`, `_tasks.yaml`, `_insights.yaml`, `_meta.yaml`, `_summary.yaml`, `CHANGELOG.md`), and `rules` (5 cross-cutting rules covering vault root resolution, inbox/outbox singularity, config resolution order, naming conventions, audio/transcript pairing). Bumps `contract_version` 1 -> 2; additive change, contract_version=1 clients ignore the new block. Marvin, Trillian (vault-pulse), and future external skills should read this as the contract.
 
+### Changed
+- **`/ops` config resolution chain rewritten (CR-011):** Org configs now live in the vault folder they describe (`<vault>/<org>/_ops.yaml`) instead of dedicated skill repos. New chain: (1) project-level `.claude/ops-config.yaml`, (2) folder-local `_ops.yaml` walked up from CWD until vault root, (3) vault-wide `<vault>/_config/base.yaml`, (4) skill `base.yaml`. Vault root is detected by `_inbox/`, `_outbox/`, or `.obsidian/` markers, or `VAULT_ROOT` env override. Updated in `skills/ops/SKILL.md`, `skills/ops-base/SKILL.md`, `skills/ops-config/README.md`. Replaces the pre-v1.16.0 step "Org config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`".
+
+### Deprecated
+- **`*-ops-config` skill-based discovery (CR-011):** `~/.claude/skills/acme-ops-config/`, `bravo-ops-config/`, `delta-ops-config/` are deprecated. They remain as fallback (between vault-wide and skill defaults) with a one-time per-session deprecation warning. Removed entirely in v1.17.0.
+
+### Migration
+- **CR-011 -- migrate org configs to vault folders.** One-time per machine:
+  1. `cp ~/repos/acme-skills/skills/acme-ops-config/acme.yaml <vault>/acme/_ops.yaml`
+  2. `cp ~/repos/bravo-skills/skills/bravo-ops-config/bravo.yaml <vault>/bravo/_ops.yaml`
+  3. `cp ~/.claude/skills/delta-ops-config/delta.yaml <vault>/delta/_ops.yaml`
+  4. Verify each new file parses: `python3 -c "import yaml; yaml.safe_load(open('<vault>/acme/_ops.yaml'))"`
+  5. `cd <vault>/acme && /ops status` -- confirm team, language, terminology match the originals
+  6. Repeat step 5 in `<vault>/bravo/` and `<vault>/delta/`
+  7. **Do not** delete the old `*-ops-config` skill files yet -- they still work as fallback until v1.17.0
+  
+  After migration, new orgs (e.g. `dolutions`, `mindtastic`) get a config by dropping a `_ops.yaml` in their vault folder -- no skill repo, no symlink, no SKILL.md.
+
 ## [1.15.10] - 2026-04-16
 
 ### Fixed

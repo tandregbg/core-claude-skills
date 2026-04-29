@@ -19,10 +19,13 @@ Domain skills use a layered configuration system for organization-specific setti
 ### Config Resolution Order
 
 1. **Project-level:** `.claude/ops-config.yaml` in the project root
-2. **Org config skill:** `~/.claude/skills/{org}-ops-config/{org}.yaml`
-3. **Base defaults:** `~/.claude/skills/ops-config/base.yaml`
+2. **Folder-local** (CR-011): nearest `<folder>/_ops.yaml` walking up from CWD until vault root. Vault root = nearest ancestor containing `_inbox/`, `_outbox/`, or `.obsidian/` (or `VAULT_ROOT` env override).
+3. **Vault-wide** (CR-011, optional): `<vault-root>/_config/base.yaml`
+4. **Skill defaults:** `~/.claude/skills/ops-config/base.yaml`
 
 First match wins. Later layers provide fallback values.
+
+**Deprecated (v1.16.0, removed v1.17.0):** the previous step "Org config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`" is deprecated. If still present, it acts as a fallback between steps 3 and 4 with a one-time deprecation warning. Migrate by copying the YAML into the matching `<vault>/<org>/_ops.yaml`.
 
 ### Config Usage
 
@@ -46,7 +49,9 @@ When processing content, domain skills should:
 
 ### Available Configs
 
-Organization configs are provided as separate skills (e.g. `acme-ops-config`, `bravo-ops-config`). The base fallback config `base.yaml` is in `~/.claude/skills/ops-config/`.
+Organization configs live in the vault folder they describe: `<vault>/<org>/_ops.yaml` (CR-011). The base fallback config `base.yaml` is in `~/.claude/skills/ops-config/`. Optional vault-wide overrides go in `<vault>/_config/base.yaml`.
+
+Pre-CR-011 skill-based configs (`*-ops-config` skills under `~/.claude/skills/`) are deprecated and removed in v1.17.0.
 
 See `~/.claude/skills/ops-config/schema.md` for complete schema definition.
 

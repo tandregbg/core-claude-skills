@@ -28,7 +28,7 @@ Works with any vault that uses `_contacts/` folder conventions.
 
 ### Org Mode
 
-Pass an org name as the first argument (e.g. `acme`). Loads the org config from `~/.claude/skills/{org}-ops-config/{org}.yaml` and uses project-specific discovery paths, team structure, and persistent symlinks.
+Pass an org name as the first argument (e.g. `acme`). Loads the org config from `<vault>/<org>/_ops.yaml` (CR-011) and uses project-specific discovery paths, team structure, and persistent symlinks.
 
 ## What It Creates
 

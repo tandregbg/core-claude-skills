@@ -11,8 +11,15 @@ Provides the **schema definition** and **base defaults** for ops configuration. 
 Configs are resolved in priority order (first match wins):
 
 1. **Project-level**: `.claude/ops-config.yaml` in the project root
-2. **Org config skill**: `~/.claude/skills/{org}-ops-config/{org}.yaml`
-3. **Base defaults**: `~/.claude/skills/ops-config/base.yaml`
+2. **Folder-local** (CR-011): nearest `_ops.yaml` walking up from CWD until vault root. Vault root is detected by walking up until `_inbox/`, `_outbox/`, or `.obsidian/` is found, or via `VAULT_ROOT` env var.
+3. **Vault-wide** (CR-011, optional): `<vault-root>/_config/base.yaml` if present
+4. **Skill defaults**: `~/.claude/skills/ops-config/base.yaml`
+
+### Deprecated: skill-based org configs
+
+The previous chain step "Org config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`" is **deprecated as of v1.16.0**. If a `*-ops-config` skill is still present (`~/.claude/skills/acme-ops-config/`, `bravo-ops-config/`, `delta-ops-config/`), it remains a fallback between step 3 and step 4 with a one-time deprecation warning per session. The fallback is removed entirely in v1.17.0.
+
+Migration: copy `<skill>/{org}.yaml` -> `<vault>/<org>/_ops.yaml`. See CHANGELOG `[1.16.0]` `### Migration` for the exact steps.
 
 ## Files
 
@@ -31,17 +38,20 @@ The `/ops` skill reads config to:
 - Apply organization-specific terminology
 - Execute configured workflows (file updates, action propagation, agenda management, post-processing)
 
-### Creating New Org Configs
+### Creating New Org Configs (CR-011)
 
-Create a new skill directory `{org}-ops-config` in an org-specific repo:
+Drop a `_ops.yaml` in the org's vault folder:
 
-1. Create `{org}-ops-config/SKILL.md` (not user-invocable, description only)
-2. Copy `base.yaml` as `{org}.yaml` starting point
-3. Set `organization` and `language`
-4. Define `team` with roles and areas
-5. Add organization-specific `terminology`
-6. Configure `workflows` as needed
-7. Symlink into `~/.claude/skills/`
+1. `cp ~/.claude/skills/ops-config/base.yaml <vault>/<org>/_ops.yaml`
+2. Set `organization` and `language`
+3. Define `team` with roles and areas
+4. Add organization-specific `terminology`
+5. Configure `workflows` as needed
+6. Done -- `/ops` finds it automatically when CWD is anywhere under `<vault>/<org>/`.
+
+No skill repo, no symlink, no SKILL.md. The data lives next to the content it describes. Configs sync with the vault (iCloud/Obsidian Sync) so editing on one Mac propagates to the others.
+
+The contract for which files are read where is documented in [`ecosystem.yaml`](../../ecosystem.yaml) under `vault_conventions:` (CR-010).
 
 ### Project-Level Overrides
 

@@ -48,11 +48,14 @@ The contract is versioned (`contract_version: 2`). Bumps are additive when possi
 
 ## Architecture
 
-Skills are **organization-agnostic**. They use a layered configuration system:
+Skills are **organization-agnostic**. They use a layered configuration system (rewritten in v1.16.0 -- CR-011):
 
 1. **Project-level** (`.claude/ops-config.yaml`) -- overrides for specific projects
-2. **Org config skill** (`~/.claude/skills/{org}-ops-config/{org}.yaml`) -- team, language, workflows per org
-3. **Base defaults** (`~/.claude/skills/ops-config/base.yaml`) -- fallback values
+2. **Folder-local** (`<vault>/<org>/_ops.yaml`) -- per-org config, walked up from CWD until vault root
+3. **Vault-wide** (`<vault>/_config/base.yaml`, optional) -- overrides shared across all folders
+4. **Base defaults** (`~/.claude/skills/ops-config/base.yaml`) -- fallback values
+
+Pre-v1.16.0 chain (`~/.claude/skills/{org}-ops-config/{org}.yaml`) is deprecated, removed in v1.17.0. See CHANGELOG `[1.16.0]` `### Migration` for one-time migration steps.
 
 The project's `CLAUDE.md` remains the single source of truth for vault-specific details (folder structure, meeting routing, file naming conventions).
 
@@ -65,7 +68,7 @@ Domain skills read from their org config for:
 - `terminology`: Domain-specific terms
 - `workflows`: Which files to update, action propagation, post-processing (task import, dashboard refresh), knowledge extraction, verticals
 
-Org configs live in separate repos as `{org}-ops-config` skills. This repo provides `base.yaml` as fallback and `schema.md` as the schema definition.
+As of v1.16.0 (CR-011), org configs live in `<vault>/<org>/_ops.yaml` -- co-located with the content they describe. This repo provides `base.yaml` as fallback and `schema.md` as the schema definition.
 
 ### Skill dependencies
 
@@ -151,7 +154,7 @@ All domain skills inherit from `ops-base`:
 - **Purpose:** Daily meeting and task dashboard generation
 - **Output:** `_Dashboard.md` file + desktop symlinks (`_PREP-*`, `_TODAY-*`, and `_MGMT-*`/`_MKT-*` in org mode)
 - **Operations:** `[org] [today|tomorrow|YYMMDD]` -- generic mode (scan cwd) or org mode (load config)
-- **Special:** Two modes -- generic (scans `_contacts/` folders for dated files) and org mode (loads `{org}-ops-config` for project-specific discovery). Discovers preparations and transcripts automatically by filename pattern.
+- **Special:** Two modes -- generic (scans `_contacts/` folders for dated files) and org mode (loads `<vault>/<org>/_ops.yaml` for project-specific discovery, CR-011). Discovers preparations and transcripts automatically by filename pattern.
 - **Use when:** Starting your day, preparing for meetings, need quick access to today's files
 
 #### preparation (standalone)
@@ -754,13 +757,14 @@ tasks:
 
 ---
 
-### Adding a New Organization
+### Adding a New Organization (v1.16.0+, CR-011)
 
-1. Create a new repo with `skills/{org}-ops-config/{org}.yaml` based on schema
-2. Create `{org}-ops-config/SKILL.md` (not user-invocable)
-3. Set `language`, `team`, `responsibility_matrix`, `terminology`
-4. Configure `workflows` (which files to update, action propagation)
-5. Symlink into `~/.claude/skills/` -- `/ops` will automatically pick up the org config
+1. `cp ~/.claude/skills/ops-config/base.yaml <vault>/<org>/_ops.yaml`
+2. Set `organization`, `language`, `team`, `responsibility_matrix`, `terminology`
+3. Configure `workflows` (which files to update, action propagation)
+4. Done -- `/ops` finds it automatically when CWD is anywhere under `<vault>/<org>/`. No skill repo, no SKILL.md, no symlink.
+
+The config syncs with the vault (iCloud/Obsidian Sync), so editing on one machine propagates everywhere.
 
 ---
 

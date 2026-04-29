@@ -150,7 +150,7 @@ vault_conventions:
       writers: ["user (manual)"]
       readers: ["/ops", "/insights", "/tasks", "/analytics"]
       lifecycle: "stable; rarely changes"
-      # Becomes load-bearing in CR-011 (org-config move) for vault-wide defaults.
+      # Load-bearing as of v1.16.0 (CR-011): vault-wide override layer between folder-local _ops.yaml and skill base.yaml.
 
     - path: "_analytics/"
       purpose: "Dated snapshots of vault-level analytics"
@@ -181,7 +181,7 @@ vault_conventions:
       writers: ["user (manual)"]
       readers: ["/ops", "/insights", "/tasks", "/analytics", "/daily-dashboard"]
       lifecycle: "stable; rarely changes"
-      # Path becomes the canonical location once CR-011 (org-config move) lands.
+      # Canonical location as of v1.16.0 (CR-011). Pre-v1.16.0 configs lived in ~/.claude/skills/{org}-ops-config/; that fallback is removed in v1.17.0.
 
     - path: "<folder>/_tasks.yaml"
       purpose: "Per-folder open tasks (v2 distributed)"
@@ -227,7 +227,7 @@ vault_conventions:
       rule: "Exactly one _inbox/ and exactly one _outbox/ per vault, both at vault root. Per-folder inboxes/outboxes are not part of this contract."
 
     - id: "config_resolution_order"
-      rule: "/ops resolves config in this order: project-level .claude/ops-config.yaml > nearest <folder>/_ops.yaml walking up from CWD > <vault>/_config/base.yaml > skill base.yaml. First match wins. CR-011 implements this resolution chain."
+      rule: "/ops resolves config in this order: project-level .claude/ops-config.yaml > nearest <folder>/_ops.yaml walking up from CWD > <vault>/_config/base.yaml > skill base.yaml. First match wins. Implemented in v1.16.0 (CR-011). The pre-v1.16.0 chain (~/.claude/skills/{org}-ops-config/{org}.yaml) is deprecated and removed in v1.17.0; until then it acts as a fallback between vault-wide and skill defaults with a one-time per-session deprecation warning."
 
     - id: "yaml_naming"
       rule: "Folder-level metadata files use leading underscore (_tasks.yaml, _insights.yaml, _ops.yaml). Hidden/transient subfolders use leading dot (.archive/, _inbox/.audio/)."

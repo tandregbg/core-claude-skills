@@ -26,12 +26,15 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
 **Steps:**
 
 1. **Scan for org configs:**
-   - List directories in `~/.claude/skills/` matching `*-ops-config`
-   - For each, find the YAML file inside (`{org}.yaml`)
+   - Find vault root (walk up from CWD until `_inbox/`, `_outbox/`, or `.obsidian/`; or `VAULT_ROOT` env)
+   - Glob `<vault>/*/_ops.yaml` for org-folder configs
+   - Check `<vault>/_config/base.yaml` for vault-wide override
    - Read and parse each config
+   - **Deprecated fallback:** also scan `~/.claude/skills/*-ops-config/` for legacy skill-based configs and emit a one-time deprecation warning per session if any are found (removed in v1.17.0)
 
 2. **Detect active config:**
    - Check for project-level `.claude/ops-config.yaml` in current working directory
+   - Walk up from CWD looking for the nearest `<folder>/_ops.yaml`
    - Determine org from CLAUDE.md `organization` field or folder name pattern
    - Report which config would be loaded for the current directory
 
@@ -431,9 +434,11 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
    - Participant names matching team members in configs
 2. **Load config** following resolution order:
    - Project-level: `.claude/ops-config.yaml`
-   - Org config: `~/.claude/skills/{org}-ops-config/{org}.yaml`
-   - Base defaults: `~/.claude/skills/ops-config/base.yaml`
-3. **Merge layers** -- project overrides org, org overrides base
+   - Folder-local (CR-011): nearest `<folder>/_ops.yaml` walking up from CWD until vault root
+   - Vault-wide (CR-011, optional): `<vault-root>/_config/base.yaml`
+   - Skill defaults: `~/.claude/skills/ops-config/base.yaml`
+   - Deprecated fallback (removed v1.17.0): `~/.claude/skills/{org}-ops-config/{org}.yaml`
+3. **Merge layers** -- project overrides folder-local, folder-local overrides vault-wide, vault-wide overrides skill defaults
 
 ### What Config Controls
 

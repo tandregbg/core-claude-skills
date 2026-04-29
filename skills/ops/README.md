@@ -28,10 +28,11 @@ Unified meeting and operations processing, driven by organization config. Replac
 ## Config resolution
 
 1. **Project-level:** `.claude/ops-config.yaml` in the project root
-2. **Org config:** `~/.claude/skills/{org}-ops-config/{org}.yaml`
-3. **Base defaults:** `~/.claude/skills/ops-config/base.yaml`
+2. **Folder-local** (CR-011): nearest `<folder>/_ops.yaml` walking up from CWD until vault root
+3. **Vault-wide** (CR-011, optional): `<vault-root>/_config/base.yaml`
+4. **Skill defaults:** `~/.claude/skills/ops-config/base.yaml`
 
-First match wins. See `~/.claude/skills/ops-config/schema.md` for the full schema.
+First match wins. Vault root is detected by `_inbox/`, `_outbox/`, or `.obsidian/` markers (or `VAULT_ROOT` env). Pre-v1.16.0 fallback `~/.claude/skills/{org}-ops-config/{org}.yaml` still resolves between steps 3 and 4 with a deprecation warning until v1.17.0. See `~/.claude/skills/ops-config/schema.md` for the full schema.
 
 ## Examples
 
