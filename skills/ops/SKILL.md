@@ -49,6 +49,13 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
 
 4. **Show base defaults** from `~/.claude/skills/ops-config/base.yaml`
 
+5. **Vault health check** (CR-010 `rules.single_inbox_outbox`, `rules.yaml_naming`):
+   - From the detected vault root, run `find <vault> -type d -name "_inbox" -not -path "*/.archive/*"` and `find <vault> -type d -name "_outbox" -not -path "*/.archive/*"`. Anything that resolves to a path other than `<vault>/_inbox` or `<vault>/_outbox` is a stray folder; flag each.
+   - For every `<vault>/<folder>/_ops.yaml` found in step 1, the folder is treated as ops-aligned. Confirm each parses as YAML; flag any that don't.
+   - List ops-aligned folders that are *missing* an `_ops.yaml` only when CLAUDE.md or `_meta.yaml` in that folder declares `organization` -- otherwise the folder is intentionally not ops-aligned and should be silent.
+   - If `~/.claude/skills/acme-ops-config/`, `~/.claude/skills/bravo-ops-config/`, or `~/.claude/skills/delta-ops-config/` still exists, emit the deprecation warning from step 1 here as a vault-health item too (one-line each, with the `unlink`/`mv` command to fix).
+   - If everything is clean, print a single `Vault health: OK` line. Only expand into a warning list when something is non-conforming.
+
 **Output format:** Structured markdown report:
 
 ```
@@ -89,6 +96,18 @@ Templates: meeting_reflection
 Language: input
 Team: (none -- must be defined in org config)
 Workflows: summary only
+
+### Vault Health
+Vault health: OK
+```
+
+When non-conforming, the Vault Health section expands. Examples:
+
+```
+### Vault Health
+- Stray `_inbox/` at acme/_inbox -- contract requires exactly one at vault root. Move contents to <vault>/_inbox/ and remove.
+- Missing `_ops.yaml` in <vault>/acme/ -- folder declares `organization: Acme` but has no _ops.yaml. Drop one in or remove the organization declaration.
+- Legacy skill `~/.claude/skills/acme-ops-config/` still present (CR-011, removed in v1.17.0). Run `unlink ~/.claude/skills/acme-ops-config`.
 ```
 
 ---
