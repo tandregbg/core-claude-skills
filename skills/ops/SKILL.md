@@ -154,26 +154,37 @@ The skill supports two preparation modes, configured per meeting type in `_ops.y
 
 | Mode | When to use | Files produced | Filename pattern |
 |------|-------------|---------------|------------------|
-| `single` (default) | 1-on-1s, daily standups, marketing meetings -- the facilitator and the participants are the same audience or there is no sensitive facilitator-only content | One file | `YYMMDD-preparation-[context]-[type].md` (or `förberedelse` for Swedish) |
-| `dual` | Group meetings with a facilitator who needs private notes (deflection strategies, time-boxing reminders, sensitive probes, policy reminders that should NOT be visible to attendees) | Two files | `YYMMDD-facilitator-[context]-[type].md` (private) + `YYMMDD-agenda-[context]-[type].md` (visible/shareable) |
+| `single` (default) | 1-on-1s, marketing meetings, anything where the facilitator and the participants are the same audience or there is no sensitive facilitator-only content | One file | `YYMMDD-preparation-[context]-[type].md` (or `förberedelse` for Swedish) |
+| `dual` | Group meetings (standups, weeklies, war rooms) where the facilitator needs a private layer (deflection strategies, time-boxing cues, sensitive probes, policy reminders that should NOT be visible to attendees) on top of the normal team-facing prep | Two files | `YYMMDD-agenda-[context]-[type].md` (visible to team -- the standard prep) + `YYMMDD-facilitator-[context]-[type].md` (private add-on layer) |
 
 **Default is `single`** -- only opt into `dual` when the org explicitly configures a meeting type to need it. If no `meeting_types` config exists, fall back to `single` regardless of `type` argument.
 
-**Dual mode -- what goes where:**
+**Dual mode -- two-layer model:**
 
-| Content | Facilitator file | Agenda file |
-|---------|:---:|:---:|
-| Meeting structure, time-boxes (visible) | yes | yes |
-| Per-person round, agenda topics | yes | yes |
-| Status overview, blockers, decisions | yes | yes |
-| Reference links, follow-up tables | yes | yes |
-| Carry-forward / parking-lot items | yes | yes |
-| Facilitator deflection strategies (e.g., "if X comes up, redirect to offline") | yes | no |
-| Time-boxing reminders ("Week 18 ran 65 min, keep round to 5 min/person") | yes | no |
-| Sensitive probes ("explicitly ask Dana about handover before vacation") | yes | no |
-| Policy reminders not to be announced ("do not signal personnel-policy in this forum") | yes | no |
-| Pre-meeting backstory from 1-on-1s or lunches with subset of attendees | yes | no |
-| Alex/owner facilitator checklist | yes | no |
+The agenda file is the team-facing prep document. It looks like the prior-day prep file in that folder -- same shape, same sections, same level of detail. The facilitator file is a *separate* private layer that contains only the additional content the facilitator needs and the team should not see.
+
+**Agenda file** (visible to all attendees) -- mirror the prior-day single-mode prep in the same folder:
+- Status overview (per-person yesterday/done/today)
+- Key updates from async chat or prior meetings
+- Async updates verbatim (if any)
+- Agenda items with owners and time-boxes
+- Blockers table, decisions pending, open action items carry-forward
+- Reference links, build status, metrics
+- Anything participants need to come prepared
+
+**Facilitator file** (private, NOT shared with the team) -- contains only the additional layer:
+- Facilitator's role clarification (e.g., "Alex runs the meeting only -- not driving test or fix work")
+- Dana's / leader's expectations from prior handover or 1-on-1s
+- Time-box discipline cues ("standup has run 25 min recently, target 30, hard stop 35")
+- "Watch for" cues during the meeting (e.g., "Dana defaulting to 'I'll check after standup' on R2 blockers -- push for concrete commitment now")
+- "Things NOT to surface in this forum" list (vertical/board topics, personnel matters, etc.)
+- Decisions the facilitator owns and the framing for each (esp. when filling in for someone)
+- Post-standup follow-ups the facilitator drives
+- Pre-meeting backstory from 1-on-1s or lunches with subset of attendees
+
+**Critical rule:** the agenda file does NOT mention or hint at the facilitator file. The visible document must not advertise that a private one exists. Cross-references go from facilitator → agenda only, not the other direction.
+
+**Critical rule:** if the same content fits both files, it goes in the agenda file. The facilitator file should only contain content that would change behaviour or expose sensitive context if shared with the team.
 
 ---
 
@@ -333,19 +344,17 @@ Create the file using the **Standup Preparation Template**:
    - Examples: `260311-preparation-acme-mobile-daily-standup.md`, `260311-förberedelse-delta-veckosynk.md`
 
    **Dual mode** -- two files (always English -- dual mode is not yet localized for Swedish):
-   - Facilitator file: `YYMMDD-facilitator-[org/project]-[type].md`
-   - Agenda file: `YYMMDD-agenda-[org/project]-[type].md`
-   - Examples: `260505-facilitator-coreteam-weekly-w19.md` + `260505-agenda-coreteam-weekly-w19.md`
+   - Agenda file (team-facing): `YYMMDD-agenda-[org/project]-[type].md`
+   - Facilitator file (private add-on layer): `YYMMDD-facilitator-[org/project]-[type].md`
+   - Examples: `260505-agenda-coreteam-weekly-w19.md` + `260505-facilitator-coreteam-weekly-w19.md`
+
+   **Order of generation:** write the agenda file first using the same template the same folder's prior-day single-mode prep used (status overview, blockers, action items, agenda, references). Then derive the facilitator file as a slim private layer on top -- only the content from the "Facilitator file" list above. If a section is present in both, keep it in the agenda and remove it from the facilitator file.
 
 3. **Save to meetings folder** (per CLAUDE.md MEETING ROUTING). For dual mode, both files go in the same folder.
 
-4. **For dual mode, also write a cross-reference at the bottom of the agenda file:**
-   ```markdown
-   ---
-
-   *Created: YYYY-MM-DD for [Meeting Name] [Date].*
-   ```
-   (The facilitator file may reference the agenda file in its checklist, but the agenda file does NOT reference or hint at the facilitator file -- the visible document must not advertise that a private one exists.)
+4. **For dual mode, ensure the cross-references are one-directional:**
+   - The facilitator file MUST link to the agenda file at the top with a notice such as: `> **Private facilitator file.** The team-facing version is [YYMMDD-agenda-...md](YYMMDD-agenda-...md). Do not share this file with the team.`
+   - The agenda file MUST NOT mention or link to the facilitator file. The visible document must not advertise that a private one exists.
 
 5. **Report what was created:**
 
@@ -364,11 +373,11 @@ Create the file using the **Standup Preparation Template**:
    **Dual mode:**
    ```
    Created (dual mode):
-   - meetings/coreteam/260505-facilitator-coreteam-weekly-w19.md (private)
-   - meetings/coreteam/260505-agenda-coreteam-weekly-w19.md (shareable)
+   - meetings/coreteam/260505-agenda-coreteam-weekly-w19.md (team-facing -- full prep)
+   - meetings/coreteam/260505-facilitator-coreteam-weekly-w19.md (private add-on layer)
 
-   Agenda items: 6 priorities + 5 carry-forward
-   Facilitator-only content: 4 items (deflection, time-box, probes, policy)
+   Agenda file: status overview (8 people), 10 agenda items, 6 P0 blockers, 13 carry-forward actions
+   Facilitator-only layer: 5 items (role clarification, time-box cues, "watch for" list, "do not surface" list, post-meeting follow-ups)
    ```
 
 ---

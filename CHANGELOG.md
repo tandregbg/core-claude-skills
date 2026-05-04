@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.2] - 2026-05-04
+
+### Changed
+- **`/ops prepare` dual-mode clarified to two-layer model.** Earlier framing in 1.16.1 implied the facilitator file was a superset (full prep + extras) and the agenda file was a stripped-down subset. Operational use surfaced that this inverts the natural workflow: the team-facing document should be the full standup-style prep (status overview, blockers, action items, agenda) -- exactly what prior single-mode prep files in the same folder look like -- and the facilitator file is a *separate* private add-on layer that contains only the additional content that would change behaviour or expose sensitive context if shared. The agenda is now the primary prep; the facilitator file is the extra. Updated: `skills/ops/SKILL.md` -- Preparation modes section rewritten with explicit "agenda file contains" / "facilitator file contains" lists and a "if it fits both, keep in agenda" rule; Step P5 reordered so agenda is generated first by mirroring prior-day single-mode prep, then the facilitator layer is derived; cross-reference rule restated (facilitator → agenda only, never the other direction). No config or filename changes -- this is a documentation/behaviour clarification only.
+
 ## [1.16.1] - 2026-05-04
 
 ### Added
