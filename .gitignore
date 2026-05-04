@@ -1,6 +1,8 @@
 .DS_Store
 *.swp
 *~
+__pycache__/
+*.pyc
 assets/
 README-local-setup.md
 docs/audits/
