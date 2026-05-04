@@ -148,6 +148,33 @@ Generate a structured preparation document for an upcoming team meeting. Pulls c
 /ops prepare standup [paste team updates here]
 ```
 
+#### Preparation modes (single vs dual)
+
+The skill supports two preparation modes, configured per meeting type in `_ops.yaml` under `meeting_types[<type>].preparation_mode`:
+
+| Mode | When to use | Files produced | Filename pattern |
+|------|-------------|---------------|------------------|
+| `single` (default) | 1-on-1s, daily standups, marketing meetings -- the facilitator and the participants are the same audience or there is no sensitive facilitator-only content | One file | `YYMMDD-preparation-[context]-[type].md` (or `förberedelse` for Swedish) |
+| `dual` | Group meetings with a facilitator who needs private notes (deflection strategies, time-boxing reminders, sensitive probes, policy reminders that should NOT be visible to attendees) | Two files | `YYMMDD-facilitator-[context]-[type].md` (private) + `YYMMDD-agenda-[context]-[type].md` (visible/shareable) |
+
+**Default is `single`** -- only opt into `dual` when the org explicitly configures a meeting type to need it. If no `meeting_types` config exists, fall back to `single` regardless of `type` argument.
+
+**Dual mode -- what goes where:**
+
+| Content | Facilitator file | Agenda file |
+|---------|:---:|:---:|
+| Meeting structure, time-boxes (visible) | yes | yes |
+| Per-person round, agenda topics | yes | yes |
+| Status overview, blockers, decisions | yes | yes |
+| Reference links, follow-up tables | yes | yes |
+| Carry-forward / parking-lot items | yes | yes |
+| Facilitator deflection strategies (e.g., "if X comes up, redirect to offline") | yes | no |
+| Time-boxing reminders ("Week 18 ran 65 min, keep round to 5 min/person") | yes | no |
+| Sensitive probes ("explicitly ask Dana about handover before vacation") | yes | no |
+| Policy reminders not to be announced ("do not signal personnel-policy in this forum") | yes | no |
+| Pre-meeting backstory from 1-on-1s or lunches with subset of attendees | yes | no |
+| Alex/owner facilitator checklist | yes | no |
+
 ---
 
 #### Step P1: Gather Context
@@ -294,28 +321,54 @@ Create the file using the **Standup Preparation Template**:
 
 #### Step P5: Save and Report
 
-1. **Determine filename:**
-   - Format: `YYMMDD-preparation-[org/project]-[type].md`
+1. **Resolve preparation mode:**
+   - Look up `meeting_types[<type>].preparation_mode` in the merged org config
+   - If absent, default to `single`
+
+2. **Determine filename(s):**
+
+   **Single mode** -- one file:
+   - Format: `YYMMDD-preparation-[org/project]-[type].md` (English) or `YYMMDD-förberedelse-[org/project]-[type].md` (Swedish)
    - Include the organization or project name to distinguish preparations created the same day for different orgs/projects
-   - English context: `preparation`
-   - Swedish context: `förberedelse`
    - Examples: `260311-preparation-acme-mobile-daily-standup.md`, `260311-förberedelse-delta-veckosynk.md`
 
-2. **Save to meetings folder** (per CLAUDE.md MEETING ROUTING)
+   **Dual mode** -- two files (always English -- dual mode is not yet localized for Swedish):
+   - Facilitator file: `YYMMDD-facilitator-[org/project]-[type].md`
+   - Agenda file: `YYMMDD-agenda-[org/project]-[type].md`
+   - Examples: `260505-facilitator-coreteam-weekly-w19.md` + `260505-agenda-coreteam-weekly-w19.md`
 
-3. **Report what was created:**
+3. **Save to meetings folder** (per CLAUDE.md MEETING ROUTING). For dual mode, both files go in the same folder.
+
+4. **For dual mode, also write a cross-reference at the bottom of the agenda file:**
+   ```markdown
+   ---
+
+   *Created: YYYY-MM-DD for [Meeting Name] [Date].*
+   ```
+   (The facilitator file may reference the agenda file in its checklist, but the agenda file does NOT reference or hint at the facilitator file -- the visible document must not advertise that a private one exists.)
+
+5. **Report what was created:**
+
+   **Single mode:**
    ```
    Created: meetings/260311-preparation-acme-mobile-daily-standup.md
 
    Status Overview:
    - Dev1: 1 done, 4 in progress
-   - Dev2: 1 done, 1 not started
-   - Dev3: 2 done, 1 in progress
-   - Dev4: 1 done, 1 in progress, 1 no update
-   - Dev5: no update
+   - ...
 
    Blockers: 4 items
    Agenda: 7 items
+   ```
+
+   **Dual mode:**
+   ```
+   Created (dual mode):
+   - meetings/coreteam/260505-facilitator-coreteam-weekly-w19.md (private)
+   - meetings/coreteam/260505-agenda-coreteam-weekly-w19.md (shareable)
+
+   Agenda items: 6 priorities + 5 carry-forward
+   Facilitator-only content: 4 items (deflection, time-box, probes, policy)
    ```
 
 ---
@@ -323,7 +376,8 @@ Create the file using the **Standup Preparation Template**:
 #### Step P6: Lifecycle
 
 After the meeting, when `/ops [transcript]` is run:
-- The preparation file is automatically marked as superseded (per Step 9 of normal flow)
+- Single mode: the `preparation`/`förberedelse` file is automatically marked as superseded (per Step 9 of normal flow)
+- Dual mode: BOTH the `facilitator` and `agenda` files are marked as superseded
 - No manual action needed
 
 ---
@@ -428,7 +482,7 @@ Backup: none (use git to revert if needed)
 
 ## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT
 
-- **`/ops prepare`**: Use **before** a team meeting to create a structured preparation with status tracking. Pulls context from recent meetings and tasks. Optionally incorporates pre-submitted async updates from team members.
+- **`/ops prepare`**: Use **before** a team meeting to create a structured preparation with status tracking. Pulls context from recent meetings and tasks. Optionally incorporates pre-submitted async updates from team members. Outputs one file (`preparation`/`förberedelse`) by default, or two files (`facilitator` + `agenda`) when the meeting type is configured `preparation_mode: dual`.
 - **`/ops`**: Use **after** a meeting to process content into structured documentation (summary, changelog, README, task matrix, meetings index, task import, dashboard). Recommended default for all org meetings. Automatically marks any preparation file as superseded.
 - **`/transcript`**: Use for ad-hoc recordings, personal calls, or contexts without an ops config. Produces summary + changelog + optional task import only.
 
@@ -474,6 +528,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.update_files` | Which files to update |
 | `workflows.action_propagation` | Propagate actions to external files |
 | `workflows.agenda_management` | Post-meeting agenda updates |
+| `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
 | `workflows.post_processing` | Task import and dashboard refresh after meeting |
 | `domain_additions` | Extra sections to add to summaries |
 | `templates` | Custom template paths |
@@ -621,24 +676,34 @@ If `workflows.post_processing` is configured:
 
 After the meeting summary is created, check if a preparation file exists for this meeting:
 
-1. **Search** the same folder as the meeting summary for files matching `YYMMDD-förberedelse-*` or `YYMMDD-preparation-*` where `YYMMDD` matches the meeting date
-2. **If found**, insert a blockquote at the very top of the preparation file (before the H1 heading):
+1. **Search** the same folder as the meeting summary for files matching any of these patterns where `YYMMDD` matches the meeting date:
+   - `YYMMDD-förberedelse-*` (single mode, Swedish)
+   - `YYMMDD-preparation-*` (single mode, English)
+   - `YYMMDD-facilitator-*` (dual mode, private)
+   - `YYMMDD-agenda-*` (dual mode, visible)
+2. **If found** (one or more files match), insert a blockquote at the very top of EACH matching file (before the H1 heading):
 
 ```markdown
 > **Superseded** by [YYMMDD-meeting-summary-filename.md](YYMMDD-meeting-summary-filename.md)
 
 ```
 
-3. **Also write a back-link in the meeting summary** (CR-005): add a line in the metadata footer of the summary file pointing to the preparation file:
+3. **Also write a back-link in the meeting summary** (CR-005): add a line in the metadata footer of the summary file pointing to the preparation file(s). For dual mode, link both files:
 
 ```markdown
 *Preparation: [YYMMDD-förberedelse-filename.md](YYMMDD-förberedelse-filename.md)*
 ```
 
+or for dual mode:
+
+```markdown
+*Preparation: [agenda](YYMMDD-agenda-filename.md) | [facilitator notes](YYMMDD-facilitator-filename.md)*
+```
+
 This creates **bidirectional traceability** -- prep -> transcript and transcript -> prep -- so a reader landing on either file can navigate to its counterpart.
 
-4. **Do not** move, archive, or delete the preparation file -- it stays in place to preserve cross-reference links
-5. **Do not** modify any other content in the preparation file (only the supersede blockquote is added). The preparation file is **frozen** per the `/preparation` Step 0 rule -- do not edit it post-meeting beyond the supersede marker.
+4. **Do not** move, archive, or delete the preparation file(s) -- they stay in place to preserve cross-reference links
+5. **Do not** modify any other content in the preparation file(s) (only the supersede blockquote is added). Preparation files are **frozen** per the `/preparation` Step 0 rule -- do not edit them post-meeting beyond the supersede marker.
 
 This marking makes it immediately clear that the meeting has been processed, while keeping the preparation available for historical reference. Monthly cleanup (per archive policy) can later move old superseded preparations to `.archive/` in bulk.
 

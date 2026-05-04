@@ -9,6 +9,12 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.1] - 2026-05-04
+
+### Added
+- **`/ops prepare` dual-mode for group meetings:** New `meeting_types[<type>].preparation_mode` config in `_ops.yaml` (top-level, sibling to `workflows`). Values: `single` (default, one `preparation`/`förberedelse` file) or `dual` (two files: `YYMMDD-facilitator-*.md` private + `YYMMDD-agenda-*.md` shareable). Use `dual` for group meetings where the facilitator needs private notes (deflection strategies, time-boxing, sensitive probes, policy reminders) that must NOT appear in the document shared with attendees. The agenda file does not advertise that a facilitator file exists. Updates: `skills/ops/SKILL.md` (Step P5 filename resolution, Step P6 lifecycle, supersede step accepts all four filename patterns), `skills/ops-config/schema.md` (new top-level `meeting_types` section). Single-mode default preserved -- only meeting types explicitly listed with `preparation_mode: dual` get the new behaviour. NOTE: dual-mode filenames are English-only for now (`facilitator`, `agenda`); Swedish localisation deferred.
+- **Marvin filename pattern recognition for dual-mode (paired with above):** `parsers/activity.py` `TYPE_KEYWORDS` adds `facilitator` and `agenda` -> `preparation` bucket. `static/js/dashboard.js` and `static/js/documents.js` recognise dual-mode files in thread keying, participant extraction, and prep-dot rendering. Marvin must ship together with this core-skills release.
+
 ## [1.16.0] - 2026-04-29
 
 ### Added

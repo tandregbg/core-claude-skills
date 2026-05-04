@@ -350,6 +350,48 @@ workflows:
 
 ---
 
+## Meeting Types
+
+Optional. Configures per-meeting-type behavior for `/ops prepare`. Top-level config block (sibling to `workflows`).
+
+```yaml
+meeting_types:
+  <type-name>:
+    preparation_mode: single | dual   # Default: single
+    facilitator: string                # Optional: facilitator name (informational)
+    notes: string                      # Optional: free-text note
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `preparation_mode` | No | `single` (default) = one preparation file. `dual` = two files (`facilitator` private + `agenda` visible). Use `dual` for group meetings where the facilitator needs private notes (deflection strategies, time-boxing, sensitive probes, policy reminders) that must NOT appear in the shareable document |
+| `facilitator` | No | Informational only -- which person typically facilitates this meeting type |
+| `notes` | No | Free-text comment for the org's own reference |
+
+The `<type-name>` is the same string passed as the `type` argument to `/ops prepare <type>`. If a meeting type is not listed in `meeting_types`, defaults apply (`preparation_mode: single`).
+
+### Example
+
+```yaml
+meeting_types:
+  coreteam_weekly:
+    preparation_mode: dual
+    facilitator: Alex
+    notes: |
+      Group meeting where the facilitator needs to track deflection strategies
+      (Voice Lake redirects, personnel-policy reminders) that should not be
+      visible to all attendees.
+
+  mobile_standup:
+    preparation_mode: single
+    facilitator: Carol
+
+  tomas_henrik_1on1:
+    preparation_mode: single
+```
+
+---
+
 ## Templates
 
 Optional. Custom template paths.

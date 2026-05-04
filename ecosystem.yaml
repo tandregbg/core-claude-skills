@@ -10,7 +10,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.16.0"
+core_skills_version: "1.16.1"
 
 # --- Schema versions ---
 schemas:
