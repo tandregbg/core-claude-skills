@@ -14,7 +14,6 @@ Features:
 import argparse
 import datetime
 import hashlib
-import markdown
 import os
 import re
 import shutil
@@ -22,7 +21,41 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from weasyprint import HTML
+
+
+def _bootstrap_homebrew_paths() -> None:
+    """Make Homebrew binaries and libraries discoverable before heavy imports.
+
+    weasyprint loads native libraries (libgobject, pango, harfbuzz, ...) at
+    import time via ctypes. When this script runs in a non-interactive shell
+    (SSH session, cron, Claude Code on a fresh shell) without /opt/homebrew on
+    PATH and DYLD_FALLBACK_LIBRARY_PATH, the dlopen calls fail. Likewise mmdc
+    is a shell wrapper that needs /opt/homebrew/bin to find `node`.
+
+    We extend PATH and DYLD_FALLBACK_LIBRARY_PATH defensively so the rest of
+    the script can stay platform-agnostic. Idempotent: existing entries are
+    not duplicated.
+    """
+    bin_dirs = ["/opt/homebrew/bin", "/usr/local/bin"]
+    lib_dirs = ["/opt/homebrew/lib", "/usr/local/lib"]
+
+    def _prepend(env_key: str, dirs: list[str]) -> None:
+        existing = os.environ.get(env_key, "")
+        parts = existing.split(os.pathsep) if existing else []
+        for d in dirs:
+            if Path(d).is_dir() and d not in parts:
+                parts.insert(0, d)
+        if parts:
+            os.environ[env_key] = os.pathsep.join(parts)
+
+    _prepend("PATH", bin_dirs)
+    _prepend("DYLD_FALLBACK_LIBRARY_PATH", lib_dirs)
+
+
+_bootstrap_homebrew_paths()
+
+import markdown  # noqa: E402  (must come after PATH bootstrap)
+from weasyprint import HTML  # noqa: E402  (loads native libs on import)
 
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_CSS = SCRIPT_DIR / "style.css"
@@ -163,13 +196,49 @@ def normalize_lazy_lists(text: str) -> str:
     return "\n".join(out)
 
 
+def find_mmdc() -> str | None:
+    """Locate the mmdc binary, even when not on PATH.
+
+    Order of search:
+    1. `mmdc` on the current PATH (covers interactive shells with full PATH)
+    2. Common Homebrew install locations (covers SSH/non-interactive shells
+       on macOS where /opt/homebrew/bin or /usr/local/bin aren't in PATH)
+    3. Common Linux install locations
+    4. nvm-managed node directories under ~/.nvm/versions/node/
+    """
+    found = shutil.which("mmdc")
+    if found:
+        return found
+
+    candidates = [
+        "/opt/homebrew/bin/mmdc",       # Apple Silicon Homebrew
+        "/usr/local/bin/mmdc",          # Intel Mac Homebrew / older Linux
+        "/usr/bin/mmdc",                # system-wide Linux package
+        str(Path.home() / ".npm-global" / "bin" / "mmdc"),
+        str(Path.home() / "node_modules" / ".bin" / "mmdc"),
+    ]
+    for path in candidates:
+        if Path(path).is_file():
+            return path
+
+    # nvm: pick the highest-versioned node install with mmdc
+    nvm_root = Path.home() / ".nvm" / "versions" / "node"
+    if nvm_root.is_dir():
+        for node_dir in sorted(nvm_root.iterdir(), reverse=True):
+            candidate = node_dir / "bin" / "mmdc"
+            if candidate.is_file():
+                return str(candidate)
+
+    return None
+
+
 def extract_mermaid_blocks(text: str, work_dir: Path) -> tuple[str, dict[str, str]]:
     """Extract mermaid code blocks from markdown, render to PNG, return placeholders.
 
     Uses PNG output because Mermaid SVGs use foreignObject for text labels,
     which weasyprint cannot render.
     """
-    mmdc = shutil.which("mmdc")
+    mmdc = find_mmdc()
     placeholders = {}
 
     pattern = re.compile(r'(?m)^```mermaid\s*\n(.*?)^```\s*$', re.DOTALL)

@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.16.6
+**Version:** 1.16.7
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.16.7 (2026-05-06)
+
+- **`md2pdf` works in non-interactive shells.** Bootstraps `/opt/homebrew/bin` into `PATH` and `/opt/homebrew/lib` into `DYLD_FALLBACK_LIBRARY_PATH` before importing weasyprint/markdown, so SSH sessions and cron jobs no longer crash with `cannot load library 'libgobject-2.0-0'` or `env: node: No such file or directory`. `mmdc` lookup also falls back to common Homebrew/npm/nvm locations when not on PATH. See CHANGELOG `[1.16.7]`.
 
 ## What's new in v1.16.6 (2026-05-06)
 

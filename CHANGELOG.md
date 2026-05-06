@@ -9,6 +9,12 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.7] - 2026-05-06
+
+### Fixed
+- **`md2pdf` Homebrew library discovery in non-interactive shells:** Added `_bootstrap_homebrew_paths()` that runs before `weasyprint` and `markdown` are imported. It prepends `/opt/homebrew/bin` (and `/usr/local/bin`) to `PATH` and `/opt/homebrew/lib` (and `/usr/local/lib`) to `DYLD_FALLBACK_LIBRARY_PATH` when those directories exist on the system. Two failure modes this resolves: (1) `weasyprint` import crashing with `OSError: cannot load library 'libgobject-2.0-0'` because the native pango/glib stack lives in `/opt/homebrew/lib` and dyld can't find it, (2) `mmdc` running but its internal `node` lookup failing with `env: node: No such file or directory`. Both happen when md2pdf is invoked from SSH sessions, cron jobs, or any shell where `~/.zshrc` hasn't extended PATH. Bootstrap is idempotent and a no-op on systems without those Homebrew prefixes.
+- **`md2pdf` mmdc binary discovery:** New `find_mmdc()` looks for `mmdc` on `PATH` first, then falls back to common Homebrew locations (`/opt/homebrew/bin/mmdc`, `/usr/local/bin/mmdc`), Linux package locations, npm-global, and the highest-versioned nvm-managed Node install. Fixes the case where the binary is installed but unreachable via `shutil.which`.
+
 ## [1.16.6] - 2026-05-06
 
 ### Added
