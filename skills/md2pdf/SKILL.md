@@ -21,13 +21,53 @@ Convert markdown documents to professionally styled PDFs using weasyprint.
 
 ## How it works
 
-1. Extract Mermaid code blocks from raw markdown, render to PNG via `mmdc` (high-res, scale 3x)
-2. Parse remaining markdown to HTML (Python `markdown` library)
-3. Inject rendered Mermaid PNGs back into the HTML
-4. Apply CSS styling (default: `style.css` in this skill directory)
-5. Render to PDF via weasyprint
+1. Translate any ` ```markmap ` fenced blocks into Mermaid mindmap blocks (heading levels + bullets become indentation)
+2. Normalize lazy lists -- insert a blank line before a list that follows a paragraph (matches GFM/Obsidian behavior, since Python-markdown is strict CommonMark)
+3. Extract Mermaid code blocks from raw markdown, render to PNG via `mmdc` (high-res, scale 3x)
+4. Parse remaining markdown to HTML (Python `markdown` library)
+5. Inject rendered Mermaid PNGs back into the HTML
+6. Apply CSS styling (default: `style.css` in this skill directory)
+7. Render to PDF via weasyprint
 
 Note: Mermaid is rendered as PNG, not SVG, because Mermaid SVGs use `foreignObject` for text labels which weasyprint cannot render.
+
+## Mindmap support
+
+Author mindmaps using a fenced ` ```markmap ` block. The skill converts it to a Mermaid mindmap automatically before rendering:
+
+````markdown
+```markmap
+# Root
+## Branch A
+- Leaf A1
+- Leaf A2
+## Branch B
+- Leaf B1
+  - Sub-leaf
+```
+````
+
+Rules:
+- `#` heading is the root (depth 0). `##` is depth 1, `###` is depth 2, etc.
+- Bullets (`-` / `*`) under a heading inherit the heading's depth and add their own indent (each two spaces / tab = one extra level).
+- Mermaid's mindmap renderer is used, so `mmdc` must be installed for the diagram to render. Without `mmdc` the block falls back to a plain code listing.
+
+### Limit depth per block
+
+Pass `depth=N` as a fence attribute to prune nodes deeper than N. Depth 0 is the root, so `depth=2` keeps the root + two levels of branches and drops everything deeper.
+
+````markdown
+```markmap depth=2
+# Root
+## Branch A
+- Leaf A1     (kept — depth 2)
+  - Drilldown (dropped — depth 3)
+## Branch B
+- Leaf B1     (kept)
+```
+````
+
+Use a small depth (1-2) for an executive overview and omit the attribute (or use a higher value) for a detailed map.
 
 ## Execution
 
@@ -97,7 +137,25 @@ After sending, flip `**Status:** ej skickad` to `skickad` in the manifest. Combi
 
 - **weasyprint** (Python) -- HTML/CSS to PDF
 - **markdown** (Python) -- Markdown to HTML
-- **mmdc** (npm: @mermaid-js/mermaid-cli) -- Mermaid diagram rendering (optional, auto-detected)
+- **mmdc** (npm: `@mermaid-js/mermaid-cli`) -- Mermaid diagram rendering, **required for mindmap and mermaid blocks** (optional only if neither block type is used)
+
+### Install (first-time setup)
+
+```bash
+# Python deps
+pip install weasyprint markdown
+
+# Mermaid CLI (required for ```mermaid and ```markmap blocks)
+npm install -g @mermaid-js/mermaid-cli
+```
+
+Verify:
+```bash
+mmdc --version    # should print a version
+weasyprint --version
+```
+
+If `mmdc` is missing, mermaid/markmap blocks will fall back to a plain code listing in the PDF (no diagram rendered) -- the build still succeeds.
 
 ## Customization
 

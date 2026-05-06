@@ -9,6 +9,16 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.4] - 2026-05-06
+
+### Added
+- **`md2pdf` markmap mindmap support:** New ` ```markmap ` fenced block translates to a Mermaid mindmap before rendering. Heading levels (`#`, `##`, `###`) and bullets (`-`/`*`) become indentation -- `#` is root (depth 0), `##` is depth 1, etc. Bullets inherit their parent heading's depth and add their own indent (each two spaces / tab = one extra level). Optional `depth=N` fence attribute (e.g. ` ```markmap depth=2 `) prunes nodes deeper than N -- use a small depth for executive summaries, omit (or use a higher value) for detailed maps. The Mermaid renderer is reused, so `mmdc` is now required for both `mermaid` and `markmap` blocks (still optional, with a plain code-listing fallback if `mmdc` is missing).
+- **`md2pdf` lazy-list normalization:** New pre-processor inserts a blank line before a list that follows a paragraph without one, matching GitHub Flavored Markdown / Obsidian behavior. Python-markdown is strict CommonMark and requires the blank line; authors used to GFM/Obsidian style routinely hit this and got bullet items rendered as inline paragraph text. Fix is idempotent (already-separated lists unchanged) and skips fenced code blocks so bullets inside `pre`/`code` are preserved as-is. Applies to both `-`/`*` bullets and numbered lists.
+
+### Changed
+- **`md2pdf` mermaid/markmap fence regex hardened:** Anchored to start-of-line so inline backticks in prose (e.g. ` ```markmap` ` mentioned in a sentence) no longer trigger block extraction.
+- **`md2pdf` SKILL.md:** Documents the new mindmap support, `depth=N` attribute, lazy-list normalization step, and adds explicit install commands (`pip install weasyprint markdown` + `npm install -g @mermaid-js/mermaid-cli`) under Dependencies with a note that `mmdc` is required when using `mermaid` or `markmap` blocks.
+
 ## [1.16.3] - 2026-05-06
 
 ### Added

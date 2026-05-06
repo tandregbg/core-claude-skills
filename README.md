@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.16.3
+**Version:** 1.16.4
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.16.4 (2026-05-06)
+
+- **`md2pdf` mindmap support and lazy-list fix.** New ` ```markmap ` fenced block renders to a visual mindmap in the PDF (translated internally to a Mermaid mindmap). Heading levels and bullets become indentation; optional `depth=N` attribute prunes deeper nodes for an executive overview. A lazy-list normalizer also lands -- a list immediately following a paragraph without a blank line is now rendered as a list (matching GFM/Obsidian behavior). `mmdc` is now required for `mermaid`/`markmap` blocks; install via `npm install -g @mermaid-js/mermaid-cli`. See CHANGELOG `[1.16.4]`.
 
 ## What's new in v1.16.3 (2026-05-06)
 

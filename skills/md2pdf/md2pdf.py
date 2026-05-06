@@ -28,6 +28,141 @@ SCRIPT_DIR = Path(__file__).parent
 DEFAULT_CSS = SCRIPT_DIR / "style.css"
 
 
+def convert_markmap_to_mermaid(text: str) -> str:
+    """Translate ```markmap fenced blocks into ```mermaid mindmap blocks.
+
+    Markmap uses heading levels (#, ##, ###) and bullet lists to express
+    hierarchy. Mermaid's mindmap syntax uses indentation. We convert headings
+    to indent levels and preserve bullet indentation.
+
+    Optional fence attributes:
+        ```markmap depth=2          -- prune nodes deeper than depth 2
+        ```markmap depth=3 ...      -- multiple attrs space-separated
+
+    Depth counting: the root (single `#` heading) is depth 0. `##` is depth 1,
+    a bullet directly under `##` is depth 2, etc. depth=N keeps everything at
+    depth <= N and drops deeper nodes.
+
+    Conversion rules:
+    - First-level heading (# X)   -> root node (zero indent in mermaid)
+    - Second-level heading (## X) -> 1 level deep
+    - Third-level heading (### X) -> 2 levels deep, etc.
+    - Bullets (- X / * X) inherit parent heading level + their own indent
+    """
+    pattern = re.compile(r'(?m)^```markmap([^\n]*)\n(.*?)^```\s*$', re.DOTALL)
+
+    def parse_attrs(attr_str: str) -> dict:
+        attrs = {}
+        for token in attr_str.strip().split():
+            if "=" in token:
+                k, v = token.split("=", 1)
+                attrs[k.strip()] = v.strip()
+        return attrs
+
+    def translate_block(match: re.Match) -> str:
+        attr_str = match.group(1)
+        body = match.group(2)
+        attrs = parse_attrs(attr_str)
+        max_depth = None
+        if "depth" in attrs:
+            try:
+                max_depth = int(attrs["depth"])
+            except ValueError:
+                max_depth = None
+
+        out_lines = ["mindmap"]
+        heading_depth = 0  # last seen heading level (1-based, where 1 = #)
+        for raw_line in body.splitlines():
+            line = raw_line.rstrip()
+            if not line.strip():
+                continue
+
+            heading_match = re.match(r'^(#+)\s+(.*)$', line)
+            if heading_match:
+                hashes, content = heading_match.groups()
+                heading_depth = len(hashes)
+                node_depth = heading_depth - 1  # # = depth 0 (root)
+                if max_depth is not None and node_depth > max_depth:
+                    continue
+                indent = "  " * heading_depth
+                out_lines.append(f"{indent}{content.strip()}")
+                continue
+
+            bullet_match = re.match(r'^(\s*)[-*]\s+(.*)$', line)
+            if bullet_match:
+                leading_ws, content = bullet_match.groups()
+                # Each two spaces (or tab) of bullet indent = one extra depth
+                ws_units = leading_ws.replace("\t", "  ")
+                bullet_depth = len(ws_units) // 2 + 1
+                total_depth = heading_depth + bullet_depth
+                node_depth = total_depth - 1
+                if max_depth is not None and node_depth > max_depth:
+                    continue
+                indent = "  " * total_depth
+                out_lines.append(f"{indent}{content.strip()}")
+                continue
+
+            # Plain text inside markmap block: treat as bullet at current depth+1
+            total_depth = heading_depth + 1
+            node_depth = total_depth - 1
+            if max_depth is not None and node_depth > max_depth:
+                continue
+            indent = "  " * total_depth
+            out_lines.append(f"{indent}{line.strip()}")
+
+        return "```mermaid\n" + "\n".join(out_lines) + "\n```"
+
+    return pattern.sub(translate_block, text)
+
+
+def normalize_lazy_lists(text: str) -> str:
+    """Insert a blank line before a list that follows a paragraph without one.
+
+    Python-markdown follows strict CommonMark and requires a blank line between
+    a paragraph and a list. GitHub Flavored Markdown and Obsidian are lazier:
+    they treat ``Some text:\n- item`` as a list. This pre-processor matches the
+    lazy behavior so authoring stays natural.
+
+    Skips:
+    - Lines inside fenced code blocks (```...```)
+    - Already-blank-separated lists (no-op)
+    - List items immediately after another list item or list-continuation line
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    in_fence = False
+    fence_marker = ""
+    list_start = re.compile(r'^(\s*)(?:[-*+]\s+|\d+\.\s+)')
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+
+        # Track fenced code blocks (``` or ~~~)
+        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
+            in_fence = True
+            fence_marker = stripped[:3]
+            out.append(line)
+            continue
+        if in_fence:
+            if stripped.startswith(fence_marker):
+                in_fence = False
+            out.append(line)
+            continue
+
+        m = list_start.match(line)
+        if m and out:
+            prev = out[-1]
+            prev_stripped = prev.strip()
+            # Only insert if previous non-empty line is a paragraph (not blank,
+            # not heading, not another list item, not a separator/code)
+            if prev_stripped and not list_start.match(prev) and not prev_stripped.startswith("#"):
+                out.append("")
+
+        out.append(line)
+
+    return "\n".join(out)
+
+
 def extract_mermaid_blocks(text: str, work_dir: Path) -> tuple[str, dict[str, str]]:
     """Extract mermaid code blocks from markdown, render to PNG, return placeholders.
 
@@ -37,7 +172,7 @@ def extract_mermaid_blocks(text: str, work_dir: Path) -> tuple[str, dict[str, st
     mmdc = shutil.which("mmdc")
     placeholders = {}
 
-    pattern = re.compile(r'```mermaid\s*\n(.*?)```', re.DOTALL)
+    pattern = re.compile(r'(?m)^```mermaid\s*\n(.*?)^```\s*$', re.DOTALL)
 
     def replace_with_placeholder(match):
         diagram_src = match.group(1).strip()
@@ -92,6 +227,12 @@ def md_to_html(md_path: Path, work_dir: Path) -> str:
         end = text.find("---", 3)
         if end != -1:
             text = text[end + 3:].lstrip()
+
+    # Translate ```markmap blocks into ```mermaid mindmap blocks first
+    text = convert_markmap_to_mermaid(text)
+
+    # Normalize lazy lists (insert blank line before a list that follows a paragraph)
+    text = normalize_lazy_lists(text)
 
     # Extract and render mermaid blocks before markdown processing
     text, mermaid_placeholders = extract_mermaid_blocks(text, work_dir)
