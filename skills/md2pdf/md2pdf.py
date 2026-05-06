@@ -11,6 +11,8 @@ Features:
     - Combined multi-file output or individual PDFs
 """
 
+from __future__ import annotations  # lazy annotations for Python 3.9 compat
+
 import argparse
 import datetime
 import hashlib
