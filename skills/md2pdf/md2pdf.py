@@ -245,11 +245,13 @@ def md_to_html(md_path: Path, work_dir: Path) -> str:
         "smarty",
         "md_in_html",
     ]
-    # Add task-list extension if pymdown-extensions is installed (renders
-    # - [ ] / - [x] as proper checkboxes instead of literal "[ ]" after bullet)
+    # Add pymdown extensions when installed:
+    #  - tasklist: renders - [ ] / - [x] as proper checkboxes
+    #  - magiclink: autolinks bare URLs and email addresses
     try:
         import pymdownx  # noqa: F401
         extensions.append("pymdownx.tasklist")
+        extensions.append("pymdownx.magiclink")
     except ImportError:
         pass
 

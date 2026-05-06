@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.16.5
+**Version:** 1.16.6
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.16.6 (2026-05-06)
+
+- **`md2pdf` autolinks + better task-list/link rendering.** Bare URLs in prose are now clickable links via `pymdownx.magiclink` (previously rendered as plain text). Long URLs wrap across lines while staying fully clickable. Task-list checkboxes now sit inline with text and inherit the same indentation as regular bullet lists. See CHANGELOG `[1.16.6]`.
 
 ## What's new in v1.16.5 (2026-05-06)
 

@@ -9,6 +9,16 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.6] - 2026-05-06
+
+### Added
+- **`md2pdf` autolinking of bare URLs:** `pymdownx.magiclink` extension is now loaded when `pymdown-extensions` is available, so raw URLs in prose become real clickable `<a>` elements in the PDF (previously they rendered as plain text). Hard-coded `[text](url)` syntax is still respected. Also avoids smartypants mangling URL fragments (which previously turned `--` inside long URLs into em-dashes).
+
+### Changed
+- **`md2pdf` task-list indentation:** `ul.task-list` and `li.task-list-item` no longer override `padding-left: 0`; task lists inherit the same `padding-left: 20pt` as regular `ul`/`ol`, so checkbox items align with sibling bullet lists in the same document.
+- **`md2pdf` task-list checkbox layout:** Switched from `text-indent: -1.4em` to `display: inline-block` on the checkbox so it stays inline with the task text on a single line (previous version pushed the text to the next line).
+- **`md2pdf` link CSS:** `a` elements now have `overflow-wrap: anywhere` and `word-break: break-word`, allowing long URLs to wrap across lines while keeping the entire URL as one clickable anchor.
+
 ## [1.16.5] - 2026-05-06
 
 ### Added

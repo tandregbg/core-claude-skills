@@ -73,10 +73,13 @@ p {
     widows: 3;
 }
 
-/* Links — print-friendly */
+/* Links — print-friendly. overflow-wrap lets long URLs break across lines
+   so the entire URL stays as one continuous, fully-clickable anchor. */
 a {
     color: #2563eb;
     text-decoration: none;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 /* Lists */
@@ -204,28 +207,29 @@ ul li input[type="checkbox"] {
     margin-right: 6pt;
 }
 
-/* pymdownx.tasklist with custom_checkbox: removes the bullet and renders
-   proper [ ] / [x] glyphs in monospace at the start of each task line. */
+/* pymdownx.tasklist with custom_checkbox: removes the bullet and inlines
+   a small square checkbox before the task text on the same line.
+   Indentation is kept identical to a regular bullet list (inherits the
+   ul, ol padding-left rule above) so task lists align with sibling bullets. */
 ul.task-list {
     list-style-type: none;
-    padding-left: 0.6em;
 }
 ul.task-list li.task-list-item {
-    text-indent: -1.4em;
-    padding-left: 1.4em;
     margin-bottom: 0.15em;
 }
 ul.task-list li.task-list-item input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
-    width: 0.9em;
-    height: 0.9em;
-    border: 1pt solid #444;
-    border-radius: 2pt;
-    margin-right: 0.5em;
-    vertical-align: -0.1em;
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    border: 0.7pt solid #444;
+    border-radius: 1.5pt;
+    margin: 0 0.45em 0 0;
+    vertical-align: middle;
     background: white;
     position: relative;
+    top: -0.05em;
 }
 ul.task-list li.task-list-item input[type="checkbox"]:checked {
     background: #444;
@@ -233,10 +237,11 @@ ul.task-list li.task-list-item input[type="checkbox"]:checked {
 ul.task-list li.task-list-item input[type="checkbox"]:checked::after {
     content: "✓";
     color: white;
-    font-size: 0.75em;
+    font-size: 0.7em;
+    line-height: 1;
     position: absolute;
-    top: -0.15em;
-    left: 0.1em;
+    top: 0.1em;
+    left: 0.13em;
 }
 
 /* Definition-style items with bold lead */
