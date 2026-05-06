@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.16.2
+**Version:** 1.16.3
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.16.3 (2026-05-06)
+
+- **`outbox` skill (`/outbox`).** New lifecycle skill for `<vault>/_outbox/`. Lists pending vs resolution-ready items based on each `_manifest.md`, and archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` -- stripping the now-redundant contact-name prefix and updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Closes the gap where sent-and-replied outbox material lingered centrally instead of returning to the contact folder where it would actually be searched for. See CHANGELOG `[1.16.3]` for full subcommand list.
 
 ## What's new in v1.15.2-v1.15.4 (2026-04-07)
 
@@ -30,6 +34,7 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. | Yes (`/inbox`) |
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `backlog`, `help`. | Yes (`/analytics`) |
+| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `help`. | Yes (`/outbox`) |
 
 ## Shared contract: `ecosystem.yaml`
 
@@ -106,6 +111,7 @@ core-skills (this repo)
 | `insights` | Any | Input language | _insights.yaml (per folder) | Retroactive knowledge extraction |
 | `analytics` | Any | Swedish/input | _analytics/ (snapshots) | Vault-level content metrics |
 | `inbox` | Any | Input language | _inbox/ (capture + classify) | Universal content capture |
+| `outbox` | Any | Input language | _outbox/ + _contacts/<contact>/ | Outgoing material lifecycle |
 
 Organization-specific skills extend `ops-base` and live in their own repos.
 
@@ -190,6 +196,14 @@ All domain skills inherit from `ops-base`:
 - **Special:** Reads file metadata only (names, dates, paths) — never file contents. Path-first classification avoids keyword miscount. Privacy-aware via `_meta.yaml`. Historical snapshots archived automatically.
 - **Use when:** Understanding vault growth trends, tracking skill adoption, analysing contact engagement patterns, finding unprocessed content
 
+#### outbox (standalone, v1.16.3)
+
+- **Purpose:** Lifecycle management for outgoing material staged in `<vault>/_outbox/`
+- **Output:** No new files -- moves outbox folders into `_contacts/<contact>/YYMMDD-<theme>/` and updates manifest, CHANGELOG, `_tasks.yaml`
+- **Operations:** `list` / `status` (default -- classifies items as PENDING / RESOLUTION-READY / DRAFT / WITHOUT MANIFEST), `archive <folder>` (move + update references), `help`
+- **Special:** Reads `_manifest.md` as canonical state file -- an item is "resolution-ready" when `Status: skickad ...` AND all `Svar förväntas på` are checked AND `Utfall` is populated. Strips the contact-name prefix from the folder name when archiving (it's redundant inside the contact's own folder). Multi-contact fan-out (ambassador-style) prompts the user for duplicate-vs-shared-archive strategy. Never auto-completes tasks. Searches vault for stray references to the old path and rewrites them.
+- **Use when:** An outbox item has been sent, replied to, and resolved -- and the central `_outbox/` should be cleaned up. Or use `list` to audit what's pending.
+
 ### Workflow Comparison
 
 ```
@@ -269,6 +283,8 @@ analytics:        /analytics                    -> vault overview (default)
 | Update skills, check symlinks, install repos | `/update-skills` |
 | Quick capture of unstructured content | `/inbox` |
 | Don't know which skill to use | `/inbox` (classifies and routes for you) |
+| See what's pending in the outbox | `/outbox list` |
+| Archive a sent-and-replied outbox folder into the contact folder | `/outbox archive <folder>` |
 | Restore Swedish characters in hand-written docs | `/ops normalize <path>` |
 | See vault-wide content trends and growth | `/analytics overview` |
 | Understand which skills produce the most content | `/analytics skills` |

@@ -10,7 +10,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.16.2"
+core_skills_version: "1.16.3"
 
 # --- Schema versions ---
 schemas:
@@ -90,6 +90,10 @@ skills:
     - name: update-skills
       description: "Skill repo management — fetch, pull, symlink, health audit."
       badge: Utility
+    - name: outbox
+      description: "Lifecycle management for `_outbox/` items — list pending, archive resolved into contact/project folders."
+      badge: Utility
+      subcommands: [list, status, archive, help]
   non_invocable:
     - name: ops-base
       description: "Shared operational framework (meeting formats, task management, workflows)."

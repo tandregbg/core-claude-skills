@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.3] - 2026-05-06
+
+### Added
+- **`outbox` skill (`/outbox`):** Lifecycle management for outgoing material in `<vault>/_outbox/`. Subcommands: `list` (default, scans `_outbox/*` and classifies items as PENDING / RESOLUTION-READY / DRAFT / WITHOUT MANIFEST based on `_manifest.md` state), `archive <folder>` (moves a resolved outbox folder into the relevant `_contacts/<contact>/YYMMDD-<theme>/` -- stripping the contact-name prefix that becomes redundant inside the contact's own folder, updating manifest `Status:` to `arkiverad`, appending `## Tidslinje`, adding a CHANGELOG entry, rewriting `source:` paths in `_tasks.yaml`, and searching the vault for stray references to the old path), `status` (alias for `list`), `help`. Closes the lifecycle gap where outbox material was sent and replied to but never returned to the contact's own folder -- the search target six months later is the contact folder, not a central archive. Multi-contact fan-out (ambassador-style) is detected and asks the user for resolution strategy (duplicate to each, or keep central). Never auto-completes tasks -- archiving is a file operation, not a workflow decision. Manifest schema clarified: an item is "resolution-ready" when `Status: skickad ...` AND all `Svar förväntas på` items are checked AND `Utfall` is populated. Registered in `ecosystem.yaml` skills registry under `user_invocable` with `Utility` badge.
+
 ## [1.16.2] - 2026-05-04
 
 ### Changed
