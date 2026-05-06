@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.16.4
+**Version:** 1.16.5
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.16.5 (2026-05-06)
+
+- **`md2pdf` task-list checkboxes.** `- [ ]` and `- [x]` now render as real checkboxes (square outline with ✓ on checked) instead of bullets followed by literal `[ ]` text. Requires `pip install pymdown-extensions`; without it the previous text-fallback behavior is preserved. See CHANGELOG `[1.16.5]`.
 
 ## What's new in v1.16.4 (2026-05-06)
 

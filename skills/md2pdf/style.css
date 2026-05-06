@@ -204,6 +204,41 @@ ul li input[type="checkbox"] {
     margin-right: 6pt;
 }
 
+/* pymdownx.tasklist with custom_checkbox: removes the bullet and renders
+   proper [ ] / [x] glyphs in monospace at the start of each task line. */
+ul.task-list {
+    list-style-type: none;
+    padding-left: 0.6em;
+}
+ul.task-list li.task-list-item {
+    text-indent: -1.4em;
+    padding-left: 1.4em;
+    margin-bottom: 0.15em;
+}
+ul.task-list li.task-list-item input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0.9em;
+    height: 0.9em;
+    border: 1pt solid #444;
+    border-radius: 2pt;
+    margin-right: 0.5em;
+    vertical-align: -0.1em;
+    background: white;
+    position: relative;
+}
+ul.task-list li.task-list-item input[type="checkbox"]:checked {
+    background: #444;
+}
+ul.task-list li.task-list-item input[type="checkbox"]:checked::after {
+    content: "✓";
+    color: white;
+    font-size: 0.75em;
+    position: absolute;
+    top: -0.15em;
+    left: 0.1em;
+}
+
 /* Definition-style items with bold lead */
 li > strong:first-child {
     color: #222;

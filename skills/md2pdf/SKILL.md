@@ -24,7 +24,7 @@ Convert markdown documents to professionally styled PDFs using weasyprint.
 1. Translate any ` ```markmap ` fenced blocks into Mermaid mindmap blocks (heading levels + bullets become indentation)
 2. Normalize lazy lists -- insert a blank line before a list that follows a paragraph (matches GFM/Obsidian behavior, since Python-markdown is strict CommonMark)
 3. Extract Mermaid code blocks from raw markdown, render to PNG via `mmdc` (high-res, scale 3x)
-4. Parse remaining markdown to HTML (Python `markdown` library)
+4. Parse remaining markdown to HTML (Python `markdown` library), with `pymdownx.tasklist` enabled when available so `- [ ] ` / `- [x] ` become real checkboxes
 5. Inject rendered Mermaid PNGs back into the HTML
 6. Apply CSS styling (default: `style.css` in this skill directory)
 7. Render to PDF via weasyprint
@@ -137,13 +137,14 @@ After sending, flip `**Status:** ej skickad` to `skickad` in the manifest. Combi
 
 - **weasyprint** (Python) -- HTML/CSS to PDF
 - **markdown** (Python) -- Markdown to HTML
+- **pymdown-extensions** (Python, optional) -- Renders `- [ ]` / `- [x]` task lists as proper checkboxes (without it the checkboxes show up as literal `[ ]` text after the bullet)
 - **mmdc** (npm: `@mermaid-js/mermaid-cli`) -- Mermaid diagram rendering, **required for mindmap and mermaid blocks** (optional only if neither block type is used)
 
 ### Install (first-time setup)
 
 ```bash
 # Python deps
-pip install weasyprint markdown
+pip install weasyprint markdown pymdown-extensions
 
 # Mermaid CLI (required for ```mermaid and ```markmap blocks)
 npm install -g @mermaid-js/mermaid-cli

@@ -245,8 +245,17 @@ def md_to_html(md_path: Path, work_dir: Path) -> str:
         "smarty",
         "md_in_html",
     ]
+    # Add task-list extension if pymdown-extensions is installed (renders
+    # - [ ] / - [x] as proper checkboxes instead of literal "[ ]" after bullet)
+    try:
+        import pymdownx  # noqa: F401
+        extensions.append("pymdownx.tasklist")
+    except ImportError:
+        pass
+
     extension_configs = {
         "codehilite": {"css_class": "highlight", "guess_lang": False},
+        "pymdownx.tasklist": {"custom_checkbox": True, "clickable_checkbox": False},
     }
     html = markdown.markdown(text, extensions=extensions, extension_configs=extension_configs)
 

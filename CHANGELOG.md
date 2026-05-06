@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.16.5] - 2026-05-06
+
+### Added
+- **`md2pdf` task-list rendering:** `pymdownx.tasklist` extension is now loaded when `pymdown-extensions` is installed, so `- [ ] item` / `- [x] item` render as proper checkboxes (with custom_checkbox styling) instead of a bullet followed by a literal `[ ]` glyph. CSS in `style.css` removes the list bullet on `ul.task-list`, indents items uniformly, draws a square checkbox with a checked-state ✓ glyph, and keeps spacing consistent with regular bullet lists. Falls back gracefully (literal `[ ]` text after bullet, same as before) if `pymdown-extensions` is not installed -- the build always succeeds. Documented under Dependencies with `pip install pymdown-extensions` added to the first-time setup.
+
 ## [1.16.4] - 2026-05-06
 
 ### Added
