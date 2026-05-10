@@ -9,6 +9,12 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.17.0] - 2026-05-10
+
+### Added
+- **CR-013: hypothesis → rule lifecycle for `_insights.yaml`.** New optional `confidence` field on insights (`hypothesis` | `rule`, default `hypothesis`), plus `confirmation_count`, `confirmations[]`, and `contradicted_by[]` for source-traceable promotion and demotion. `/insights compile` now runs three passes: (1) existing `skill_pattern` compilation, (2) hypothesis-to-rule promotion when ≥3 semantically similar hypotheses cluster in one folder, (3) rule-to-hypothesis demotion when a `correction` contradicts a rule. `/ops` and `/transcript` gain a Step 0.5 that walks the CWD's `_insights.yaml` chain, filters to `confidence: rule`, and injects up to 20 rules as a working-context preamble before the main step. `/insights status` extended with a "Confidence Lifecycle" section. Schema bumped: `schemas.insights: 1 → 2` in `ecosystem.yaml`. Bump is additive — schema v1 readers (e.g., current `core-skills-visualisation` build) ignore unknown fields.
+- **`workflows.knowledge_extraction.evolution.demote_on_contradiction`** (default `true`): controls whether `/insights compile` runs the demotion pass.
+
 ## [1.16.7] - 2026-05-06
 
 ### Fixed

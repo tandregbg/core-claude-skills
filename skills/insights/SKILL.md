@@ -15,8 +15,41 @@ This skill complements the forward-looking extraction in `/transcript` Step 3.5 
 
 - **No duplication of extraction logic.** The authoritative definition of insight types, thresholds, and `_insights.yaml` format lives in `/transcript` Step 3.5. This skill references it and includes a quick-reference copy for convenience.
 - **Dedup by `source.file`.** Processing the same file twice never creates duplicate entries.
-- **Additive only.** Never removes or modifies existing insights (except `scan-claude-md` which replaces stale CLAUDE.md-sourced entries).
-- **Silent accumulation.** Like `/transcript` and `/ops`, insights never surface in other skill output -- only the `core-skills-visualisation` app reads `_insights.yaml`.
+- **Additive only.** Never removes or modifies existing insights (except `scan-claude-md` which replaces stale CLAUDE.md-sourced entries, and the promotion/demotion passes in `compile` which mutate `confidence`, `confirmation_count`, `status`, and `superseded_by` fields per CR-013).
+- **Silent accumulation, active loading.** Insights are written by `/transcript`, `/ops`, and this skill. Promoted **rules** (per CR-013 lifecycle below) are read back by `/ops` and `/transcript` as a context preamble before each run. Hypotheses remain silent; only rules surface.
+
+---
+
+## Confidence Lifecycle (CR-013)
+
+Each insight has an optional `confidence` field:
+
+- **`hypothesis`** (default when absent) — observation that needs more confirmation. Not loaded into other skills' context.
+- **`rule`** — confirmed pattern. Loaded as a preamble by `/ops` and `/transcript` when working in the rule's folder chain.
+
+Two lifecycle transitions, both performed by `/insights compile`:
+
+- **Promotion:** when ≥ `compile_threshold` (default 3) semantically similar `hypothesis` entries exist in one folder, the canonical (earliest) entry is promoted to `confidence: rule`. Non-canonical entries are marked `status: superseded`, `superseded_by: <canonical-id>`. The canonical entry's `confirmation_count` is set to the group size and `confirmations[]` is populated with each merged entry's `source`.
+- **Demotion:** when a `correction` entry contradicts a `rule` (same primary tag, opposing summary keyword), the rule's `confidence` flips back to `hypothesis`, the correction's `source` is appended to `contradicted_by[]`, and `confirmation_count` is reduced by 1 (floor 1).
+
+`confidence` and `status` are **orthogonal**:
+- `status` (active / superseded / archived) is the curation/archival lifecycle.
+- `confidence` (hypothesis / rule) is the maturity lifecycle.
+
+A rule can be archived. A hypothesis can be superseded by a more specific hypothesis. Both fields coexist.
+
+**Schema fields added in v2** (all optional, additive):
+
+```yaml
+confidence: hypothesis | rule       # default: hypothesis
+confirmation_count: 1                # integer, default 1
+confirmations:                       # list, populated on promotion
+  - source: <relative-path>
+    date: YYMMDD
+contradicted_by:                     # list, populated on demotion
+  - source: <relative-path>
+    date: YYMMDD
+```
 
 ---
 
@@ -213,24 +246,48 @@ Reprocessing opportunities:
   3 folders have _insights.yaml older than newest transcript
   Total: ~340 unprocessed transcript files
 
+Confidence Lifecycle (CR-013)
+─────────────────────────────
+  Hypotheses:  142
+  Rules:       18 (most recent promotion: 260505)
+  Recent demotions: 2 (last 30 days)
+
+  Top 5 hypotheses near promotion (count, type, summary):
+    2  preference  "Carol prefers async updates over sync standups"
+    2  pattern     "Marketing meetings run 10-15 min over scheduled time"
+    2  learning    "GA4 events take ~24h to surface in dashboards"
+    2  decision    "Use _projects/ for time-boxed initiatives"
+    2  pattern     "Bob wraps board prep with risk callout"
+
 Skill Evolution
 ───────────────
   Execution feedback: 23 entries (18 edge_case, 5 correction)
   Compiled patterns: 3 skill_pattern entries
   Pending proposals: 2 in docs/proposals/
   Applied proposals: 1 in docs/proposals/.applied/
-  Config: auto_apply=false, compile_threshold=3, propose_threshold=5
+  Config: auto_apply=false, compile_threshold=3, propose_threshold=5,
+          demote_on_contradiction=true
 ```
+
+**Status implementation notes:**
+
+- "Hypotheses" count = entries with `confidence: hypothesis` OR missing `confidence` field, AND `status: active`.
+- "Rules" count = entries with `confidence: rule` AND `status: active`.
+- "Most recent promotion" = max `date` across rules where the rule was promoted (track via the most recent entry in `confirmations[]`, since that is when the threshold was crossed).
+- "Recent demotions" = count of entries with non-empty `contradicted_by[]` whose latest demotion date is within the last 30 days.
+- "Top 5 hypotheses near promotion" = hypotheses with the highest `confirmation_count`, ties broken by recency. Show count, type, and summary.
 
 ---
 
-### `compile` -- Compile execution feedback into patterns
+### `compile` -- Compile execution feedback into patterns and run lifecycle passes
 
 **Trigger:** `/insights compile` or `/insights compile since YYMMDD`
 
-Reads all execution feedback entries (`edge_case`, `correction`) across `_insights.yaml` files and compiles recurring patterns into articles.
+Performs three passes in order: skill-pattern compilation, hypothesis-to-rule promotion, rule-to-hypothesis demotion.
 
-**Steps:**
+#### Pass 1: skill_pattern compilation (existing)
+
+Reads execution feedback entries (`edge_case`, `correction`) across `_insights.yaml` files and compiles recurring patterns into `skill_pattern` entries.
 
 1. **Scan all `_insights.yaml` files** in the vault for entries where `source.skill` is set (execution feedback)
 2. **Filter by date** if `since YYMMDD` is specified
@@ -251,19 +308,63 @@ Reads all execution feedback entries (`edge_case`, `correction`) across `_insigh
    ```
 6. **Dedup** -- if a `skill_pattern` entry already covers the same cluster (by matching `source.entries`), update it instead of creating a duplicate
 
+#### Pass 2: hypothesis → rule promotion (CR-013)
+
+For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and promote the canonical entry to a rule.
+
+1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `edge_case`, `correction`, `skill_pattern`).
+2. **Group by similarity within the folder:**
+   - Same `type`
+   - Fuzzy summary match (case-insensitive, ignore stop words; require ≥60% token overlap)
+   - At least one shared tag
+   - All three conditions required (conservative; prefer false negatives over false promotions)
+3. **Apply threshold:** groups with size ≥ `compile_threshold` (default 3, from `workflows.knowledge_extraction.evolution.compile_threshold`) qualify.
+4. **For each qualifying group:**
+   - Pick the **earliest** entry by `date` as canonical.
+   - Set `canonical.confidence: rule`.
+   - Set `canonical.confirmation_count` to group size.
+   - Append each non-canonical entry's `source` to `canonical.confirmations[]`.
+   - Mark each non-canonical entry `status: superseded`, `superseded_by: <canonical-id>`.
+5. **Dedup:** if the canonical entry already has `confidence: rule`, only append new (not-already-listed) confirmations and update `confirmation_count`.
+
+#### Pass 3: rule → hypothesis demotion (CR-013)
+
+Skipped if `workflows.knowledge_extraction.evolution.demote_on_contradiction` is `false`. Default: `true`.
+
+1. **Find all rules:** entries with `confidence: rule` AND `status: active`, across the folder chain (current folder and parents per CR-011 walking resolution).
+2. **For each rule, scan for targeting corrections:** `correction` entries newer than the rule's most recent confirmation, that:
+   - Share the rule's primary tag (first tag in `tags[]`).
+   - Contain an opposing keyword in `summary` (heuristic: rule says "always X" and correction says "do not X" or "X was wrong"; rule says "prefers Y" and correction says "does not prefer Y").
+3. **For each rule with at least one targeting correction:**
+   - Set `rule.confidence: hypothesis`.
+   - Append each correction's `source` to `rule.contradicted_by[]`.
+   - Reduce `rule.confirmation_count` by the number of contradictions, floor at 1.
+4. **Do not delete confirmations.** History is preserved in `confirmations[]` for audit.
+
 **Output:**
 
 ```
-Compiling execution feedback...
+Compiling execution feedback and running lifecycle passes...
 
-Scanned 14 _insights.yaml files, found 23 execution feedback entries.
+Pass 1 (skill_pattern compilation):
+  Scanned 14 _insights.yaml files, found 23 execution feedback entries.
+  Compiled 3 patterns.
+  Skipped 8 entries below compile threshold (3).
 
-Compiled 3 patterns:
-  - [skill_pattern] Name disambiguation needed in 7/23 transcript runs (transcript Step 1.5)
-  - [skill_pattern] Short calls (<15 min) rarely produce importable tasks (transcript Step 4)
-  - [skill_pattern] Meeting routing ambiguous when no org config loaded (ops Step 2)
+Pass 2 (hypothesis → rule promotion):
+  Scanned 142 active hypotheses across 14 folders.
+  Promoted 4 rules:
+    - meetings/management/_insights.yaml#17 [preference] "Bob prefers concise weekly summaries" (3 confirmations)
+    - _contacts/bob-smith/_insights.yaml#8 [pattern] "Bob raises customer-success topics last in 1-on-1s" (4 confirmations)
+    - meetings/board/_insights.yaml#5 [decision] "Board updates use English for India team" (3 confirmations)
+    - meetings/marketing/ppc/_insights.yaml#12 [learning] "PMax campaigns underperform below $500/day budget" (3 confirmations)
+  Marked 8 superseded entries (canonical's mergees).
 
-Skipped 8 entries below compile threshold (3).
+Pass 3 (rule → hypothesis demotion):
+  Scanned 18 active rules.
+  Demoted 1 rule:
+    - meetings/management/_insights.yaml#11 [preference] "Always include Risk Assessment section"
+      contradicted by 260507-summary.md (Bob asked to skip risk section for routine weeks)
 ```
 
 ---

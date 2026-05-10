@@ -241,18 +241,20 @@ Optional. Controls the skill evolution feedback loop -- whether skills capture e
 workflows:
   knowledge_extraction:
     evolution:
-      enabled: boolean           # Master switch for execution feedback capture
-      auto_apply: boolean        # true = proposals applied to SKILL.md automatically
-      compile_threshold: integer # Minimum occurrences before pattern is compiled (default: 3)
-      propose_threshold: integer # Minimum occurrences before proposal is generated (default: 5)
+      enabled: boolean                 # Master switch for execution feedback capture
+      auto_apply: boolean              # true = proposals applied to SKILL.md automatically
+      compile_threshold: integer       # Minimum occurrences before pattern is compiled (default: 3)
+      propose_threshold: integer       # Minimum occurrences before proposal is generated (default: 5)
+      demote_on_contradiction: boolean # CR-013: rule -> hypothesis on `correction` (default: true)
 ```
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `enabled` | `true` | When true, skills capture execution feedback (edge cases, corrections) to `_insights.yaml` |
 | `auto_apply` | `false` | When true, `/insights propose` applies changes to SKILL.md automatically. When false, proposals require manual review |
-| `compile_threshold` | `3` | An edge case must appear this many times before `/insights compile` creates a pattern article |
+| `compile_threshold` | `3` | (1) An edge case must appear this many times before `/insights compile` creates a `skill_pattern`. (2) CR-013: also the threshold for promoting a `hypothesis` to a `rule`. |
 | `propose_threshold` | `5` | A pattern must appear this many times before `/insights propose` generates a SKILL.md diff |
+| `demote_on_contradiction` | `true` | CR-013: when true, `/insights compile` demotes a `rule` back to `hypothesis` when a newer `correction` entry contradicts it |
 
 #### Execution feedback types
 

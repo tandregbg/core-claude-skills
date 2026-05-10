@@ -547,6 +547,23 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 
 ## PROCESSING FLOW
 
+### Step 0.5: Load Applicable Rules (CR-013)
+
+Before parsing the input, load any promoted **rules** from the `_insights.yaml` chain in scope:
+
+1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `clones/`).
+2. **Filter to rules:** entries where `confidence: rule` AND `status: active`.
+3. **Cap to 20 entries** — if more, prefer highest `confirmation_count`, ties broken by most recent confirmation date.
+4. **Build a one-line-per-rule preamble** in the form `[type] summary` and treat it as additional standing instructions for this run. For example:
+   - `[preference] Bob prefers concise weekly summaries`
+   - `[pattern] Bob raises customer-success topics last in 1-on-1s`
+   - `[decision] Board updates use English for India team`
+5. **Apply the rules during Step 3 (Create Meeting Summary)** and Step 4 (Apply Domain Additions). Do not echo the preamble in the output; rules influence content, not chrome.
+
+**Scoping:** Only rules in the CWD's parent chain apply. A rule in `meetings/marketing/_insights.yaml` is not loaded when running `/ops` from `meetings/management/`.
+
+**No rules found:** Skip silently. The skill works without rules; this is purely additive context.
+
 ### Step 1: Parse Input
 
 Extract from the input (transcript, notes, standup content):

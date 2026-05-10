@@ -93,6 +93,7 @@ workflows:
       auto_apply: false
       compile_threshold: 3
       propose_threshold: 5
+      demote_on_contradiction: true   # CR-013: rule -> hypothesis on contradiction
 
 # No custom templates by default
 templates: {}

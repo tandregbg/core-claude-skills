@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.16.7
+**Version:** 1.17.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.17.0 (2026-05-10)
+
+- **CR-013: hypothesis → rule lifecycle for `_insights.yaml`.** Insights now have an optional `confidence` field (`hypothesis` | `rule`). `/insights compile` promotes a hypothesis to a rule when ≥3 semantically similar entries cluster in one folder, and demotes a rule back to a hypothesis when a `correction` contradicts it. `/ops` and `/transcript` load applicable rules from the CWD's folder chain as a working-context preamble before each run — rules now actively guide output, not just accumulate silently. `_insights.yaml` schema bumped 1 → 2 (additive; v1 readers ignore the new fields). See CHANGELOG `[1.17.0]` and `docs/proposals/CR-013-insight-lifecycle.md`.
 
 ## What's new in v1.16.7 (2026-05-06)
 

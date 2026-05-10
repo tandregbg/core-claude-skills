@@ -10,14 +10,17 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.16.7"
+core_skills_version: "1.17.0"
 
 # --- Schema versions ---
+# insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
+# `confirmation_count`, `confirmations[]`, and `contradicted_by[]` fields per
+# entry. Bump is additive — v1 readers ignore unknown fields.
 schemas:
   ops_config: "1.3"
   contact_meta: "1.1"
   tasks: 2
-  insights: 1
+  insights: 2
 
 # --- Insight type enums ---
 insight_types:

@@ -25,6 +25,26 @@ Template strings marked as `{strings.section.key}` are resolved at runtime.
 
 ---
 
+## Step 0.5: Load Applicable Rules (CR-013)
+
+Before creating the summary, load any promoted **rules** from the `_insights.yaml` chain in scope:
+
+1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `clones/`).
+2. **Filter to rules:** entries where `confidence: rule` AND `status: active`.
+3. **Cap to 20 entries** — if more, prefer highest `confirmation_count`, ties broken by most recent confirmation date.
+4. **Build a one-line-per-rule preamble** in the form `[type] summary`. Treat the preamble as additional standing instructions for this run.
+
+**How rules influence transcript output:**
+- `[preference]` rules guide tone, length, and format choices in the summary.
+- `[decision]` rules guide naming, language, and structural defaults.
+- `[pattern]` rules guide what to look for during extraction (e.g., "Bob raises customer-success topics last" → ensure that section is captured even if mentioned briefly).
+
+Do not echo the preamble in the output. Rules influence content, not chrome.
+
+**Scoping:** Only rules in the CWD's parent chain apply. **No rules found:** skip silently.
+
+---
+
 ## Step 1: Create the Summary
 
 ### Heading Format
@@ -375,8 +395,10 @@ tags: [pricing, billing, t-shirt-sizing, business-model]
 
 ### `_insights.yaml` format
 
+Schema version 2 (CR-013) adds the optional `confidence`, `confirmation_count`, `confirmations[]`, and `contradicted_by[]` fields. v1 readers ignore them.
+
 ```yaml
-version: 1
+version: 2
 last_updated: YYMMDD
 context: "contact_or_project_name"
 
@@ -392,9 +414,16 @@ insights:
     tags: [max, five, keywords]
     status: active        # active | superseded | archived
     superseded_by: null
+    # CR-013 lifecycle (all optional; default confidence: hypothesis)
+    confidence: hypothesis    # hypothesis | rule
+    confirmation_count: 1
+    confirmations: []         # [{source, date}], populated on promotion
+    contradicted_by: []       # [{source, date}], populated on demotion
 
 next_id: 2
 ```
+
+**When `/transcript` writes new insights:** always emit them as `confidence: hypothesis` with `confirmation_count: 1`. Promotion to `rule` happens later via `/insights compile`. Do not promote inline — Step 3.5 only extracts; lifecycle transitions are batched.
 
 ### Output
 
