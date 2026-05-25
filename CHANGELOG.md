@@ -9,6 +9,19 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.17.1] - 2026-05-25
+
+### Added
+- **`/ops` Step 9 -- post-meeting priorities artifact (opt-in).** New subsection "Generate Post-Meeting Priorities Artifact" in the Post-Processing step. Produces a slim `YYMMDD-priorities-post-<meeting-type>.md` file alongside the comprehensive meeting summary, capturing the facilitator's working list (the team's actual day-to-day artifact) separately from the archive (the comprehensive summary). This makes post-meeting outputs symmetric with the pre-meeting dual mode (`agenda` + `facilitator`): pre-meeting has a two-layer pair, post-meeting now also has a two-layer pair.
+- **`workflows.post_processing.priorities_artifact.enabled`** config key (default `false`, opt-in per org or project). When true, /ops generates the slim priorities artifact after the comprehensive summary is written. Source priority: (1) facilitator's post-meeting message verbatim if present, (2) top items from the action-items table if not, (3) skip if neither yields a clear priority list -- producing a slim doc that just restates the action-items table adds no value.
+
+### Documentation
+- **Symmetric layering documented.** ops/SKILL.md now describes both the pre-meeting two-layer artifact (single vs dual `preparation_mode`) and the post-meeting two-layer artifact (comprehensive summary + optional priorities) as symmetric patterns. Critical rules: bidirectional cross-references, anti-bloat (>1 page = trim), slim artifact is the working list (not a second summary), comprehensive stays comprehensive.
+- **What Config Controls** table updated to reflect that `workflows.post_processing` now covers task import, dashboard refresh, AND the optional priorities artifact.
+
+### Rationale
+- Distinction surfaced from real use: comprehensive standup summaries are correct as archive material (searchable, traceable, complete) but too dense to be the team's working list. Facilitators were already producing a slim priority list (email / Teams message) as the de-facto working layer. The skill now formalizes this layering so the working list is captured as its own artifact, not buried inside the archive.
+
 ## [1.17.0] - 2026-05-10
 
 ### Added

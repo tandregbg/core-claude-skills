@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.17.0
+**Version:** 1.17.1
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.17.1 (2026-05-25)
+
+- **`/ops` Step 9: optional post-meeting priorities artifact.** New opt-in subsection generates a slim `YYMMDD-priorities-post-<meeting-type>.md` companion to the comprehensive meeting summary. Pairs symmetrically with the existing pre-meeting dual mode (agenda + facilitator): post-meeting now also gets a two-layer output (comprehensive archive + slim working list). Source priority: facilitator's post-meeting message verbatim → top action-items if no message → skip if neither. Controlled by `workflows.post_processing.priorities_artifact.enabled` in the org or project ops-config (default `false`, opt-in). Bidirectional cross-references between the two files; explicit anti-bloat rule (>1 page = trim). See CHANGELOG `[1.17.1]`.
 
 ## What's new in v1.17.0 (2026-05-10)
 

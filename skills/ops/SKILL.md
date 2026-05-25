@@ -538,7 +538,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.action_propagation` | Propagate actions to external files |
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
-| `workflows.post_processing` | Task import and dashboard refresh after meeting |
+| `workflows.post_processing` | Task import, dashboard refresh, and optional priorities artifact (`priorities_artifact.enabled`) after meeting |
 | `domain_additions` | Extra sections to add to summaries |
 | `templates` | Custom template paths |
 | `strings` | i18n string overrides |
@@ -732,6 +732,38 @@ This creates **bidirectional traceability** -- prep -> transcript and transcript
 5. **Do not** modify any other content in the preparation file(s) (only the supersede blockquote is added). Preparation files are **frozen** per the `/preparation` Step 0 rule -- do not edit them post-meeting beyond the supersede marker.
 
 This marking makes it immediately clear that the meeting has been processed, while keeping the preparation available for historical reference. Monthly cleanup (per archive policy) can later move old superseded preparations to `.archive/` in bulk.
+
+#### Generate Post-Meeting Priorities Artifact (if `priorities_artifact.enabled`)
+
+The comprehensive meeting summary (`YYMMDD-<meeting-type>.md`) is **archive material** -- searchable, traceable, comprehensive. It is *not* meant to be the team's daily working list. For meetings where the facilitator drives a working team (daily standups, weeklies, war rooms), produce a **slim companion artifact** that the team actually works from.
+
+This pairs symmetrically with the pre-meeting dual mode (agenda + facilitator): pre-meeting has a two-layer artifact, post-meeting also gets a two-layer artifact (comprehensive summary + slim priorities).
+
+**Trigger:** `workflows.post_processing.priorities_artifact.enabled: true` in the org or project ops-config. Default is `false` -- opt in per meeting type or per project.
+
+**Filename:** `YYMMDD-priorities-post-<meeting-type>.md` in the same folder as the comprehensive summary. Examples:
+- `260525-priorities-post-standup.md`
+- `260605-priorities-post-weekly.md`
+
+**Source priority** for the slim artifact's content:
+1. **Facilitator's post-meeting message** (email / Teams / chat) if one exists -- reproduce verbatim with light formatting. This is the strongest signal because it is the facilitator's chosen prioritization layered on top of the discussion.
+2. **Top items from the comprehensive summary's Action Items table** if no facilitator message exists -- pick the items the facilitator emphasized; if unclear, ask the user before drafting rather than guessing.
+3. **Skip the artifact** if neither (1) nor (2) yields a clear priority list -- producing a slim doc that just restates the action-items table adds no value.
+
+**Content shape** (target: 1 page, scannable in 30 seconds):
+- Short header: facilitator name, source (e.g., "post-standup email"), one-line statement that this is the working list and the comprehensive summary is the archive
+- A "top N" table for items the facilitator flagged as the immediate deadline (e.g., "complete by tomorrow EOD") -- columns: #, Item, Owner
+- An "in parallel this week" table for non-immediate items
+- A one-line note on longer-horizon work (e.g., R3 features) if mentioned
+- Footer linking back to the comprehensive summary for context
+
+**Cross-references (bidirectional):**
+- The slim priorities file MUST link to the comprehensive summary at the top and in the footer ("Detail in `YYMMDD-<meeting-type>.md` if needed")
+- The comprehensive summary MUST link to the slim priorities file in its footer ("Team-working priorities (the slim version): `YYMMDD-priorities-post-<meeting-type>.md` -- this file is the archive; that file is what the team works from")
+
+**Critical rule:** the slim artifact is *not* a summary of the discussion. It is the **working list**. Omit narrative, omit decision rationale, omit cross-references beyond the one back to the comprehensive summary. If it grows past one page, it has drifted into being a second summary -- trim.
+
+**Critical rule:** if the facilitator sends their priority list **after** the meeting summary has already been generated, regenerate the priorities artifact rather than editing in place. The artifact is meant to be the authoritative working list at the time it was sent; older versions stay in `.archive/` if needed.
 
 #### Check Verticals (if configured)
 
