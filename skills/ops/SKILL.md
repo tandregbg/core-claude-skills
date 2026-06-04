@@ -175,7 +175,7 @@ The agenda file is the team-facing prep document. It looks like the prior-day pr
 
 **Facilitator file** (private, NOT shared with the team) -- contains only the additional layer:
 - Facilitator's role clarification (e.g., "Alex runs the meeting only -- not driving test or fix work")
-- Dana's / leader's expectations from prior handover or 1-on-1s
+- The lead's expectations from prior handover or 1-on-1s
 - Time-box discipline cues ("standup has run 25 min recently, target 30, hard stop 35")
 - "Watch for" cues during the meeting (e.g., "Dana defaulting to 'I'll check after standup' on R2 blockers -- push for concrete commitment now")
 - "Things NOT to surface in this forum" list (vertical/board topics, personnel matters, etc.)

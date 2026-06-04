@@ -123,7 +123,7 @@ The skill picks a variant by estimating meeting duration from transcript metadat
 
 ### Name Resolution (critical)
 
-**Never trust transcript spellings.** Transcription services often misspell names (e.g., "Thomas" instead of "Alex", "Andre" instead of "André"). Always resolve names before writing the summary:
+**Never trust transcript spellings.** Transcription services often misspell names (e.g., "Andre" instead of "André", "Asa" instead of "Åsa"). Always resolve names before writing the summary:
 
 1. Check the filename for correct spelling
 2. Check `_contacts/*/_meta.yaml` for `display_name`
