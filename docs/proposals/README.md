@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-013**
+Next available CR number: **CR-015**
 
 ---
 
@@ -16,10 +16,11 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-012** (`_inbox/` schema, v1.16.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-014** (rolling plans, v1.18.0).
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| [CR-014](CR-014-rolling-plans.md) | Rolling plans — participant-triggered per-axis living docs | v1.18.0 (2026-06-04) | Generic `workflows.rolling_plans` in `/ops` (participant trigger, mirrors `verticals`) + read-only `/daily-dashboard` surface + scaffold template. Additive; no org hardcoding. |
 | [CR-012](CR-012-inbox-schema.md) | Formal `_inbox/` schema + `.audio/` subfolder | v1.16.0 (2026-04-29) | `docs/schemas/inbox.md` is the canonical contract. Frontmatter is canonical, `_inbox.yaml` is derived. Identifier upgraded to `YYMMDD-HHMMSS[-slug]`. `.audio/` pairing-by-basename rule formalised. |
 | [CR-011](CR-011-org-config-move.md) | Org-config move from skill repos to vault folders | v1.16.0 (2026-04-29) | Phase 1+2 done. New chain: project > folder-local `<vault>/<org>/_ops.yaml` > vault-wide `_config/base.yaml` > skill base.yaml. Pre-v1.16.0 `*-ops-config` skill chain deprecated, removed v1.17.0 (Phase 5, deferred). |
 | [CR-010](CR-010-vault-conventions.md) | `vault_conventions:` block in `ecosystem.yaml` | v1.16.0 (2026-04-29) | contract_version 1 -> 2; authoritative path/writer/reader/lifecycle declarations for vault files |

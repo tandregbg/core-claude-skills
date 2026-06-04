@@ -42,6 +42,7 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
    - Organization name, language, swedish_chars
    - Team members (name + role, abbreviated if >4 members)
    - Workflows: update_files list, action_propagation status, agenda_management status, post_processing status
+   - Rolling plans: count + axes (if `workflows.rolling_plans` configured)
    - Domain additions count
    - Summary sections (custom or default TWO-TIER)
    - Templates (if configured)
@@ -539,6 +540,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
 | `workflows.post_processing` | Task import, dashboard refresh, and optional priorities artifact (`priorities_artifact.enabled`) after meeting |
+| `workflows.rolling_plans` | Participant-triggered per-axis living planning docs (update after a matching 1-on-1) |
 | `domain_additions` | Extra sections to add to summaries |
 | `templates` | Custom template paths |
 | `strings` | i18n string overrides |
@@ -785,6 +787,29 @@ If `workflows.verticals` is configured, check whether any vertical documents sho
 3. If user confirms (yes or select), read the vertical document and update relevant sections with new information from this meeting. Preserve the document's existing structure -- add to existing sections, update timelines, append new entries.
 4. If vertical file does not exist at the specified path, skip silently (no error).
 5. If no verticals are triggered, do not mention verticals at all.
+
+#### Update Rolling Plans (if configured)
+
+If `workflows.rolling_plans` is configured, check whether any rolling plan should be updated from this meeting.
+
+**Rolling plans** are living, shareable per-axis planning documents that aggregate state across a recurring 1-on-1 relationship (one orthogonal workstream axis per partner). They are the **participant-keyed** counterpart to verticals (which are topic-keyed): unlike a meeting summary (point-in-time) or a vertical (topic-longitudinal), a rolling plan is relationship/axis-longitudinal -- "what's on now / next / later, and who owns what" for the workstream that partner owns.
+
+1. **Match by participant.** For each rolling plan in the config, resolve its `participants` using the standard name-resolution algorithm (org `team[]` + `_contacts/*/_meta.yaml`, case-insensitive, Swedish-char folding). The plan is triggered when this meeting's resolved participant set intersects `participants` (typically a 1-on-1, but any matching meeting qualifies). Skip plans with `status: archived`.
+2. **Suggest the update** (same yes/no/select UX as verticals):
+   ```
+   Rolling plan to update:
+   - Alex-Bob (meetings/management/Bob/rolling-plan-Alex-Bob.md) -- axis: website / sign-up / data / go-to-market
+
+   Update now? (yes/no/select)
+   ```
+3. **On confirm**, update the plan in place, preserving its structure (Overall goals -> Links/tools -> Cadence -> NOW / NEXT / LATER -> Carry-forward):
+   - **move completed rows out** -- into the meeting summary just written (they become the audit trail there; don't lose them),
+   - **add new NOW items** surfaced in the meeting, in the correct owner column,
+   - **reflect decisions / status changes** -- update wording to the current state; never translate stale wording back in,
+   - keep the doc in its configured `language`.
+4. **Golden rule -- one item = one owner = one doc.** If a row clearly belongs to another registered plan's axis, link it rather than copy it. Keep each plan's "Sister documents" cross-link block consistent with the set of configured plans.
+5. **If the target file does not exist**, offer to scaffold it from the rolling-plan template (`ops-config/templates/rolling-plan.md`, or the org's `templates.rolling_plan` override) rather than erroring -- header + Sister-documents block (generated from the other configured plans' `axis` strings) + empty NOW / NEXT / LATER tables.
+6. **If no rolling plan is triggered**, do not mention rolling plans at all.
 
 ---
 

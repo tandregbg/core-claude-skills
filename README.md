@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.17.1
+**Version:** 1.18.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.18.0 (2026-06-04)
+
+- **Rolling plans -- participant-triggered per-axis living docs (CR-014).** New optional `workflows.rolling_plans` config: living, shareable per-axis planning documents updated after a matching 1-on-1. The participant-keyed counterpart to `verticals` (topic-keyed). `/ops` offers a yes/no/select update after a meeting whose participants match a plan (move completed rows into the summary, add NOW items, reflect decisions; scaffolds a missing file from a template). `/daily-dashboard` links them read-only. Golden rule: one item = one owner = one doc. Additive; an org with no `rolling_plans` sees no change. See CHANGELOG `[1.18.0]`.
 
 ## What's new in v1.17.1 (2026-05-25)
 

@@ -10,7 +10,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.17.1"
+core_skills_version: "1.18.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -223,6 +223,13 @@ vault_conventions:
       writers: ["/ops normalize", "user", "/ops"]
       readers: ["user"]
       lifecycle: "append"
+
+    - path: "<folder>/rolling-plan-<facilitator>-<partner>.md"
+      purpose: "Living per-axis planning doc for a recurring 1-on-1 (CR-014); registered in _ops.yaml workflows.rolling_plans"
+      schema: "skills/ops-config/schema.md (Rolling Plans); template skills/ops-config/templates/rolling-plan.md"
+      writers: ["/ops", "user"]
+      readers: ["/ops", "/daily-dashboard", "user"]
+      lifecycle: "live; participant-triggered update after a matching 1-on-1; completed rows move into the meeting summary"
 
   # Cross-cutting rules that govern multiple files.
   rules:

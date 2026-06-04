@@ -9,6 +9,22 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.18.0] - 2026-06-04
+
+### Added
+- **Rolling plans -- participant-triggered per-axis living docs (CR-014).** New optional `workflows.rolling_plans` config block: a list of living, shareable per-axis planning documents (`path`, `axis`, `participants`, optional `language`/`status`/`trigger`). Rolling plans are the **participant-keyed** counterpart to `verticals` (topic-keyed): a vertical is topic-longitudinal, a rolling plan is relationship/axis-longitudinal ("what's on now / next / later, and who owns what" for the workstream a 1-on-1 partner owns).
+- **`/ops` Step 9 -- "Update Rolling Plans" post-processing.** After a meeting whose participants intersect a plan's `participants` (resolved via the standard name-resolution algorithm), /ops offers a yes/no/select update -- move completed rows into the just-written summary, add new NOW items in the owner column, reflect decisions. Missing target files are offered a scaffold from the new template instead of erroring. Enforces the golden rule **one item = one owner = one doc** and keeps each plan's "Sister documents" cross-link block consistent.
+- **`/daily-dashboard` -- read-only "Rolling plans" surface.** In org mode, when `workflows.rolling_plans` is configured, the dashboard links each plan (with its `axis`) and optionally pulls the plan's NOW block. Read-only: the dashboard never maintains rolling plans (that is `/ops`).
+- **Rolling-plan template** `skills/ops-config/templates/rolling-plan.md` -- generic, placeholder-driven scaffold used by the /ops scaffold path.
+- **`vault_conventions` entry (CR-014):** `<folder>/rolling-plan-<facilitator>-<partner>.md` registered in `ecosystem.yaml` per_folder (writers `/ops`, user; readers `/ops`, `/daily-dashboard`, user).
+
+### Documentation
+- `skills/ops-config/schema.md` -- new "Rolling Plans (CR-014)" section (schema + field table + example).
+- `skills/ops/SKILL.md` -- `workflows.rolling_plans` added to "What Config Controls"; `/ops status` now reports registered rolling plans (count + axes).
+
+### Rationale
+- Surfaced from real use: recurring 1-on-1s accumulate per-relationship, cross-meeting state that meeting summaries (point-in-time), verticals (topic), and `_tasks.yaml` (flat ledger) don't capture. Operators were hand-maintaining `rolling-plan-<facilitator>-<partner>.md` files and they drifted (same item in two plans, summaries updating while plans went stale). Reusing the verticals mechanism with a participant trigger makes the update a prompted, governed step instead of a manual habit. Fully config-driven and additive: an org with no `rolling_plans` sees no change.
+
 ## [1.17.1] - 2026-05-25
 
 ### Added

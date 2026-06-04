@@ -318,6 +318,21 @@ For each found meeting, extract:
 
 Files containing `standup` or `daily-standup` in the filename are categorized under `{strings.dashboard.standup_section}` rather than general meetings.
 
+### Rolling Plans (Org Mode, read-only)
+
+If the loaded org config has `workflows.rolling_plans` (CR-014), add a **Rolling plans** section to the dashboard linking each configured plan (skip `status: archived`). For each plan, show its `axis` and a relative link to the doc; optionally pull the plan's **NOW** block (rows that have a status set) so the day's working items are visible at a glance.
+
+This surface is **read-only** -- the dashboard never writes to or maintains rolling plans. Maintenance is owned by `/ops` (participant-triggered update after a 1-on-1). If a configured plan's file is missing, list it as `(not yet scaffolded)` rather than erroring.
+
+Dashboard section template:
+
+```
+## Rolling plans
+
+- **[<Partner>](<relative path>)** -- <axis>
+  - NOW: <first few open NOW rows, owner-tagged>   # optional
+```
+
 ### Task Discovery (Org Mode)
 
 Scan for `_tasks.yaml` files under the org's vault path:

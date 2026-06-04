@@ -321,6 +321,48 @@ workflows:
       trigger: if_mentioned
 ```
 
+### Rolling Plans (CR-014)
+
+Optional. Living, shareable per-axis planning documents that aggregate state across a recurring 1-on-1 relationship -- "what's on now / next / later, and who owns what" for the orthogonal workstream that partner owns. They are the **participant-keyed** counterpart to verticals (topic-keyed): a vertical is topic-longitudinal, a rolling plan is relationship/axis-longitudinal.
+
+```yaml
+workflows:
+  rolling_plans:
+    - path: string               # Path to the rolling-plan doc, relative to venture root
+      axis: string               # One-line description of the workstream (used in cross-links/reports)
+      participants: [string]     # Trigger set; names/aliases resolved via team[] + _contacts
+      language: enum             # Optional; english/swedish/input/per_claude_md (default: org language)
+      status: enum               # Optional; active (default), placeholder, archived
+      trigger: enum              # Optional; on_participant_match (default and only value)
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `path` | Yes | Path to the rolling-plan document, relative to venture root |
+| `axis` | Yes | One-line workstream description; rendered in the "Sister documents" cross-link block and `/ops status` |
+| `participants` | Yes | Names/aliases that trigger an update offer; resolved with the standard name-resolution algorithm |
+| `language` | No | Output language for the doc (default: org `language`) |
+| `status` | No | `active` (default), `placeholder` (lean seed), or `archived` (skipped by the trigger) |
+| `trigger` | No | `on_participant_match` -- fires when a processed meeting's participants intersect `participants` |
+
+After meeting processing (Step 9 in /ops), when a processed meeting's participants match a plan's `participants`, the system suggests updating that plan (move completed rows into the summary, add new NOW items, reflect decisions). The user decides. Missing target files are offered a scaffold from `ops-config/templates/rolling-plan.md` (or the org's `templates.rolling_plan`). Golden rule: **one item = one owner = one doc** -- rows belonging to another axis are linked, not copied.
+
+#### Example
+
+```yaml
+workflows:
+  rolling_plans:
+    - path: meetings/management/Bob/rolling-plan-Alex-Bob.md
+      axis: website / sign-up / data / go-to-market
+      participants: [Bob]
+      language: english
+      status: active
+    - path: meetings/management/Carol/rolling-plan-Alex-Carol.md
+      axis: customer success / churn / affiliate
+      participants: [Carol]
+      status: placeholder
+```
+
 ### Example
 
 ```yaml
