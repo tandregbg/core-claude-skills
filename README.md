@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.18.0
+**Version:** 1.19.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.19.0 (2026-06-05)
+
+- **Undiarized-transcript owner safety (CR-015).** `/transcript` now treats action-item ownership as *inferred, not observed* whenever a transcript arrives with no speaker labels (e.g. a Deep Thought paste or raw recorder export). New "Speaker attribution & undiarized transcripts" section: detect the diarized/undiarized condition first, fail safe by writing the owner as `?` / `Name?` instead of a confident guess, and run a final owner self-check on the `Nästa steg` table before save. Undiarized input is logged as an `edge_case` (and user owner-corrections as `correction`) so the evolution loop can see the pattern. Notes the durable root fix — feed a speaker-labeled transcript — which makes the rule a no-op. Prompt-only and additive; diarized transcripts are unaffected. See CHANGELOG `[1.19.0]`.
 
 ## What's new in v1.18.0 (2026-06-04)
 

@@ -92,6 +92,8 @@ The Nästa steg / Next Steps section MUST use this 5-column table format:
 
 If owner or deadline is unknown, write `?` rather than omitting the column. The visualisation app and `/daily-dashboard` parse this table -- variants break them silently.
 
+**Owner attribution on undiarized input (CR-015):** an owner cell may hold a bare name **only** when an identifiable speaker explicitly takes the action. When the transcript has no speaker labels (see *Speaker attribution* below), a first-person cue alone ("jag skickar…", "då gör vi…") does **not** identify who - write `?` (or `Name?` for a likely-but-unconfirmed owner) rather than committing to a confident guess. Failing safe with `?` is correct; a confident wrong owner is not.
+
 **Konklusion length:** there is **no minimum length** for Konklusion. A 96-word internal session can still have a 1-sentence outcome. Always include the section, however brief.
 
 **Formatting rules:**
@@ -131,6 +133,24 @@ The skill picks a variant by estimating meeting duration from transcript metadat
 4. Use the resolved canonical name throughout the summary
 
 This applies to ALL occurrences of the name -- not just filenames, but every mention in the summary content.
+
+### Speaker attribution & undiarized transcripts (critical, CR-015)
+
+Name Resolution above fixes *spelling*. It does **not** tell you *who said what*. Many sources (e.g. a Deep Thought paste, or any raw recorder export) arrive as a **single continuous stream with no speaker labels**. On such input, who-said-what and therefore **who owns each action item are inferred, not observed** -- and confident inference is the single most common attribution error this skill makes.
+
+**Detect the condition first.** Before assigning any owner, decide whether the transcript is *diarized* (has speaker labels / turn markers like `Tomas:` / `Speaker 1:`) or *undiarized* (one narrative blob). State the result to yourself; it changes the rules below.
+
+**On undiarized transcripts:**
+- Treat every owner as a hypothesis. A first-person cue ("jag ska skicka…", "då branchar vi ut…") tells you an action exists, **not who will do it** -- the speaker is unlabeled.
+- Prefer **failing safe**: write the owner as `?`, or `Name?` when context makes one participant clearly likely but unconfirmed. Do **not** upgrade `Name?` to `Name` without explicit evidence.
+- Use surrounding context to raise confidence where it is genuinely high (e.g. "du är ansvarig för X" addressed to a named participant, or an action only one party could own), but when two readings are equally plausible, choose `?`.
+- This rule composes with the Action Item Table rule above -- they must agree.
+
+**Final owner self-check (before save).** Re-read the `Nästa steg` table once. For each row ask: *was this owner explicitly claimed by, or explicitly assigned to, an identifiable speaker?* If not, downgrade the cell to `?` / `Name?`. A wrong-but-confident owner is worse than an honest `?`.
+
+**Capture the gap.** When a transcript is undiarized, log it as an `edge_case` in Step 4.5 so the evolution loop can see how often this source shape occurs. If the user later corrects an owner, log that as a `correction` (Step 4.5).
+
+**Root fix (out of skill scope, worth noting to the user).** The durable remedy is *diarized input* -- a speaker-labeled transcript. When one is available (e.g. a Fathom export, or once upstream diarization lands), use it as the source and this whole section becomes a no-op.
 
 ### Metadata Footer
 
@@ -533,7 +553,7 @@ If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml`
 
 | Type | When | Example |
 |------|------|---------|
-| `edge_case` | Ambiguous input required guessing or user disambiguation | Name matched multiple contacts, language detection uncertain, unclear target folder |
+| `edge_case` | Ambiguous input required guessing or user disambiguation | Name matched multiple contacts, language detection uncertain, unclear target folder, transcript lacks speaker labels (owners inferred -- CR-015) |
 | `correction` | User corrected or overrode skill output | Changed save location, corrected participant name, modified summary content |
 
 **When NOT to capture:** Normal, successful execution. Most invocations produce zero feedback entries. Only log when something unexpected happened or the user intervened.

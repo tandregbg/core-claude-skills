@@ -9,6 +9,16 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.19.0] - 2026-06-05
+
+### Added
+- **Undiarized-transcript owner safety (CR-015).** New "Speaker attribution & undiarized transcripts" section in `skills/transcript/SKILL.md`. Name Resolution fixes spelling but not *who said what*; many sources (Deep Thought paste, raw recorder export) arrive as a single unlabeled stream where action-item ownership can only be inferred. The skill now: (1) detects diarized vs undiarized input before assigning owners; (2) on undiarized input treats every owner as a hypothesis and fails safe -- writes `?` / `Name?` instead of a confident guess from a first-person cue; (3) runs a final owner self-check on the `Nästa steg` table before save; (4) logs undiarized input as an `edge_case` and user owner-corrections as `correction` (Step 4.5) so `/insights compile` can cluster the pattern.
+- **Action Item Table rule extended (CR-015):** an owner cell holds a bare name only when an identifiable speaker explicitly takes the action; otherwise `?`. Consistent with the binary `?` rule already in CR-006.
+- **Step 4.5 `edge_case` example extended (CR-015):** "transcript lacks speaker labels (owners inferred)" added to the example list.
+
+### Rationale
+- Surfaced from real use: a Deep Thought transcript with no speaker labels produced two confident-but-wrong action-item owners that the operator had to correct, while a Fathom recap of the same meeting (which has audio diarization) got them right. The gap was not format -- the owner/prio/deadline table already exists -- but that the skill committed to inferred owners with no confidence signal. CR-015 makes the skill fail safe instead. The durable root fix (diarized input) is noted in-skill but is an input-pipeline choice, not a skill change. Prompt-only and additive; diarized transcripts are unaffected.
+
 ## [1.18.0] - 2026-06-04
 
 ### Added
