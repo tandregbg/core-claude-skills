@@ -9,6 +9,16 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.20.0] - 2026-06-05
+
+### Added
+- **Proper-noun verification (CR-016).** New "Proper-noun verification" section in `skills/transcript/SKILL.md`. Name Resolution corrects the *spelling* of names it can match; CR-016 covers the opposite failure -- a proper noun the transcriber garbled into a *plausible* token that matches nothing and reads fine. The skill now: (1) builds a known-entity set from `team[]`, `_contacts/*/_meta.yaml` (`display_name`/`aliases`/`company`), `terminology[].term`, and the filename; (2) resolves each person/company name to canonical spelling if matched, else marks it `Name?` or collects it into a `> ⚠ Namn att verifiera:` note instead of committing it as fact; (3) states the failure-mode principle -- invisible plausible substitutions cost more downstream than obvious garble, so scrutiny goes to proper nouns and semantic swaps; (4) logs an `edge_case` when flagging and a `correction` on user fix. No-op when every name resolves.
+- **Step 4.5 `edge_case` example extended (CR-016):** "unresolved proper noun flagged for verification" added to the example list.
+- **Preparation ASR-vocabulary hint (CR-016).** New one-line `{strings.preparation.recording_names}` hint in the `/preparation` walk-in card, reusing the entities the Step 2.5 cross-context scan already gathers -- suggests putting key proper nouns in the calendar event title so the transcriber's ASR has the vocabulary. New `preparation.recording_names` strings key in both language blocks of `skills/ops-config/base.yaml`.
+
+### Rationale
+- Surfaced from an independent field comparison of two Swedish transcription tools across four real meetings. Its thesis matches the skill's: intelligence lives downstream, so transcript word-fidelity is the axis that matters because errors propagate. The comparison validated CR-015 (merged-readable-paragraph output is the undiarized case the skill already fails safe on) and surfaced proper nouns as the one place tools fail and the skill lagged. CR-016 extends CR-015's fail-safe philosophy from owners to all proper nouns. Tool-specific branching and two-transcript reconciliation were deliberately left out (see `docs/proposals/CR-016-proper-noun-verification.md`). Prompt-only and additive; no contract/schema change.
+
 ## [1.19.0] - 2026-06-05
 
 ### Added

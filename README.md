@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.19.0
+**Version:** 1.20.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.20.0 (2026-06-05)
+
+- **Proper-noun verification (CR-016).** `/transcript` now guards against the *plausible* proper-noun garble that reads fine and matches nothing (a real surname rendered as a different real-looking one; a company name as a phonetic near-miss). Name Resolution already fixed the spelling of names it can match; CR-016 adds a verification pass that builds a known-entity set from `team[]`, `_contacts/*/_meta.yaml`, `terminology[]`, and the filename, then marks any unmatched person/company name `Name?` (or collects them into a `⚠ Namn att verifiera` note) instead of committing it as fact. It states the failure-mode principle -- invisible plausible substitutions cost more downstream than obvious garble -- and logs an `edge_case` on flag, `correction` on fix. `/preparation` also gains a one-line "names for the recording" hint (put key proper nouns in the calendar event title so the ASR has the vocabulary). Prompt-only and additive; a no-op when every name resolves. Surfaced from an independent field comparison of two Swedish transcription tools. See CHANGELOG `[1.20.0]` and `docs/proposals/CR-016-proper-noun-verification.md`.
 
 ## What's new in v1.19.0 (2026-06-05)
 

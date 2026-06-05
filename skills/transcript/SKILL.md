@@ -152,6 +152,29 @@ Name Resolution above fixes *spelling*. It does **not** tell you *who said what*
 
 **Root fix (out of skill scope, worth noting to the user).** The durable remedy is *diarized input* -- a speaker-labeled transcript. When one is available (e.g. a Fathom export, or once upstream diarization lands), use it as the source and this whole section becomes a no-op.
 
+### Proper-noun verification (critical, CR-016)
+
+Name Resolution above corrects the *spelling* of names it can **match**. It does not protect against the opposite failure: a proper noun the transcriber **garbled into something plausible that matches nothing**. Transcription services are unreliable on company and personal names in both directions -- a real surname becomes a different real-looking surname, a company name becomes a phonetic near-miss. These slip through *because* they read fine. Treat every betydelsebärande proper noun as **unverified until matched**, not as fact.
+
+**Why this matters more than it looks (failure-mode principle).** The dangerous ASR errors are not the obvious garble -- those you catch on sight. They are the *plausible* substitutions that read cleanly and match nothing. A confident wrong name is worse than an honest `Name?`: it propagates downstream into every summary, extraction and deliverable built on this transcript. Spend scrutiny on proper nouns and semantic swaps, not on obvious noise.
+
+**Build the known-entity set** from the sources the skill already uses:
+- org config `team[]` -- `name` + `aliases`
+- `_contacts/*/_meta.yaml` -- `display_name`, `aliases`, `company`
+- org config `terminology[].term`
+- the filename
+
+**For each person or company name in the summary:**
+- **Matches the known set** -> use the canonical spelling (existing Name Resolution behavior).
+- **Matches nothing** -> it is unverified. Do **not** silently commit it. Either mark the mention `Name?` (mirroring the CR-015 owner convention), or collect the unverified names into a short trailing note: `> ⚠ Namn att verifiera: <names>`. Prefer the inline `Name?` for a single uncertain mention; use the trailing note when several names are unverified.
+- Never upgrade `Name?` to a bare name without explicit confirmation (filename, a known entry, or the user).
+
+**Always correct company and personal names by hand in deliverables** -- this rule flags them; it does not guarantee them.
+
+**Capture the gap.** When you flag one or more unverified proper nouns, log it as an `edge_case` in Step 4.5. If the user later corrects a name, log that as a `correction` (Step 4.5).
+
+Default-on and additive: when every proper noun resolves against the known set, this section is a no-op.
+
 ### Metadata Footer
 
 End the summary with:
@@ -553,7 +576,7 @@ If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml`
 
 | Type | When | Example |
 |------|------|---------|
-| `edge_case` | Ambiguous input required guessing or user disambiguation | Name matched multiple contacts, language detection uncertain, unclear target folder, transcript lacks speaker labels (owners inferred -- CR-015) |
+| `edge_case` | Ambiguous input required guessing or user disambiguation | Name matched multiple contacts, language detection uncertain, unclear target folder, transcript lacks speaker labels (owners inferred -- CR-015), unresolved proper noun flagged for verification (CR-016) |
 | `correction` | User corrected or overrode skill output | Changed save location, corrected participant name, modified summary content |
 
 **When NOT to capture:** Normal, successful execution. Most invocations produce zero feedback entries. Only log when something unexpected happened or the user intervened.
