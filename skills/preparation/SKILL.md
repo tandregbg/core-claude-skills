@@ -198,6 +198,8 @@ A horizontal rule (`---`) separates the two tiers visually and conceptually.
 **{strings.preparation.their_actions}:**
 - [ ] [Their action item -- what to follow up on]
 
+*{strings.preparation.recording_names}: [contact display_name, company, 1-2 key entity/topic names from Step 2.5] -- put these in the calendar event title so the transcriber's ASR has the vocabulary and spells the proper nouns right.*
+
 ---
 
 ## {strings.preparation.deep_dive_separator}

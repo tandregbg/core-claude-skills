@@ -123,6 +123,7 @@ strings:
     reflections: "Reflections"
     post_meeting_note: "post-meeting insights"
     deep_dive_separator: "Deep dive (read if you have 5 more minutes)"
+    recording_names: "Names for the recording"
   agenda_tags:
     decision: "DECISION"
     demo: "DEMO"
@@ -186,6 +187,7 @@ strings_sv:
     reflections: "Reflektioner"
     post_meeting_note: "insikter från genomfört möte"
     deep_dive_separator: "Fördjupning (läs om du har 5 minuter till)"
+    recording_names: "Namn för inspelningen"
   agenda_tags:
     decision: "BESLUT"
     demo: "DEMO"
