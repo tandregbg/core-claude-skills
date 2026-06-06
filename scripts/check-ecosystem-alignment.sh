@@ -25,10 +25,10 @@ DRIFTED=0
 README_VERSION=$(grep -o 'Version:.*' "$REPO_DIR/README.md" | head -1 | sed 's/.*\*\* //' | tr -d ' ')
 if [ "$README_VERSION" = "$CONTRACT_VERSION" ]; then
     echo "[OK] core-skills README: $README_VERSION"
-    ((ALIGNED++))
+    ALIGNED=$((ALIGNED + 1))
 else
     echo "[DRIFT] core-skills README: $README_VERSION (expected $CONTRACT_VERSION)"
-    ((DRIFTED++))
+    DRIFTED=$((DRIFTED + 1))
 fi
 
 # Check Marvin CLAUDE.md (formerly core-skills-visualisation, renamed 2026-04-29)
@@ -44,10 +44,10 @@ if [ -d "$VIS_DIR" ]; then
     VIS_REF=$(grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' "$VIS_DIR/CLAUDE.md" 2>/dev/null | head -1 | tr -d 'v')
     if [ "$VIS_REF" = "$CONTRACT_VERSION" ]; then
         echo "[OK] Marvin CLAUDE.md: v$VIS_REF"
-        ((ALIGNED++))
+        ALIGNED=$((ALIGNED + 1))
     else
         echo "[DRIFT] Marvin CLAUDE.md: v${VIS_REF:-missing} (expected v$CONTRACT_VERSION)"
-        ((DRIFTED++))
+        DRIFTED=$((DRIFTED + 1))
     fi
 else
     echo "[SKIP] visualiser not found at $VIS_DIR"
@@ -70,10 +70,10 @@ except: print('unreadable')
 " 2>/dev/null)
     if [ "$LANDING_REF" = "$CONTRACT_VERSION" ]; then
         echo "[OK] landing page i18n: v$LANDING_REF (build $LANDING_BUILD)"
-        ((ALIGNED++))
+        ALIGNED=$((ALIGNED + 1))
     else
         echo "[DRIFT] landing page i18n: v${LANDING_REF:-missing} (expected v$CONTRACT_VERSION, build $LANDING_BUILD)"
-        ((DRIFTED++))
+        DRIFTED=$((DRIFTED + 1))
     fi
 else
     echo "[SKIP] landing page mount not available at $LANDING_MOUNT"
