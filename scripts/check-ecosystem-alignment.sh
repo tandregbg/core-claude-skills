@@ -54,7 +54,7 @@ else
 fi
 
 # Check landing page (via mount or SSH)
-LANDING_MOUNT="$HOME/workspace/remotes/tomas/src/core-skills-landingpage"
+LANDING_MOUNT="${LANDING_MOUNT:-$HOME/workspace/remotes/tomas/core-skills-landingpage}"
 if [ -f "$LANDING_MOUNT/app.py" ]; then
     LANDING_BUILD=$(grep 'BUILD_VERSION' "$LANDING_MOUNT/app.py" | head -1 | grep -o "'[^']*'" | tr -d "'")
     # Landing page tracks its own build version, but should reference core_skills_version in i18n
