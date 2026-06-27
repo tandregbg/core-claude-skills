@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.20.1] - 2026-06-27
+
+### Added
+- **`/transcript` Step 2.5: silent raw-transcript archive.** The skill now always saves the verbatim raw input to a central `.transcripts/` folder in the vault root (sibling to `_inbox`/`_outbox`), as plain readable markdown named `YYMMDD-...-raw.md` (mirrors the summary stem). The raw file carries frontmatter linking back to the summary and every file the run created (`summary:`, `created_files:`); the summary gets a discreet `raw:` back-link. Multiple recordings merged into one summary are stored in the same raw file with separators. A **read-back lock** governs the folder: files in `.transcripts/` are never read back, quoted, re-summarized, or fed into `_insights.yaml`/summaries unless the user explicitly asks for the raw material. The CHANGELOG never links the raw file. Step 0.5's insights-walk now skips `.transcripts/` alongside `.archive/`/`clones/`. Purely additive doc behaviour — no schema change.
+
 ## [1.20.0] - 2026-06-05
 
 ### Added

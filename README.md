@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.20.0
+**Version:** 1.20.1
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.20.1 (2026-06-27)
+
+- **`/transcript` silent raw-transcript archive (Step 2.5).** The raw input is now always preserved verbatim in a central `.transcripts/` folder in the vault root (plain markdown, `YYMMDD-...-raw.md`), with frontmatter linking back to the summary and every file the run produced, and a discreet `raw:` back-link on the summary. A read-back lock keeps the folder a quiet memory archive: it is never read back, quoted, or fed into insights/summaries unless the user explicitly asks for the raw material. See CHANGELOG `[1.20.1]`.
 
 ## What's new in v1.20.0 (2026-06-05)
 
