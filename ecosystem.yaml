@@ -62,7 +62,7 @@ skills:
     - name: ops
       description: "Unified meeting and operations processing — config-driven for any organization."
       badge: Primary
-      subcommands: [status, prepare, normalize, help]
+      subcommands: [status, prepare, normalize, lint, sweep, help]
     - name: transcript
       description: "Process and summarize transcriptions from calls, meetings, or voice recordings."
       badge: Lightweight
@@ -79,14 +79,15 @@ skills:
     - name: insights
       description: "Knowledge extraction manager and skill evolution engine."
       badge: Knowledge
-      subcommands: [reprocess, scan-claude-md, compile, propose, status, help]
+      subcommands: [reprocess, scan-claude-md, compile, normalize, propose, status, help]
     - name: analytics
       description: "Vault-level content analytics — trends, skill adoption, contact engagement, backlog."
       badge: Knowledge
       subcommands: [overview, skills, contacts, backlog, help]
     - name: inbox
-      description: "Universal entry point for unstructured content — classifies and routes."
+      description: "Universal entry point for unstructured content — classifies and routes. Maintains the triage working surface (CR-022)."
       badge: Capture
+      subcommands: [status, process, triage, help]
     - name: md2pdf
       description: "Convert markdown to styled PDFs. Supports Mermaid, tables, outbox packaging."
       badge: Utility
@@ -96,7 +97,7 @@ skills:
     - name: outbox
       description: "Lifecycle management for `_outbox/` items — list pending, archive resolved into contact/project folders."
       badge: Utility
-      subcommands: [list, status, archive, help]
+      subcommands: [list, status, archive, archive --all-sent, help]
   non_invocable:
     - name: ops-base
       description: "Shared operational framework (meeting formats, task management, workflows)."

@@ -79,16 +79,16 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by other ops skills. | No |
 | `ops-config` | Configuration system -- schema definition and base defaults for organization-specific settings. | No |
 | `transcript` | Process and summarize transcriptions from calls, meetings, or voice recordings. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund). Three template variants by meeting length. Provides structured extraction for domain skills. Offers task import. Extracts durable insights to `_insights.yaml`. | Yes (`/transcript`) |
-| `ops` | Unified meeting and operations processing -- config-driven for any organization. Subcommands: `/ops status` shows available org configs, `/ops prepare` creates pre-meeting preparation, `/ops normalize` restores Swedish characters in hand-written docs, `/ops help` shows usage guide. Extracts durable insights to `_insights.yaml`. Replaces project-ops, bravo-ops, management-ops, marketing-ops. | Yes (`/ops`) |
+| `ops` | Unified meeting and operations processing -- config-driven for any organization. Subcommands: `/ops status` shows available org configs, `/ops prepare` creates pre-meeting preparation, `/ops normalize` restores Swedish characters (`--names` applies the people roster, `--filenames` fixes slug drift), `/ops lint` detects template forks in a meeting series, `/ops sweep` audits closure debt (stale indexes, ledgers, outbox, duplicates), `/ops help` shows usage guide. Extracts durable insights to `_insights.yaml`. Replaces project-ops, bravo-ops, management-ops, marketing-ops. | Yes (`/ops`) |
 | `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. Standalone. | Yes (`/update-skills`) |
 | `daily-dashboard` | Daily meeting and task dashboard generator -- works generically from any vault or with org-specific config. Creates dashboard file and desktop symlinks. Integrates with task tracker. | Yes (`/daily-dashboard`) |
 | `preparation` | Create meeting preparation documents with a 60-second walk-in agenda card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]) instead of topic noun phrases. Mandatory cross-reference scan with explained relevance. Frozen at meeting time -- no mid-meeting edits. | Yes (`/preparation`) |
 | `tasks` | Personal task tracker with cross-project correlation. Central task index, source linking, automatic carry-forward, privacy model. | Yes (`/tasks`) |
-| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns, proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `propose`, `status`, `help`. | Yes (`/insights`) |
-| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. | Yes (`/inbox`) |
+| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `propose`, `status`, `help`. | Yes (`/insights`) |
+| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `backlog`, `help`. | Yes (`/analytics`) |
-| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `help`. | Yes (`/outbox`) |
+| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
 
 ## Shared contract: `ecosystem.yaml`
 
@@ -150,6 +150,36 @@ core-skills (this repo)
 
 ---
 
+## How the system fits together (v1.26)
+
+Four months of heavy production use taught us where document pipelines actually fail — and the v1.21–v1.26 wave restructured the suite around those findings. The suite now works as **four cooperating layers**:
+
+### 1. Capture — get everything in, safely
+
+`/inbox` (universal capture), `/transcript` and `/ops` (meetings), `/preparation` (pre-meeting). This layer is guarded by a **name-safety chain** built up over three releases, because word-fidelity errors propagate into everything downstream:
+
+- **CR-015** — undiarized transcripts (no speaker labels) fail safe: inferred action-item owners are written `?`/`Name?`, never confidently guessed.
+- **CR-016** — proper nouns that match no known entity are flagged (`⚠ Namn att verifiera`) instead of committed; a plausible wrong name is worse than an honest question mark.
+- **CR-017** — a **people roster** (`people:` in config) covers the long tail of recurring names, and a **committed-spelling check** compares every draft name against what the folder has already published — so one person can no longer end up spelled three ways across a meeting series, and a real-word mishearing can't silently replace an established domain term.
+
+### 2. Structure — formats that can't silently fork
+
+Formats used to erode by *template forking*: one deviating file re-seeds its whole series, and every later file looks internally consistent. Now every save is checked against a **template contract** (CR-018: heading order, action-table columns, empty-decision marker), `/ops lint` locates where an existing series forked, and the **slug contract** (CR-021) keeps filenames sortable and machine-readable. Deliberate format changes are made by editing the contract — an accidental fork becomes an explicit, reviewable decision.
+
+### 3. Knowledge — insights that actually compound
+
+Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights normalize` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent.
+
+### 4. Closure — the loop most systems never build
+
+Append-only systems rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses. `/ops sweep` (CR-019) detects all seven closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`); run it weekly and staleness stops accumulating.
+
+### The triage surface — where the human stays in charge
+
+The newest piece (CR-022) formalizes what heavy real-world use converged on: a single markdown **triage doc** in `_inbox/` — paste-fast capture, human-sorted buckets (INKORG → PRIO → DENNA VECKA → SENARE), a done-archive. The design principle is inverted from everything else: **skills adapt to the triage doc; the triage doc never adapts to skills.** Preps pull the relevant open items automatically, the dashboard surfaces today's priorities, task import can target it, and `/inbox triage refresh` does the mechanical upkeep — but sorting and wording remain entirely human. It earns its place by matching how people actually work: a low-ceremony habit outlives any structured file it replaces.
+
+---
+
 ## Skill Comparison
 
 ### Overview
@@ -176,9 +206,12 @@ All domain skills inherit from `ops-base`:
 - **Priority system:** P0 (critical) through P3 (research)
 - **Status indicators:** BLOCKED, IN PROGRESS, ON TRACK, TODO, COMPLETE
 - **Meeting formats:** Two-tier summary (Concise vs Detailed Strategic)
+- **Template contracts (CR-018):** per-meeting-type shape contracts checked before every save -- heading order, action-table columns, empty-decision marker. Format changes happen by editing the contract, never by silent drift.
 - **Task lifecycle:** Creation > Active > Post-meeting > Archive
 - **CHANGELOG format:** Standardized entry structure
 - **Archive policy:** Never delete, always archive to `.archive/`
+- **Retirement convention (CR-019):** relocating any living artifact leaves a tombstone pointer at the old path -- migrations never leave live-looking corpses
+- **Slug contract (CR-021):** filenames keep å/ä/ö, always `YYMMDD-` prefixed, always carry a machine-readable role keyword
 - **Cross-referencing:** Link standards for meetings, tasks, changelogs
 
 ### Skill Details
@@ -198,7 +231,7 @@ All domain skills inherit from `ops-base`:
 - **Output:** Configurable -- summary only (default), or up to 5 files (summary, CHANGELOG, README, task-priority-matrix, meetings/README), plus optional post-processing (task import to `_tasks.yaml`, dashboard refresh), plus `_insights.yaml` (knowledge extraction)
 - **Config-driven:** Summary sections, status terms, domain additions, action propagation, agenda management, post-processing, knowledge extraction, verticals all controlled by org config
 - **Replaces:** project-ops, bravo-ops, management-ops, marketing-ops
-- **Operations:** `/ops [content]` (default), `/ops prepare [type]`, `/ops normalize <path>` (CR-007 -- restore Swedish characters in hand-written docs), `/ops status`, `/ops help`
+- **Operations:** `/ops [content]` (default), `/ops prepare [type]`, `/ops normalize <path>` (CR-007 -- restore Swedish characters; `--names` applies the people roster, CR-017; `--filenames` fixes slug drift, CR-021), `/ops lint <folder>` (CR-018 -- find where a meeting series' format forked), `/ops sweep` (CR-019 -- read-only closure/staleness audit across seven debt classes), `/ops status`, `/ops help`
 - **Use when:** Any meeting type -- standups, management meetings, marketing reviews, business syncs. The default choice -- use `/transcript` only when you explicitly don't want org config machinery.
 
 #### update-skills (standalone)
@@ -236,11 +269,11 @@ All domain skills inherit from `ops-base`:
 
 #### insights (standalone)
 
-- **Purpose:** Retroactive knowledge extraction from existing corpus
+- **Purpose:** Retroactive knowledge extraction from existing corpus + the compile half of the knowledge loop
 - **Output:** `_insights.yaml` (per folder, same format as transcript Step 3.5)
-- **Operations:** `reprocess [target]`, `scan-claude-md`, `status`, `help`
-- **Special:** Backfills insights from historical transcripts and CLAUDE.md files. Dedup by `source.file` -- safe to run repeatedly. Does not duplicate extraction logic -- references `/transcript` Step 3.5 as authoritative source.
-- **Use when:** Setting up insights for a folder that predates the knowledge extraction feature, or extracting embedded knowledge from CLAUDE.md files
+- **Operations:** `reprocess [target]`, `scan-claude-md`, `compile`, `normalize [path] [--apply]` (CR-020 -- migrate drifted/legacy files to the current schema, dry-run default), `propose`, `propose apply`, `status`, `help`
+- **Special:** Backfills insights from historical transcripts and CLAUDE.md files. Dedup by `source.file` -- safe to run repeatedly. Does not duplicate extraction logic -- references `/transcript` Step 3.5 as authoritative source. `compile` runs the CR-013 lifecycle (hypothesis → rule promotion, contradiction demotion) and stamps `last_compiled` so synthesis staleness is detectable (CR-020). Names are allowed in entries; prefer name-free summaries when an insight generalizes (CR-020 reusability note).
+- **Use when:** Setting up insights for a folder that predates the knowledge extraction feature, extracting embedded knowledge from CLAUDE.md files, running the periodic compile pass, or migrating pre-schema insight files
 
 #### analytics (standalone)
 
@@ -254,7 +287,7 @@ All domain skills inherit from `ops-base`:
 
 - **Purpose:** Lifecycle management for outgoing material staged in `<vault>/_outbox/`
 - **Output:** No new files -- moves outbox folders into `_contacts/<contact>/YYMMDD-<theme>/` and updates manifest, CHANGELOG, `_tasks.yaml`
-- **Operations:** `list` / `status` (default -- classifies items as PENDING / RESOLUTION-READY / DRAFT / WITHOUT MANIFEST), `archive <folder>` (move + update references), `help`
+- **Operations:** `list` / `status` (default -- classifies items as PENDING / RESOLUTION-READY / DRAFT / WITHOUT MANIFEST), `archive <folder>` (move + update references), `archive --all-sent` (CR-019 -- batch-archive every sent item, selection confirmed up front), `help`
 - **Special:** Reads `_manifest.md` as canonical state file -- an item is "resolution-ready" when `Status: skickad ...` AND all `Svar förväntas på` are checked AND `Utfall` is populated. Strips the contact-name prefix from the folder name when archiving (it's redundant inside the contact's own folder). Multi-contact fan-out (ambassador-style) prompts the user for duplicate-vs-shared-archive strategy. Never auto-completes tasks. Searches vault for stray references to the old path and rewrites them.
 - **Use when:** An outbox item has been sent, replied to, and resolved -- and the central `_outbox/` should be cleaned up. Or use `list` to audit what's pending.
 
@@ -270,7 +303,12 @@ ops:              Input -> Summary -> (per config: CHANGELOG, README, task matri
                                    -> (per config: task import to _tasks.yaml, dashboard refresh)
                                    -> (per config: check verticals -- suggest updates to living documents)
 
-ops status:       /ops status -> scan *-ops-config -> report active + available configs
+ops status:       /ops status -> scan <vault>/*/_ops.yaml -> report active + available configs
+
+ops lint:         /ops lint <folder> -> check files vs template contracts -> report series forks by date
+
+ops sweep:        /ops sweep -> 7 closure-debt checks (indexes, ledgers, corpses, outbox,
+                               duplicates, residue, triage) -> report + offered fixes
 
 ops help:         /ops help -> print usage guide with skill correlation
 
@@ -292,7 +330,9 @@ insights:         /insights reprocess _contacts/bob-smith -> read transcripts ->
                   /insights reprocess since YYMMDD -> date-filtered batch extract
                   /insights scan-claude-md      -> scan CLAUDE.md files -> extract knowledge -> _insights.yaml
                   /insights compile             -> read edge_case/correction entries -> find patterns -> skill_pattern
+                                                   + hypothesis→rule promotion + last_compiled stamp
                   /insights compile since YYMMDD -> compile only recent feedback
+                  /insights normalize [--apply] -> migrate drifted/legacy _insights.yaml to current schema (dry-run default)
                   /insights propose             -> read skill_patterns -> generate SKILL.md proposals
                   /insights propose apply       -> apply proposal -> update SKILL.md + CHANGELOG
                   /insights status              -> scan _insights.yaml files -> report counts + evolution stats
@@ -339,6 +379,13 @@ analytics:        /analytics                    -> vault overview (default)
 | Don't know which skill to use | `/inbox` (classifies and routes for you) |
 | See what's pending in the outbox | `/outbox list` |
 | Archive a sent-and-replied outbox folder into the contact folder | `/outbox archive <folder>` |
+| Batch-archive everything already sent | `/outbox archive --all-sent` |
+| Audit the vault for staleness and closure debt | `/ops sweep` |
+| Find where a recurring meeting's format silently forked | `/ops lint <folder>` |
+| Refresh the daily triage doc (week anchor, done-archive) | `/inbox triage refresh` |
+| Migrate old/drifted `_insights.yaml` files to the current schema | `/insights normalize` |
+| Apply the canonical-name roster to a folder's files | `/ops normalize --names <folder>` |
+| Fix Swedish-character drift in filenames | `/ops normalize --filenames <folder>` |
 | Restore Swedish characters in hand-written docs | `/ops normalize <path>` |
 | See vault-wide content trends and growth | `/analytics overview` |
 | Understand which skills produce the most content | `/analytics skills` |
