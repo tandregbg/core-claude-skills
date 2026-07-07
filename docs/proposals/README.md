@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-015**
+Next available CR number: **CR-023**
 
 ---
 
@@ -16,10 +16,21 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-014** (rolling plans, v1.18.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-022** (triage working surface, v1.26.0).
+
+CR-017–CR-022 were drafted and implemented 2026-07-07 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-022 | Triage working surface — contract + read integrations | v1.26.0 (2026-07-07) | `_inbox/` working-doc contract; `/inbox triage`; preps/dashboard/task-import/sweep integrations, all read-around |
+| CR-021 | Filename slug policy (diacritics, casing, role keywords) | v1.25.0 (2026-07-07) | Slug contract in ops-base; driftword check runs on filenames; `/ops normalize --filenames` backfill |
+| CR-019 | `/ops sweep` closure/staleness audit + retirement convention | v1.24.0 (2026-07-07) | Six closure-debt classes detected read-only; tombstone rule on artifact relocation; `/outbox archive --all-sent` |
+| CR-018 | Meeting-type template contracts + pre-save shape lint | v1.23.0 (2026-07-07) | `workflows.meeting_templates` registry; 3-point pre-save check (warn/strict); `/ops lint` finds series forks |
+| CR-017 | People roster + committed-spelling consistency | v1.22.0 (2026-07-07) | `people:` config block; folder-precedent near-miss check for names and anomalous domain terms; `/ops normalize --names` |
+| CR-020 | Insights schema reconciliation + compile activation | v1.21.0 (2026-07-07) | Privacy rule retired → reusability note; `quote` canonized; write-time vocabulary guard; `/insights normalize`; `last_compiled` stamp |
+| [CR-016](CR-016-proper-noun-verification.md) | Proper-noun verification + ASR-vocabulary hint | v1.20.0 (2026-06-05) | Known-entity set, `Name?` flagging, `⚠ Namn att verifiera` note; `/preparation` recording-names hint |
+| [CR-015](CR-015-undiarized-transcript-owner-safety.md) | Undiarized-transcript owner safety | v1.19.0 (2026-06-05) | Fail-safe `?`/`Name?` owners when no speaker labels; edge_case logging |
+| [CR-013](CR-013-insight-lifecycle.md) | Hypothesis → rule lifecycle for `_insights.yaml` | v1.17.0 (2026-05-10) | `confidence` field, promotion/demotion passes in `/insights compile`, rules preamble in `/ops`+`/transcript` |
 | [CR-014](CR-014-rolling-plans.md) | Rolling plans — participant-triggered per-axis living docs | v1.18.0 (2026-06-04) | Generic `workflows.rolling_plans` in `/ops` (participant trigger, mirrors `verticals`) + read-only `/daily-dashboard` surface + scaffold template. Additive; no org hardcoding. |
 | [CR-012](CR-012-inbox-schema.md) | Formal `_inbox/` schema + `.audio/` subfolder | v1.16.0 (2026-04-29) | `docs/schemas/inbox.md` is the canonical contract. Frontmatter is canonical, `_inbox.yaml` is derived. Identifier upgraded to `YYMMDD-HHMMSS[-slug]`. `.audio/` pairing-by-basename rule formalised. |
 | [CR-011](CR-011-org-config-move.md) | Org-config move from skill repos to vault folders | v1.16.0 (2026-04-29) | Phase 1+2 done. New chain: project > folder-local `<vault>/<org>/_ops.yaml` > vault-wide `_config/base.yaml` > skill base.yaml. Pre-v1.16.0 `*-ops-config` skill chain deprecated, removed v1.17.0 (Phase 5, deferred). |
@@ -48,9 +59,10 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 - File name: `CR-NNN-kebab-case-title.md`
 - One CR per file
 - Status lifecycle: Draft → Proposed → Implemented → Archived
-- When implemented: log under the relevant version in `CHANGELOG.md` with a `(CR-NNN)` mention
+- When implemented: log under the relevant version in `CHANGELOG.md` with a `(CR-NNN)` mention, AND move the CR's row from Proposed to Implemented in this index **in the same commit** (CR-020: the index drifted for months because this step was implicit)
+- CR specs containing private vault evidence are tracked outside this repo; their rows here carry generic titles only
 - The `.applied/` subfolder is for `/insights propose` skill-improvement proposals (CR-004, separate concept from CRs in this index)
 
 ---
 
-*Last updated: 2026-04-29 — CR-012 implemented (`docs/schemas/inbox.md` formal contract). All proposed CRs through CR-012 now implemented in v1.16.0; queue is empty.*
+*Last updated: 2026-07-07 — index reconciled (CR-013/015/016 were shipped but unlisted); CR-017–CR-021 drafted from a private vault-usage audit and implemented the same day (v1.21.0–v1.26.0; specs tracked outside this repo).*

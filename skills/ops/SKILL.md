@@ -2,7 +2,7 @@
 name: ops
 description: Process meeting content into structured documentation -- summaries, decision tracking, action propagation, file updates. Config-driven for any organization. Replaces project-ops, bravo-ops, management-ops, marketing-ops.
 user-invocable: true
-argument-hint: [status | help | prepare [type] | meeting content, transcript, or standup notes]
+argument-hint: [status | help | prepare [type] | normalize <path> | lint <folder> | sweep | meeting content, transcript, or standup notes]
 ---
 
 # Operations Framework
@@ -121,7 +121,7 @@ If the first word is `help`, present a usage guide instead of processing content
 
 **Include:**
 1. One-line description of what /ops does
-2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops status`, `/ops help`
+2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops status`, `/ops normalize <path>`, `/ops lint <folder>`, `/ops sweep`, `/ops help`
 3. Skill comparison table: when to use /ops vs /ops prepare vs /transcript, /preparation, /tasks, /daily-dashboard
 4. Skill connection diagram: how /ops feeds into /tasks, /daily-dashboard, and how /ops prepare creates pre-meeting docs
 5. Config loading summary (3-line version, point to `/ops status` for details)
@@ -201,6 +201,7 @@ The agenda file is the team-facing prep document. It looks like the prior-day pr
    - Identify blockers and their owners
 4. **Read CHANGELOG.md:**
    - Scan recent entries for context
+5. **Triage scan (CR-022):** if the vault has a registered triage doc (`_inbox/` working document, `type: working_doc` + tag `do-not-process`), pull open bullets whose bracket-tag second segment resolves to this meeting's participants (`[Möte · X]`, `[Uppföljning · X]`, ...) into the prep's agenda/open-actions, and stamp each pulled bullet `→ i prep YYMMDD` -- the only write allowed to the triage doc (same rule as `/preparation` Step 2.4). Skip silently when no doc or no matches.
 
 ---
 
@@ -419,6 +420,8 @@ Lint pass that scans markdown and YAML files for known Swedish character drift (
 | `<path>` | A single file OR a folder. If a folder, scans all `.md` and `.yaml` files recursively. |
 | `--dry-run` | Show the diff without writing. Use to preview before applying. |
 | `--strict-no-ambiguous` | Skip substitutions marked `ambiguous: true` in `swedish_substitutions.yaml` (e.g., `ar` → `är`, `bor` → `bör`, `Andre` → `André`). Recommended for first-pass scans. |
+| `--names` | (CR-017) Instead of Swedish characters, normalize person names: apply the org `people[]` roster (aliases → canonical) across the target's `.md` files and CHANGELOG. Reports each substitution for confirmation before writing; never runs implicitly. |
+| `--filenames` | (CR-021) Instead of file content, normalize filenames against the slug contract (restore å/ä/ö, fix digit-transliterations like `m0te`, unify date prefix to YYMMDD). Dry-run lists `old → new`; on apply, renames AND updates inbound references found in the same tree (CHANGELOG.md, README.md, supersede stamps, wikilinks). |
 
 **Examples:**
 
@@ -490,6 +493,57 @@ Backup: none (use git to revert if needed)
 
 ---
 
+### `lint` -- Check existing files against template contracts (CR-018)
+
+**Trigger:** `/ops lint <folder>`
+
+Read-only version of the CR-018 pre-save template-contract check, run across a folder's existing files. Use it to detect **template forking in a recurring series** -- the drift class where each file is internally consistent but the series silently changed shape at some point.
+
+**Steps:**
+
+1. Resolve the contract registry (`workflows.meeting_templates` from the merged config; `default` = CR-006 canonical).
+2. For each `YYMMDD-*.md` meeting summary in the folder (skip preps, agendas, emails, `.archive/`): resolve its contract by `match` glob and run the three checks (heading sequence, action-table header row, empty-Beslut marker).
+3. **Group findings by series and by first-deviating date** -- the output should read "this series forked at YYMMDD", not a flat per-file list:
+
+```
+/ops lint meetings/management
+
+weekly-management (14 files checked):
+  OK through 260519. Forked at 260526:
+  - action_table: missing column "Prio" (260526, 260605, 260702 -- 3 files)
+  - heading "Sammanfattning" (banished) prepended (same 3 files)
+  1-on-1 files (22 checked): all OK.
+
+To accept the new shape: declare it in workflows.meeting_templates.
+To fix the files: edit manually or re-run /ops on the source transcripts.
+```
+
+4. **Never rewrites files.** Lint reports; the user decides between amending the contract (accept the fork as deliberate) and fixing the files.
+
+---
+
+### `sweep` -- Closure/staleness audit (CR-019)
+
+**Trigger:** `/ops sweep [scope]` (default scope: vault root; depth 6; skip `.archive/`, `.transcripts/`, `clones/`, `node_modules/`, `.ephemeral/`)
+
+Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations leave live-looking corpses, sent outbox items never get archived. Bookkeeping follows attention, not structure -- so nothing catches the abandoned lane until a human stumbles on it. `/ops sweep` is the missing sweeper: one read-only pass that detects the closure-debt classes and **offers** fixes (report-only by default; every fix is confirmed, never automatic).
+
+**The seven checks:**
+
+1. **Index lag** -- README.md / meetings/README.md whose newest referenced date lags the folder's newest `YYMMDD-*` file or CHANGELOG head entry by >14 days. CHANGELOGs are the heartbeat; READMEs are the lag indicator -- compare them per folder.
+2. **Ledger rot** -- `_tasks.yaml` with open tasks whose `last_updated` lags folder activity by >30 days; `_insights.yaml` whose `last_compiled` stamp is absent or >30 days older than its newest entry (compile never ran / is stale).
+3. **Migration corpses** -- artifacts that look live but were superseded by a move: root symlinks/files whose same-purpose counterpart elsewhere is fresher (dashboards, `_TODAY-*`); folders inactive >60 days whose participant/topic stream demonstrably continues in a sibling folder. Offered fix: a **tombstone** (see ops-base Retirement Convention).
+4. **Outbox aging** -- run the `/outbox list` logic: sent-but-unarchived items, manifest-less items, items pending >30 days. Offered fix: `/outbox archive --all-sent`.
+5. **Sync duplicates** -- `* 2.*` / `* 3.*` files whose base file exists. Report size+mtime comparison side by side; **never auto-delete** (the larger "duplicate" is sometimes the newer content).
+6. **Unrouted residue** -- `unsorted/` folders with files >30 days old; `.ephemeral/` content >14 days old; root-level files matching paste conventions (`__*`, `xxx -*`, `Namnlös*`, untitled).
+7. **Triage hygiene (CR-022)** -- if a triage doc is registered: INKORG items unsorted >7 days, `[x]` items not yet moved to the KLART archive, week anchor >7 days stale, plaintext-credential-looking lines (no-secrets rule; lines marked `<!-- secret-ok -->` are a recorded owner decision and are skipped). Offered fix: `/inbox triage refresh` (which handles all but the sorting -- that stays human).
+
+**Output:** one report grouped by class, each finding with its offered fix as a command or concrete action. End with a one-line scoreboard (`7 classes: 3 clean, 4 with findings (14 items)`) so repeat runs are comparable. Young folders are exempt via the age thresholds -- a fresh project reports nothing.
+
+**Wiring:** suitable for a weekly scheduled run that drops its report into `_inbox/` as a triage item (closing the loop through the existing daily-triage habit). The sweep itself never mutates content.
+
+---
+
 ## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT
 
 - **`/ops prepare`**: Use **before** a team meeting to create a structured preparation with status tracking. Pulls context from recent meetings and tasks. Optionally incorporates pre-submitted async updates from team members. Outputs one file (`preparation`/`förberedelse`) by default, or two files (`facilitator` + `agenda`) when the meeting type is configured `preparation_mode: dual`.
@@ -539,6 +593,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.action_propagation` | Propagate actions to external files |
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
+| `workflows.meeting_templates` | Per-meeting-type shape contracts + lint mode (`warn`/`strict`) -- see ops-base Template Contracts (CR-018) |
 | `workflows.post_processing` | Task import, dashboard refresh, and optional priorities artifact (`priorities_artifact.enabled`) after meeting |
 | `workflows.rolling_plans` | Participant-triggered per-axis living planning docs (update after a matching 1-on-1) |
 | `domain_additions` | Extra sections to add to summaries |
@@ -570,9 +625,11 @@ Before parsing the input, load any promoted **rules** from the `_insights.yaml` 
 
 Extract from the input (transcript, notes, standup content):
 - Participants and their roles -- use name resolution algorithm:
+  - Match against org config `people[]` roster (canonical, aliases) for recurring non-contact persons (CR-017)
   - Match against org config `team[]` (name, aliases) for internal team
   - Match against `_contacts/*/_meta.yaml` (display_name, aliases) for external contacts
   - Use resolved canonical names in output (correct spelling, Swedish characters)
+  - **Committed-spelling consistency (CR-017):** before saving the summary AND before writing CHANGELOG/README entries, run the folder-precedent near-miss check from `/transcript` ("Committed-spelling consistency" section) -- compare draft names and anomalous proper nouns against the target folder's recent files and CHANGELOG; use the established spelling when it resolves, flag both forms when it doesn't, never silently introduce a spelling variant. CHANGELOGs are how misspellings propagate; this check gates them too.
 - Completed work items (who did what)
 - In-progress work (current status)
 - Decisions made (with rationale)
@@ -631,7 +688,7 @@ After updating files, scan the meeting summary for durable insights worth accumu
 
 **Same extraction logic as `/transcript` Step 3.5** (insight types, threshold, format, dedup). See the transcript skill for the full `_insights.yaml` schema and extraction criteria.
 
-**Privacy:** NEVER include personal names or company names in `summary`, `rationale`, or `tags`. The `context` and `source.file` fields provide the connection. Write generic, reusable knowledge.
+**Reusability (CR-020):** Names are allowed in insight entries (the former no-names privacy rule is retired). Prefer name-free phrasing in `summary`/`tags` when the insight generalizes -- `context` and `source.file` carry the who/what; names in `rationale` are always fine. Apply the write-time vocabulary guard from `/transcript` Step 3.5 (canonical types only, `confidence` = `hypothesis|rule`, YYMMDD dates, integer ids, max 5 tags).
 
 **Swedish characters:** When writing Swedish content in `_insights.yaml`, ALL words MUST use correct å, ä, ö. YAML files are equally prone to missing characters.
 
@@ -679,9 +736,10 @@ If `workflows.agenda_management.enabled` is true:
    - If `language: input`, match the transcript/input language.
 2. **Apply the resolved language** to all output: summary content, section headings, filename keywords, CHANGELOG entries. When creating preparation files (`/ops prepare`), the preparation must use the language matching its target path -- not a vault-wide default.
 3. **CRITICAL: If `swedish_chars: strict`, verify ALL Swedish text uses correct å, ä, ö before writing any file.** Never write "for" instead of "för", "ar" instead of "är", "mote" instead of "möte", etc. See ops-base for full list. This is a blocking requirement.
-4. Include suggested CHANGELOG entry
-5. Include cross-references to related documents
-6. Include next steps or follow-up items
+4. **Template-contract check (CR-018):** resolve the meeting's shape contract from `workflows.meeting_templates` (most specific `match` wins, else `default` = CR-006 canonical) and verify heading sequence, action-table header row, and empty-Beslut marker before saving. `mode: warn` (default): save + report the diff + log `edge_case`; `mode: strict`: ask first. See ops-base "Template Contracts" for the full rule. Deliberate format changes are made by editing the contract, not by letting a file drift.
+5. Include suggested CHANGELOG entry
+6. Include cross-references to related documents
+7. Include next steps or follow-up items
 
 ### Step 9: Post-Processing
 
@@ -694,6 +752,7 @@ If `workflows.post_processing` is configured:
 4. Present NEW action items and offer to import (yes/no/select)
 5. For imported tasks: assign defaults (P1, source = meeting file, context from folder)
 6. Mark completed items from the meeting in the local _tasks.yaml
+7. **Triage target for personal items (CR-022):** when an action item is personal/ad-hoc (owned by the user, no natural org/project folder) and the vault has a registered triage doc, offer "lägg i triage-INKORG" as an alternative target -- append the item as an open bullet under INKORG with a source link to the meeting file. One item = one home: it goes to the triage doc OR a `_tasks.yaml`, never both.
 
 #### Dashboard Refresh (if `dashboard_refresh.enabled`)
 1. After all file updates and task imports are complete
@@ -839,6 +898,7 @@ When `issue_id_format` is configured, assign IDs to discovered issues following 
 - Only CHANGELOG.md and README.md are uppercase; all other files use lowercase
 - Use hyphens between words in filenames
 - Default meeting filename: `YYMMDD-participants-description.md`
+- **Slug contract (CR-021):** keep å/ä/ö in filenames (never transliterate or digit-substitute), always `YYMMDD-` prefix, always include the role keyword (`samtal`/`förberedelse`/`agenda`/`facilitator`/...), run the Swedish driftword check against the slug before saving. Full contract in ops-base General Naming Rules; retroactive cleanup via `/ops normalize --filenames`.
 
 ---
 

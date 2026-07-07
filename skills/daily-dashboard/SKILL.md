@@ -255,6 +255,26 @@ If a section has no files, omit the entire section (including the standup sectio
 
 The "Uppgifter" section is always shown if `_tasks.yaml` exists and has active tasks. The "Slutfört idag" section is only shown if there are completions for the target date.
 
+### Triage (read-only, CR-022)
+
+If the vault has a registered **triage doc** (an `_inbox/` working document with `type: working_doc` + tag `do-not-process` -- see `docs/schemas/inbox.md`, CR-022 section), add a **Triage** section: link the doc, then inline its open PRIO items and the DENNA VECKA bucket headings with open-item counts. Optionally show the INKORG count as a nudge (`INKORG: 6 osorterade`).
+
+```
+## Triage
+
+[daglig-triage.md](_inbox/daglig-triage.md) · Veckoankare: <line> · INKORG: <N> osorterade
+
+### PRIO
+- [ ] <open PRIO items verbatim>
+
+### DENNA VECKA
+- <bucket>: <N> öppna
+```
+
+This surface is **read-only** -- the dashboard never writes to, reorders, or checks off triage items (same principle as Rolling Plans). Upkeep is owned by the human plus `/inbox triage refresh`. No registered triage doc: omit the section entirely.
+
+Applies to **both generic and org mode** (the triage doc is personal and vault-level, not org-scoped).
+
 ### Symlinks (Generic)
 
 Created in the vault root directory (same directory as the dashboard file):

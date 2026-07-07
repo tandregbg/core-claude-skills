@@ -90,6 +90,32 @@ Use these **canonical heading names only** -- do not produce variants like `Samm
 
 Default to Standard. There is **no minimum length** for the Konklusion section -- a short meeting still has an outcome.
 
+### Template Contracts (CR-018)
+
+Recurring meeting series erode format rules by **silent template forking**, not random noise: the model pattern-matches the previous file of the same series, so one deviating file re-seeds the whole series (a dropped table column, a reintroduced banished heading), and every subsequent file is internally consistent -- which is exactly why per-file review never catches it. The counter-measure is a declared per-meeting-type **shape contract**, checked at save time.
+
+**Registry** (org or folder-local config, `workflows.meeting_templates`): each entry declares a `match` glob for the series and the expected shape; a `default` entry covers everything unmatched (falling back to the CR-006 canonical order and the `strings` action-table headers):
+
+```yaml
+workflows:
+  meeting_templates:
+    mode: warn                      # warn (default) | strict
+    weekly-management:
+      match: "meetings/management/2*-Weekly-*"
+      headings: [Nästa steg, Beslut, Konklusion, Diskussion, Bakgrund]
+      action_table: ["#", "Åtgärd", "Ägare", "Prio", "Deadline"]
+```
+
+**The check** (run by `/ops` and `/transcript` as the last pre-save step, after Swedish-character validation). Resolve the matching contract (most specific `match` wins, else `default`) and verify exactly three things:
+
+1. **H2 heading sequence** equals the contract's `headings` (order and canonical names; banished variants fail).
+2. **Action-table header row** equals the contract's `action_table`.
+3. **Empty Beslut carries the marker**: a `## Beslut` section with no decisions must contain the `no_decisions_marker` string -- absence-by-omission fails.
+
+**On mismatch:** `mode: warn` (default) -- save, report the exact diff to the user, log an `edge_case`. `mode: strict` -- show the diff and ask before saving. A deliberate format change is made by **editing the contract**, never by letting a file drift: that turns an accidental fork into an explicit, reviewable decision.
+
+Orgs with no `meeting_templates` config get the `default` CR-006 contract in warn mode -- the check is never fully off.
+
 ---
 
 ## TASK MANAGEMENT
@@ -149,12 +175,15 @@ Consult the project CLAUDE.md for:
 - **Archive policy** and locations (ARCHIVE POLICY section)
 - **Team structure** and responsibility matrix (TEAM section)
 
-### General Naming Rules
-- All filenames use `YYMMDD-` prefix
+### General Naming Rules (slug contract, CR-021)
+- All filenames use `YYMMDD-` prefix -- **always this format, never ISO** (`2026-03-12-`). A folder may only deviate if its own CLAUDE.md explicitly declares another format.
 - Use hyphens between words
-- Proper names are capitalized (e.g., `Alex-Bob`)
+- **Diacritics: keep å/ä/ö in filenames.** Never transliterate (`mote`), never digit-substitute (`m0te`), never mix policies within one filename (`förberedelse-...-utlosen`). CR-007 covered file *content*; this extends it to the filename -- run the same driftword check against the slug before saving.
+- **Role keyword is mandatory:** the resolved `{strings.filename_keywords}` word (`samtal`/`förberedelse`/`sammanfattning`/`standup`, or English equivalents) must appear in the slug so the file's role is machine-readable. A preparation must never be named like a summary -- `/daily-dashboard` and `/outbox` route by these keywords.
+- Proper names are capitalized (e.g., `Alex-Bob`); all other slug tokens are lowercase
 - Only CHANGELOG.md and README.md are uppercase; all other files use lowercase
 - See CLAUDE.md's MEETING FILENAME FORMAT for specific patterns per meeting type
+- Retroactive cleanup is **opt-in only** via `/ops normalize --filenames <folder>` (renames + rewrites inbound references it can find); never rename existing files implicitly -- links point at current names
 
 ---
 
@@ -189,6 +218,23 @@ Consult the project CLAUDE.md for archive policy. General rules:
 - Archive meetings older than 6 months (keep weekly management meetings permanently)
 - Organize by year/month
 - Maintain audit trail
+
+---
+
+## RETIREMENT CONVENTION (CR-019)
+
+Skills handle "create new home" well and "retire old home" never -- every relocation of a living artifact (a dashboard, rolling plan, meeting series, task ledger, or output path change) tends to leave the old artifact in place, current-looking and silently frozen. Readers cannot tell "moved" from "abandoned" from "still authoritative".
+
+**The rule:** any relocation of a living artifact MUST, in the same operation:
+
+1. **Leave a tombstone at the old path** -- one line prepended to the old file (or a stub README in the old folder):
+   ```markdown
+   > **Flyttad (YYMMDD):** se [new-path](relative/link/to/new-path)
+   ```
+2. **Log the move** in the affected folder's CHANGELOG.
+3. **Update or remove stale pointers** the skill itself created (root symlinks, dashboard links).
+
+This applies to skills moving their own output (e.g. `/daily-dashboard` changing output location must tombstone the old dashboard, not leave two live-looking copies) and to user-driven moves processed through a skill (e.g. a 1-on-1 series moving to a new folder gets a forward-pointer README in the old one). `/ops sweep` detects violations after the fact; this convention prevents them at move time.
 
 ---
 
@@ -303,4 +349,4 @@ When processing content:
      status: active
    ```
 
-   Follow the same `_insights.yaml` format, dedup rules, and privacy rules as knowledge extraction (Step 5.5 in /ops, Step 3.5 in /transcript).
+   Follow the same `_insights.yaml` format, dedup rules, vocabulary guard, and reusability rules as knowledge extraction (Step 5.5 in /ops, Step 3.5 in /transcript).

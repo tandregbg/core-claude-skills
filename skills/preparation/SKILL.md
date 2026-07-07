@@ -103,6 +103,18 @@ Extract from these sources:
 - Relationship context (role, company, how you know each other)
 - Previous meeting outcomes vs. preparations (what was expected vs. what actually happened)
 
+### Step 2.4: Triage Scan (CR-022)
+
+If the vault has a registered **triage doc** (an `_inbox/` working document with `type: working_doc` + tag `do-not-process` -- see `docs/schemas/inbox.md`, CR-022 section), scan it for open items belonging to this meeting's contact/participants:
+
+1. **Match bracket tags:** open (`[ ]`) bullets whose bracket-tag second segment resolves to the contact via standard name resolution -- `[Möte · X]`, `[Uppföljning · X]`, `[E-post · X]`, `[Samtal · X]` and similar.
+2. **Match body mentions:** open bullets in the UPPFÖLJNINGAR section that name the contact without a tag.
+3. **Pull matched items into the prep** -- `[Möte · X]` items become agenda/suggested-topics candidates; `[Uppföljning · X]`/`[E-post · X]` items go under open actions (yours). Keep the bullet wording; note the source (`från triage`).
+4. **Stamp each pulled bullet in the triage doc** with a one-line suffix: `→ i prep YYMMDD`. This is the ONLY write this skill may make to the triage doc -- never reorder, reword, re-bucket, or check off items. The human closes triage items, not the prep.
+5. **No triage doc registered, or no matches:** skip silently.
+
+This closes the loop the triage doc creates: meeting items collect there between meetings, and the prep is where they surface -- previously a by-hand collection step.
+
 ### Step 2.5: Cross-Context Scan -- mandatory with explained relevance (CR-005)
 
 After gathering context from the contact's own folder, scan the vault for **lateral mentions** relevant to this meeting. This step is **mandatory** when the vault has 3+ contact folders -- the prior optional treatment caused the skill to silently skip cross-references in most prep files.
@@ -323,6 +335,8 @@ English:
 - `260219-preparation-meeting-erik-sandberg.md`
 
 Use lowercase with hyphens. Include participants and optionally the main topic if there is a clear focus.
+
+**Slug contract (CR-021):** keep å/ä/ö in every slug token, not only names -- `möte` not `mote`, `utlösen` not `utlosen`, never digit-substitutions like `m0te`, never mixed policy within one filename. Run the Swedish driftword check against the slug before saving. See ops-base General Naming Rules.
 
 ---
 

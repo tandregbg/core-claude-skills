@@ -118,6 +118,8 @@ If owner or deadline is unknown, write `?` rather than omitting the column. The 
 
 The skill picks a variant by estimating meeting duration from transcript metadata (timestamps, length, participant count). Default to **Standard**. Override with `/transcript --concise` or `/transcript --extended`.
 
+**Template-contract check (CR-018):** as the last pre-save step (after Swedish-character validation), verify the summary against the matching shape contract from `workflows.meeting_templates` (else the `default` CR-006 contract): H2 heading sequence, action-table header row, and empty-Beslut marker. `warn` mode (default) saves + reports the diff + logs an `edge_case`; `strict` asks first. See ops-base "Template Contracts (CR-018)" for the registry format and rationale.
+
 ### Content Rules
 - Identify and create headings for all distinct subject areas
 - Exclude personal reflections, sensitive information, private discussions
@@ -130,9 +132,10 @@ The skill picks a variant by estimating meeting duration from transcript metadat
 **Never trust transcript spellings.** Transcription services often misspell names (e.g., "Andre" instead of "André", "Asa" instead of "Åsa"). Always resolve names before writing the summary:
 
 1. Check the filename for correct spelling
-2. Check `_contacts/*/_meta.yaml` for `display_name`
-3. Check org config `team[]` for canonical names
-4. Use the resolved canonical name throughout the summary
+2. Check org config `people[]` roster for `canonical` + `aliases` (CR-017 -- covers non-contact persons: colleagues-of-counterparts, remote team members, recurring third parties)
+3. Check `_contacts/*/_meta.yaml` for `display_name` and `aliases`
+4. Check org config `team[]` for canonical names
+5. Use the resolved canonical name throughout the summary
 
 This applies to ALL occurrences of the name -- not just filenames, but every mention in the summary content.
 
@@ -161,6 +164,7 @@ Name Resolution above corrects the *spelling* of names it can **match**. It does
 **Why this matters more than it looks (failure-mode principle).** The dangerous ASR errors are not the obvious garble -- those you catch on sight. They are the *plausible* substitutions that read cleanly and match nothing. A confident wrong name is worse than an honest `Name?`: it propagates downstream into every summary, extraction and deliverable built on this transcript. Spend scrutiny on proper nouns and semantic swaps, not on obvious noise.
 
 **Build the known-entity set** from the sources the skill already uses:
+- org config `people[]` roster -- `canonical` + `aliases` (CR-017)
 - org config `team[]` -- `name` + `aliases`
 - `_contacts/*/_meta.yaml` -- `display_name`, `aliases`, `company`
 - org config `terminology[].term`
@@ -176,6 +180,24 @@ Name Resolution above corrects the *spelling* of names it can **match**. It does
 **Capture the gap.** When you flag one or more unverified proper nouns, log it as an `edge_case` in Step 4.5. If the user later corrects a name, log that as a `correction` (Step 4.5).
 
 Default-on and additive: when every proper noun resolves against the known set, this section is a no-op.
+
+### Committed-spelling consistency (critical, CR-017)
+
+CR-016 verifies names against the *configured* known-entity set. It has no memory of what this pipeline **previously committed** -- so an ASR variant of an already-established name ("Robi" for a person the folder has called "Ravi" for months) sails through as a plausible new name, and the corpus ends up spelling one person three ways across consecutive documents of the same meeting series. A reader can see the inconsistency instantly; per-file processing cannot. This check adds the missing folder memory.
+
+**Before saving the summary:**
+
+1. **Extract person-like tokens** from the draft (names in the action table, participant list, and body).
+2. **Scan folder precedent:** the target folder's ~10 most recent `YYMMDD-*.md` files plus its `CHANGELOG.md`, collecting previously committed person names.
+3. **Near-miss detection:** for each draft name not already resolved via the known-entity set, compare against the precedent names (case-insensitive; edit distance ≤2 on tokens ≥4 chars; also catch initial-letter swaps like J/Y common in ASR).
+4. **On a near-miss hit:**
+   - If the precedent spelling resolves via the `people[]` roster / known-entity set → **use the established spelling**, silently.
+   - If neither form is in any roster → do NOT silently introduce the new variant. Flag both forms in the `⚠ Namn att verifiera` note: `"Robi" -- tidigare skrivet "Ravi" (260630) -- samma person?` and use the *earlier* spelling in the body (precedent wins until the user says otherwise).
+5. **Domain-term anomaly check (same mechanism, not just names):** when a token is a proper noun that is *contextually anomalous* (e.g. a geographic name committed where the series' precedent tables use a metrics term like *churn*), prefer the folder's precedent term and flag the substitution. This class is an ASR mishearing that lands on a real word -- invisible to spellcheck and entity matching alike, and the most expensive to catch late because it propagates into summaries, action tables, and CHANGELOGs looking perfectly plausible.
+
+**Capture the gap:** log an `edge_case` when a near-miss is flagged, a `correction` when the user resolves one. Recurring flags for the same name are the signal to add it to the `people[]` roster -- that is the durable fix, and once added this section goes quiet for that name.
+
+**No-op conditions:** new folder with no precedent files; every name resolves via the known-entity set on first pass.
 
 ### Metadata Footer
 
@@ -195,6 +217,8 @@ Example: `250721-samtal-Alex-Bob-strategisk-genomgang.md`
 3. Fallback: title-case the name from transcript
 
 Use the resolved canonical name (with correct Swedish characters) in the filename. For example, if the transcript says "dave" but `_contacts/david-ekberg/_meta.yaml` has `display_name: "David Ekberg"`, the filename should use `David-Ekberg`.
+
+**Slug contract (CR-021):** the filename follows the same Swedish-character rule as the content -- keep å/ä/ö in every slug token (`möte`, not `mote`/`m0te`; `utlösen`, not `utlosen`), run the driftword check against the slug before saving, always use the `YYMMDD-` prefix, and always include the role keyword (`samtal`/`förberedelse`/... ) so the file's role is machine-readable. See ops-base General Naming Rules.
 
 If the project has a CLAUDE.md that defines specific filename patterns (MEETING FILENAME FORMAT section), follow those conventions instead. For example, management 1-on-1s, weekly meetings, board meetings, and marketing meetings may each have their own naming pattern.
 
@@ -466,7 +490,7 @@ After creating the summary and updating the CHANGELOG, scan the summary for dura
 | `learning` | What worked/didn't | "Two-week sprints too long -- switch to weekly" |
 | `opportunity` | Ideas not yet actioned | "Could build SaaS from internal tool" |
 | `pattern` | Recurring themes | "Budget discussion deferred three meetings in a row" |
-| `quote` | Memorable verbatim quote | "Ska du lyckas i affar sa maste du gneta. I varenda liten del av businessen." |
+| `quote` | Memorable verbatim quote | "Ska du lyckas i affär så måste du gneta. I varenda liten del av businessen." |
 
 ### Threshold
 
@@ -479,20 +503,20 @@ Only extract insights that are:
 
 If fewer than 1 insight meets the threshold, skip this step silently. No output, no mention.
 
-### Privacy and language rules for _insights.yaml
+### Reusability and language rules for _insights.yaml
 
-**Privacy:** NEVER include personal names or company names in `summary`, `rationale`, or `tags` fields. The `context` field and `source.file` already provide the connection to who/what. Write insights as generic, reusable knowledge that reads well in the visualisation dashboard without exposing individuals or organizations.
+**Reusability (CR-020 -- replaces the former privacy rule):** Names are **allowed** in insight entries. The vault is private, and `quote` entries need attribution by construction. (The old rule -- "never include personal or company names in `summary`, `rationale`, or `tags`" -- was retired in the 2026-04-07 audit and formally removed by CR-020.) What remains is a *reusability preference*: when an insight generalizes beyond the person who sparked it, prefer name-free phrasing in `summary` and `tags` so the entry reads well in cross-folder views -- the `context` field and `source.file` already carry the who/what. Names in `rationale` are always fine (that is where quote attribution lives). Classification-aware rendering is the visualisation app's job (CR-009), not the writer's.
 
-Bad example:
-```yaml
-summary: "Alice switched from hourly billing to t-shirt-sized estimates at Acme Corp"
-tags: [Acme, BobCo, some-tool-name]
-```
-
-Good example:
+Generalizes -- prefer name-free:
 ```yaml
 summary: "Switched from hourly billing to t-shirt-sized estimates to handle AI-driven efficiency gains"
 tags: [pricing, billing, t-shirt-sizing, business-model]
+```
+
+Person-specific -- names are fine:
+```yaml
+summary: "Prefers supporting plans over driving them"
+rationale: "Tim, reflecting on his role in the partner discussion"
 ```
 
 **Swedish characters:** When writing Swedish content in `_insights.yaml`, ALL Swedish words MUST use correct å, ä, ö characters. YAML files are equally prone to missing Swedish characters as markdown files. Verify before writing: "prissättning" not "prissattning", "övergång" not "overgang", "förändring" not "forandring", etc.
@@ -536,6 +560,17 @@ next_id: 2
 ```
 
 **When `/transcript` writes new insights:** always emit them as `confidence: hypothesis` with `confirmation_count: 1`. Promotion to `rule` happens later via `/insights compile`. Do not promote inline — Step 3.5 only extracts; lifecycle transitions are batched.
+
+### Write-time vocabulary guard (CR-020)
+
+Before writing any entry to `_insights.yaml`, verify:
+
+- `type` is one of: `decision | preference | learning | opportunity | pattern | quote | edge_case | correction | skill_pattern`. Never invent variants (`decision-pattern`, `principle`, `outcome`, `design` are known past drift -- map to the nearest canonical type instead).
+- `confidence` (when present) is `hypothesis` or `rule` -- never `high`/`medium`/`confirmed`/`supported`. A re-confirmed insight keeps `confidence: hypothesis` and bumps `confirmation_count`; it does not rename its confidence.
+- `date` is `YYMMDD` (never ISO `YYYY-MM-DD`), `id` is an integer, and `next_id` equals `max(id)+1` after the write.
+- `tags` has at most 5 entries.
+
+Fix silently when unambiguous (e.g. ISO date → YYMMDD); ask the user when not. This guard applies wherever insights are written: `/transcript` Step 3.5/4.5, `/ops` Step 5.5, and all `/insights` subcommands.
 
 ### Output
 
@@ -583,6 +618,7 @@ Add to task tracker? [yes] no select
 - `yes` -- Import all action items
 - `no` -- Skip task import
 - `select` -- Choose which items to import
+- `triage` -- (CR-022) append the items to the vault's registered triage doc instead, as open bullets under its INKORG section with a source link to the transcript. Offer this alternative when the items are personal/ad-hoc (no natural org/project folder) and a triage doc is registered (`_inbox/` working document, `type: working_doc` + tag `do-not-process` -- see `docs/schemas/inbox.md`). One item = one home: triage doc OR `_tasks.yaml`, never both.
 
 ### Import Process
 
@@ -645,7 +681,7 @@ If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml`
 
 | Type | When | Example |
 |------|------|---------|
-| `edge_case` | Ambiguous input required guessing or user disambiguation | Name matched multiple contacts, language detection uncertain, unclear target folder, transcript lacks speaker labels (owners inferred -- CR-015), unresolved proper noun flagged for verification (CR-016) |
+| `edge_case` | Ambiguous input required guessing or user disambiguation | Name matched multiple contacts, language detection uncertain, unclear target folder, transcript lacks speaker labels (owners inferred -- CR-015), unresolved proper noun flagged for verification (CR-016), near-miss variant of a previously committed name or domain term (CR-017) |
 | `correction` | User corrected or overrode skill output | Changed save location, corrected participant name, modified summary content |
 
 **When NOT to capture:** Normal, successful execution. Most invocations produce zero feedback entries. Only log when something unexpected happened or the user intervened.
@@ -665,7 +701,7 @@ If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml`
   status: active
 ```
 
-Follow the same `_insights.yaml` format, dedup rules, and privacy rules as Step 3.5 knowledge extraction.
+Follow the same `_insights.yaml` format, dedup rules, vocabulary guard, and reusability rules as Step 3.5 knowledge extraction.
 
 ---
 

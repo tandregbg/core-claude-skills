@@ -2,7 +2,7 @@
 name: inbox
 description: Universal entry point for unstructured content. Classifies, stores in _inbox/, and hands off to the appropriate downstream skill.
 user-invocable: true
-argument-hint: [content, file path, or subcommand: status|process [id|all]|help]
+argument-hint: [content, file path, or subcommand: status|process [id|all]|triage [refresh|status]|help]
 ---
 
 # Inbox Skill
@@ -130,7 +130,7 @@ Process one item by ID, or all unprocessed items (status `new` or `classified`) 
 
 **All items (`/inbox process all`):**
 
-1. Glob `_inbox/*.md`, read each frontmatter, filter to `status: pending` or `processing`
+1. Glob `_inbox/*.md`, read each frontmatter, filter to `status: pending` or `processing`. **Skip working documents** (registered `type: working_doc` / tag `do-not-process` per the [schema](../../docs/schemas/inbox.md) CR-022 section) -- they are surfaces, not captures
 2. If no items to process, report "Inbox is empty" and stop
 3. Read and classify all items, then present a single confirmation table:
    ```
@@ -154,6 +154,44 @@ Process one item by ID, or all unprocessed items (status `new` or `classified`) 
 - Confirming the classification table before execution begins
 - Any validation questions the downstream skill itself needs (e.g., `/transcript` may ask about participants, `/ops` may ask about org config) -- pass these through to the user as they come up
 
+### `/inbox triage [refresh|status]` -- Triage working-surface upkeep (CR-022)
+
+Operates on the vault's registered **triage doc** (see the
+[schema](../../docs/schemas/inbox.md) CR-022 section: an `_inbox/` working
+document with `type: working_doc`, `status: keep`, tag `do-not-process`).
+If no triage doc is registered, say so and stop -- this subcommand never
+creates one uninvited (offer to register an existing file if the user asks).
+
+**Design principle (blocking): mechanical upkeep only.** Never reorder,
+reword, re-bucket, or classify items. Sorting INKORG is the human's
+thinking step, not the skill's.
+
+**`refresh`** (default):
+
+1. **Week anchor:** update the `Veckoankare:` line's date and week number to
+   today. Preserve the standing-context text after them verbatim -- only the
+   date/week tokens change. If bucket headings carry week numbers
+   (e.g. `DENNA VECKA (v.26)`), update those tokens too.
+2. **Archive done items:** move every `[x]` bullet (with its sub-bullets) to
+   `_inbox/.archive/YYMMDD-triage-klart.md` -- create with a `# KLART-arkiv`
+   header if missing, append under a `## YYMMDD` heading, keep the bullet
+   text verbatim plus a `(arkiverad YYMMDD)` suffix.
+3. **Report INKORG age:** list INKORG items that have sat unsorted >7 days
+   (report only -- sorting is the human's job).
+4. **Flag plaintext credentials:** scan for password/API-key-looking lines
+   (per the schema's no-secrets rule) and report them with the
+   recommendation to replace with a password-manager reference. Never
+   auto-remove. **Skip lines ending in `<!-- secret-ok -->`** — that marker
+   is the owner's recorded decision to keep the credential inline; offer to
+   stamp it when the user says a flagged line should stay.
+5. **Report:** one summary line per action class (anchor updated, N items
+   archived, M INKORG items aging, K credential flags). Show the diff of
+   what moved.
+
+**`status`:** read-only -- items per section, INKORG count + oldest item
+age, `[x]` items awaiting archive, week-anchor date vs today, link to the
+KLART archive.
+
 ### `/inbox help` -- Usage Guide
 
 Print this usage guide:
@@ -162,6 +200,7 @@ Print this usage guide:
 /inbox [content]        Capture, classify, and route content
 /inbox status           Show inbox counts by status
 /inbox process [id|all] Process one or all stored items
+/inbox triage [refresh|status]  Triage working-surface upkeep (CR-022)
 /inbox help             This help text
 
 Content types detected: voice_memo, email, quick_note, raw_text, clipboard

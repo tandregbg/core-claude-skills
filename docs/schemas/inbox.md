@@ -217,6 +217,71 @@ items but must not advance status on their own; advancement happens through
 
 ---
 
+## Working documents & the triage surface (CR-022)
+
+Not everything in `_inbox/` is a capture waiting to be processed. A
+**working document** is a living file that *stays* in `_inbox/` as a
+human working surface and is exempt from the lifecycle above.
+
+**Registration:** `_inbox.yaml` entry with `type: working_doc`,
+`status: keep`, and tag `do-not-process`. Frontmatter is optional for
+working docs (they are never auto-processed, so there is no state to
+carry). `/inbox process all` and every downstream skill MUST skip them.
+
+**The triage doc** is the canonical working document: a rolling daily
+sorting surface between capture and the systems of record. At most one
+triage doc per vault.
+
+**Design principle: skills adapt to the triage doc; the triage doc never
+adapts to skills.** It is markdown, human-ordered, and paste-fast — that
+low ceremony is *why* it stays alive where structured files rot. Skills
+read around it; the only writes ever allowed are (a) the explicitly
+invoked `/inbox triage refresh` mechanical upkeep and (b) a one-line
+`→ i prep YYMMDD` stamp when a preparation pulls an item. Never reorder,
+never reword, never re-bucket.
+
+**Section vocabulary** (matched case-insensitively; Swedish canonical /
+English equivalent; extra sections are allowed and ignored):
+
+| Section | English | Meaning |
+|---|---|---|
+| `INKORG` | INBOX | Unsorted capture — paste here, human sorts later |
+| `PRIO` | NOW | Do now / tomorrow |
+| `DENNA VECKA` | THIS WEEK | This week's buckets |
+| `EJ DENNA VECKA / SENARE` | LATER | Deferred |
+| `UPPFÖLJNINGAR` | FOLLOW-UPS | Sent material / people to check on |
+| `BESLUT ATT FATTA` | DECISIONS | Reasoning-in-progress, not tasks |
+
+**Item shape:** checkbox bullets with bracket tags `[Område · Undernivå]`
+(e.g. `[Möte · Bob]`, `[E-post · Carol]`, `[Uppföljning · David]`). Tags
+are free-form; skills match the second segment against contact/team names
+via standard name resolution.
+
+**Week anchor:** a `Veckoankare:` line near the top (today + week number +
+standing context). `/inbox triage refresh` keeps it current.
+
+**Done-archive:** completed (`[x]`) items move to
+`_inbox/.archive/YYMMDD-triage-klart.md` (append-only, never delete).
+
+**Graduation rule (one item = one home):** when a triage bullet becomes
+real work in a folder — a task in a `_tasks.yaml`, an outbox item, prep
+content — it MOVES there with a link stamp left behind. It never forks
+into two live copies. Triage is the personal system of record; per-folder
+`_tasks.yaml` is the org/project system of record; this rule is the bridge.
+
+**No-secrets rule:** the triage doc should not carry credentials (the
+vault syncs through iCloud). Quick capture that includes a password gets a
+password-manager reference stub instead; skills touching the doc flag
+plaintext-credential lines rather than preserving them silently.
+
+**Deliberate exception (`<!-- secret-ok -->`):** the owner may decide a
+credential stays inline. A line ending in `<!-- secret-ok -->` is a
+recorded decision — `/inbox triage refresh` and `/ops sweep` skip it
+instead of re-flagging on every run (mirrors the `<!-- no-normalize -->`
+convention in `/ops normalize`). Flag once, respect the answer.
+
+---
+
 ## `_inbox.yaml` -- derived index
 
 `_inbox.yaml` is a cache built from the frontmatter of all `_inbox/*.md`

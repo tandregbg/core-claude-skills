@@ -9,6 +9,60 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.26.1] - 2026-07-07
+
+### Changed
+- **`<!-- secret-ok -->` opt-out for the triage no-secrets rule (CR-022 amendment).** The owner may deliberately keep a credential inline in the triage doc; a line ending in `<!-- secret-ok -->` records that decision, and `/inbox triage refresh` + `/ops sweep` skip it instead of re-flagging every run (mirrors the `<!-- no-normalize -->` convention). Flag once, respect the answer. Surfaced immediately by live usage: the rule as shipped would have nagged on credentials the owner had explicitly chosen to keep.
+
+## [1.26.0] - 2026-07-07
+
+### Added
+- **Triage working-surface contract (CR-022).** `docs/schemas/inbox.md` gains a "Working documents & the triage surface" section: a working doc lives in `_inbox/`, registered with `type: working_doc` / `status: keep` / tag `do-not-process`, exempt from the capture lifecycle; the **triage doc** (at most one per vault) is the canonical case — a rolling human sorting surface with a defined section vocabulary (INKORG/INBOX, PRIO/NOW, DENNA VECKA/THIS WEEK, SENARE/LATER, UPPFÖLJNINGAR/FOLLOW-UPS, BESLUT/DECISIONS), bracket-tagged checkbox bullets (`[Möte · X]`), a week anchor, a KLART done-archive, a graduation rule (one item = one home: a bullet that becomes real folder work MOVES with a link, never forks), and a no-secrets rule. Design principle stated in every touched skill: **skills adapt to the triage doc; the triage doc never adapts to skills** — it stays markdown, human-ordered, never auto-processed. Motivated by live usage where a hand-rolled triage file organically became the personal system of record while the structured root task file rotted.
+- **`/inbox triage [refresh|status]` (CR-022).** Mechanical upkeep only, explicitly invoked: `refresh` updates the week-anchor date/week tokens (standing context preserved verbatim), moves `[x]` bullets to `_inbox/.archive/YYMMDD-triage-klart.md`, reports INKORG items unsorted >7 days, and flags plaintext-credential lines (report, never auto-remove). Never reorders, rewords, or re-buckets — sorting is the human's thinking step. `/inbox process all` now explicitly skips working documents.
+- **Preps read the triage doc (CR-022).** `/preparation` (new Step 2.4) and `/ops prepare` (Step P1) scan the triage doc for open bullets whose bracket-tag second segment resolves to the meeting's contact/participants, pull them into agenda/open-actions, and stamp each pulled bullet `→ i prep YYMMDD` — the only write allowed, one-line suffix. Closes the previously by-hand collection loop.
+- **Triage as task-import target (CR-022).** `/transcript` Step 4 and `/ops` Step 9 task import offer "append to triage INKORG (with source link)" for personal/ad-hoc action items with no natural org/project folder — matching observed behavior instead of feeding per-folder ledgers that go stale. One item = one home.
+- **`/daily-dashboard` Triage section (CR-022, read-only).** Links the doc, inlines open PRIO items, shows DENNA VECKA bucket counts and INKORG count. Same read-only principle as Rolling Plans; applies in both generic and org mode. Omitted entirely when no triage doc is registered.
+- **`/ops sweep` seventh check: triage hygiene (CR-022).** INKORG unsorted >7 days, unarchived `[x]` items, stale week anchor, plaintext-credential lines; offered fix is `/inbox triage refresh`.
+
+## [1.25.0] - 2026-07-07
+
+### Added
+- **Filename slug policy (CR-021).** ops-base General Naming Rules is now an explicit slug contract: keep å/ä/ö in filenames (never transliterate, never digit-substitute, never mix policies within one filename), `YYMMDD-` prefix always (ISO only via explicit folder CLAUDE.md), mandatory role keyword (`samtal`/`förberedelse`/...) so file role stays machine-readable, names Capitalized / other tokens lowercase. `/transcript`, `/preparation`, and `/ops` now run the CR-007 driftword check against the *slug* before saving -- filenames were the one surface CR-007 never covered. New `/ops normalize --filenames` opt-in backfill renames drifted files and rewrites inbound references (CHANGELOG, README, supersede stamps, wikilinks); dry-run first. Existing files are never renamed implicitly.
+
+## [1.24.0] - 2026-07-07
+
+### Added
+- **`/ops sweep` -- closure/staleness audit (CR-019).** Skills append reliably but never reconcile; audits keep refinding the same closure-debt classes. New read-only subcommand detects all six in one pass: (1) index lag (README vs newest file/CHANGELOG head), (2) ledger rot (stale `_tasks.yaml` with open tasks; `_insights.yaml` never/stalely compiled via the CR-020 `last_compiled` stamp), (3) migration corpses (live-looking artifacts superseded by a move), (4) outbox aging (sent-but-unarchived, manifest-less, >30d pending), (5) sync duplicates (`* 2.*` with base present -- report only, never auto-delete), (6) unrouted residue (`unsorted/`, stale `.ephemeral/`, root paste files). Report-only; every fix is offered, none applied automatically. Suitable for a weekly scheduled run delivering into `_inbox/` triage.
+- **Retirement Convention in ops-base (CR-019).** Any relocation of a living artifact MUST leave a tombstone at the old path (`> **Flyttad (YYMMDD):** se [new-path]`), log the move in CHANGELOG, and update stale pointers the skill created. Prevents the migration-corpse class at move time; `/ops sweep` catches violations after the fact.
+- **`/outbox archive --all-sent` (CR-019).** Batch mode over the single-folder archive flow: collect all `skickad` items, confirm the selection up front, run the standard steps per folder (per-folder judgement calls still asked individually), one summary report. This is the fix `/ops sweep` offers for outbox aging.
+
+## [1.23.0] - 2026-07-07
+
+### Added
+- **Template contracts + shape lint (CR-018).** Recurring meeting series erode format by *silent template forking* -- one deviating file re-seeds the whole series, and every later file is internally consistent, which is why per-file review never catches it. New `workflows.meeting_templates` registry (org or folder config) declares per-series shape contracts (`match` glob, `headings`, `action_table`); a `default` contract (CR-006 canonical order + strings table headers) always applies. `/ops` and `/transcript` verify three things as the last pre-save step: H2 heading sequence, action-table header row, and the empty-Beslut marker (previously mandated but never checked). `mode: warn` (default) saves + reports the diff + logs an `edge_case`; `strict` asks first. Deliberate format changes are made by editing the contract -- an accidental fork becomes an explicit, reviewable decision.
+- **`/ops lint <folder>` (CR-018).** Read-only contract check across existing files, grouped by series and first-deviating date ("this series forked at YYMMDD"), with the two resolutions spelled out: amend the contract (accept) or fix the files.
+
+## [1.22.0] - 2026-07-07
+
+### Added
+- **People roster (CR-017).** New optional `people:` block in ops-config (org and folder-local): `canonical` + `aliases` + `role` for recurring persons who are neither in `team[]` nor have a `_contacts/` folder -- exactly the long tail ASR garbles most. Name resolution in `/transcript` and `/ops` now checks the roster first; the CR-016 known-entity set includes it.
+- **Committed-spelling consistency check (CR-017).** CR-016 verifies names against *configured* entities but has no memory of what the pipeline previously committed -- so an ASR variant of an established name sails through as a plausible new name, and one person ends up spelled three ways across consecutive documents of the same series. New pre-save check in `/transcript` (and `/ops`, including before CHANGELOG/README writes -- changelogs are how misspellings propagate): scan the target folder's ~10 most recent files + CHANGELOG for near-miss variants (edit distance ≤2, initial-letter swaps) of draft names; use the established spelling when it resolves via a roster, flag both forms (`"X" -- tidigare skrivet "Y" (YYMMDD) -- samma person?`) when it doesn't, never silently introduce a third variant. The same mechanism covers *contextually anomalous domain terms* (a real-word ASR mishearing invisible to both spellcheck and entity matching). Recurring flags for one name = the signal to add it to the roster. Logs `edge_case` on flag, `correction` on user fix.
+- **`/ops normalize --names` (CR-017).** Opt-in backfill applying the roster (aliases → canonical) across a folder's files and CHANGELOG, each substitution confirmed.
+
+## [1.21.0] - 2026-07-07
+
+### Changed
+- **Insights privacy rule formally retired (CR-020).** The 2026-04-07 audit retired the "never include personal/company names in `summary`/`rationale`/`tags`" rule, but the skill text still mandated it -- leaving it neither enforced nor removed while ~10% of a real corpus "violated" it. The rule is now replaced everywhere (`/transcript` Step 3.5, `/insights`, `/ops` Step 5.5) by a *reusability preference*: names allowed; prefer name-free `summary`/`tags` when the insight generalizes; names in `rationale` always fine (quote attribution lives there by design); classification-aware rendering stays with the visualisation app (CR-009).
+- **`quote` formally canonized as an insight type (CR-020)** in the `/insights` quick-reference and lifecycle rules (it was already in `/transcript` Step 3.5; it is exempt from rule-promotion). `/insights reprocess` now creates new files as `version: 2`, not `version: 1`.
+
+### Added
+- **Write-time vocabulary guard (CR-020).** Before any `_insights.yaml` write (all writers): `type` must be canonical (known past drift -- `decision-pattern`, `principle`, `outcome`, `design` -- maps to nearest canonical), `confidence` limited to `hypothesis|rule` (a re-confirmation bumps `confirmation_count`, it does not rename confidence to `high`/`confirmed`), dates YYMMDD never ISO, integer ids with `next_id` maintained, max 5 tags. Fix silently when unambiguous, ask when not.
+- **`/insights normalize [path] [--apply]` (CR-020).** One-shot schema migration for drifted files (dry-run by default): ISO dates → YYMMDD, string ids → integers (old id kept as `legacy_id`), missing/non-canonical types inferred/mapped (tagged `type-inferred` when ambiguous), non-canonical confidence remapped, legacy field shapes (`added:`, string `source:`) restructured, `superseded_by`-vs-`status` inconsistencies fixed, missing `version`/`next_id`/`last_updated` added, tags capped at 5. Structure and vocabulary only -- entry text stays untouched (content remediation remains `/ops normalize`).
+- **Compile freshness stamp (CR-020).** `/insights compile` now writes top-level `last_compiled: YYMMDD` into every file it scans (additive; older readers ignore it), making "compile never ran / is stale" detectable by `/insights status` and `/ops sweep`. Insights corpora are write-heavy by design; the stamp keeps the synthesis half of the loop honest.
+
+### Rationale
+- All five 2026-07-07 CRs (017-021) come from a comprehensive private audit of ~4 months of heavy skill usage across a production vault (~250 skill-produced files/month). Recurring result: capture-side conventions (CR-006/007/015/016) held at near-100% in new output, while the failure modes moved to name canonicalisation across documents, silent template forking in recurring series, schema drift from pre-CR writers, and closure loops that never ran. CR specs with vault-specific evidence are tracked privately outside this repo (see docs/proposals/README.md).
+
 ## [1.20.1] - 2026-06-27
 
 ### Added

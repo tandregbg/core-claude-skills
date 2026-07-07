@@ -37,6 +37,13 @@ privacy_defaults:
 # Empty team - must be defined in org config
 team: []
 
+# CR-017: canonical-name roster for recurring non-contact persons
+# (colleagues-of-counterparts, remote team members). Entries:
+#   - canonical: "Name"
+#     aliases: [ASR-variant1, variant2]
+#     role: "optional disambiguation"
+people: []
+
 # No responsibility matrix by default
 responsibility_matrix: {}
 
@@ -74,6 +81,11 @@ issue_id_format: null
 workflows:
   update_files:
     - summary
+  # CR-018: per-meeting-type shape contracts. `default` (CR-006 canonical
+  # order + strings action-table headers) always applies; orgs add named
+  # contracts with `match` globs. mode: warn | strict
+  meeting_templates:
+    mode: warn
   action_propagation:
     enabled: false
   agenda_management:

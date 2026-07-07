@@ -143,6 +143,17 @@ Alias for `list`.
      - _contacts/johan-ekstrom/<samtal>.md (1 reference)
    ```
 
+### `archive --all-sent` (CR-019)
+
+**Trigger:** `/outbox archive --all-sent`
+
+Batch mode over the single-folder `archive` flow, so a backlog of sent items can be closed in one sitting instead of item by item ( `/ops sweep` offers this command when it finds sent-but-unarchived items).
+
+1. Run the `list` logic and collect every folder whose manifest `Status:` is `skickad ...`.
+2. Present the candidate list up front (folder, destination guess, proposed new name) and let the user confirm all / select / abort.
+3. For each confirmed folder, run the standard `archive <folder-name>` steps 1-9. Per-folder judgement calls (destination for multi-contact items, folder rename) are still asked individually -- batch mode batches the *selection*, not the decisions.
+4. Final report: one summary table (archived → destination), plus the items skipped and why (unchecked "Svar förväntas på", empty Utfall, missing manifest).
+
 ### `help`
 
 Print this skill's usage.

@@ -2,7 +2,7 @@
 name: insights
 description: Knowledge extraction manager and skill evolution engine. Backfills _insights.yaml from historical corpus, compiles execution feedback into patterns, and proposes SKILL.md improvements.
 user-invocable: true
-argument-hint: [reprocess|scan-claude-md|compile|propose|status|help]
+argument-hint: [reprocess|scan-claude-md|compile|normalize|propose|status|help]
 ---
 
 # Insights Skill -- Knowledge Extraction & Skill Evolution
@@ -133,7 +133,7 @@ If `enabled: false`, all subcommands exit immediately with a message.
 
 7. **Write/append to `_insights.yaml`** in the same folder as the CHANGELOG.md:
    - If file exists: append new entries, update `next_id` and `last_updated`
-   - If file does not exist: create with `version: 1`, `context` set from folder name or CHANGELOG context
+   - If file does not exist: create with `version: 2`, `context` set from folder name or CHANGELOG context
 
 **Progress output:**
 
@@ -367,6 +367,39 @@ Pass 3 (rule → hypothesis demotion):
       contradicted by 260507-summary.md (Bob asked to skip risk section for routine weeks)
 ```
 
+#### Compile freshness stamp (CR-020)
+
+After all three passes, write `last_compiled: YYMMDD` as a top-level field in every `_insights.yaml` the run scanned (additive; v1/v2 readers ignore it). This makes compile-staleness detectable: `/insights status` and `/ops sweep` flag when the newest entry in a file is >30 days newer than its `last_compiled` (or when the field is absent entirely -- i.e. compile has never run). Insights are write-heavy by design; the stamp is what keeps the synthesis half of the loop honest.
+
+---
+
+### `normalize` -- One-shot schema migration for drifted _insights.yaml files (CR-020)
+
+**Trigger:** `/insights normalize [path] [--dry-run]` (no path = whole vault; `--dry-run` is the DEFAULT — writing requires explicit `--apply`)
+
+Brings legacy and drifted `_insights.yaml` files up to the current schema. Complements `/ops normalize` (which fixes Swedish characters); this fixes structure and vocabulary.
+
+**What it fixes, per entry:**
+
+| Drift | Fix |
+|-------|-----|
+| ISO date `"2026-03-09"` | → `260309` (YYMMDD) |
+| String ids (`bp-017`, `board-003`) | → sequential integers preserving order; record old id as `legacy_id` |
+| Missing `type` | → infer from content; if ambiguous, set the most likely type and append `type-inferred` to tags for review |
+| Non-canonical types (`decision-pattern`, `principle`, `outcome`, `design`, ...) | → map to nearest canonical (`pattern`, `learning`, `learning`, `decision`) |
+| Non-canonical confidence (`high`, `confirmed`, `supported`) | → `hypothesis` + `confirmation_count: 2` (the writer evidently meant "confirmed once more") |
+| Non-canonical confidence (`medium`, `low`) | → `hypothesis` (count unchanged) |
+| Legacy fields (`added:` → `date`, string `source:` → `source.file`) | → rename/restructure |
+| `superseded_by` set but `status: active` | → `status: superseded` |
+| Missing top-level `version`/`next_id`/`last_updated` | → add (`version: 2`, `next_id: max(id)+1`, `last_updated` from newest entry) |
+| Tags > 5 | → truncate from the tail |
+
+**Process:**
+1. Scan target for `_insights.yaml` files (skip `.archive/`, `.transcripts/`, `clones/`)
+2. Report every proposed change grouped by file (dry-run output = a unified change list with counts per drift class)
+3. On `--apply`: write files atomically, add a one-line CHANGELOG entry in each affected folder (`- **YYMMDD: Normalize** _insights.yaml -- N schema fixes (CR-020)`)
+4. Never touch entry content (`summary`/`rationale` text) -- structure and vocabulary only; content remediation stays with `/ops normalize`
+
 ---
 
 ### `propose` -- Generate SKILL.md improvement proposals
@@ -486,6 +519,7 @@ Usage:
   /insights scan-claude-md               Extract from CLAUDE.md files
   /insights compile                      Compile execution feedback into patterns
   /insights compile since 260301         Compile only recent feedback
+  /insights normalize [path] [--apply]   Migrate drifted files to current schema (dry-run default)
   /insights propose                      Generate SKILL.md improvement proposals
   /insights propose apply [file|all]     Apply a proposal to SKILL.md
   /insights status                       Show insights + evolution statistics
@@ -533,6 +567,7 @@ This is a convenience copy. The authoritative definition is in `/transcript` Ste
 | `learning` | What worked/didn't | `/transcript`, `/ops`, `/insights reprocess` |
 | `opportunity` | Ideas not yet actioned | `/transcript`, `/ops`, `/insights reprocess` |
 | `pattern` | Recurring themes | `/transcript`, `/ops`, `/insights reprocess` |
+| `quote` | Memorable verbatim quote (exempt from promotion -- never becomes a rule) | `/transcript`, `/ops`, `/insights reprocess` |
 | `edge_case` | Skill hit ambiguous input | `/transcript` Step 4.5, `/ops` Step 9 |
 | `correction` | User corrected skill output | `/transcript` Step 4.5, `/ops` Step 9 |
 | `skill_pattern` | Compiled execution pattern | `/insights compile` |
@@ -543,27 +578,19 @@ This is a convenience copy. The authoritative definition is in `/transcript` Ste
 
 ---
 
-## Privacy and language rules for _insights.yaml
+## Reusability and language rules for _insights.yaml
 
-### Privacy
+### Reusability (CR-020 -- replaces the former privacy rule)
 
-NEVER include personal names or company names in `summary`, `rationale`, or `tags` fields. The `context` field and `source.file` already provide the connection to who/what. Write insights as generic, reusable knowledge that reads well in the visualisation dashboard without exposing individuals or organizations.
+Names are **allowed** in insight entries. The old rule ("never include personal or company names in `summary`, `rationale`, or `tags`") was retired in the 2026-04-07 audit and formally removed by CR-020 -- the vault is private, and `quote` entries need attribution by construction. What remains is a *reusability preference*: when an insight generalizes beyond the person who sparked it, prefer name-free phrasing in `summary` and `tags` so the entry reads well in cross-folder views -- `context` and `source.file` already carry the who/what. Names in `rationale` are always fine. See `/transcript` Step 3.5 for examples.
 
 #### Contact Classification (CR-009)
 
-Insights are extracted from all contacts regardless of their `classification` (family, personal, professional, confidential) — knowledge is valuable in all contexts. The `core-skills-visualisation` app is responsible for respecting classification when rendering. The privacy scrubbing rules above (no names in summary/rationale/tags) apply equally to all classification levels.
+Insights are extracted from all contacts regardless of their `classification` (family, personal, professional, confidential) — knowledge is valuable in all contexts. The `core-skills-visualisation` app is responsible for respecting classification when rendering.
 
-Bad example:
-```yaml
-summary: "Alice switched from hourly billing to t-shirt-sized estimates at Acme Corp"
-tags: [Acme, BobCo, some-tool-name]
-```
+### Vocabulary guard (CR-020)
 
-Good example:
-```yaml
-summary: "Switched from hourly billing to t-shirt-sized estimates to handle AI-driven efficiency gains"
-tags: [pricing, billing, t-shirt-sizing, business-model]
-```
+Before writing any entry, apply the write-time vocabulary guard defined in `/transcript` Step 3.5: canonical `type` values only, `confidence` limited to `hypothesis | rule`, `YYMMDD` dates, integer ids with `next_id` maintained, max 5 tags. This applies to every subcommand in this skill that writes entries.
 
 ### Swedish Character Enforcement (CR-007: pre-write validator)
 

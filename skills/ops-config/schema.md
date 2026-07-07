@@ -106,15 +106,40 @@ team:
     areas: [operations, india-team, development, infrastructure]
 ```
 
+### People Roster (CR-017)
+
+Optional. Canonical-name roster for recurring persons who are neither in `team[]` nor have a `_contacts/` folder -- colleagues-of-counterparts, remote team members, recurring third parties. This is exactly the long tail ASR garbles most, and the roster is what the CR-017 committed-spelling consistency check resolves against.
+
+```yaml
+people:
+  - canonical: string           # Required: the one true spelling
+    aliases: [string]           # Optional: known ASR variants and nicknames
+    role: string                # Optional: disambiguation context
+```
+
+Example:
+
+```yaml
+people:
+  - canonical: "Ravi"
+    aliases: [Robi, Ravee]
+    role: "engineer, remote team"
+  - canonical: "Priya"
+    aliases: [Prija]
+```
+
+Recurring `edge_case` flags for the same unresolved name are the signal to add it here. Folder-local `_ops.yaml` may extend the org roster (merged, folder wins on conflict).
+
 ### Name Resolution
 
 When matching participant names from transcripts:
 
-1. **Internal team**: Match against `team[].name` and `team[].aliases`
-2. **External contacts**: Match against `_contacts/*/_meta.yaml` (see [Contact Metadata Schema](contact-meta-schema.md))
-3. **Fallback**: Title-case folder name
+1. **People roster (CR-017)**: Match against `people[].canonical` and `people[].aliases`
+2. **Internal team**: Match against `team[].name` and `team[].aliases`
+3. **External contacts**: Match against `_contacts/*/_meta.yaml` (see [Contact Metadata Schema](contact-meta-schema.md))
+4. **Fallback**: Title-case folder name
 
-Matching is case-insensitive with Swedish character folding ("Andre" matches "André").
+Matching is case-insensitive with Swedish character folding ("Andre" matches "André"). Beyond configured names, the CR-017 consistency check also matches draft names against spellings previously committed in the target folder (recent files + CHANGELOG) -- precedent wins over a new unmatched variant.
 
 ---
 

@@ -1,8 +1,22 @@
 # core-skills
 
-**Version:** 1.20.1
+**Version:** 1.26.1
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.26.0 (2026-07-07)
+
+- **Triage working surface (CR-022).** A hand-rolled daily-triage file in `_inbox/` organically became the personal system of record — so the system now meets it where it is. New schema contract for `_inbox/` working documents (registered `type: working_doc`, never auto-processed) with a defined triage vocabulary (INKORG → PRIO → DENNA VECKA → SENARE → UPPFÖLJNINGAR → BESLUT), bracket-tagged bullets, KLART-archive, graduation rule and no-secrets rule. Four integrations, all respecting one principle — *skills adapt to the triage doc; the triage doc never adapts to skills*: preps (`/preparation`, `/ops prepare`) pull the contact's open triage bullets and stamp them; `/daily-dashboard` surfaces PRIO/DENNA VECKA read-only; task import (`/transcript`, `/ops`) offers triage-INKORG as a target for personal items; `/inbox triage refresh|status` does mechanical upkeep (week anchor, `[x]`→archive, aging report) without ever reordering or rewording; `/ops sweep` gains a triage-hygiene check. See CHANGELOG `[1.26.0]`.
+
+## What's new in v1.21.0–v1.25.0 (2026-07-07)
+
+Five CRs (017–021) landed together, all drawn from a comprehensive private audit of ~4 months of heavy production usage. Theme: capture-side conventions held; the failure modes moved downstream — and these releases move the guards with them.
+
+- **v1.21.0 — Insights schema reconciliation (CR-020).** The no-names privacy rule (retired in the 2026-04-07 audit but never removed from skill text) is formally replaced by a reusability preference. `quote` is canonized as an insight type. New write-time vocabulary guard (canonical types, `confidence` = `hypothesis|rule` only, YYMMDD dates, integer ids, ≤5 tags), new `/insights normalize` one-shot migration for drifted files (dry-run default), and a `last_compiled` freshness stamp so a never-run compile loop is finally detectable. See CHANGELOG `[1.21.0]`.
+- **v1.22.0 — People roster + committed-spelling consistency (CR-017).** New `people:` config block (canonical + aliases) for the non-contact long tail ASR garbles most, and a pre-save check that compares draft names against spellings previously committed in the target folder (recent files + CHANGELOG) — precedent wins; a near-miss variant is flagged, never silently introduced. Also covers contextually anomalous domain terms (real-word ASR mishearings). `/ops normalize --names` backfills. See CHANGELOG `[1.22.0]`.
+- **v1.23.0 — Template contracts + shape lint (CR-018).** Per-meeting-type shape contracts (`workflows.meeting_templates`) checked at save time (heading sequence, action-table header, empty-Beslut marker) in warn or strict mode; `/ops lint <folder>` finds where an existing series silently forked. Deliberate format changes are made by editing the contract, not by letting a file drift. See CHANGELOG `[1.23.0]`.
+- **v1.24.0 — Closure sweep (CR-019).** `/ops sweep` detects the six closure-debt classes (index lag, ledger rot, migration corpses, outbox aging, sync duplicates, unrouted residue) read-only and offers fixes; new ops-base Retirement Convention (tombstone + CHANGELOG + pointer update on every artifact relocation); `/outbox archive --all-sent` batch mode. See CHANGELOG `[1.24.0]`.
+- **v1.25.0 — Filename slug policy (CR-021).** The naming rules are now an explicit slug contract: keep å/ä/ö in filenames, `YYMMDD-` prefix always, mandatory role keyword; the CR-007 driftword check now runs against slugs too. `/ops normalize --filenames` backfills with reference rewriting. See CHANGELOG `[1.25.0]`.
 
 ## What's new in v1.20.1 (2026-06-27)
 
