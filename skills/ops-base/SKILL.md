@@ -219,6 +219,15 @@ Consult the project CLAUDE.md for archive policy. General rules:
 - Organize by year/month
 - Maintain audit trail
 
+### `.ephemeral/` contract (CR-024)
+
+`<vault>/.ephemeral/` is the one place exempt from never-delete: **disposable working material with no vault destiny** -- session scratch, repo snapshots, intermediate artifacts of one-off analyses. Rules:
+
+- Nothing in `.ephemeral/` is ever input to vault content, and no vault file may reference a path inside it.
+- `/ops sweep` (check 6) flags content older than 14 days; deletion is the expected outcome, not archiving.
+- If something in `.ephemeral/` turns out to have a vault destiny after all, it exits through `_inbox/.files/` (see `docs/schemas/inbox.md`, CR-024) like any other input file.
+- The routing rule at drop time: **vault destiny → `_inbox/.files/`; no destiny → `.ephemeral/`.** Made consciously, once, instead of by gravity.
+
 ---
 
 ## RETIREMENT CONVENTION (CR-019)

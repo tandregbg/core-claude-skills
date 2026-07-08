@@ -30,10 +30,14 @@ _inbox/
   YYMMDD-HHMMSS[-slug].md              # Active items (one per inbox entry)
   .audio/                              # Hidden subfolder for raw audio
     YYMMDD-HHMMSS[-slug].m4a           # Paired with same-basename .md
+  .files/                              # File drops: input files with a vault destiny (CR-024)
+    YYMMDD-HHMMSS[-slug].<ext>         # Paired with same-basename .md stub
   .archive/                            # Processed items (existing convention)
     YYMMDD-HHMMSS[-slug].md
     .audio/
       YYMMDD-HHMMSS[-slug].m4a         # Audio archived alongside transcript
+    .files/
+      YYMMDD-HHMMSS[-slug].<ext>       # Source files that should NOT accompany their output
 ```
 
 The leading dot on `.audio/` and `.archive/` keeps them out of Obsidian's
@@ -187,6 +191,42 @@ should:
 with archived transcript in `.archive/.audio/`). A future
 `/inbox prune --older-than 30d` subcommand can reclaim space. The schema
 itself takes no position on retention.
+
+---
+
+## File drops -- `.files/` (CR-024)
+
+`_inbox/.files/` generalizes the `.audio/` pattern to **any input file with
+a vault destiny** -- a PDF to summarize, a CSV that becomes project data, an
+export that will accompany content. `_inbox` is a door, not a residence:
+files pass through on their way to their real home.
+
+- **Drop:** put the file in `_inbox/.files/` (Finder, scp, mail save). Any
+  filename is accepted at drop time; registration renames to the standard
+  `YYMMDD-HHMMSS[-slug].<ext>` identifier.
+- **Register:** `/inbox` (on capture, or lazily on the next `status`/
+  `process` run) creates a stub `_inbox/<id>.md` pairing by basename --
+  same mechanics as audio stubs -- with `source.file_path`, a type-based
+  classification guess (PDF/document → summarize into a folder; CSV/xlsx →
+  project data; image/media → attachment), and `status: pending`.
+- **Process:** the downstream skill runs with the file as input. On
+  completion the source file **moves with its output**: into the target
+  folder's `.attachments/` (the placement `/ops` already defines) when it
+  should accompany the content, else to `_inbox/.archive/.files/`. The stub
+  records `output_file` and the file's final path.
+- **Size guard:** files above ~25 MB are flagged at registration; prefer
+  process-in-place + archiving a *reference stub* (path, hash, one-line
+  description) over dragging the blob through iCloud-synced folders.
+- **Orphans:** files in `.files/` with no stub are listed by
+  `/inbox status`, same as orphan audio.
+
+**Boundary (the routing rule):** if a file will produce or accompany vault
+content, it enters through `_inbox/.files/`. If it has **no vault destiny**
+(session scratch, repo snapshots, intermediate artifacts), it belongs in
+`.ephemeral/` at vault root and is allowed to die there (see the
+`.ephemeral/` contract in ops-base; `/ops sweep` ages it out after 14
+days). Should something in `.ephemeral/` turn out to matter after all, it
+exits through `_inbox/.files/` like anything else.
 
 ---
 

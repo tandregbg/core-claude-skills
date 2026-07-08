@@ -9,6 +9,17 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.29.0] - 2026-07-08
+
+### Added
+- **Structure conformance as `/ops sweep` check 9 (CR-025).** CR-010 declared the single-inbox/outbox rule and `/ops status` got a health step for it — which failed in practice for the two familiar reasons: no scheduled reader, and exact-name matching while reality drifts through *variants*. A live vault was found carrying an active stray org-level `_outbox/` (invisible to `/outbox list`, so the central pending list lied), a dead `.inbox` scaffold, and an `_outbox-archive` variant — two of the three invisible to the exact-match check. Sweep check 9 now scans with a **fuzzy matcher** (`_inbox`/`_outbox`/`.inbox`/`.outbox`/`*inbox*`/`*outbox*`/localized `inkorg*`/`utkorg*`, case-insensitive), flags everything except the vault-root pair including empty scaffolds, and offers fixes routed through the normal `/inbox`/`/outbox` flows (never auto-merged). New `workflows.sweep.structure_exemptions` config records deliberate exceptions once — exempt paths report as a one-line note, not a finding. The `/ops status` vault-health step is upgraded to the same matcher + exemption list.
+
+## [1.28.0] - 2026-07-08
+
+### Added
+- **File-drop lifecycle: `_inbox/.files/` (CR-024).** `_inbox` is a door, not a residence — and until now the door only accepted text and audio. `.files/` generalizes the `.audio/` pairing pattern to any **input file with a vault destiny** (a PDF to summarize, a CSV that becomes project data, media that will accompany content): drop the file, `/inbox` registers a paired stub with a type-based classification guess, processing runs the right skill with the file as input, and the source file **moves with its output** — to the target folder's `.attachments/` or to `_inbox/.archive/.files/`. Orphan file drops surface in `/inbox status` like orphan audio. Size guard: >~25 MB files are flagged and offered process-in-place + reference-stub archiving instead of moving blobs through synced folders. New `vault_conventions` entries for `_inbox/.files/` and `.ephemeral/`; `contract_version` stays 2.
+- **`.ephemeral/` contract (CR-024).** The counterpart boundary, now stated in ops-base: `.ephemeral/` is the one never-delete exception — disposable working material with **no vault destiny**, never input to vault content, never referenced from vault files, aged out by sweep check 6 after 14 days. The routing rule becomes a one-second conscious choice: *vault destiny → `_inbox/.files/`; no destiny → `.ephemeral/`.* Anything in `.ephemeral/` that turns out to matter exits through `_inbox/.files/` like any other input.
+
 ## [1.27.0] - 2026-07-08
 
 ### Added

@@ -89,10 +89,16 @@ workflows:
   # CR-023: /ops sweep check 8 — ecosystem contract alignment. Maintainer
   # machines only; when `command` is absent the check is skipped silently.
   # sweep runs the command read-only and parses [OK]/[DRIFT]/[SKIP] lines.
+  # CR-025: structure_exemptions — deliberate exceptions to the CR-010
+  # single-inbox/outbox rule; recorded once, respected by sweep check 9
+  # and the /ops status vault-health step.
   # Example:
   #   sweep:
   #     alignment_check:
   #       command: "bash ~/repos/core-skills/scripts/check-ecosystem-alignment.sh"
+  #     structure_exemptions:
+  #       - path: "org/.notes/private-area/_outbox-archive"
+  #         reason: "deliberate private archive, decided YYMMDD"
   action_propagation:
     enabled: false
   agenda_management:

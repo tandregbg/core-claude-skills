@@ -10,7 +10,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.27.0"
+core_skills_version: "1.29.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -143,6 +143,20 @@ vault_conventions:
       writers: ["trillian"]
       readers: ["trillian", "deep-thought", "user (manual)"]
       lifecycle: "kept indefinitely by default; user-configurable retention; archived to .archive/.audio/ alongside transcript"
+
+    - path: "_inbox/.files/"
+      purpose: "File drops: input files with a vault destiny, paired by basename with _inbox/<id>.md (CR-024)"
+      schema: "docs/schemas/inbox.md"
+      writers: ["user (manual drop)", "/inbox"]
+      readers: ["/inbox", "downstream skills", "marvin"]
+      lifecycle: "pass-through; on processing the file moves to the target folder's .attachments/ or to .archive/.files/"
+
+    - path: ".ephemeral/"
+      purpose: "Disposable working material with NO vault destiny (session scratch, snapshots, intermediates)"
+      schema: null  # unstructured by design
+      writers: ["any skill/session (scratch)"]
+      readers: ["the session that created it"]
+      lifecycle: "allowed to die; /ops sweep flags content >14 days; never referenced from vault content (CR-024)"
 
     - path: "_outbox/"
       purpose: "Delivery: PDFs and packages ready to send"

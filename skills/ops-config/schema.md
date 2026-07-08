@@ -318,6 +318,9 @@ workflows:
   sweep:
     alignment_check:
       command: string   # shell command producing [OK]/[DRIFT]/[SKIP] verdict lines
+    structure_exemptions:      # CR-025: deliberate exceptions to single-inbox/outbox
+      - path: string           # vault-relative directory path
+        reason: string         # why the exception exists (include decision date)
 ```
 
 When `alignment_check.command` is set, sweep check 8 runs it read-only and
@@ -326,6 +329,12 @@ reports each `[DRIFT]` component (expected vs actual version) and each
 maintainer tooling for the machine that owns a skill-ecosystem contract,
 not for consumer vaults. The command owns the component list and version
 rules; sweep is only the scheduled reader.
+
+`structure_exemptions` (CR-025) lists directories that are allowed to match
+the stray-inbox/outbox fuzzy pattern (sweep check 9 and the `/ops status`
+vault-health step). Exempt paths are reported as a one-line
+`(exempt: <path> -- <reason>)` note instead of a finding -- the decision is
+recorded once and respected, never re-litigated silently.
 
 ---
 

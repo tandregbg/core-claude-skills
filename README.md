@@ -1,8 +1,13 @@
 # core-skills
 
-**Version:** 1.27.0
+**Version:** 1.29.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.28.0–v1.29.0 (2026-07-08)
+
+- **v1.28.0 — File drops + the `.ephemeral` boundary (CR-024).** `_inbox/.files/` extends the inbox door to any input file with a vault destiny — drop a PDF/CSV/image, `/inbox` registers it (pairing-by-basename, like audio), processing runs the right skill and the source file moves with its output to the target's `.attachments/` or the archive. Its counterpart: `.ephemeral/` is now formally the place for disposable working material with *no* vault destiny — never referenced from vault content, allowed to die, swept after 14 days. The routing decision becomes conscious instead of gravitational. See CHANGELOG `[1.28.0]`.
+- **v1.29.0 — Structure conformance (CR-025).** The single-inbox/outbox rule gets a scheduled reader with a fuzzy matcher: `/ops sweep` check 9 (and the upgraded `/ops status` health step) finds stray and *variant* inbox/outbox folders anywhere in the tree — the class where a second outbox quietly makes the central pending list lie. Deliberate exceptions are recorded once in `workflows.sweep.structure_exemptions` and respected thereafter. See CHANGELOG `[1.29.0]`.
 
 ## What's new in v1.27.0 (2026-07-08)
 
@@ -89,7 +94,7 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `preparation` | Create meeting preparation documents with a 60-second walk-in agenda card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]) instead of topic noun phrases. Mandatory cross-reference scan with explained relevance. Frozen at meeting time -- no mid-meeting edits. | Yes (`/preparation`) |
 | `tasks` | Personal task tracker with cross-project correlation. Central task index, source linking, automatic carry-forward, privacy model. | Yes (`/tasks`) |
 | `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `propose`, `status`, `help`. | Yes (`/insights`) |
-| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
+| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024 — the source file moves with its output to the target's `.attachments/`) and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `backlog`, `help`. | Yes (`/analytics`) |
 | `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
@@ -154,13 +159,13 @@ core-skills (this repo)
 
 ---
 
-## How the system fits together (v1.27)
+## How the system fits together (v1.29)
 
 Four months of heavy production use taught us where document pipelines actually fail — and the v1.21–v1.26 wave restructured the suite around those findings. The suite now works as **four cooperating layers**:
 
 ### 1. Capture — get everything in, safely
 
-`/inbox` (universal capture), `/transcript` and `/ops` (meetings), `/preparation` (pre-meeting). This layer is guarded by a **name-safety chain** built up over three releases, because word-fidelity errors propagate into everything downstream:
+`/inbox` (universal capture — text, audio, and since v1.28 **file drops** with a pass-through lifecycle to their real home), `/transcript` and `/ops` (meetings), `/preparation` (pre-meeting). One door, one pending list: everything enters through `_inbox` and nothing lives there (`.ephemeral/` is the declared opposite — scratch with no vault destiny, allowed to die). This layer is guarded by a **name-safety chain** built up over three releases, because word-fidelity errors propagate into everything downstream:
 
 - **CR-015** — undiarized transcripts (no speaker labels) fail safe: inferred action-item owners are written `?`/`Name?`, never confidently guessed.
 - **CR-016** — proper nouns that match no known entity are flagged (`⚠ Namn att verifiera`) instead of committed; a plausible wrong name is worse than an honest question mark.
@@ -176,7 +181,7 @@ Every meeting silently accumulates durable insights (`_insights.yaml`); `/insigh
 
 ### 4. Closure — the loop most systems never build
 
-Append-only systems rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops sweep` (CR-019, extended by CR-023) detects all eight closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook); run it weekly and staleness stops accumulating.
+Append-only systems rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses, stray inbox/outbox folders quietly fork the pending list — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops sweep` (CR-019, extended by CR-023/CR-025) detects all nine closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook, merge-or-exempt for structural strays); run it weekly and staleness stops accumulating.
 
 ### The triage surface — where the human stays in charge
 
@@ -235,7 +240,7 @@ All domain skills inherit from `ops-base`:
 - **Output:** Configurable -- summary only (default), or up to 5 files (summary, CHANGELOG, README, task-priority-matrix, meetings/README), plus optional post-processing (task import to `_tasks.yaml`, dashboard refresh), plus `_insights.yaml` (knowledge extraction)
 - **Config-driven:** Summary sections, status terms, domain additions, action propagation, agenda management, post-processing, knowledge extraction, verticals all controlled by org config
 - **Replaces:** project-ops, bravo-ops, management-ops, marketing-ops
-- **Operations:** `/ops [content]` (default), `/ops prepare [type]`, `/ops normalize <path>` (CR-007 -- restore Swedish characters; `--names` applies the people roster, CR-017; `--filenames` fixes slug drift, CR-021), `/ops lint <folder>` (CR-018 -- find where a meeting series' format forked), `/ops sweep` (CR-019/CR-023 -- read-only closure/staleness audit across eight debt classes), `/ops status`, `/ops help`
+- **Operations:** `/ops [content]` (default), `/ops prepare [type]`, `/ops normalize <path>` (CR-007 -- restore Swedish characters; `--names` applies the people roster, CR-017; `--filenames` fixes slug drift, CR-021), `/ops lint <folder>` (CR-018 -- find where a meeting series' format forked), `/ops sweep` (CR-019/023/025 -- read-only closure/staleness audit across nine debt classes), `/ops status`, `/ops help`
 - **Use when:** Any meeting type -- standups, management meetings, marketing reviews, business syncs. The default choice -- use `/transcript` only when you explicitly don't want org config machinery.
 
 #### update-skills (standalone)
@@ -311,8 +316,9 @@ ops status:       /ops status -> scan <vault>/*/_ops.yaml -> report active + ava
 
 ops lint:         /ops lint <folder> -> check files vs template contracts -> report series forks by date
 
-ops sweep:        /ops sweep -> 8 closure-debt checks (indexes, ledgers, corpses, outbox,
-                               duplicates, residue, triage, contract alignment) -> report + offered fixes
+ops sweep:        /ops sweep -> 9 closure-debt checks (indexes, ledgers, corpses, outbox,
+                               duplicates, residue, triage, contract alignment,
+                               structure conformance) -> report + offered fixes
 
 ops help:         /ops help -> print usage guide with skill correlation
 
@@ -380,6 +386,9 @@ analytics:        /analytics                    -> vault overview (default)
 | Apply a skill improvement proposal | `/insights propose apply` |
 | Update skills, check symlinks, install repos | `/update-skills` |
 | Quick capture of unstructured content | `/inbox` |
+| Drop a file (PDF/CSV/media) for processing into the vault | `/inbox <file path>` (lands in `_inbox/.files/`) |
+| Park disposable scratch that should never enter the vault | `.ephemeral/` (swept after 14 days) |
+| Find stray/variant inbox-outbox folders in the tree | `/ops sweep` (check 9) |
 | Don't know which skill to use | `/inbox` (classifies and routes for you) |
 | See what's pending in the outbox | `/outbox list` |
 | Archive a sent-and-replied outbox folder into the contact folder | `/outbox archive <folder>` |

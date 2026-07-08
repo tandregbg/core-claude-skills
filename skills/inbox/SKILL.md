@@ -17,8 +17,11 @@ vault/_inbox/
   YYMMDD-HHMMSS[-slug].md   # Active items (frontmatter is canonical)
   .audio/               # Raw audio captured by Trillian, paired by basename
     YYMMDD-HHMMSS[-slug].m4a
+  .files/               # File drops: input files with a vault destiny (CR-024)
+    YYMMDD-HHMMSS[-slug].<ext>
   .archive/             # Processed items (moved here after downstream skill runs)
     .audio/             # Audio archived alongside transcript
+    .files/             # Source files that don't accompany their output
 ```
 
 **Schema**: see [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) for
@@ -40,6 +43,7 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    - Multiple speakers, timestamps, speaker labels -> `voice_memo`
    - "From:", "Subject:", email headers -> `email`
    - File path provided -> read the file, detect type from content
+   - **Binary or non-markdown file path** (PDF, CSV/xlsx, image, media, archive) -> `file_drop` (CR-024): move/copy the file into `_inbox/.files/<id>.<ext>` and create the paired stub with `source.file_path` and a type-based classification guess (PDF/document → summarize into a folder; CSV/xlsx → project data; image/media → attachment). Files >~25 MB: flag the size and offer process-in-place + reference-stub archiving instead of moving the blob. Full convention in [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) "File drops".
    - Short text, no structure -> `quick_note`
    - Everything else -> `raw_text`
 
@@ -109,8 +113,10 @@ Inbox Status:
   Orphan audio: 1 file (audio in .audio/ with no matching .md yet)
 ```
 
-Also show classification breakdown of active items, and flag any orphan
-audio waiting in `.audio/` for a matching transcript.
+Also show classification breakdown of active items, flag any orphan
+audio waiting in `.audio/` for a matching transcript, and flag orphan
+**file drops** in `.files/` with no paired stub (offer to register them,
+CR-024).
 
 ### `/inbox process [id|all]` -- Process Stored Items
 
@@ -126,6 +132,7 @@ Process one item by ID, or all unprocessed items (status `new` or `classified`) 
 6. After the downstream skill completes, update frontmatter:
    - `status: processed`, `processed_at`, `processed_by`, `output_file`
 7. Move `<id>.md` to `_inbox/.archive/<id>.md` (and paired audio to `.archive/.audio/<id>.m4a` if present); set `archived_to`
+   - **File drops (CR-024):** the source file in `.files/` moves WITH the output -- to the target folder's `.attachments/` when it should accompany the content (ask if unclear), else to `_inbox/.archive/.files/<id>.<ext>`. Record the final path in the stub before archiving it.
 8. Rebuild `_inbox.yaml` from current frontmatter
 
 **All items (`/inbox process all`):**
