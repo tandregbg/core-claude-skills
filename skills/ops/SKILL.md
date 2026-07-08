@@ -528,7 +528,7 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
 
 Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations leave live-looking corpses, sent outbox items never get archived. Bookkeeping follows attention, not structure -- so nothing catches the abandoned lane until a human stumbles on it. `/ops sweep` is the missing sweeper: one read-only pass that detects the closure-debt classes and **offers** fixes (report-only by default; every fix is confirmed, never automatic).
 
-**The seven checks:**
+**The eight checks:**
 
 1. **Index lag** -- README.md / meetings/README.md whose newest referenced date lags the folder's newest `YYMMDD-*` file or CHANGELOG head entry by >14 days. CHANGELOGs are the heartbeat; READMEs are the lag indicator -- compare them per folder.
 2. **Ledger rot** -- `_tasks.yaml` with open tasks whose `last_updated` lags folder activity by >30 days; `_insights.yaml` whose `last_compiled` stamp is absent or >30 days older than its newest entry (compile never ran / is stale).
@@ -537,8 +537,9 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
 5. **Sync duplicates** -- `* 2.*` / `* 3.*` files whose base file exists. Report size+mtime comparison side by side; **never auto-delete** (the larger "duplicate" is sometimes the newer content).
 6. **Unrouted residue** -- `unsorted/` folders with files >30 days old; `.ephemeral/` content >14 days old; root-level files matching paste conventions (`__*`, `xxx -*`, `Namnlös*`, untitled).
 7. **Triage hygiene (CR-022)** -- if a triage doc is registered: INKORG items unsorted >7 days, `[x]` items not yet moved to the KLART archive, week anchor >7 days stale, plaintext-credential-looking lines (no-secrets rule; lines marked `<!-- secret-ok -->` are a recorded owner decision and are skipped). Offered fix: `/inbox triage refresh` (which handles all but the sorting -- that stays human).
+8. **Contract alignment (CR-023)** -- if `workflows.sweep.alignment_check.command` is configured (maintainer machines only; **absent → skip silently**): run the command (read-only by construction) and parse its `[OK]`/`[DRIFT]`/`[SKIP]` verdict lines. Report each `[DRIFT]` component with expected-vs-actual version and a pointer to the update runbook (documented in the alignment script's header). **`[SKIP]` is reported as *unverified*, not clean** -- an unreachable component (e.g. a stale mount) is itself a finding, and has previously hidden six releases of drift. Never auto-applies fixes: cross-repo version references and live deploys are human-confirmed changes. The alignment command stays the single source of truth for the component list; the sweep is the scheduled reader that guarantees its output is actually seen.
 
-**Output:** one report grouped by class, each finding with its offered fix as a command or concrete action. End with a one-line scoreboard (`7 classes: 3 clean, 4 with findings (14 items)`) so repeat runs are comparable. Young folders are exempt via the age thresholds -- a fresh project reports nothing.
+**Output:** one report grouped by class, each finding with its offered fix as a command or concrete action. End with a one-line scoreboard (`8 classes: 4 clean, 3 with findings (14 items), 1 skipped`) so repeat runs are comparable. Young folders are exempt via the age thresholds -- a fresh project reports nothing.
 
 **Wiring:** suitable for a weekly scheduled run that drops its report into `_inbox/` as a triage item (closing the loop through the existing daily-triage habit). The sweep itself never mutates content.
 

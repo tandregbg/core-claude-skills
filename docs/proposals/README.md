@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-023**
+Next available CR number: **CR-024**
 
 ---
 
@@ -16,12 +16,13 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-022** (triage working surface, v1.26.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-023** (alignment sweep check, v1.27.0).
 
-CR-017–CR-022 were drafted and implemented 2026-07-07 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
+CR-017–CR-023 were drafted and implemented 2026-07-07/08 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-023 | Ecosystem alignment as an `/ops sweep` check | v1.27.0 (2026-07-08) | Sweep check 8 runs the alignment script read-only; `[SKIP]` = unverified, not clean; off unless `workflows.sweep.alignment_check` configured |
 | CR-022 | Triage working surface — contract + read integrations | v1.26.0 (2026-07-07) | `_inbox/` working-doc contract; `/inbox triage`; preps/dashboard/task-import/sweep integrations, all read-around |
 | CR-021 | Filename slug policy (diacritics, casing, role keywords) | v1.25.0 (2026-07-07) | Slug contract in ops-base; driftword check runs on filenames; `/ops normalize --filenames` backfill |
 | CR-019 | `/ops sweep` closure/staleness audit + retirement convention | v1.24.0 (2026-07-07) | Six closure-debt classes detected read-only; tombstone rule on artifact relocation; `/outbox archive --all-sent` |

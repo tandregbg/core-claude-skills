@@ -1,6 +1,23 @@
 #!/bin/bash
 # check-ecosystem-alignment.sh — Verify all ecosystem components are aligned
 # Run after bumping core-skills version to detect drift.
+#
+# Wired into `/ops sweep` check 8 (CR-023) via workflows.sweep.alignment_check
+# in ops-config — the sweep parses the [OK]/[DRIFT]/[SKIP] lines below.
+# A [SKIP] (e.g. unreachable mount) means UNVERIFIED, not clean.
+#
+# Update runbook when [DRIFT] is reported (verified 2026-07-08):
+# - Marvin: update the core-skills version reference + any schema notes in
+#   its CLAUDE.md, commit.
+# - Landing page: patch whats_new in static/i18n/en.json AND sv.json (the
+#   title carries the version this script greps), update the footer version
+#   in templates/{en,sv}/base.html, bump BUILD_VERSION in app.py, then
+#   restart EXACTLY the landing app in pm2 (the app caches i18n at startup;
+#   a bare `pm2 restart all` restarts every app on that host). Commit on the
+#   host repo. Host access per the private VM inventory; if the SSHFS mount
+#   is stale, unmount/remount or go straight over SSH.
+# - Never auto-apply from tooling: cross-repo version refs and live deploys
+#   are human-confirmed changes.
 
 set -euo pipefail
 

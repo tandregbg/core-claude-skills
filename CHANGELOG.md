@@ -9,6 +9,11 @@ All notable changes to core-skills will be documented in this file.
 4. Update landing page if skill list or descriptions changed
 -->
 
+## [1.27.0] - 2026-07-08
+
+### Added
+- **Contract alignment as `/ops sweep` check 8 (CR-023).** `ecosystem.yaml` (CR-010) made the suite's contract explicit and `check-ecosystem-alignment.sh` made drift detectable — but the script only ran when a human remembered it, and external components sat six releases behind while it reported `[DRIFT]` to nobody. Sweep now runs the configured alignment command (`workflows.sweep.alignment_check.command`, new optional config block) read-only and reports each `[DRIFT]` component with expected-vs-actual version plus a pointer to the update runbook (now documented in the script header). `[SKIP]` verdicts (unreachable mount, missing checkout) are reported as *unverified*, not clean — an unreachable component is itself a finding and has previously hidden drift. Absent config → check skipped silently (maintainer tooling, not consumer-vault behavior). No auto-fix: cross-repo version references and live deploys stay human-confirmed. The alignment command remains the single source of truth for the component list; sweep is the scheduled reader that guarantees its output is seen.
+
 ## [1.26.1] - 2026-07-07
 
 ### Changed

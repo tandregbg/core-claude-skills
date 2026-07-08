@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.26.1
+**Version:** 1.27.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.27.0 (2026-07-08)
+
+- **Ecosystem alignment joins the closure loop (CR-023).** `/ops sweep` gains check 8: on machines that configure `workflows.sweep.alignment_check.command`, the sweep runs the existing alignment script read-only and reports every `[DRIFT]` component with a pointer to the documented update runbook — and treats `[SKIP]` (e.g. an unreachable mount) as *unverified*, not clean, since a hidden check once masked six releases of drift. Off by default; consumer vaults see no change. Detection without a scheduled reader is decoration — this gives the contract check its reader. See CHANGELOG `[1.27.0]`.
 
 ## What's new in v1.26.0 (2026-07-07)
 
@@ -150,7 +154,7 @@ core-skills (this repo)
 
 ---
 
-## How the system fits together (v1.26)
+## How the system fits together (v1.27)
 
 Four months of heavy production use taught us where document pipelines actually fail — and the v1.21–v1.26 wave restructured the suite around those findings. The suite now works as **four cooperating layers**:
 
@@ -172,7 +176,7 @@ Every meeting silently accumulates durable insights (`_insights.yaml`); `/insigh
 
 ### 4. Closure — the loop most systems never build
 
-Append-only systems rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses. `/ops sweep` (CR-019) detects all seven closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`); run it weekly and staleness stops accumulating.
+Append-only systems rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops sweep` (CR-019, extended by CR-023) detects all eight closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook); run it weekly and staleness stops accumulating.
 
 ### The triage surface — where the human stays in charge
 
@@ -231,7 +235,7 @@ All domain skills inherit from `ops-base`:
 - **Output:** Configurable -- summary only (default), or up to 5 files (summary, CHANGELOG, README, task-priority-matrix, meetings/README), plus optional post-processing (task import to `_tasks.yaml`, dashboard refresh), plus `_insights.yaml` (knowledge extraction)
 - **Config-driven:** Summary sections, status terms, domain additions, action propagation, agenda management, post-processing, knowledge extraction, verticals all controlled by org config
 - **Replaces:** project-ops, bravo-ops, management-ops, marketing-ops
-- **Operations:** `/ops [content]` (default), `/ops prepare [type]`, `/ops normalize <path>` (CR-007 -- restore Swedish characters; `--names` applies the people roster, CR-017; `--filenames` fixes slug drift, CR-021), `/ops lint <folder>` (CR-018 -- find where a meeting series' format forked), `/ops sweep` (CR-019 -- read-only closure/staleness audit across seven debt classes), `/ops status`, `/ops help`
+- **Operations:** `/ops [content]` (default), `/ops prepare [type]`, `/ops normalize <path>` (CR-007 -- restore Swedish characters; `--names` applies the people roster, CR-017; `--filenames` fixes slug drift, CR-021), `/ops lint <folder>` (CR-018 -- find where a meeting series' format forked), `/ops sweep` (CR-019/CR-023 -- read-only closure/staleness audit across eight debt classes), `/ops status`, `/ops help`
 - **Use when:** Any meeting type -- standups, management meetings, marketing reviews, business syncs. The default choice -- use `/transcript` only when you explicitly don't want org config machinery.
 
 #### update-skills (standalone)
@@ -307,8 +311,8 @@ ops status:       /ops status -> scan <vault>/*/_ops.yaml -> report active + ava
 
 ops lint:         /ops lint <folder> -> check files vs template contracts -> report series forks by date
 
-ops sweep:        /ops sweep -> 7 closure-debt checks (indexes, ledgers, corpses, outbox,
-                               duplicates, residue, triage) -> report + offered fixes
+ops sweep:        /ops sweep -> 8 closure-debt checks (indexes, ledgers, corpses, outbox,
+                               duplicates, residue, triage, contract alignment) -> report + offered fixes
 
 ops help:         /ops help -> print usage guide with skill correlation
 

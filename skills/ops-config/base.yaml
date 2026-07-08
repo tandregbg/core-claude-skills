@@ -86,6 +86,13 @@ workflows:
   # contracts with `match` globs. mode: warn | strict
   meeting_templates:
     mode: warn
+  # CR-023: /ops sweep check 8 — ecosystem contract alignment. Maintainer
+  # machines only; when `command` is absent the check is skipped silently.
+  # sweep runs the command read-only and parses [OK]/[DRIFT]/[SKIP] lines.
+  # Example:
+  #   sweep:
+  #     alignment_check:
+  #       command: "bash ~/repos/core-skills/scripts/check-ecosystem-alignment.sh"
   action_propagation:
     enabled: false
   agenda_management:

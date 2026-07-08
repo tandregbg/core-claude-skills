@@ -309,6 +309,26 @@ Execution feedback entries include a `source.skill` field to distinguish them fr
 
 ---
 
+### Sweep (CR-023)
+
+Optional. Configuration for `/ops sweep` extras beyond its built-in checks.
+
+```yaml
+workflows:
+  sweep:
+    alignment_check:
+      command: string   # shell command producing [OK]/[DRIFT]/[SKIP] verdict lines
+```
+
+When `alignment_check.command` is set, sweep check 8 runs it read-only and
+reports each `[DRIFT]` component (expected vs actual version) and each
+`[SKIP]` as *unverified*. Absent → the check is skipped silently; this is
+maintainer tooling for the machine that owns a skill-ecosystem contract,
+not for consumer vaults. The command owns the component list and version
+rules; sweep is only the scheduled reader.
+
+---
+
 ### Verticals
 
 Optional. Living documents that aggregate insights across multiple meetings on a single strategic topic. Unlike meeting summaries (point-in-time), verticals are topic-longitudinal -- updated whenever their topic comes up in any meeting.
