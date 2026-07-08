@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-026**
+Next available CR number: **CR-027**
 
 ---
 
@@ -16,12 +16,13 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-025** (structure conformance sweep, v1.29.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-026** (release + privacy guardrails, v1.30.0).
 
-CR-017–CR-025 were drafted and implemented 2026-07-07/08 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
+CR-017–CR-026 were drafted and implemented 2026-07-07/08 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-026 | Release process + privacy push-guardrails | v1.30.0 (2026-07-08) | `docs/RELEASING.md` + fail-closed pre-push guard (built-in secret patterns + private denylist via `git config guard.denylist`) |
 | CR-025 | Structure conformance as `/ops sweep` check 9 | v1.29.0 (2026-07-08) | Fuzzy stray-inbox/outbox matcher (exact names miss real strays); `structure_exemptions` config; `/ops status` health step upgraded |
 | CR-024 | File-drop lifecycle (`_inbox/.files/`) + `.ephemeral` contract | v1.28.0 (2026-07-08) | Generalizes `.audio/` pairing to any input file; source moves with output to `.attachments/`; `.ephemeral` = declared no-destiny scratch |
 | CR-023 | Ecosystem alignment as an `/ops sweep` check | v1.27.0 (2026-07-08) | Sweep check 8 runs the alignment script read-only; `[SKIP]` = unverified, not clean; off unless `workflows.sweep.alignment_check` configured |

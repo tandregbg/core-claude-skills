@@ -2,12 +2,15 @@
 
 All notable changes to core-skills will be documented in this file.
 
-<!-- Release checklist:
-1. Update ecosystem.yaml core_skills_version
-2. Run scripts/check-ecosystem-alignment.sh
-3. Update visualiser if contract fields changed
-4. Update landing page if skill list or descriptions changed
--->
+<!-- Release process: docs/RELEASING.md (CR-026) is authoritative.
+Short form: implement generic -> private CR spec updated same session ->
+CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
+(pre-push guard scans added lines) -> webpage+Marvin on version change. -->
+
+## [1.30.0] - 2026-07-08
+
+### Added
+- **Release process + privacy push-guardrails (CR-026).** The vault this suite operates on is live production data while this repo is public — until now the boundary was held by discipline (an ad-hoc leak-scan grep before push), which is a rule without enforcement. Three layers now: (1) **write generic by construction** stays the primary rule; (2) **`scripts/githooks/pre-push`** is the fail-closed backstop — scans every added line in the outgoing range against built-in secret patterns (API-key prefixes, private-key blocks, internal IP literals, credential idioms) plus a **private denylist** of real identifiers read from `git config guard.denylist` (the list lives outside the repo, next to the private CR archive; missing list = push blocked); (3) **`docs/RELEASING.md`** codifies the process — data classification, the per-CR flow (private spec updated *in the same session*), when to push (per release commit, same day), and when to update the webpage/Marvin (on every `core_skills_version` change, nagged by the alignment check / sweep check 8). Install per clone: `git config core.hooksPath scripts/githooks` + `git config guard.denylist <path>`. Verified with pass, fail-closed, and injected-leak tests. `git push --no-verify` remains the documented conscious override.
 
 ## [1.29.0] - 2026-07-08
 

@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.29.0
+**Version:** 1.30.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.30.0 (2026-07-08)
+
+- **Release process + privacy guardrails (CR-026).** New [`docs/RELEASING.md`](docs/RELEASING.md) codifies the prod-on-public-rails reality: the operating vault is production data, this repo is public, and the membrane between them is one-way (generic-by-construction writing, private CR archive, per-CR release flow, webpage/Marvin update triggers). Enforced mechanically by a **fail-closed pre-push guard** (`scripts/githooks/pre-push`): every added line in an outgoing push is scanned against built-in secret patterns plus a private identifier denylist that lives outside the repo — no denylist configured, no push. See CHANGELOG `[1.30.0]`.
 
 ## What's new in v1.28.0–v1.29.0 (2026-07-08)
 
