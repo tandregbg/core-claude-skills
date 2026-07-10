@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.31.0] - 2026-07-10
+
+### Added
+- **Knowledge synthesis: `/insights synthesize` + the wiki layer (CR-027).** The insights corpus was write-heavy and read-poor: atomic YAML entries accumulated (1,267 across a production vault) but nothing rendered them *readable*. Inspired by the personal-knowledge-OS pattern (capture → LLM-compiled wiki → auto-maintained index the LLM reads instead of RAG), the new subcommand clusters insights **semantically and vault-wide** (deliberately unlike compile Pass 2's mechanical per-folder matching — the first real compile run confirmed token-overlap yields zero promotions on prose summaries) and writes topic-named living articles to `<wiki_path>/<slug>.md`: `sources:`/`updated:`/`related:` frontmatter, synthesized prose with tensions and open questions, Obsidian wikilinks, verbatim quotes with attribution. `<vault>/.knowledge/INDEX.md` is the auto-maintained master index — sessions answering knowledge questions read INDEX first, then only the relevant articles; no retrieval infrastructure. Idempotent refresh from new insights; `<!-- human-edited -->` articles are never auto-updated (flag once, respect the answer); vocabulary is canonicalized at synthesis (known ASR-legacy terms written correctly — source entries untouched); topics matching a registered vertical LINK to it instead of duplicating. New config block `workflows.knowledge_synthesis` (enabled / article_threshold / wiki_path); `vault_conventions` entries for `.knowledge/wiki/` and `.knowledge/INDEX.md`. Shipped as an explicit experiment: the follow-up knowledge-lint CR is gated on the wiki proving useful in practice.
+
 ## [1.30.0] - 2026-07-08
 
 ### Added

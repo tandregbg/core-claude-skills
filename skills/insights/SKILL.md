@@ -2,7 +2,7 @@
 name: insights
 description: Knowledge extraction manager and skill evolution engine. Backfills _insights.yaml from historical corpus, compiles execution feedback into patterns, and proposes SKILL.md improvements.
 user-invocable: true
-argument-hint: [reprocess|scan-claude-md|compile|normalize|propose|status|help]
+argument-hint: [reprocess|scan-claude-md|compile|normalize|synthesize|propose|status|help]
 ---
 
 # Insights Skill -- Knowledge Extraction & Skill Evolution
@@ -402,6 +402,38 @@ Brings legacy and drifted `_insights.yaml` files up to the current schema. Compl
 
 ---
 
+### `synthesize` -- Render insight clusters into the knowledge wiki (CR-027)
+
+**Trigger:** `/insights synthesize [topic|all]` (no argument = all clusters above threshold)
+
+Turns the accumulated `_insights.yaml` corpus into a **curated wiki**: readable, crosslinked topic articles plus a master index. This is the synthesis layer the atomic entries feed — compile promotes *rules* (machine-facing context), synthesize produces *articles* (human- and session-facing knowledge). Clustering here is **semantic and vault-wide** (cross-folder, by topic), deliberately unlike compile Pass 2 (mechanical, per-folder): prose summaries rarely repeat verbatim, so token-overlap cannot build this layer.
+
+**Config** (`workflows.knowledge_synthesis` in base.yaml or org/vault config):
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `enabled` | `true` | Master switch |
+| `article_threshold` | `5` | Minimum insights in a topic cluster to warrant an article |
+| `wiki_path` | `.knowledge/wiki` | Article location, vault-relative |
+
+**Process:**
+
+1. **Load the corpus:** every `_insights.yaml` (skip `.archive/`, `.transcripts/`, `clones/`), entries with `status: active`. Types `quote` and `opportunity` are *supporting* material (quotes illustrate; opportunities go in an article's open-questions section) — they never drive cluster selection alone.
+2. **Cluster by topic, vault-wide:** group semantically related insights across folders (shared tags are the seed; semantic judgment merges synonymous tags and splits overloaded ones). A cluster ≥ `article_threshold` (or an explicitly requested `<topic>`) gets an article.
+3. **Write/update the article** at `<wiki_path>/<topic-slug>.md`:
+   - **Topic-named, not dated** — articles are living documents (like rolling plans), never `YYMMDD-` prefixed.
+   - **Frontmatter:** `sources:` (list of `file#id` for every insight used), `updated: YYMMDD`, `related: [slugs]`.
+   - **Body:** synthesized prose — what has been learned, how thinking evolved, points of tension between insights, and an open-questions section. Verbatim `quote` entries may be quoted with attribution. Obsidian `[[wikilinks]]` to related articles. Language per the vault language policy; names allowed (CR-020 reusability note applies — this wiki is private).
+   - **Vocabulary is canonicalized at synthesis:** known ASR-legacy terms in source insights are written correctly in articles (source entries stay untouched — the wiki is the cleaned layer).
+   - **Verticals boundary:** if the topic matches a registered `workflows.verticals` doc, the article LINKS to the vertical for org-operational state instead of duplicating it.
+4. **Idempotent refresh:** re-running updates an article only from insights not yet in its `sources:`, appending/reworking sections as needed and bumping `updated:`. An article containing `<!-- human-edited -->` is NEVER auto-updated — report it and ask (flag once, respect the answer).
+5. **Maintain `<vault>/.knowledge/INDEX.md`:** one line per article — `[[slug]] — one-sentence hook (updated YYMMDD)` — grouped by theme; plus an **Osorterat** section listing loose notes at the `.knowledge/` root (legacy notes are never modified or moved by this skill).
+6. **Report:** articles created/updated/skipped(human-edited), clusters below threshold (with counts, so growth toward threshold is visible).
+
+**How the wiki is USED (the no-RAG contract):** a session answering a knowledge question reads `INDEX.md` first, then opens only the relevant article(s). No vault-wide scanning, no retrieval infrastructure. The INDEX is maintained by this subcommand only — never hand-edited by other skills.
+
+---
+
 ### `propose` -- Generate SKILL.md improvement proposals
 
 **Trigger:** `/insights propose`
@@ -520,6 +552,7 @@ Usage:
   /insights compile                      Compile execution feedback into patterns
   /insights compile since 260301         Compile only recent feedback
   /insights normalize [path] [--apply]   Migrate drifted files to current schema (dry-run default)
+  /insights synthesize [topic|all]       Render insight clusters into wiki articles + INDEX (CR-027)
   /insights propose                      Generate SKILL.md improvement proposals
   /insights propose apply [file|all]     Apply a proposal to SKILL.md
   /insights status                       Show insights + evolution statistics

@@ -10,7 +10,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.30.0"
+core_skills_version: "1.31.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -150,6 +150,20 @@ vault_conventions:
       writers: ["user (manual drop)", "/inbox"]
       readers: ["/inbox", "downstream skills", "marvin"]
       lifecycle: "pass-through; on processing the file moves to the target folder's .attachments/ or to .archive/.files/"
+
+    - path: ".knowledge/wiki/"
+      purpose: "Knowledge wiki: topic articles synthesized from the insights corpus (CR-027)"
+      schema: null  # article format defined in skills/insights/SKILL.md (synthesize)
+      writers: ["/insights synthesize"]
+      readers: ["any session answering knowledge questions (via INDEX.md)", "marvin (candidate)"]
+      lifecycle: "living documents, topic-named; idempotent refresh from new insights; human-edited marker respected"
+
+    - path: ".knowledge/INDEX.md"
+      purpose: "Master knowledge index — read FIRST when answering knowledge questions (no RAG)"
+      schema: null
+      writers: ["/insights synthesize"]
+      readers: ["any session", "marvin (candidate)"]
+      lifecycle: "regenerated on every synthesize run; never hand-edited"
 
     - path: ".ephemeral/"
       purpose: "Disposable working material with NO vault destiny (session scratch, snapshots, intermediates)"

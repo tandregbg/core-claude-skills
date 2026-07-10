@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.30.0
+**Version:** 1.31.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+
+## What's new in v1.31.0 (2026-07-10)
+
+- **The knowledge wiki (CR-027).** `/insights synthesize` renders the insights corpus into a curated wiki: topic-named living articles (synthesized prose with sources, tensions, open questions, Obsidian wikilinks) plus an auto-maintained `INDEX.md` that sessions read *first* when answering knowledge questions — index → article, no RAG, no folder scanning. Clustering is semantic and vault-wide (the first production compile run proved mechanical token-overlap can't build this layer). Human-edited articles are respected via a marker; vocabulary is canonicalized at synthesis; verticals are linked, not duplicated. Shipped as an experiment — the companion knowledge-lint lands only if the wiki earns its keep. See CHANGELOG `[1.31.0]`.
 
 ## What's new in v1.30.0 (2026-07-08)
 
@@ -97,7 +101,7 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `daily-dashboard` | Daily meeting and task dashboard generator -- works generically from any vault or with org-specific config. Creates dashboard file and desktop symlinks. Integrates with task tracker. | Yes (`/daily-dashboard`) |
 | `preparation` | Create meeting preparation documents with a 60-second walk-in agenda card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]) instead of topic noun phrases. Mandatory cross-reference scan with explained relevance. Frozen at meeting time -- no mid-meeting edits. | Yes (`/preparation`) |
 | `tasks` | Personal task tracker with cross-project correlation. Central task index, source linking, automatic carry-forward, privacy model. | Yes (`/tasks`) |
-| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `propose`, `status`, `help`. | Yes (`/insights`) |
+| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, **synthesizes the corpus into a knowledge wiki** (topic articles + read-first INDEX, CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
 | `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024 — the source file moves with its output to the target's `.attachments/`) and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `backlog`, `help`. | Yes (`/analytics`) |
@@ -181,7 +185,7 @@ Formats used to erode by *template forking*: one deviating file re-seeds its who
 
 ### 3. Knowledge — insights that actually compound
 
-Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights normalize` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent.
+Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights normalize` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent. v1.31 (CR-027) added the human-facing half: `/insights synthesize` renders the corpus into a **knowledge wiki** — crosslinked topic articles plus a master INDEX that sessions read first when answering knowledge questions, no RAG required.
 
 ### 4. Closure — the loop most systems never build
 

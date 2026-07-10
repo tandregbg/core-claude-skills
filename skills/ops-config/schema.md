@@ -309,6 +309,20 @@ Execution feedback entries include a `source.skill` field to distinguish them fr
 
 ---
 
+### Knowledge Synthesis (CR-027)
+
+Optional. Controls `/insights synthesize` — the wiki layer rendered from the insights corpus.
+
+```yaml
+workflows:
+  knowledge_synthesis:
+    enabled: true               # master switch
+    article_threshold: 5        # min insights in a topic cluster to warrant an article
+    wiki_path: ".knowledge/wiki"  # vault-relative article location
+```
+
+Articles are topic-named living documents with `sources:`/`updated:`/`related:` frontmatter and Obsidian wikilinks; `<vault>/.knowledge/INDEX.md` is the auto-maintained master index sessions read first when answering knowledge questions (no RAG). Articles containing `<!-- human-edited -->` are never auto-updated.
+
 ### Sweep (CR-023)
 
 Optional. Configuration for `/ops sweep` extras beyond its built-in checks.

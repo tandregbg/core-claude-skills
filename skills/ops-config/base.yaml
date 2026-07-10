@@ -108,6 +108,11 @@ workflows:
       enabled: false
     dashboard_refresh:
       enabled: false
+  # CR-027: /insights synthesize — wiki layer rendered from the insights corpus
+  knowledge_synthesis:
+    enabled: true
+    article_threshold: 5        # min insights in a topic cluster to warrant an article
+    wiki_path: ".knowledge/wiki"
   knowledge_extraction:
     enabled: true
     min_insights: 1
