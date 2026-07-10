@@ -73,6 +73,19 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             FAIL=1
         fi
     done < "$DENYLIST"
+
+    # Example-allowlist enforcement (CR-029): any name-like token in the added
+    # lines must be a declared INVENTED example. Unknown real names can't be
+    # enumerated — allowed fake ones can.
+    SCAN="$(git rev-parse --show-toplevel)/scripts/privacy-scan.sh"
+    if [ -x "$SCAN" ]; then
+        OUT=$(printf '%s\n' "$ADDED" | "$SCAN" --stdin 2>&1)
+        if [ $? -ne 0 ]; then
+            echo "PUSH BLOCKED by privacy-scan (CR-029):" >&2
+            echo "$OUT" | grep -A2 "FINDING" | head -12 >&2
+            FAIL=1
+        fi
+    fi
 done
 
 if [ "$FAIL" -ne 0 ]; then

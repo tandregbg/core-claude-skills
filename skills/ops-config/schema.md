@@ -332,6 +332,8 @@ workflows:
   sweep:
     alignment_check:
       command: string   # shell command producing [OK]/[DRIFT]/[SKIP] verdict lines
+    privacy_scan:
+      command: string   # CR-029: whole-repo privacy watcher, same verdict-line contract
     structure_exemptions:      # CR-025: deliberate exceptions to single-inbox/outbox
       - path: string           # vault-relative directory path
         reason: string         # why the exception exists (include decision date)

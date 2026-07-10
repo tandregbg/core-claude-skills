@@ -42,6 +42,6 @@ CR-015 makes the skill **fail safe** on undiarized input: detect the condition, 
 
 ## Verification
 
-- Re-reading the new rule against the originating unlabeled transcript would produce `Henrik?` / `?` instead of confident-wrong `Tomas` — i.e. it fails safe.
+- Re-reading the new rule against the originating unlabeled transcript would produce `Carol?` / `?` instead of confident-wrong `Alex` — i.e. it fails safe.
 - `/insights compile` clusters the three Step 4.5 entries logged for that run (2 `correction`, 1 `edge_case`, `skill: transcript`) into a `skill_pattern` targeting `transcript`, demonstrating the loop would itself surface this change.
 - `grep` confirms no banished headings were reintroduced.

@@ -77,6 +77,14 @@ git config guard.denylist /absolute/path/to/private/push-denylist.txt
   regexes for every real identifier — names, orgs, hosts. Extend it whenever a
   new sensitive identifier enters the working vocabulary; it is maintained
   next to the private CR archive.
+- **Invented-examples allowlist (CR-029)** — the inversion that makes "never
+  reveal" watchable: real names can't all be enumerated, but allowed FAKE ones
+  can. Every name-like token (contact slugs, dated send-slugs, Name-Name
+  filename pairs, `display_name` values) must fully match
+  `scripts/githooks/allowed-examples.txt` (public — it contains only invented
+  names). The pre-push guard blocks unknown tokens; `scripts/privacy-scan.sh
+  --tree` watches the whole tree on the weekly sweep. Adding an allowlist
+  line is a conscious act: confirm the name is invented, never borrowed.
 - **Fail-closed:** no denylist configured → no push.
 - **Override:** `git push --no-verify` exists by design — a guard that cannot
   be consciously overridden gets uninstalled. Review the flagged lines first,

@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.33.0] - 2026-07-10
+
+### Added
+- **Invented-examples allowlist + scheduled repo privacy watch (CR-029).** The inversion that makes "never reveal names in examples" mechanically watchable: real names can never be fully enumerated, but allowed FAKE ones can. New `scripts/privacy-scan.sh` (three layers: built-in secret patterns, private denylist, and **allowlist enforcement** — every name-like token in the repo (contact slugs, dated send-slugs, Name-Name filename pairs, `display_name` values) must fully match `scripts/githooks/allowed-examples.txt`, a public list containing only invented names). The pre-push hook now blocks unknown name-like tokens in outgoing lines even when no denylist knows them; `/ops sweep` check 8 runs the scan weekly over the whole tree via `workflows.sweep.privacy_scan.command`. Baseline run adjudicated every existing token (all confirmed invented) and genericized two remaining real-name example lines the history audit had classed as benign. Adding an allowlist line is a conscious act: confirm invented, never borrowed.
+
 ## [1.32.0] - 2026-07-10
 
 ### Changed

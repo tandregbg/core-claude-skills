@@ -143,7 +143,7 @@ This applies to ALL occurrences of the name -- not just filenames, but every men
 
 Name Resolution above fixes *spelling*. It does **not** tell you *who said what*. Many sources (e.g. a Deep Thought paste, or any raw recorder export) arrive as a **single continuous stream with no speaker labels**. On such input, who-said-what and therefore **who owns each action item are inferred, not observed** -- and confident inference is the single most common attribution error this skill makes.
 
-**Detect the condition first.** Before assigning any owner, decide whether the transcript is *diarized* (has speaker labels / turn markers like `Tomas:` / `Speaker 1:`) or *undiarized* (one narrative blob). State the result to yourself; it changes the rules below.
+**Detect the condition first.** Before assigning any owner, decide whether the transcript is *diarized* (has speaker labels / turn markers like `Alex:` / `Speaker 1:`) or *undiarized* (one narrative blob). State the result to yourself; it changes the rules below.
 
 **On undiarized transcripts:**
 - Treat every owner as a hypothesis. A first-person cue ("jag ska skicka…", "då branchar vi ut…") tells you an action exists, **not who will do it** -- the speaker is unlabeled.

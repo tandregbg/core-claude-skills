@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-029**
+Next available CR number: **CR-030**
 
 ---
 
@@ -16,12 +16,13 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-028** (local-only evolution + semantic release gate, v1.32.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-029** (invented-examples allowlist + privacy watch, v1.33.0).
 
-CR-017–CR-028 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
+CR-017–CR-029 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-029 | Invented-examples allowlist + scheduled repo privacy watch | v1.33.0 (2026-07-10) | Name-like tokens must match the public allowlist of fake names; privacy-scan.sh in hook + weekly sweep; baseline adjudicated |
 | CR-028 | Local-only evolution + semantic release gate | v1.32.0 (2026-07-10) | `evolution.proposals_path` (vault-private); mandatory semantic review step in RELEASING.md; history audited (zero secrets ever); fresh-clone guard reminder in update-skills |
 | CR-027 | Knowledge synthesis — `/insights synthesize` + wiki layer | v1.31.0 (2026-07-10) | Semantic vault-wide clustering → topic articles + auto-maintained INDEX (read-first, no RAG); human-edited marker; experiment gating the future knowledge-lint |
 | CR-026 | Release process + privacy push-guardrails | v1.30.0 (2026-07-08) | `docs/RELEASING.md` + fail-closed pre-push guard (built-in secret patterns + private denylist via `git config guard.denylist`) |
@@ -71,4 +72,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-07-10 — CR-028 implemented (v1.32.0, privacy posture completed). CR-017–CR-028 specs tracked outside this repo.*
+*Last updated: 2026-07-10 — CR-029 implemented (v1.33.0, examples watched via allowlist inversion). CR-017–CR-029 specs tracked outside this repo.*

@@ -1,0 +1,23 @@
+# Allowed INVENTED example identifiers (CR-029). Public by design — these are
+# fake names. Any name-like token in the repo MUST fully match a line here
+# (extended regex, full-token match). Adding a line is a conscious act:
+# confirm the name is invented, not borrowed from real data.
+#
+# The invented cast: Alex, Bob (Lindgren/Smith), Carol (Jones), Dan (Smith), Grace,
+# David Ekberg, Erik (Lindgren/Sandberg), Frank, Alice, Charlie, Raj Patel,
+# Anna, Dana, Sara, Hank. Orgs: Acme, Bravo, Delta, Echo, TechCo, BobCo.
+
+# --- contact-folder references ---
+_contacts/(bob|bob-smith|bob-lindgren|david|david-|david-ekberg|carol[a-z-]*|dan-smith|erik-lindgren|erik-sandberg|alice[a-z-]*|hank|sara|sara-holm|contact-folder|contact-name|name|firstname-lastname|participant[a-z_-]*)
+
+# --- dated send/meeting slugs ---
+26[0-9]{4}-(bob-lindgren_acme(corp)?|carol-jones_reflektion|dan-smith_reflektion|erik-lindgren_bravo(-mejl)?|someone_topic|name_topic|contact[a-z-]*_[a-z-]+)
+
+# --- Name-Name pairs in filename examples ---
+-(Alex-Bob|Alex-David|Alex-Frank|Alex-Carol|Grace-Alex|Alex-Erik|David-Ekberg|Bob-Lindgren|Erik-Sandberg|Namn-Namn)
+
+# --- display_name example values ---
+display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Lindgren|\[Resolved Name\]|\[.*\])"
+
+# --- structural (non-name) pairs the Name-Name detector also matches ---
+-(Management-Meeting|Weekly-Management|Active-Tasks|Acme-Weekly|Topic-Type|Project-Alpha|Priority-Matrix|Daily-Standup|Sprint-Review|Next-Steps|War-Room|Core-Team|Deleted-File)

@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.32.0
+**Version:** 1.33.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.33.0 (2026-07-10)
+
+- **Examples are now watched, not trusted (CR-029).** Every name-like token in this repo must match a public allowlist of invented example names — unknown tokens block the push even if no denylist has ever heard of them, and a weekly whole-tree privacy scan (sweep check 8) catches anything that slips. Real names can't all be enumerated; allowed fake ones can. See CHANGELOG `[1.33.0]`.
 
 ## What's new in v1.32.0 (2026-07-10)
 
