@@ -42,7 +42,8 @@ material, never pushed).
 4. **Run `scripts/check-ecosystem-alignment.sh`** — the repo itself must be
    `[OK]` before commit.
 5. **Commit** (one release = one commit; no unrelated work mixed in).
-6. **Push** — the pre-push guard scans every added line (see below).
+6. **Semantic release review (CR-028, mandatory).** The pattern guard cannot judge meaning — a new customer name or a describable private situation passes every regex. Before pushing, read `git diff origin/main..HEAD` (added lines) against the classification table above and answer three questions: *Does any added line name or identify a real person, organization, or deal not on the invented-examples list? Does any example look copied from real data rather than invented? Does any incident description reveal the situation it came from rather than its class?* Any "yes" → rewrite generically and add the identifier to the private denylist so the mechanical guard knows it next time. Record the verdict in the push decision. (Live proof of why this step exists: a history audit found three real contact slugs in old example blocks that the denylist had never heard of.)
+7. **Push** — the pre-push guard scans every added line (see below).
 
 ## When to push
 
@@ -82,5 +83,30 @@ git config guard.denylist /absolute/path/to/private/push-denylist.txt
   then own the decision.
 
 The guard scans **added lines of the outgoing range** only. It does not
-absolve history (what was pushed before the guard existed is a separate
-question) and it does not replace rule 1: write generic by construction.
+replace rule 1 (write generic by construction) or the semantic review
+(step 6) — it is the mechanical floor, not the ceiling.
+
+## Development-evolution material is local-only (CR-028)
+
+Everything the evolution loop produces from vault data stays in the vault:
+CR specs (private archive), audits (gitignored + private archive), the
+denylist (vault), and **generated skill proposals** — `/insights propose`
+writes to `workflows.knowledge_extraction.evolution.proposals_path`
+(vault-relative; default `.skill-evolution/proposals/`), never into this
+repo. The repo receives only the *implemented, genericized* result of
+evolution, through the flow above.
+
+## Server-side backstop + history
+
+- **GitHub secret scanning + push protection** are enabled on the repo —
+  they catch known secret formats even from a clone where the local guard
+  was never installed. They do NOT know the private denylist (and must
+  not); local guard + semantic review remain the identifier defense.
+- **History was audited once** (2026-07-10): every added line of every
+  commit scanned against the denylist + patterns. Zero secrets ever
+  committed; a handful of real-name example slugs found and genericized at
+  HEAD (history rewrite deliberately declined — low sensitivity, high
+  disruption; decision recorded in the private CR archive).
+- **Fresh clones:** the local guard activates per clone (two `git config`
+  lines above). Until then, only the server-side scanning applies —
+  install the guard before your first push.

@@ -232,6 +232,13 @@ git -C <repo-path> merge-base --is-ancestor HEAD <remote>/<branch>
    git clone <origin-url> <base-dir>/<repo-name>
    ```
 
+4b. **Guard check (CR-028):** if the cloned repo ships `scripts/githooks/pre-push`, remind the user that the privacy guard is per-clone and must be installed BEFORE the first push from this machine:
+   ```bash
+   git -C <base-dir>/<repo-name> config core.hooksPath scripts/githooks
+   git -C <base-dir>/<repo-name> config guard.denylist /absolute/path/to/private/push-denylist.txt
+   ```
+   (See the repo's `docs/RELEASING.md`. A fresh clone without these lines pushes with only GitHub's server-side secret scanning — no private-identifier protection.)
+
 5. **Add additional remotes** (if known from sources table):
    ```bash
    git -C <base-dir>/<repo-name> remote add local <local-url>

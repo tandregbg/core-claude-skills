@@ -30,7 +30,7 @@ Update `/ops` skill resolution to read folder-local `_ops.yaml` walking up from 
 
 **Current Problems:**
 1. Three skill repos exist solely to register one YAML file each — pure scaffolding with no logic.
-2. Adding a new org (`dolutions`, `mindtastic` — both already have vault folders without configs) requires creating a new skill repo, making this a high-friction action.
+2. Adding a new org (`delta`, `echo` — both already have vault folders without configs) requires creating a new skill repo, making this a high-friction action.
 3. Distribution friction — a new user installing the suite would need to clone all three `*-ops-config` skill repos for symlink discovery to work, adding install steps.
 4. Config drifts from vault content — when working in `<vault>/acme/meetings/`, the team list lives in `~/repos/acme-skills/skills/acme-ops-config/acme.yaml`, a completely separate filesystem location owned by a different repo.
 
@@ -193,7 +193,7 @@ Don't do in this CR. Tracked as a follow-up: archive the three `*-ops-config` di
 
 ### Test Case 3: `/ops status` in folder with no `_ops.yaml`
 
-- `cd <vault>/dolutions && /ops status` (no config exists today — currently falls through to base).
+- `cd <vault>/delta && /ops status` (no config exists today — currently falls through to base).
 - Expected: walks up, no `_ops.yaml` found, no `_config/base.yaml`, falls through to skill `base.yaml`. Generic config used.
 
 ### Test Case 4: project-level override still wins
@@ -205,7 +205,7 @@ Don't do in this CR. Tracked as a follow-up: archive the three `*-ops-config` di
 
 - Create `<vault>/_config/base.yaml` with `language: english`.
 - `cd <vault>/acme && /ops status` — expected: uses acme `_ops.yaml` (which says `language: per_claude_md`), not vault-wide base (since folder-local wins).
-- `cd <vault>/dolutions && /ops status` — expected: uses vault-wide `language: english` (since no folder-local `_ops.yaml`).
+- `cd <vault>/delta && /ops status` — expected: uses vault-wide `language: english` (since no folder-local `_ops.yaml`).
 
 ### Test Case 6: deprecation warning
 

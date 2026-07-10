@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.31.0
+**Version:** 1.32.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.32.0 (2026-07-10)
+
+- **Privacy posture completed (CR-028).** Development-evolution material is now local-only by construction: `/insights propose` writes to a vault-private path (`evolution.proposals_path`), never into this repo. RELEASING.md gains a mandatory **semantic release review** (the judgment layer above the mechanical pre-push guard — new identifiers a denylist has never seen pass every regex), documents the GitHub server-side backstop and fresh-clone requirements, and `/update-skills install` reminds about per-clone guard installation. A full history audit confirmed zero secrets ever committed; a few real-looking example slugs were genericized. See CHANGELOG `[1.32.0]`.
 
 ## What's new in v1.31.0 (2026-07-10)
 

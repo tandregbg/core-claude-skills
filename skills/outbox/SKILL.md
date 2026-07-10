@@ -67,17 +67,17 @@ Walk `<vault>/_outbox/*` (excluding `.archive/`), parse each `_manifest.md`, and
 ## Outbox status
 
 PENDING (awaiting reply)
-  260427-andreas-hoye_reflektion       skickad 260427      0/2 svar
-  260427-marcus-bistrom_reflektion     skickad 260427      0/1 svar
+  260427-carol-jones_reflektion       skickad 260427      0/2 svar
+  260427-dan-smith_reflektion     skickad 260427      0/1 svar
 
 RESOLUTION-READY (archive candidates)
-  260427-johan-ekstrom_storskogen      skickad 260427      2/2 svar  Utfall: ja
+  260427-bob-lindgren_acme      skickad 260427      2/2 svar  Utfall: ja
 
 DRAFT
   260506-someone_topic                 draft               -
 
 WITHOUT MANIFEST (manual review needed)
-  260418-anders-johansson_miljodata    -                   -
+  260418-bob-lindgren_acmecorp    -                   -
 ```
 
 For each resolution-ready item, suggest: `/outbox archive <folder-name>`.
@@ -90,7 +90,7 @@ Alias for `list`.
 
 ### `archive <folder-name>`
 
-**Trigger:** `/outbox archive 260427-johan-ekstrom_storskogen`
+**Trigger:** `/outbox archive 260427-bob-lindgren_acme`
 
 **Steps:**
 
@@ -109,7 +109,7 @@ Alias for `list`.
 
 3. **Determine new folder name:**
    - Default: strip contact-name prefix from outbox folder name
-     - `260427-johan-ekstrom_storskogen` -> `260427-storskogen` (or `260427-forvarvsprocesser` if user prefers theme over context)
+     - `260427-bob-lindgren_acme` -> `260427-acme` (or `260427-partnership` if user prefers theme over context)
    - Ask user to confirm or override
 
 4. **Move folder:**
@@ -135,12 +135,12 @@ Alias for `list`.
 
 9. **Report:**
    ```
-   Archived: 260427-johan-ekstrom_storskogen
-     -> _contacts/johan-ekstrom/260427-forvarvsprocesser/
+   Archived: 260427-bob-lindgren_acme
+     -> _contacts/bob-lindgren/260427-partnership/
    Updated:
-     - _contacts/johan-ekstrom/CHANGELOG.md (+1 entry)
-     - _contacts/johan-ekstrom/_tasks.yaml (1 source path)
-     - _contacts/johan-ekstrom/<samtal>.md (1 reference)
+     - _contacts/bob-lindgren/CHANGELOG.md (+1 entry)
+     - _contacts/bob-lindgren/_tasks.yaml (1 source path)
+     - _contacts/bob-lindgren/<samtal>.md (1 reference)
    ```
 
 ### `archive --all-sent` (CR-019)
@@ -180,9 +180,9 @@ When archiving into a contact's folder, the contact-name prefix is redundant. St
 
 | Outbox name | Archived name (in contact folder) |
 |-------------|-----------------------------------|
-| `260427-johan-ekstrom_storskogen` | `260427-storskogen` or `260427-forvarvsprocesser` |
-| `260427-marcus-bistrom_reflektion` | `260427-reflektion` |
-| `260427-andreas-hoye_reflektion` | `260427-reflektion` |
+| `260427-bob-lindgren_acme` | `260427-acme` or `260427-partnership` |
+| `260427-dan-smith_reflektion` | `260427-reflektion` |
+| `260427-carol-jones_reflektion` | `260427-reflektion` |
 
 The skill suggests a default but always asks before renaming. For ambassadörs-style (multi-contact) the original name may be retained when archiving to a shared location.
 

@@ -263,8 +263,8 @@ Skill Evolution
 ───────────────
   Execution feedback: 23 entries (18 edge_case, 5 correction)
   Compiled patterns: 3 skill_pattern entries
-  Pending proposals: 2 in docs/proposals/
-  Applied proposals: 1 in docs/proposals/.applied/
+  Pending proposals: 2 in <proposals_path>/
+  Applied proposals: 1 in <proposals_path>/.applied/
   Config: auto_apply=false, compile_threshold=3, propose_threshold=5,
           demote_on_contradiction=true
 ```
@@ -449,7 +449,7 @@ Reads compiled `skill_pattern` entries and generates concrete SKILL.md improveme
    b. Identify the relevant step or section
    c. Generate a concrete proposed change as a markdown file
 
-4. **Save proposals** to `docs/proposals/` in the core-skills repo:
+4. **Save proposals** to the configured **private proposals path** — `workflows.knowledge_extraction.evolution.proposals_path` (default `<vault>/.skill-evolution/proposals/`, vault-relative). **Never inside the skill repo** (CR-028): generated proposals derive from vault data and are development-evolution material — local only. Format:
    ```markdown
    # Proposal: [Short title]
 
@@ -478,11 +478,11 @@ Reads compiled `skill_pattern` entries and generates concrete SKILL.md improveme
 ```
 Generated 2 proposals:
 
-1. docs/proposals/260404-transcript-name-disambiguation.md
+1. <proposals_path>/260404-transcript-name-disambiguation.md
    Target: skills/transcript/SKILL.md (Step 1)
    Based on: 7 edge_case entries across 4 contacts
 
-2. docs/proposals/260410-ops-short-call-threshold.md
+2. <proposals_path>/260410-ops-short-call-threshold.md
    Target: skills/transcript/SKILL.md (Step 4)
    Based on: 5 skill_pattern entries
 
@@ -512,20 +512,20 @@ Changes logged in CHANGELOG.md. Review with: git diff HEAD~1
 **Steps:**
 
 1. **If specific file:** Read the proposal, apply the change to the target SKILL.md
-2. **If `all`:** Apply all proposals in `docs/proposals/` that haven't been applied yet
+2. **If `all`:** Apply all proposals in the configured `proposals_path` that haven't been applied yet
 3. **For each applied proposal:**
    a. Edit the target SKILL.md with the proposed change
    b. Add a CHANGELOG entry with `[EVOLUTION]` tag
-   c. Move the proposal file to `docs/proposals/.applied/` with a date prefix
+   c. Move the proposal file to `<proposals_path>/.applied/` with a date prefix
    d. Mark the source `skill_pattern` entry as `status: archived` in `_insights.yaml`
 
 **Output:**
 
 ```
-Applied: docs/proposals/260404-transcript-name-disambiguation.md
+Applied: <proposals_path>/260404-transcript-name-disambiguation.md
   -> skills/transcript/SKILL.md updated (Step 1: added pre-check)
   -> CHANGELOG.md updated
-  -> Proposal archived to docs/proposals/.applied/
+  -> Proposal archived to <proposals_path>/.applied/
 
 1 proposal applied. Review changes with: git diff
 ```

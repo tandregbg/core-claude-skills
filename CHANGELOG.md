@@ -7,6 +7,16 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.32.0] - 2026-07-10
+
+### Changed
+- **Evolution artifacts are local-only (CR-028).** `/insights propose` and `propose apply` now write to `workflows.knowledge_extraction.evolution.proposals_path` (new config, default `<vault>/.skill-evolution/proposals/`, vault-relative) instead of `docs/proposals/` in this repo — generated proposals derive from vault data and never belonged in public territory. `/insights status` reads the same path. The repo's `docs/proposals/` remains only the generic CR index.
+- **Example hygiene:** a history audit (all 43 commits, every added line) found zero secrets ever committed, but a handful of real-looking example slugs in old skill docs; all genericized at HEAD to invented names. The gap they demonstrate — real identifiers a denylist has never heard of pass every regex — is addressed by the mandatory review step below. History rewrite deliberately declined (low sensitivity, high disruption).
+
+### Added
+- **Semantic release review (CR-028)** — mandatory RELEASING.md step between commit and push: read the outgoing added lines against the data-classification table and answer three questions (does anything identify a real person/org/deal; does any example look copied rather than invented; does any incident description reveal its source rather than its class). Any yes → rewrite generically + extend the private denylist. The pattern guard is the mechanical floor; this is the judgment layer above it.
+- **RELEASING.md: server-side backstop + fresh-clone posture documented** — GitHub secret scanning/push protection as the always-on floor for clones without the local guard; per-clone guard installation called out as a pre-first-push requirement, now also reminded by `/update-skills install` (step 4b) for repos shipping `scripts/githooks/pre-push`.
+
 ## [1.31.0] - 2026-07-10
 
 ### Added
@@ -217,7 +227,7 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   6. Repeat step 5 in `<vault>/bravo/` and `<vault>/delta/`
   7. **Do not** delete the old `*-ops-config` skill files yet -- they still work as fallback until v1.17.0
   
-  After migration, new orgs (e.g. `dolutions`, `mindtastic`) get a config by dropping a `_ops.yaml` in their vault folder -- no skill repo, no symlink, no SKILL.md.
+  After migration, new orgs (e.g. `delta`, `echo`) get a config by dropping a `_ops.yaml` in their vault folder -- no skill repo, no symlink, no SKILL.md.
 
 ## [1.15.10] - 2026-04-16
 

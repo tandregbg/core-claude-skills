@@ -124,6 +124,10 @@ workflows:
       compile_threshold: 3
       propose_threshold: 5
       demote_on_contradiction: true   # CR-013: rule -> hypothesis on contradiction
+      # CR-028: generated proposals are development-evolution material derived
+      # from vault data — they live in the VAULT (local only), never in the
+      # public skill repo. Vault-relative path.
+      proposals_path: ".skill-evolution/proposals"
 
 # No custom templates by default
 templates: {}
