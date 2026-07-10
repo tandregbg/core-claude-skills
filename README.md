@@ -2,7 +2,7 @@
 
 **Version:** 1.31.0
 
-Claude Code skills for operational documentation, transcript processing, task tracking, knowledge extraction, and team coordination.
+Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
 ## What's new in v1.31.0 (2026-07-10)
 
@@ -167,7 +167,7 @@ core-skills (this repo)
 
 ---
 
-## How the system fits together (v1.30)
+## How the system fits together (v1.31)
 
 Four months of heavy production use taught us where document pipelines actually fail — and the v1.21–v1.26 wave restructured the suite around those findings. The suite now works as **four cooperating layers**:
 
@@ -183,7 +183,7 @@ Four months of heavy production use taught us where document pipelines actually 
 
 Formats used to erode by *template forking*: one deviating file re-seeds its whole series, and every later file looks internally consistent. Now every save is checked against a **template contract** (CR-018: heading order, action-table columns, empty-decision marker), `/ops lint` locates where an existing series forked, and the **slug contract** (CR-021) keeps filenames sortable and machine-readable. Deliberate format changes are made by editing the contract — an accidental fork becomes an explicit, reviewable decision.
 
-### 3. Knowledge — insights that actually compound
+### 3. Knowledge — insights that actually compound (loop closed in v1.31)
 
 Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights normalize` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent. v1.31 (CR-027) added the human-facing half: `/insights synthesize` renders the corpus into a **knowledge wiki** — crosslinked topic articles plus a master INDEX that sessions read first when answering knowledge questions, no RAG required.
 
@@ -355,6 +355,7 @@ insights:         /insights reprocess _contacts/bob-smith -> read transcripts ->
                                                    + hypothesis→rule promotion + last_compiled stamp
                   /insights compile since YYMMDD -> compile only recent feedback
                   /insights normalize [--apply] -> migrate drifted/legacy _insights.yaml to current schema (dry-run default)
+                  /insights synthesize [topic]  -> cluster corpus semantically -> wiki articles + INDEX.md (read-first, no RAG)
                   /insights propose             -> read skill_patterns -> generate SKILL.md proposals
                   /insights propose apply       -> apply proposal -> update SKILL.md + CHANGELOG
                   /insights status              -> scan _insights.yaml files -> report counts + evolution stats
@@ -390,6 +391,8 @@ analytics:        /analytics                    -> vault overview (default)
 | Track action items across projects | `/tasks` |
 | Review weekly task progress | `/tasks weekly` |
 | Daily overview with meeting links and tasks | `/daily-dashboard` |
+| Answer a knowledge question ("what have I learned about X?") | Read `.knowledge/INDEX.md` first, then only the relevant wiki article(s) |
+| Render the insights corpus into wiki articles + index | `/insights synthesize` |
 | Backfill insights for existing transcripts | `/insights reprocess` |
 | Extract knowledge from CLAUDE.md files | `/insights scan-claude-md` |
 | Check insight coverage across vault | `/insights status` |

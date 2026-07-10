@@ -79,7 +79,7 @@ skills:
     - name: insights
       description: "Knowledge extraction manager and skill evolution engine."
       badge: Knowledge
-      subcommands: [reprocess, scan-claude-md, compile, normalize, propose, status, help]
+      subcommands: [reprocess, scan-claude-md, compile, normalize, synthesize, propose, status, help]
     - name: analytics
       description: "Vault-level content analytics — trends, skill adoption, contact engagement, backlog."
       badge: Knowledge
