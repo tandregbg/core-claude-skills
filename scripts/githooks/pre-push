@@ -11,12 +11,34 @@
 # The denylist is PRIVATE (real names/hosts, one regex per line, # comments)
 # and must never live in this repo. Missing denylist = push blocked.
 # Escape hatch: `git push --no-verify` — manual review first, then own it.
+#
+# MODES (git config guard.mode, CR-030):
+#   full         (default) all layers: secrets + denylist (fail-closed) + allowlist
+#   secrets-only keys/tokens/private-key blocks only — for PRIVATE repos whose
+#                legitimate content includes infra details (IPs, sshpass docs)
+#                that the full patterns would false-positive on. Catches the
+#                accidental-credential-paste class without blocking normal work.
+# Other repos install this shared hook via:
+#   git config core.hooksPath /path/to/core-skills/scripts/githooks
+#   git config guard.mode secrets-only   (private repos)
 
 set -u
 
 # Built-in generic secret patterns (safe to publish: patterns, not data).
 # Deliberately narrow — no bare common words (they false-positive on
 # legitimate rule text like "password-manager reference").
+MODE="$(git config guard.mode || echo full)"
+
+KEY_PATTERNS=(
+  'sk-ant-[A-Za-z0-9_-]{8,}'
+  'sk-or-v1-[A-Za-z0-9]{8,}'
+  'sk-proj-[A-Za-z0-9_-]{8,}'
+  'ghp_[A-Za-z0-9]{20,}'
+  'gho_[A-Za-z0-9]{20,}'
+  'AKIA[0-9A-Z]{16}'
+  'BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY'
+)
+
 BUILTIN_PATTERNS=(
   'sk-ant-[A-Za-z0-9_-]{8,}'
   'sk-or-v1-[A-Za-z0-9]{8,}'
@@ -32,12 +54,17 @@ BUILTIN_PATTERNS=(
 # (The [[:space:]] spelling keeps patterns from matching their own source
 # line when this file itself is committed — the guard once blocked itself.)
 
+if [ "$MODE" = "secrets-only" ]; then
+    BUILTIN_PATTERNS=("${KEY_PATTERNS[@]}")
+    DENYLIST=""
+else
 DENYLIST="$(git config guard.denylist || true)"
 if [ -z "$DENYLIST" ] || [ ! -r "$DENYLIST" ]; then
     echo "PUSH BLOCKED (fail-closed): private denylist not configured or unreadable." >&2
     echo "  git config guard.denylist /absolute/path/to/private/push-denylist.txt" >&2
     echo "See docs/RELEASING.md (CR-026)." >&2
     exit 1
+fi
 fi
 
 ZERO="0000000000000000000000000000000000000000"
@@ -64,21 +91,23 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         fi
     done
 
+    if [ -n "$DENYLIST" ]; then
     while IFS= read -r pat; do
         case "$pat" in ''|'#'*) continue;; esac
-        HITS=$(printf '%s\n' "$ADDED" | grep -cE "$pat" || true)
+        HITS=$(printf '%s\n' "$ADDED" | grep -cE -e "$pat" || true)
         if [ "${HITS:-0}" -gt 0 ]; then
             echo "PUSH BLOCKED: private denylist matched ($HITS line[s]): $pat" >&2
-            printf '%s\n' "$ADDED" | grep -nE "$pat" | head -5 >&2
+            printf '%s\n' "$ADDED" | grep -nE -e "$pat" | head -5 >&2
             FAIL=1
         fi
     done < "$DENYLIST"
+    fi
 
     # Example-allowlist enforcement (CR-029): any name-like token in the added
     # lines must be a declared INVENTED example. Unknown real names can't be
     # enumerated — allowed fake ones can.
     SCAN="$(git rev-parse --show-toplevel)/scripts/privacy-scan.sh"
-    if [ -x "$SCAN" ]; then
+    if [ "$MODE" != "secrets-only" ] && [ -x "$SCAN" ]; then
         OUT=$(printf '%s\n' "$ADDED" | "$SCAN" --stdin 2>&1)
         if [ $? -ne 0 ]; then
             echo "PUSH BLOCKED by privacy-scan (CR-029):" >&2

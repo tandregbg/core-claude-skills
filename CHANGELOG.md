@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.33.1] - 2026-07-10
+
+### Added
+- **Guard modes + rollout to sibling repos (CR-030).** The pre-push hook gains `git config guard.mode secrets-only`: keys/tokens/private-key blocks only, no denylist requirement, no allowlist — the right regime for private repos whose legitimate content includes infra details (internal IPs, credential-idiom documentation) that full mode would false-positive on, which would train `--no-verify` habits (guard theater). A cross-repo audit found zero keys ever committed anywhere; public repos verified clean; private repos now carry secrets-only, public ones full. Any repo installs the shared hook via an absolute `core.hooksPath` pointing at this repo's `scripts/githooks`.
+
 ## [1.33.0] - 2026-07-10
 
 ### Added

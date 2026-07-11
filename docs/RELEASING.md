@@ -85,7 +85,13 @@ git config guard.denylist /absolute/path/to/private/push-denylist.txt
   names). The pre-push guard blocks unknown tokens; `scripts/privacy-scan.sh
   --tree` watches the whole tree on the weekly sweep. Adding an allowlist
   line is a conscious act: confirm the name is invented, never borrowed.
-- **Fail-closed:** no denylist configured → no push.
+- **Fail-closed:** no denylist configured → no push (full mode).
+- **Guard modes (CR-030):** `git config guard.mode secrets-only` gives other
+  repos a lighter regime — keys/tokens/private-key blocks only — for PRIVATE
+  repos whose legitimate content includes infra details the full patterns
+  would false-positive on. All GitHub-remoted repos on a dev machine should
+  carry at least secrets-only; public repos carry full. Install by pointing
+  `core.hooksPath` at this repo's `scripts/githooks`.
 - **Override:** `git push --no-verify` exists by design — a guard that cannot
   be consciously overridden gets uninstalled. Review the flagged lines first,
   then own the decision.
