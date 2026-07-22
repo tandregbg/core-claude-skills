@@ -4,6 +4,10 @@
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
+## What's new in v1.33.3 (2026-07-27)
+
+- **Triage external mirror (CR-017).** `/inbox triage` can now mirror today/tomorrow items to an external actions surface — gated push out, gated reconcile back, triage doc stays the source of truth. Contract only; the provider integration is local and secret-free by design. See CHANGELOG `[1.33.2]`.
+
 ## What's new in v1.33.2 (2026-07-27)
 
 - **`/analytics pipeline` (CR-031).** Meetings are the input — the outcomes are insights, tasks, changelog entries, and outbox sends. The new subcommand traces the whole chain over time (quarters as columns, grouped rows), with per-meeting ratios and per-day averages including active-day density. Field-level scans only; prose is never read. Overview also gains active-day metrics, and two classification gaps are fixed. See CHANGELOG `[1.33.2]`.

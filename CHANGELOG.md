@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.33.3] - 2026-07-27
+
+### Added
+- **Triage external-mirror contract (CR-017).** `/inbox triage` gains a documented, optional hook for mirroring the triage doc's *today/tomorrow* items to an external actions surface. Two directions, both human-gated: **push** (preview → one-way additive, deduped, never invents dates) and **reconcile** (read the surface back → *propose* `[x]` on matching triage lines, human approves before any write). The triage doc stays the system of record — no auto-merge, no hidden IDs. Documentation only: this repo ships the contract (gated + secret-free + triage-path read from the registered `file:`), never provider code — the actual integration is a local, per-vault script with its credential and target IDs outside the repo. Absent local config the mirror does not exist. See `docs/proposals/CR-017-triage-external-mirror.md`.
+
 ## [1.33.2] - 2026-07-27
 
 ### Added

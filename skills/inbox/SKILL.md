@@ -199,6 +199,26 @@ thinking step, not the skill's.
 age, `[x]` items awaiting archive, week-anchor date vs today, link to the
 KLART archive.
 
+**Optional external mirror (CR-017).** A vault MAY point the triage doc at an
+external actions surface (e.g. a task app) for a focused *today/tomorrow* view.
+This is a **local, per-vault integration** -- its script, credentials, and
+target IDs live outside this repo (a local script dir + a gitignored secret;
+a config pointer under the vault's own config layer). Two directions, both
+**human-gated**, mirroring the mechanical-upkeep principle above:
+
+- **push** -- mirror the current actionable *today/tomorrow* items outward,
+  after showing a preview. One-way, additive, deduped against what's already
+  there. It never invents dates: an item ships only if the line itself marks
+  it today/tomorrow.
+- **reconcile** -- read the external surface back and, for items completed
+  there, **propose** marking the matching triage line `[x]`; the human
+  approves before anything is written. Never an automatic merge -- the triage
+  doc stays the system of record, consistent with "sorting is the human's
+  step, not the skill's."
+
+This skill documents the *contract* (gated push + gated reconcile, secret-free,
+triage-path read from the registered `file:`); it ships **no** provider code.
+
 ### `/inbox help` -- Usage Guide
 
 Print this usage guide:
