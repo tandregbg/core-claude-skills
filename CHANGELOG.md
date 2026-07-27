@@ -7,6 +7,15 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.33.2] - 2026-07-27
+
+### Added
+- **`/analytics pipeline` — the outcome layer (CR-031).** The document counts were never the full picture: a meeting's outcomes live in structured files the skill refused to touch. Live use surfaced the gap ("is that actually the full picture?") — answering it required four sources outside the scan: insight entries (`date:`/`type:` in `_insights.yaml`), tasks created (`created:` in `_tasks.yaml` v2), dated CHANGELOG bullets (which carry the original meeting date, making them the best longitudinal outcome proxy), and outbox packages. The new subcommand traces the whole chain **input → meeting docs → outcomes** as a grouped table with quarters as columns, derived ratios (insights/tasks/changelog entries per meeting), and per-day averages including **active-day density** (active days / calendar days — in practice the strongest adoption signal). Reports are two-part by contract: Part 1 Overview (headline totals + numbered interpreted findings + mandatory measurement notes), Part 2 Deep dive (the tables). The "metadata only" principle is refined to **metadata and structured fields**: field-level regex scans only, prose never read — entry contents remain the visualisation app's domain.
+
+### Changed
+- **Overview gains active-day density** — active days / calendar days for the current quarter plus files per active day; the gap between files/day and files/active-day shows whether growth comes from busier days or fewer idle days.
+- **Classification fixes:** `sammanfattning`/`summary` added to the meeting keyword list (descriptive summary filenames were falling to uncategorized), and dual-mode `agenda`/`facilitator` docs (CR-018) get their own class instead of falling through.
+
 ## [1.33.1] - 2026-07-10
 
 ### Added

@@ -1,8 +1,8 @@
 ---
 name: analytics
-description: Vault-level content analytics — file creation trends, skill adoption, contact engagement, content distribution, and unprocessed backlog detection. Outputs to _analytics/ folder.
+description: Vault-level content analytics — file creation trends, skill adoption, contact engagement, content distribution, pipeline outcome metrics (insights/tasks/changelog per meeting), and unprocessed backlog detection. Outputs to _analytics/ folder.
 user-invocable: true
-argument-hint: [overview|skills|contacts|backlog|help]
+argument-hint: [overview|skills|contacts|pipeline|backlog|help]
 ---
 
 # /analytics -- Vault Content Analytics
@@ -17,7 +17,7 @@ Analyse the vault as a dataset — file metadata (names, dates, paths, counts), 
 
 ## Design Principles
 
-- **Metadata only.** Read filenames, paths, dates, and file sizes. Never read file contents except for lightweight classification (H1 heading, first line).
+- **Metadata and structured fields only.** Read filenames, paths, dates, and file sizes. Never read prose content — the only in-file reads allowed are lightweight classification (H1 heading, first line) and **structured-field scans** for the pipeline subcommand: regex-matching `date:`/`type:` lines in `_insights.yaml`, `created:` lines in `_tasks.yaml`, and `- **YYMMDD:` bullets in `CHANGELOG.md`. Field values only; summaries, rationale, and notes are never read.
 - **Non-destructive.** Only writes to `_analytics/` — never modifies existing files.
 - **Snapshot-based.** Each run produces a dated snapshot. Historical snapshots enable trend comparison.
 - **Privacy-aware.** Contact names appear in analytics (they are folder names, not extracted content). Mark private contacts with `private: true` in `_meta.yaml` to exclude them from output.
@@ -33,6 +33,7 @@ _analytics/
 ├── YYMMDD-vault-overview.md       <- /analytics overview
 ├── YYMMDD-skill-adoption.md       <- /analytics skills
 ├── YYMMDD-contact-engagement.md   <- /analytics contacts
+├── YYMMDD-pipeline-report.md      <- /analytics pipeline
 ├── YYMMDD-backlog-report.md       <- /analytics backlog
 └── .archive/                      <- older snapshots (auto-archived)
 ```
@@ -96,8 +97,9 @@ Classify each file by **path first, keywords second**:
 | Keywords | Classification |
 |----------|---------------|
 | `samtal`, `call`, `transcript` | `transcript` |
+| `agenda`, `facilitator` | `agenda` (dual-mode docs, CR-018 — check before preparation) |
 | `förberedelse`, `preparation`, `prep-` | `preparation` |
-| `meeting`, `möte`, `standup`, `board`, `alignment`, `kickoff`, `weekly`, `sprint`, `retro`, `sync` | `ops/meeting` |
+| `meeting`, `möte`, `standup`, `board`, `alignment`, `kickoff`, `weekly`, `sprint`, `retro`, `sync`, `sammanfattning`, `summary` | `ops/meeting` |
 
 **Step 3 — Directory-context classification** (for files that didn't match keywords):
 
@@ -145,6 +147,7 @@ Before including a contact in named output:
 2. Compute summary metrics:
    - Total YYMMDD files, date range, unique active dates, active months
    - Current pace (files/day for current quarter)
+   - **Active-day density** — active days / calendar days for the current quarter (e.g. `84/91`), plus files per *active* day. The gap between files/day and files/active-day shows whether growth comes from busier days or from fewer idle days.
    - Trend direction (current quarter rate vs previous quarter rate)
 3. Compute yearly totals with year-over-year growth multiplier
 4. Compute **content type × quarter pivot** — the core analytical view showing how each skill type's volume evolves over time. Columns: transcript, ops/meeting, preparation, ops, travel, raw-text, uncategorized, other. Use `·` for zero cells.
@@ -177,6 +180,8 @@ Generated: YYYY-MM-DD
 | Avg files/month | N.N |
 | Unique dates | N |
 | Current pace | N.N files/day (QN YYYY) |
+| Active days (current quarter) | N/N |
+| Files per active day | N.N |
 | Trend | ↑ N% vs previous quarter |
 
 ---
@@ -399,6 +404,83 @@ Legend: · = 0  ░ = 1-2  ▒ = 3-5  ▓ = 6-10  █ = 11+
 
 ---
 
+### `pipeline` -- Input → meeting docs → outcomes over time
+
+**Trigger:** `/analytics pipeline`
+
+The document counts alone are not the full picture — a meeting's *outcomes* live in structured files the other subcommands never touch. This subcommand traces the whole chain: what came in, what was documented, and what it produced.
+
+**Data sources (structured fields only — never prose):**
+
+| Layer | Source | Field scanned |
+|-------|--------|---------------|
+| Insights | `_insights.yaml` (all folders) | `date:` + preceding `type:` per entry |
+| Tasks created | `_tasks.yaml` (v2, all folders) | `created:` per task |
+| CHANGELOG entries | `CHANGELOG.md` (all folders) | `- **YYMMDD:` bullet dates |
+| Outbox packages | `_outbox/**` file discovery | filename YYMMDD prefix |
+| New contacts | `_contacts/<name>/` | earliest YYMMDD file per folder |
+
+**Steps:**
+
+1. Run file discovery (same scan as overview)
+2. Scan the structured sources above
+3. Build the **grouped chain table — quarters as columns** (metrics as row groups, so the whole chain aligns vertically). Collapse quarters before the first meaningful year into a single `≤YYYY` column to keep width manageable. Row groups:
+   - **INPUT:** transcripts, raw text (.txt)
+   - **MEETING DOCS:** summaries/notes, agenda/facilitator, preparations
+   - **OUTCOMES:** insights total + one row per insight type (largest types first, small ones aggregated as "other"), tasks created, CHANGELOG entries, outbox packages, new contact folders
+4. Compute **derived ratios** for quarters where the systems are fully active: insights per meeting+transcript, tasks per meeting+transcript, CHANGELOG entries per meeting+transcript
+5. Compute **per-day averages by quarter:** active days / calendar days, files/day, meetings+transcripts/day, insights/day, tasks/day, files per active day (partial quarters use elapsed days)
+6. Write to `_analytics/YYMMDD-pipeline-report.md`
+
+**Report structure — two parts, mandatory:**
+
+- **Part 1 — Overview:** headline totals table, a numbered list of *interpreted* findings (adoption inflections, ratio shifts, what converged or diverged — written as conclusions, not table prose), and the **measurement notes**.
+- **Part 2 — Deep dive:** the grouped chain table, derived ratios, per-day averages, and any monthly detail.
+
+**Measurement notes (mandatory in every pipeline report):**
+
+- Outcome systems have adoption dates: a `·` before a system existed means "not yet measured", not "nothing happened". State each source's start-of-record explicitly (e.g. insights backfilled with extraction dates, tasks v2 introduction).
+- CHANGELOG entries carry the original meeting date and are therefore the best longitudinal outcome proxy.
+- Action items inside summary tables are NOT counted (would require prose reads); the task count is the nearest proxy.
+- Mark partial quarters/months and use elapsed days for their per-day rates.
+
+**Output format (Part 2 core table):**
+
+```markdown
+| Group / metric | ≤YYYY | YY-Q1 | YY-Q2 | ... | **Total** |
+|---|---:|---:|---:|---:|---:|
+| **INPUT** | | | | | |
+| &nbsp;&nbsp;Transcripts | N | N | N | ... | **N** |
+| &nbsp;&nbsp;Raw text (.txt) | N | N | N | ... | **N** |
+| **MEETING DOCS** | | | | | |
+| &nbsp;&nbsp;Summaries / notes | N | N | N | ... | **N** |
+| &nbsp;&nbsp;Agenda/facilitator | · | N | N | ... | **N** |
+| &nbsp;&nbsp;Preparations | · | N | N | ... | **N** |
+| **OUTCOMES** | | | | | |
+| &nbsp;&nbsp;Insights (total) | · | · | N | ... | **N** |
+| &nbsp;&nbsp;&nbsp;&nbsp;— learning | · | · | N | ... | **N** |
+| &nbsp;&nbsp;&nbsp;&nbsp;— pattern | · | · | N | ... | **N** |
+| &nbsp;&nbsp;Tasks created | · | · | N | ... | **N** |
+| &nbsp;&nbsp;CHANGELOG entries | N | N | N | ... | **N** |
+| &nbsp;&nbsp;Outbox packages | · | · | N | ... | **N** |
+| &nbsp;&nbsp;New contact folders | N | N | N | ... | **N** |
+```
+
+Per-day averages table:
+
+```markdown
+| Metric | YY-Q1 | YY-Q2 | ... |
+|---|---:|---:|---:|
+| Active days (≥1 file) | N/N | N/N | ... |
+| Files/day | N.N | N.N | ... |
+| Meetings+transcripts/day | N.N | N.N | ... |
+| Insights/day | · | N.N | ... |
+| Tasks/day | · | N.N | ... |
+| Files per active day | N.N | N.N | ... |
+```
+
+---
+
 ### `backlog` -- Unprocessed content detection
 
 **Trigger:** `/analytics backlog`
@@ -501,6 +583,7 @@ Usage:
   /analytics overview             Same as above
   /analytics skills               Skill adoption over time
   /analytics contacts             Contact engagement timelines
+  /analytics pipeline             Input -> meeting docs -> outcomes chain
   /analytics backlog              Unprocessed content detection
   /analytics help                 This guide
 
@@ -534,8 +617,8 @@ Output language follows the same resolution as other standalone skills:
 
 - The `_analytics/` folder is created automatically on first run
 - Old snapshots are archived to `_analytics/.archive/` — never deleted
-- This skill does NOT read `_insights.yaml` files — that's the visualisation app's domain
-- This skill does NOT read file contents (except optional H1 heading for display)
+- This skill reads `_insights.yaml`/`_tasks.yaml`/`CHANGELOG.md` at **field level only** (dates and type enums for the pipeline subcommand) — entry contents (summaries, rationale, notes) remain the visualisation app's domain
+- This skill does NOT read file prose (except optional H1 heading for display)
 - Contact privacy is respected via `_meta.yaml` `private: true`
 - The skill classification algorithm uses **path first, keywords second** — this avoids the ~17% miscount that pure keyword matching produces (e.g., acme/meetings/ files with descriptive names)
 - Quarterly comparisons handle partial quarters gracefully — the current quarter is annualised for trend comparison

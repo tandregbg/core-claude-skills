@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-031**
+Next available CR number: **CR-032**
 
 ---
 
@@ -16,12 +16,13 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-030** (guard modes + sibling-repo rollout, v1.33.1).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-031** (`/analytics pipeline` outcome metrics, v1.33.2).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-031 | `/analytics pipeline` — outcome layer, horizontal quarter pivot, per-day averages | v1.33.2 (2026-07-27) | Insights/tasks/changelog/outbox counted via field-level scans; grouped chain table; active-day density; mandatory measurement notes; classification fixes |
 | CR-030 | Guard modes + rollout to sibling repos | v1.33.1 (2026-07-10) | `guard.mode secrets-only` for private repos (keys-only, no false positives on infra content); shared hook via absolute hooksPath; cross-repo history audit clean |
 | CR-029 | Invented-examples allowlist + scheduled repo privacy watch | v1.33.0 (2026-07-10) | Name-like tokens must match the public allowlist of fake names; privacy-scan.sh in hook + weekly sweep; baseline adjudicated |
 | CR-028 | Local-only evolution + semantic release gate | v1.32.0 (2026-07-10) | `evolution.proposals_path` (vault-private); mandatory semantic review step in RELEASING.md; history audited (zero secrets ever); fresh-clone guard reminder in update-skills |

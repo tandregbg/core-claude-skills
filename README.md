@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.33.1
+**Version:** 1.33.2
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.33.2 (2026-07-27)
+
+- **`/analytics pipeline` (CR-031).** Meetings are the input — the outcomes are insights, tasks, changelog entries, and outbox sends. The new subcommand traces the whole chain over time (quarters as columns, grouped rows), with per-meeting ratios and per-day averages including active-day density. Field-level scans only; prose is never read. Overview also gains active-day metrics, and two classification gaps are fixed. See CHANGELOG `[1.33.2]`.
 
 ## What's new in v1.33.1 (2026-07-10)
 
@@ -116,7 +120,7 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, **synthesizes the corpus into a knowledge wiki** (topic articles + read-first INDEX, CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
 | `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024 — the source file moves with its output to the target's `.attachments/`) and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
-| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `backlog`, `help`. | Yes (`/analytics`) |
+| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `pipeline`, `backlog`, `help`. | Yes (`/analytics`) |
 | `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
 
 ## Shared contract: `ecosystem.yaml`
@@ -383,6 +387,7 @@ analytics:        /analytics                    -> vault overview (default)
                   /analytics overview           -> file counts, growth, distribution, busiest dates
                   /analytics skills             -> skill adoption over time, structured vs unstructured ratio
                   /analytics contacts           -> contact engagement timelines, network growth
+                  /analytics pipeline           -> input -> meeting docs -> outcomes chain, ratios, per-day averages
                   /analytics backlog            -> unprocessed .txt files, missing insights, stale inbox
                   /analytics help               -> print usage guide
 ```
