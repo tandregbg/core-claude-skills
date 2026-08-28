@@ -98,7 +98,7 @@ If `enabled: false`, all subcommands exit immediately with a message.
 
 1. **Resolve target folders:**
    - If folder path: resolve to that single folder (must contain CHANGELOG.md)
-   - If `all`: scan vault recursively for all folders containing CHANGELOG.md (max depth 6, skip `.archive/`, `clones/`)
+   - If `all`: scan vault recursively for all folders containing CHANGELOG.md (max depth 6, skip `.archive/`, `.handoff/`, `clones/`)
    - If `since YYMMDD`: same as `all`, but with date filter applied in step 4
 
 2. **For each target folder, list `YYMMDD-*.md` files** (transcript files matching the 6-digit date prefix pattern)
@@ -159,7 +159,7 @@ Extracted 89 insights (89 new, 0 already existed).
 
 **Steps:**
 
-1. **Scan vault subfolders for CLAUDE.md files** (max depth 4, skip `.archive/`, `clones/`)
+1. **Scan vault subfolders for CLAUDE.md files** (max depth 4, skip `.archive/`, `.handoff/`, `clones/`)
 
 2. **For each CLAUDE.md, find nearest parent folder with CHANGELOG.md** as target for `_insights.yaml`. If no CHANGELOG.md exists in any parent (up to vault root), skip this CLAUDE.md with a note.
 
@@ -395,7 +395,7 @@ Brings legacy and drifted `_insights.yaml` files up to the current schema. Compl
 | Tags > 5 | → truncate from the tail |
 
 **Process:**
-1. Scan target for `_insights.yaml` files (skip `.archive/`, `.transcripts/`, `clones/`)
+1. Scan target for `_insights.yaml` files (skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`)
 2. Report every proposed change grouped by file (dry-run output = a unified change list with counts per drift class)
 3. On `--apply`: write files atomically, add a one-line CHANGELOG entry in each affected folder (`- **YYMMDD: Normalize** _insights.yaml -- N schema fixes (CR-020)`)
 4. Never touch entry content (`summary`/`rationale` text) -- structure and vocabulary only; content remediation stays with `/ops normalize`
@@ -418,7 +418,7 @@ Turns the accumulated `_insights.yaml` corpus into a **curated wiki**: readable,
 
 **Process:**
 
-1. **Load the corpus:** every `_insights.yaml` (skip `.archive/`, `.transcripts/`, `clones/`), entries with `status: active`. Types `quote` and `opportunity` are *supporting* material (quotes illustrate; opportunities go in an article's open-questions section) — they never drive cluster selection alone.
+1. **Load the corpus:** every `_insights.yaml` (skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`), entries with `status: active`. Types `quote` and `opportunity` are *supporting* material (quotes illustrate; opportunities go in an article's open-questions section) — they never drive cluster selection alone.
 2. **Cluster by topic, vault-wide:** group semantically related insights across folders (shared tags are the seed; semantic judgment merges synonymous tags and splits overloaded ones). A cluster ≥ `article_threshold` (or an explicitly requested `<topic>`) gets an article.
 3. **Write/update the article** at `<wiki_path>/<topic-slug>.md`:
    - **Topic-named, not dated** — articles are living documents (like rolling plans), never `YYMMDD-` prefixed.

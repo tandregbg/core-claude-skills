@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.34.0
+**Version:** 1.35.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.35.0 (2026-08-28)
+
+- **`handoff` skill (`/handoff`) — frozen context snapshots (CR-033).** A conversation often surfaces a bounded subject that belongs to *different* work: a topic a colleague should hear, a positioning question that belongs to a company document, a commitment whose execution is a separate job. Until now that material had three bad homes — buried in a meeting summary, copied into a living document that does not own it, or dropped in `.ephemeral/` where it dies. The new skill writes it to `<vault>/.handoff/` as a self-contained snapshot: one subject, no vault links, readable cold by a session with no context. **Its defining property is non-delivery** — nothing parses, indexes, sweeps or lints it, it generates no task and appears in no dashboard; a human opens it and starts new work. Isolation is the feature, and automation would destroy it. Where the source was confidential the snapshot carries an explicit boundary block (what may be shared onward, what may not, whether the source may be named) so the constraint travels with the content. See CHANGELOG `[1.35.0]`.
 
 ## What's new in v1.34.0 (2026-08-28)
 
@@ -130,6 +134,7 @@ Three audit-driven improvements landed together. The full audit lives in [`docs/
 | `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `pipeline`, `backlog`, `help`. | Yes (`/analytics`) |
 | `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
+| `handoff` | Frozen context snapshots in `<vault>/.handoff/`. Captures one bounded subject from a conversation as a self-contained document a different work session can pick up cold — no vault links, no index entry, no task generated. **Nothing in the suite picks it up: a human opens it and starts new work.** Carries an explicit confidentiality boundary when the source was confidential, so the constraint travels with the content. Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
 
 ## Shared contract: `ecosystem.yaml`
 

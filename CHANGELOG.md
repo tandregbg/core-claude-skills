@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.35.0] - 2026-08-28
+
+### Added
+- **`handoff` skill (`/handoff`) — frozen, self-contained context snapshots (CR-033).** A new artefact class for a bounded subject that belongs to *different* work than the conversation that produced it. Previously such material had three bad homes: buried in a meeting summary the next session will not find, copied into a living document that then carries content it does not own, or dropped into `.ephemeral/` where it is allowed to die (CR-024). `/handoff` writes it to `<vault>/.handoff/` as a self-contained document — no wikilinks, no relative paths, readable by someone with no vault access. **The defining property is non-delivery:** an outbox item is sent, a task is executed, a handoff is neither. Nothing in the suite picks it up — no parse, index, summarise, sweep or lint; no task generated, no dashboard entry, never auto-archived. A human opens it and starts new work from it. Isolation is the point: the receiving session gets exactly one subject with no adjacent threads bleeding in. Six contract rules (frozen, self-contained, bounded, not indexed, read on explicit request only, not archived), numbered sections closing with what was still open at capture time, and — where the source was confidential — an explicit boundary block at the top stating what may be shared onward, what may not, and whether the source may be named, so **the constraint travels with the content**. Subcommands: `list`, `read <name>`, `help`. Registered in `ecosystem.yaml` `vault_conventions` with an explicit skip instruction for every other skill. See `docs/proposals/CR-033-handoff-snapshots.md`.
+
 ## [1.34.0] - 2026-08-28
 
 ### Added

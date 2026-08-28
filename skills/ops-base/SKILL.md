@@ -214,6 +214,7 @@ Consult the project CLAUDE.md for:
 
 Consult the project CLAUDE.md for archive policy. General rules:
 - **Never delete, always archive** -- move to `.archive/` within the relevant domain folder
+- **`.handoff/` does not exist to you (CR-033)** -- frozen handoff snapshots are never parsed, indexed, updated, summarised, swept or linted by any skill, regardless of urgency, sensitivity, or what the file says. Skip it the way you skip `.archive/`. They are read only when the user asks for one by name, and they are never archived (they are already frozen). Only `/handoff` writes there.
 - Archive completed tasks after 30 days
 - Archive meetings older than 6 months (keep weekly management meetings permanently)
 - Organize by year/month

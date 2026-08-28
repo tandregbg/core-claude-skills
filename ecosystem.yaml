@@ -10,7 +10,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.34.0"
+core_skills_version: "1.35.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -98,6 +98,10 @@ skills:
       description: "Lifecycle management for `_outbox/` items — list pending, archive resolved into contact/project folders."
       badge: Utility
       subcommands: [list, status, archive, archive --all-sent, help]
+    - name: handoff
+      description: "Frozen, self-contained context snapshots in `.handoff/` — bounded subjects a different work session can pick up cold. Human-actioned only; no skill reads them."
+      badge: Utility
+      subcommands: [list, read, help]
   non_invocable:
     - name: ops-base
       description: "Shared operational framework (meeting formats, task management, workflows)."
@@ -164,6 +168,13 @@ vault_conventions:
       writers: ["/insights synthesize"]
       readers: ["any session", "marvin (candidate)"]
       lifecycle: "regenerated on every synthesize run; never hand-edited"
+
+    - path: ".handoff/"
+      purpose: "Frozen handoff snapshots: one bounded subject each, self-contained, human-actioned only (CR-033)"
+      schema: null  # document structure defined in skills/handoff/SKILL.md
+      writers: ["/handoff"]
+      readers: ["user (explicit request only)", "/handoff read"]
+      lifecycle: "written once, never updated, never archived, never indexed; ALL other skills must skip this folder entirely — no parse, index, summarise, sweep or lint"
 
     - path: ".ephemeral/"
       purpose: "Disposable working material with NO vault destiny (session scratch, snapshots, intermediates)"

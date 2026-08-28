@@ -31,7 +31,7 @@ Template strings marked as `{strings.section.key}` are resolved at runtime.
 
 Before creating the summary, load any promoted **rules** from the `_insights.yaml` chain in scope:
 
-1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `.transcripts/`, `clones/`).
+1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`).
 2. **Filter to rules:** entries where `confidence: rule` AND `status: active`.
 3. **Cap to 20 entries** — if more, prefer highest `confirmation_count`, ties broken by most recent confirmation date.
 4. **Build a one-line-per-rule preamble** in the form `[type] summary`. Treat the preamble as additional standing instructions for this run.
