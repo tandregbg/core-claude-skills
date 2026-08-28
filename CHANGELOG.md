@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.34.0] - 2026-08-28
+
+### Added
+- **External-counterpart preparation (CR-032).** `/preparation` produces a walk-in card plus deep dives (CR-005) — right for internal meetings, insufficient when the counterpart is external. An external preparation asserts claims about a person the author has not verified (mandate, tenure, who they need sign-off from), and being confidently wrong about that is expensive in the room. Six mechanisms now apply **only** to external counterparts (contact folders classified `professional`/`confidential`, `_customers/`, `_partners/`, any first contact): an inline **`[UNVERIFIED]` marker** carrying the CR-015/CR-016 convention into preparation; **source-conflict resolution** that states the conflict, reasons about which value is implausible, and issues an explicit instruction about what may be said in the room; **reliability grading** against comparable prior preparations in the same folder; a per-counterpart **sensitive-ground** negative list (distinct from "if they push back" — that is a response, this is a prohibition); a **branched opening** that may instruct the reader to abandon the prepared agenda when the premise is invalidated; and a **what-they-are-measured-on** line. Additive and scoped — internal preparation is unchanged, no new sections, no second file. Behavioural-signal inference (reading calendar or mail activity as buying intent) is explicitly out of scope. See `docs/proposals/CR-032-external-counterpart-preparation.md`.
+
 ## [1.33.3] - 2026-07-27
 
 ### Added

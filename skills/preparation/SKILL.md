@@ -310,6 +310,103 @@ A 17-item agenda card (the audit found one in the wild) is a failure. If you hav
 
 ---
 
+---
+
+## External-Counterpart Preparation (CR-032)
+
+Everything above applies to every preparation file. This section applies **only when the counterpart is external** -- a prospect, customer, partner, competitor, or any first contact.
+
+**Detect the condition first.** A counterpart is external when the document asserts claims about a person or organisation outside the user's own team: contact folders classified `professional` or `confidential` in `_meta.yaml`, `_customers/` and `_partners/` folders, and any first-contact meeting. It is **not** external for colleagues, direct reports, internal 1-on-1s, standups, or team meetings -- there these mechanisms are noise, and the CR-005 template alone is correct.
+
+**Why the distinction matters.** Internal preparation describes shared facts. External preparation asserts things about a person the author has not verified -- their mandate, their tenure, who they must get sign-off from -- and being confidently wrong about that is expensive in the room. This is the same failure mode CR-015 and CR-016 address in `/transcript`: *a confident wrong claim is worse than an honest gap*, because it propagates into every document built on top of it.
+
+### 1. Verification marker
+
+Any claim about the counterpart that could not be grounded in a vault file or a source the user supplied is written inline as `[UNVERIFIED]` -- never silently omitted, never asserted.
+
+```markdown
+**Beslutsroll:** C-level med sannolikt eget mandat inom AI-budgeten. Mandatgräns: [UNVERIFIED], fråga.
+**Tid i roll:** [UNVERIFIED]
+```
+
+Where the gap is worth closing in the meeting, follow the marker with an instruction to ask. The marker is the same convention `/transcript` uses (`?` for an unconfirmed owner, `Name?` for an unverified proper noun) -- one vocabulary across the suite.
+
+**No-op condition:** everything resolves against vault files. Then the section is silent.
+
+### 2. Source-conflict resolution
+
+When two sources disagree about the same fact, do **not** silently pick one. State the conflict, reason about which value is implausible given known context, and issue an explicit instruction about what may be said in the room. Then state the reduced claim that actually holds.
+
+```markdown
+**Omsättning:** källorna anger 27,9 respektive 22,4 MUSD ARR, utan samstämmig valuta.
+Den senare är orimlig för ett bolag av den här storleken. **Redovisa ingen av siffrorna
+i rummet.** Det som håller: noterat, grundarlett, i storleksordningen 50-60 anställda.
+```
+
+The instruction is the point. A conflict noted without guidance leaves the reader to improvise with numbers that may be wrong.
+
+### 3. Reliability grading
+
+When the available material is thinner than for comparable prior preparations in the same folder, say so at the top of the speculative section and tell the reader how to carry it:
+
+```markdown
+> Underlaget är tunnare än för [tidigare motpart]. Punkterna nedan följer av bolagets
+> storlek och produkt, inte av något motparten sagt. Lägg fram dem som förväntningar
+> och räkna med att bli korrigerad på minst en.
+```
+
+A preparation document that grades its own confidence is more useful than one that reads uniformly certain.
+
+### 4. Sensitive ground
+
+A per-counterpart negative list: what **not** to say, and why. This is distinct from the existing `**If they push back:**` field -- that is a response to something they raise; this is a prohibition on something the reader might volunteer.
+
+```markdown
+**Känslig mark:** nämn inte prissättning innan syftet med mötet är klarlagt.
+Beröm inte deras produkt -- beröm av kompetens läses ofta som misstanke.
+```
+
+Sources: a `_meta.yaml` note, a prior transcript where a topic landed badly, or a known third-party relationship (see Step 2.5).
+
+### 5. Branched opening
+
+For a first contact, or a meeting whose purpose is genuinely unknown, the opening is a **qualifying question plus branches** -- not a script.
+
+```markdown
+**Öppning:** "[Kvalificerande fråga]" -- vänta på svaret.
+- **Om A:** kör agendapunkt 1-3 som de står.
+- **Om B:** släpp punkt 2 och 3. Det här är ett annat samtal -- ställ öppen fråga och lyssna.
+```
+
+Where an answer invalidates the premise of the prepared material, say so explicitly. Instructing the reader to **abandon** the prepared agenda is a legitimate and often correct output.
+
+### 6. What they are measured on
+
+One line on the counterpart's own success metric -- frequently not the same as their job description. It shapes what will land.
+
+```markdown
+**Mäts på:** om produkten faktiskt blir bättre, inte på hur mycket AI de pratar om.
+```
+
+### Where these land in the document
+
+| Mechanism | Location |
+|---|---|
+| Verification marker | Inline, wherever the claim appears |
+| Source conflict | Inline where the figure is cited, or under `{strings.preparation.context}` |
+| Reliability grading | Blockquote at the top of the speculative deep-dive section |
+| Sensitive ground | Own field in the counterpart's deep-dive section |
+| Branched opening | Replaces `**Suggested framing:**` for agenda item 1 |
+| Measured on | Own line under `{strings.preparation.background}` |
+
+No new sections, no second file -- the single-document principle holds.
+
+### Out of scope
+
+Do **not** infer intent from behavioural signals (when the counterpart booked, from which address, how quickly they replied). It is technically available and it is not this skill's job. Preparation reads the vault and what the user supplies.
+
+---
+
 ## Output Filename
 
 Format: `YYMMDD-{strings.filename_keywords.preparation}-[context].md`

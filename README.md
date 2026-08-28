@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.33.2
+**Version:** 1.34.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.34.0 (2026-08-28)
+
+- **External-counterpart preparation (CR-032).** `/preparation` gains six mechanisms that apply only when the counterpart is external — prospect, customer, partner, first contact: an inline `[UNVERIFIED]` marker (the CR-015/CR-016 convention, now in preparation too), source-conflict resolution with an explicit instruction about what may be said in the room, reliability grading against prior preparations, a per-counterpart sensitive-ground list, a branched opening that can tell the reader to drop the prepared agenda, and a line on what the counterpart is actually measured on. Internal preparation is unchanged. See CHANGELOG `[1.34.0]`.
 
 ## What's new in v1.33.3 (2026-07-27)
 
