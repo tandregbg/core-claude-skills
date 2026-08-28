@@ -7,6 +7,14 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.35.1] - 2026-08-28
+
+### Fixed
+- **`.handoff/` enforcement completed across the remaining scanning skills (CR-033).** The v1.35.0 contract added the skip to every skill that names an explicit skip-list, but four skills discover files by other means and were still exposed. Frozen handoff snapshots use the same `YYMMDD-` filename prefix as meeting documents, so they matched: **`/preparation` Step 2.5** globs `YYMMDD-*.md` across the vault for lateral mentions — snapshots would have been offered as cross-references, which also violates the rule that snapshots are never referenced from living documents; **`/daily-dashboard`** scans all vault-root subdirectories for `YYMMDD-*.md` on the target date — snapshots would have surfaced as meetings. Both now carry an explicit never-scanned list.
+
+### Changed
+- **Boundary documented against the two skills a handoff is most easily confused with.** `/outbox` gains a short section stating the distinction: an outbox item is addressed to a *person* and has a send event, an expected reply and a resolution; a snapshot is addressed to a *future work session*, is never sent, and resolves only when a human opens it. `/tasks` gains the matching rule: a snapshot is context, not intent — it never generates a task, and if its subject should become work the user decides that and the task states the subject in its own words rather than linking the snapshot.
+
 ## [1.35.0] - 2026-08-28
 
 ### Added

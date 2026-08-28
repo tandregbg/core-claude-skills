@@ -100,6 +100,8 @@ Use target date for:
 
 Scan all subdirectories of the vault root for files matching `YYMMDD-*.md` where YYMMDD = target date. Also scan for YYMMDD+1 (next date) to find upcoming preparations.
 
+**Never scanned:** `.archive/`, `.transcripts/`, `.handoff/`, `.ephemeral/`, `clones/`. Frozen handoff snapshots (CR-033) use the same `YYMMDD-` filename prefix as meeting documents and would otherwise surface in the dashboard — they are deliberately invisible to it.
+
 **Scan locations:**
 - All `_contacts/*/` contact folders (recursively)
 - Root of vault
@@ -387,7 +389,7 @@ The dashboard integrates with distributed `_tasks.yaml` files across the vault.
 {vault_root}/_tasks-history.md                     # Completed tasks log
 ```
 
-Scan all `_tasks.yaml` files recursively in `_projects/`, `_contacts/`, and `_private/` (skip `.` dirs). Each file has a `context` field identifying the source.
+Scan all `_tasks.yaml` files recursively in `_projects/`, `_contacts/`, and `_private/` (skip `.` dirs — which excludes `.handoff/`, where no `_tasks.yaml` may exist by contract). Each file has a `context` field identifying the source.
 
 ### Reading Tasks
 

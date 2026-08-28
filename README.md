@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.35.0
+**Version:** 1.35.1
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.35.1 (2026-08-28)
+
+- **`.handoff/` enforcement completed (CR-033).** v1.35.0 added the skip to every skill with an explicit skip-list, but four skills find files by other means. Because snapshots share the `YYMMDD-` prefix with meeting documents, `/preparation`'s cross-context scan would have offered them as cross-references and `/daily-dashboard` would have shown them as meetings — both now carry an explicit never-scanned list. `/outbox` and `/tasks` gain the boundary in writing: outbox is addressed to a person and gets sent; a snapshot is addressed to a future work session and never does. See CHANGELOG `[1.35.1]`.
 
 ## What's new in v1.35.0 (2026-08-28)
 

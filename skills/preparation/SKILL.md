@@ -121,7 +121,7 @@ After gathering context from the contact's own folder, scan the vault for **late
 
 **Procedure:**
 
-1. Glob `YYMMDD-*.md` files across the vault (last 60 days by date prefix). Include `_contacts/*/`, venture meeting folders, and `_projects/*/`.
+1. Glob `YYMMDD-*.md` files across the vault (last 60 days by date prefix). Include `_contacts/*/`, venture meeting folders, and `_projects/*/`. **Skip `.archive/`, `.transcripts/`, `.handoff/`, `.ephemeral/` and `clones/`** — frozen handoff snapshots (CR-033) share the `YYMMDD-` prefix and would otherwise match this glob; they are never cross-referenced.
 2. **Exclude** files from the target contact's own folder -- those are *history*, not lateral references. We want references *elsewhere*.
 3. Grep the result set for: the contact's display name, the contact's company name, and the 2-3 top topic keywords from the upcoming meeting context (gathered in Step 3).
 4. For each hit, **read the matching section** and write **one line**:

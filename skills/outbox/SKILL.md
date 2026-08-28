@@ -193,6 +193,12 @@ The skill suggests a default but always asks before renaming. For ambassadörs-s
 - **`/inbox`** -- mirror skill for incoming material. Same lifecycle pattern.
 - **`/tasks`** -- tasks generated from an outbox item live in the contact's `_tasks.yaml` and survive archiving (paths rewritten).
 
+## Not to be confused with `/handoff` (CR-033)
+
+An outbox item is **addressed to a person** and has a send event, an expected reply, and a resolution. A handoff snapshot is addressed to a **future work session**, is never sent, and is resolved only when a human opens it and starts new work.
+
+If material is going to someone, it is outbox. If it is bounded context for different work, it is `/handoff`. This skill never reads or writes `.handoff/`.
+
 ## Out of scope
 
 - Drafting outbox content -- that's `/ops` or manual.

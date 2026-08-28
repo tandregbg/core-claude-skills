@@ -386,6 +386,12 @@ properties:
 
 ---
 
+## Handoff snapshots are not tasks (CR-033)
+
+A frozen snapshot in `.handoff/` is context, not intent. It never generates a task, and `/tasks` never scans `.handoff/`.
+
+If a snapshot's subject should become work, the **user** decides that and the task is written normally — stating the subject in its own words, never linking the snapshot (snapshots are not referenced from living documents).
+
 ## Future Enhancements
 
 1. **Recurring tasks** -- `recur: weekly` for repeating tasks
