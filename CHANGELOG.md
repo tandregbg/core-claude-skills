@@ -41,6 +41,25 @@ CR-025 forbids dwelling in principle but never measured it.
 **Stale is not junk.** Outdated material is archived; material with no destination goes to
 `.ephemeral/` and may die.
 
+**File placement classes and singleton surfaces (CR-036).** CR-010 declared *which* files
+the suite produces but never **how many of each, or where** — CR-025 answered it for
+`_inbox`/`_outbox` alone, leaving everything else to imitation. Counts showed the drift:
+**269 `README.md`**, **174 `CHANGELOG.md`** of which **130 sit in folders with no
+`.archive/`** — history kept where nothing is retired.
+
+Three classes: **singleton** (exactly one, at root — a second instance is a finding),
+**per_folder** (every folder of its kind), **per_boundary** (where the boundary applies).
+
+**The singleton test is principled, not a headcount:** *would a second, folder-scoped
+instance defeat the reason the surface exists?* `.handoff/` is outward-facing and holds no
+vault links, so a scoped copy would make the snapshot inherit a context it is built to
+survive without. `.knowledge/` synthesises across sources, so a scoped copy would prevent
+the synthesis that justifies the layer.
+
+**`.transcripts/` flagged** — it carries a read-block and exists in two places; two blocked
+surfaces are harder to enforce than one. Not resolved: moving read-blocked content needs
+explicit authorisation and must never be done by a skill on its own.
+
 **`_tasks.yaml` as source of truth for the personal working document (CR-035).** Supersedes
 CR-022 in part. The markdown working document had grown to 438 lines with a **273-character
 median task line** and 56 % non-task content — every row carried task, history, reference

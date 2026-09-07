@@ -7,6 +7,7 @@
 # No PII. Public-safe.
 
 # contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
+# contract_version 4 (CR-036, 2026-09-07): placement classes + singleton test.
 # contract_version 3 (CR-034/CR-035, 2026-09-07): prefix_conventions replaced
 #   yaml_naming; added dot_surface_levels, audit_lifecycle, stale_vs_junk; declared
 #   _inbox/_tasks.yaml as source of truth with the working doc as a generated view.
@@ -306,6 +307,15 @@ vault_conventions:
   rules:
     - id: "vault_relative"
       rule: "All paths above are vault-relative. The vault root is determined by walking up from CWD until _inbox/, _outbox/, or .obsidian/ is found, or by VAULT_ROOT env var, or by a tool-specific override."
+
+    - id: "placement_classes"
+      rule: "Every declared path belongs to exactly one placement class (CR-036). SINGLETON — exactly one, at vault root; a second instance is a finding: INDEX.md, _inbox/, _outbox/, _config/, .handoff/, .knowledge/. PER_FOLDER — appears in every folder of its kind: _meta.yaml, _insights.yaml, _tasks.yaml, _manifest.md, .archive/. PER_BOUNDARY — appears where the boundary it describes actually applies: CLAUDE.md, _ops.yaml, CHANGELOG.md, README.md."
+
+    - id: "singleton_surfaces"
+      rule: "The test for singleton status is stronger than counting instances: would a SECOND, FOLDER-SCOPED instance defeat the reason the surface exists? (CR-036). .handoff/ is outward-facing, self-carrying and holds no vault links (CR-033) — a scoped copy would make the snapshot inherit a context it is built to survive without. .knowledge/ synthesises ACROSS sources with INDEX.md as the single entry point (CR-027) — a scoped copy would prevent the cross-source synthesis that justifies the layer. FLAGGED, not yet resolved: .transcripts/ carries a read-block and currently exists in two places; two blocked surfaces are harder to enforce than one and a skill honouring the root while missing the scoped copy fails silently. Moving read-blocked content requires explicit human authorisation and must never be done by a skill acting on its own."
+
+    - id: "changelog_readme_conditions"
+      rule: "CHANGELOG.md belongs only where history is actually kept — contacts, organisations, projects, products. A CHANGELOG in a folder that never retires anything is noise (observed: 130 of 174 have no sibling .archive/). README.md belongs only where a folder needs explaining to someone OTHER THAN its author (observed: 269 instances). Forward-looking: governs new folders, and is a sweep WARNING rather than an error. INDEX.md is root plus generated registers only."
 
     - id: "single_inbox_outbox"
       rule: "Exactly one _inbox/ and exactly one _outbox/ per vault, both at vault root. Per-folder inboxes/outboxes are not part of this contract."
