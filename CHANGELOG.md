@@ -41,6 +41,23 @@ CR-025 forbids dwelling in principle but never measured it.
 **Stale is not junk.** Outdated material is archived; material with no destination goes to
 `.ephemeral/` and may die.
 
+**Contract audit against a live vault, and three fixes.** Running the levelled rules over a
+real vault found one **invariant breach** the flat list had never surfaced: a second
+`_outbox` inside an organisation folder, holding one unsent package from 16 July. The
+exemption declared in that org's `_ops.yaml` covered a *different* path — so nothing had
+flagged it for 53 days. Invariants admit no exception: the package moved to the root
+`_outbox`, the folder is gone.
+
+**`.handoff/_archive` is now a declared exception** rather than prose. It keeps its
+underscore against *archive-is-always-`.archive`* because `.handoff/` carries a total block
+(CR-033) — no skill touches the surface, including to rename it. Exception by necessity;
+per CR-037 an exception must be **named** in `exceptions:` to be valid, and it was not.
+
+**The `_inbox` ceiling was a defect in the rule, not the vault.** It counted all files,
+then the CR-035 migration legitimately added four system files. Corrected: the ceiling
+counts **content** files; declared system files (`_capture.md`, `_ram.md`, `_inbox.yaml`,
+`_tasks.yaml`) are infrastructure of the surface, not material passing through it.
+
 **Rule hierarchy and conflict resolution (CR-037).** `vault_conventions.rules` had grown to
 **thirteen rules from seven CRs in a flat list** — nothing stated which was stronger, what
 happened when two applied to the same surface, or how a tool should weight a violation.

@@ -352,14 +352,14 @@ vault_conventions:
 
     - id: "prefix_conventions"
       level: rule
-      exceptions: [".knowledge/"]
+      exceptions: [".knowledge/", ".handoff/_archive"]
       rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*, _PLAN-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
       test: "is this surface read in everyday work? yes -> underscore, no -> dot"
       not_a_prefix_criterion: "WHO WRITES the surface is a separate property, declared per path, and never a reason for a prefix. _insights.yaml settles this: it is machine-written by /insights yet carries an underscore, because several skills READ it automatically. Generated does not imply dot."
 
     - id: "prefix_known_exception"
       level: rule
-      rule: ".knowledge/ is READ frequently — INDEX.md is the documented first stop for any knowledge question — so by the rule above it would take an underscore. It keeps the dot for compatibility: the name is established in CR-027, INDEX.md, vault CLAUDE.md and every [[wiki]] link, and renaming costs more than the consistency gains. Declared here as a KNOWN EXCEPTION rather than hidden behind a rule it breaks. Do not cite .knowledge/ as precedent for dot-prefixing a new read surface."
+      rule: ".knowledge/ is READ frequently — INDEX.md is the documented first stop for any knowledge question — so by the rule above it would take an underscore. It keeps the dot for compatibility: the name is established in CR-027, INDEX.md, vault CLAUDE.md and every [[wiki]] link, and renaming costs more than the consistency gains. Declared here as a KNOWN EXCEPTION rather than hidden behind a rule it breaks. Do not cite .knowledge/ as precedent for dot-prefixing a new read surface. SECOND DECLARED EXCEPTION: .handoff/_archive keeps its underscore against the archive-is-always-.archive rule, because .handoff/ carries a TOTAL BLOCK (CR-033) — the surface is not touched by any skill, including to rename it. Exception by necessity, not by preference."
 
     - id: "dot_surface_levels"
       level: invariant
@@ -371,7 +371,7 @@ vault_conventions:
 
     - id: "audit_lifecycle"
       level: rule
-      rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three files: the working document, one active audit, one active review. More means something has taken up residence, which CR-025 forbids in principle but does not measure."
+      rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three CONTENT files: the working document, one active audit, one active review. Declared system files do not count against the ceiling (_capture.md, _ram.md, _inbox.yaml, _tasks.yaml) — they are infrastructure of the surface, not material passing through it. More than three content files means something has taken up residence, which CR-025 forbids in principle but does not measure."
 
     - id: "stale_vs_junk"
       level: rule
