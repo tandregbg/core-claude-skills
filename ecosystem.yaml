@@ -7,10 +7,13 @@
 # No PII. Public-safe.
 
 # contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
+# contract_version 3 (CR-034/CR-035, 2026-09-07): prefix_conventions replaced
+#   yaml_naming; added dot_surface_levels, audit_lifecycle, stale_vs_junk; declared
+#   _inbox/_tasks.yaml as source of truth with the working doc as a generated view.
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.35.1"
+core_skills_version: "1.36.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -140,6 +143,34 @@ vault_conventions:
       writers: ["/inbox", "trillian", "deep-thought", "marvin"]
       readers: ["/inbox", "trillian", "marvin"]
       lifecycle: "append; items move to .archive/ after processing"
+
+    - path: "_inbox/_tasks.yaml"
+      purpose: "Personal working tasks — SOURCE OF TRUTH (CR-035, supersedes CR-022 in part). Standard v2 task schema plus triage_id (preserves the {id} token used by external sync). task: states what is to be done and nothing else; history, references and reasoning go in notes:"
+      schema: "docs/schemas/tasks.md"
+      writers: ["user (manual)", "import from _inbox/_capture.md"]
+      readers: ["/ops", "marvin", "external sync (todoist-triage)"]
+      lifecycle: "append; status open -> done; completed items archived to .archive/"
+
+    - path: "_inbox/_capture.md"
+      purpose: "Free-form write path for tasks (CR-035). One line each; import moves them into _tasks.yaml and empties this file. Syntax: @tag or [Tag] -> context, !P0..!P3 -> priority, clock+YYMMDD -> due"
+      schema: null
+      writers: ["user (manual)"]
+      readers: ["import tooling"]
+      lifecycle: "emptied on every import"
+
+    - path: "_inbox/_ram.md"
+      purpose: "Hand-written context (week anchor, frame, conventions) pasted verbatim into the generated view (CR-035), so the generator never owns prose"
+      schema: null
+      writers: ["user (manual)"]
+      readers: ["view generator"]
+      lifecycle: "edited in place"
+
+    - path: "_inbox/<working-doc>.md"
+      purpose: "GENERATED VIEW of _inbox/_tasks.yaml (CR-035). Shows overdue, today, tomorrow, P0/P1 without a date, and the coming seven days. NEVER hand-edited; tools must not write to it. Was the system of record under CR-022 until 260907"
+      schema: null
+      writers: ["view generator only"]
+      readers: ["user (read)", "marvin"]
+      lifecycle: "regenerated from _tasks.yaml"
 
     - path: "_inbox/.audio/"
       purpose: "Raw audio captured by Trillian, paired by basename with _inbox/<id>.md"
@@ -282,8 +313,18 @@ vault_conventions:
     - id: "config_resolution_order"
       rule: "/ops resolves config in this order: project-level .claude/ops-config.yaml > nearest <folder>/_ops.yaml walking up from CWD > <vault>/_config/base.yaml > skill base.yaml. First match wins. Implemented in v1.16.0 (CR-011). The pre-v1.16.0 chain (~/.claude/skills/{org}-ops-config/{org}.yaml) is deprecated and removed in v1.17.0; until then it acts as a fallback between vault-wide and skill defaults with a one-time per-session deprecation warning."
 
-    - id: "yaml_naming"
-      rule: "Folder-level metadata files use leading underscore (_tasks.yaml, _insights.yaml, _ops.yaml). Hidden/transient subfolders use leading dot (.archive/, _inbox/.audio/)."
+    - id: "prefix_conventions"
+      rule: "One distinction governs both prefixes (CR-034). Underscore = LIVE system surface, worked in daily, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*, _PLAN-*). Dot = DORMANT or BLOCKED surface, hidden from Finder and Obsidian. The test is: does the user open this in everyday work? Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
+      test: "does the user open this folder in everyday work? yes -> underscore, no -> dot"
+
+    - id: "dot_surface_levels"
+      rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/): present, rarely read, safe to read on demand. BLOCKED: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize (CR-033); .knowledge/wiki/ = generated, hand-editing forbidden, owned by /insights synthesize (CR-027). A new blocked surface must inherit the behaviour without patching each skill."
+
+    - id: "audit_lifecycle"
+      rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three files: the working document, one active audit, one active review. More means something has taken up residence, which CR-025 forbids in principle but does not measure."
+
+    - id: "stale_vs_junk"
+      rule: "Stale is not junk. A document that WAS current and is now outdated is archived to .archive/ (never deleted). Material with no vault destination goes to .ephemeral/ and may die (swept after 14 days, CR-024). Conflating the two loses history or retains rubbish."
 
     - id: "audio_transcript_pairing"
       rule: "Audio in _inbox/.audio/<basename>.m4a and the matching transcript at _inbox/<basename>.md are paired by basename. Tools that rename one must rename the other. Detailed in CR-012."

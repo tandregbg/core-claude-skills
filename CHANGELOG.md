@@ -7,6 +7,46 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.36.0] - 2026-09-07
+
+### Added
+**Prefix conventions and dot-surface levels (CR-034).** `ecosystem.yaml` now states the
+rule that governed both prefixes in practice but was never written down: underscore = live
+system surface worked in daily, dot = dormant or blocked. The test is whether the user
+opens the folder in everyday work. Mapped from 9 underscore folders, 7 dot folders,
+**77 `.archive` folders** and 2 269 prefixed files.
+
+Dot surfaces are now a **typed category** rather than a list of names — dormant
+(`.archive/`, `.notes/`, `.ephemeral/`) versus blocked (`.transcripts/` read-block,
+`.handoff/` total block, `.knowledge/wiki/` generated). A new blocked surface inherits the
+behaviour without patching each skill.
+
+**Audit lifecycle.** An audit lives in `_inbox/` only while in use; once its decisions are
+executed it moves to `_inbox/.archive/`. An audit left in place becomes a competing source
+of truth against the working document. `_inbox/` normally holds at most three files —
+CR-025 forbids dwelling in principle but never measured it.
+
+**Stale is not junk.** Outdated material is archived; material with no destination goes to
+`.ephemeral/` and may die.
+
+**`_tasks.yaml` as source of truth for the personal working document (CR-035).** Supersedes
+CR-022 in part. The markdown working document had grown to 438 lines with a **273-character
+median task line** and 56 % non-task content — every row carried task, history, reference
+data and reasoning in one sentence, which markdown cannot separate.
+
+Tasks move to `_inbox/_tasks.yaml` (standard v2 schema plus `triage_id` to preserve
+external-sync identity); the markdown file becomes a **generated view** showing only
+overdue, today, tomorrow, P0/P1 without a date, and the coming week. `_inbox/_capture.md`
+is the free-form write path — the original "door, not a dwelling" intent applied to tasks.
+
+Median `task:` length dropped **273 → 87 characters**; the view went **438 → 52 lines**.
+
+### Changed
+- `vault_conventions.rules`: `yaml_naming` **replaced** by `prefix_conventions` rather than
+  supplemented, so there is one description instead of two overlapping ones.
+- `_inbox/<working-doc>.md` declared **generated** — tools must no longer write to it.
+- Contract version noted as 3 in the header comment.
+
 ## [1.35.1] - 2026-08-28
 
 ### Fixed
