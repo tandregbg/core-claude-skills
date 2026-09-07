@@ -7,6 +7,7 @@
 # No PII. Public-safe.
 
 # contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
+# contract_version 5 (CR-037, 2026-09-07): rule hierarchy + conflict resolution.
 # contract_version 4 (CR-036, 2026-09-07): placement classes + singleton test.
 # contract_version 3 (CR-034/CR-035, 2026-09-07): prefix_conventions replaced
 #   yaml_naming; added dot_surface_levels, audit_lifecycle, stale_vs_junk; declared
@@ -305,45 +306,79 @@ vault_conventions:
 
   # Cross-cutting rules that govern multiple files.
   rules:
+    # --- Rule hierarchy (CR-037) ---
+    # Every rule below declares level:. A rule without one is a CONTRACT DEFECT,
+    # not a guideline by default — the absence must be loud.
+    #
+    #   invariant  never broken; no exception possible          -> sweep: finding
+    #   rule       holds generally; exceptions must be NAMED
+    #              in exceptions: and justified                 -> sweep: finding
+    #                                                              unless exempted
+    #   guideline  intended shape; judgement may override       -> sweep: warning
+    #
+    # Conflict resolution, in order:
+    #   1. Higher level wins: invariant > rule > guideline.
+    #   2. Within a level, the more specific wins (a rule naming a path beats
+    #      one naming a class).
+    #   3. A declared exception beats the rule it exempts — only for the named
+    #      surface, and never against an invariant.
+    #   4. Two rules of equal specificity in conflict = CONTRACT DEFECT. Report
+    #      it; do not choose. Silent resolution is how the .knowledge/ prefix
+    #      inconsistency survived review on 260907.
+
     - id: "vault_relative"
+      level: invariant
       rule: "All paths above are vault-relative. The vault root is determined by walking up from CWD until _inbox/, _outbox/, or .obsidian/ is found, or by VAULT_ROOT env var, or by a tool-specific override."
 
     - id: "placement_classes"
+      level: rule
       rule: "Every declared path belongs to exactly one placement class (CR-036). SINGLETON — exactly one, at vault root; a second instance is a finding: INDEX.md, _inbox/, _outbox/, _config/, .handoff/, .knowledge/. PER_FOLDER — appears in every folder of its kind: _meta.yaml, _insights.yaml, _tasks.yaml, _manifest.md, .archive/. PER_BOUNDARY — appears where the boundary it describes actually applies: CLAUDE.md, _ops.yaml, CHANGELOG.md, README.md."
 
     - id: "singleton_surfaces"
+      level: invariant
       rule: "The test for singleton status is stronger than counting instances: would a SECOND, FOLDER-SCOPED instance defeat the reason the surface exists? (CR-036). .handoff/ is outward-facing, self-carrying and holds no vault links (CR-033) — a scoped copy would make the snapshot inherit a context it is built to survive without. .knowledge/ synthesises ACROSS sources with INDEX.md as the single entry point (CR-027) — a scoped copy would prevent the cross-source synthesis that justifies the layer. FLAGGED, not yet resolved: .transcripts/ carries a read-block and currently exists in two places; two blocked surfaces are harder to enforce than one and a skill honouring the root while missing the scoped copy fails silently. Moving read-blocked content requires explicit human authorisation and must never be done by a skill acting on its own."
 
     - id: "changelog_readme_conditions"
+      level: guideline
       rule: "CHANGELOG.md belongs only where history is actually kept — contacts, organisations, projects, products. A CHANGELOG in a folder that never retires anything is noise (observed: 130 of 174 have no sibling .archive/). README.md belongs only where a folder needs explaining to someone OTHER THAN its author (observed: 269 instances). Forward-looking: governs new folders, and is a sweep WARNING rather than an error. INDEX.md is root plus generated registers only."
 
     - id: "single_inbox_outbox"
+      level: invariant
       rule: "Exactly one _inbox/ and exactly one _outbox/ per vault, both at vault root. Per-folder inboxes/outboxes are not part of this contract."
 
     - id: "config_resolution_order"
+      level: invariant
       rule: "/ops resolves config in this order: project-level .claude/ops-config.yaml > nearest <folder>/_ops.yaml walking up from CWD > <vault>/_config/base.yaml > skill base.yaml. First match wins. Implemented in v1.16.0 (CR-011). The pre-v1.16.0 chain (~/.claude/skills/{org}-ops-config/{org}.yaml) is deprecated and removed in v1.17.0; until then it acts as a fallback between vault-wide and skill defaults with a one-time per-session deprecation warning."
 
     - id: "prefix_conventions"
+      level: rule
+      exceptions: [".knowledge/"]
       rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*, _PLAN-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
       test: "is this surface read in everyday work? yes -> underscore, no -> dot"
       not_a_prefix_criterion: "WHO WRITES the surface is a separate property, declared per path, and never a reason for a prefix. _insights.yaml settles this: it is machine-written by /insights yet carries an underscore, because several skills READ it automatically. Generated does not imply dot."
 
     - id: "prefix_known_exception"
+      level: rule
       rule: ".knowledge/ is READ frequently — INDEX.md is the documented first stop for any knowledge question — so by the rule above it would take an underscore. It keeps the dot for compatibility: the name is established in CR-027, INDEX.md, vault CLAUDE.md and every [[wiki]] link, and renaming costs more than the consistency gains. Declared here as a KNOWN EXCEPTION rather than hidden behind a rule it breaks. Do not cite .knowledge/ as precedent for dot-prefixing a new read surface."
 
     - id: "dot_surface_levels"
+      level: invariant
       rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/): present, rarely read, safe to read on demand. BLOCKED — read access itself is constrained: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize, never indexed, read only when named (CR-033). A new blocked surface must inherit the behaviour without patching each skill. NOTE: .knowledge/wiki/ is NOT blocked — it is read freely and often. Its constraint is WRITE-side (generated, hand-editing forbidden, owned by /insights synthesize, CR-027), which is a different axis; see prefix_known_exception."
 
     - id: "write_ownership"
+      level: rule
       rule: "Independent of the prefix, every surface declares who may write it. HUMAN: _inbox/_capture.md, _inbox/_ram.md, _meta.yaml, .handoff/ (once, then frozen). GENERATED — hand-editing forbidden: .knowledge/wiki/ (/insights synthesize, CR-027), _INDEX-maskiner.md and _INDEX-koppling.md (scan.py), the personal working-document view (CR-035). MIXED: _tasks.yaml, _insights.yaml. A generated surface that is edited by hand loses its next regeneration silently — which is why the property is declared rather than inferred from the prefix."
 
     - id: "audit_lifecycle"
+      level: rule
       rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three files: the working document, one active audit, one active review. More means something has taken up residence, which CR-025 forbids in principle but does not measure."
 
     - id: "stale_vs_junk"
+      level: rule
       rule: "Stale is not junk. A document that WAS current and is now outdated is archived to .archive/ (never deleted). Material with no vault destination goes to .ephemeral/ and may die (swept after 14 days, CR-024). Conflating the two loses history or retains rubbish."
 
     - id: "audio_transcript_pairing"
+      level: invariant
       rule: "Audio in _inbox/.audio/<basename>.m4a and the matching transcript at _inbox/<basename>.md are paired by basename. Tools that rename one must rename the other. Detailed in CR-012."
 
 # --- Visualisation app features ---

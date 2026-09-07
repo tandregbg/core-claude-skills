@@ -41,6 +41,29 @@ CR-025 forbids dwelling in principle but never measured it.
 **Stale is not junk.** Outdated material is archived; material with no destination goes to
 `.ephemeral/` and may die.
 
+**Rule hierarchy and conflict resolution (CR-037).** `vault_conventions.rules` had grown to
+**thirteen rules from seven CRs in a flat list** — nothing stated which was stronger, what
+happened when two applied to the same surface, or how a tool should weight a violation.
+
+**This failed in practice the same day:** `prefix_conventions` said dot means "not read in
+everyday work" while `dot_surface_levels` listed `.knowledge/` as blocked and generated.
+Both applied, they disagreed, and the inconsistency shipped in a commit before a reader
+caught it.
+
+Three levels, each rule declaring its own: **invariant** (never broken, no exception
+possible), **rule** (holds generally; exceptions must be **named** in `exceptions:` and
+justified), **guideline** (intended shape, judgement may override). Current split: 6 / 6 / 1.
+
+Conflict order: higher level wins · within a level the more specific wins · a declared
+exception beats the rule it exempts, only for the named surface and never against an
+invariant · **two rules of equal specificity in conflict is a contract defect — report it,
+do not choose.**
+
+A rule without `level:` is a contract defect rather than a guideline by default: the
+absence must be loud. This also lets a sweep weight severity **from the contract** instead
+of a hardcoded list, and makes exceptions auditable — a second undeclared exception now
+shows as a violation instead of passing as precedent.
+
 **File placement classes and singleton surfaces (CR-036).** CR-010 declared *which* files
 the suite produces but never **how many of each, or where** — CR-025 answered it for
 `_inbox`/`_outbox` alone, leaving everything else to imitation. Counts showed the drift:
