@@ -5,7 +5,8 @@
 | **CR Number** | CR-037 |
 | **Date** | 2026-09-07 |
 | **Author** | User + Claude Code |
-| **Status** | Proposed |
+| **Status** | Implemented |
+| **Implementation Date** | 2026-09-07 (v1.36.0) |
 | **Priority** | High |
 | **Complexity** | Low |
 | **Estimated Scope** | `ecosystem.yaml` `vault_conventions`, `ops` skill (sweep severity) |

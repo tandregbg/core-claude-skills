@@ -5,7 +5,8 @@
 | **CR Number** | CR-035 |
 | **Date** | 2026-09-07 |
 | **Author** | User + Claude Code |
-| **Status** | Implemented (reference vault) |
+| **Status** | Implemented |
+| **Implementation Date** | 2026-09-07 (v1.36.0) |
 | **Priority** | High |
 | **Complexity** | Medium |
 | **Estimated Scope** | `ecosystem.yaml`, `inbox` schema, `ops` skill, external tool `todoist-triage` |

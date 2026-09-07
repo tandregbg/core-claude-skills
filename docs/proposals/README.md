@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-032**
+Next available CR number: **CR-038**
 
 ---
 
@@ -16,12 +16,16 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-031** (`/analytics pipeline` outcome metrics, v1.33.2).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-037** (rule hierarchy + conflict resolution, v1.36.0).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-037 | Rule hierarchy and conflict resolution for `vault_conventions` | v1.36.0 (2026-09-07) | Thirteen rules from seven CRs sat in a flat list; two disagreed about the same surface and the inconsistency shipped. Three levels (invariant/rule/guideline, 6/6/1) declared per rule; conflict order; exceptions must be **named** in `exceptions:`; equal-specificity conflict = contract defect, report don't choose |
+| CR-036 | File placement classes and singleton surfaces | v1.36.0 (2026-09-07) | CR-010 declared *which* files exist, never how many or where. Three classes (singleton/per_folder/per_boundary); singleton test is principled — *would a scoped instance defeat the surface's purpose?*; `.transcripts`/`.ephemeral` consolidated; CHANGELOG/README gain conditions (130 of 174 CHANGELOGs had no sibling `.archive/`) |
+| CR-035 | `_tasks.yaml` as source of truth for the personal working document | v1.36.0 (2026-09-07) | Supersedes CR-022 in part. Markdown working doc reached 438 lines, 273-char median task line, 56 % non-task content. Tasks → YAML (v2 + `triage_id`); markdown becomes a generated view; `_capture.md` as write path. Median 273 → 87 chars, view 438 → 52 lines |
+| CR-034 | `_` vs `.` prefix conventions and the audit lifecycle | v1.36.0 (2026-09-07) | The prefix answers **read frequency**, never write ownership (`_insights.yaml` is machine-written yet underscored). `.knowledge/` and `.handoff/_archive` declared exceptions; dot surfaces typed dormant vs blocked; audit lives in `_inbox` only while in use |
 | CR-031 | `/analytics pipeline` — outcome layer, horizontal quarter pivot, per-day averages | v1.33.2 (2026-07-27) | Insights/tasks/changelog/outbox counted via field-level scans; grouped chain table; active-day density; mandatory measurement notes; classification fixes |
 | CR-030 | Guard modes + rollout to sibling repos | v1.33.1 (2026-07-10) | `guard.mode secrets-only` for private repos (keys-only, no false positives on infra content); shared hook via absolute hooksPath; cross-repo history audit clean |
 | CR-029 | Invented-examples allowlist + scheduled repo privacy watch | v1.33.0 (2026-07-10) | Name-like tokens must match the public allowlist of fake names; privacy-scan.sh in hook + weekly sweep; baseline adjudicated |

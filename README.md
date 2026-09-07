@@ -1,8 +1,13 @@
 # core-skills
 
-**Version:** 1.35.1
+**Version:** 1.36.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.36.0 (2026-09-07)
+
+- **The vault structure contract got a spine (CR-034, CR-036, CR-037).** `ecosystem.yaml` declared *which* files the suite produces (CR-010) but never how many of each, where they belong, which prefix they take, or which rule wins when two disagree. Thirteen rules from seven CRs sat in a flat list — and two of them contradicted each other about the same folder, which shipped in a commit before a reader caught it. Now: **the prefix answers one question, read frequency**, never write ownership (`_insights.yaml` is machine-written yet underscored, because skills read it); **three placement classes** with a principled singleton test — *would a folder-scoped instance defeat the reason the surface exists?*; and **three rule levels** (invariant / rule / guideline) with a stated conflict order, where an exception must be **named** to be valid and two equally specific rules in conflict is a contract defect to report rather than resolve silently. Auditing a live vault against the levelled rules immediately surfaced an invariant breach that the flat list had missed for 53 days. See CHANGELOG `[1.36.0]`.
+- **`_tasks.yaml` becomes the source of truth for the personal working document (CR-035).** The markdown working doc had grown to 438 lines with a **273-character median task line** and 56 % non-task content: every row carried task, history, reference data and reasoning in one sentence, which markdown cannot separate. Tasks move to YAML (standard v2 schema plus `triage_id` so external sync keeps its link identity); the markdown becomes a **generated view** showing only what has a date or P0/P1; a free-form `_capture.md` is the write path — the "door, not a dwelling" intent applied to tasks. Median task length **273 → 87 characters**, the view **438 → 52 lines**. Partially supersedes CR-022. See CHANGELOG `[1.36.0]`.
 
 ## What's new in v1.35.1 (2026-08-28)
 

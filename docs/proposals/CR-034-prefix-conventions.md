@@ -5,7 +5,8 @@
 | **CR Number** | CR-034 |
 | **Date** | 2026-09-07 |
 | **Author** | User + Claude Code |
-| **Status** | Proposed |
+| **Status** | Implemented |
+| **Implementation Date** | 2026-09-07 (v1.36.0) |
 | **Priority** | Medium |
 | **Complexity** | Low |
 | **Estimated Scope** | `ops` skill (sweep check 9), `outbox` skill, `ecosystem.yaml` `vault_conventions:` |

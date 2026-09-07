@@ -43,10 +43,10 @@ CR-025 forbids dwelling in principle but never measured it.
 
 **Contract audit against a live vault, and three fixes.** Running the levelled rules over a
 real vault found one **invariant breach** the flat list had never surfaced: a second
-`_outbox` inside an organisation folder, holding one unsent package from 16 July. The
-exemption declared in that org's `_ops.yaml` covered a *different* path — so nothing had
-flagged it for 53 days. Invariants admit no exception: the package moved to the root
-`_outbox`, the folder is gone.
+`_outbox` inside a folder one level down, holding an unsent package weeks old. The
+exemption declared in that folder's `_ops.yaml` covered a *different* path — so nothing
+had flagged it. Invariants admit no exception: the package moved to the root `_outbox`,
+the folder is gone.
 
 **`.handoff/_archive` is now a declared exception** rather than prose. It keeps its
 underscore against *archive-is-always-`.archive`* because `.handoff/` carries a total block
