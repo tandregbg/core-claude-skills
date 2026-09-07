@@ -5,7 +5,8 @@
 | **CR Number** | CR-013 |
 | **Date** | 2026-05-10 |
 | **Author** | Alex + Claude Code |
-| **Status** | Proposed |
+| **Status** | Implemented |
+| **Implementation Date** | 2026-06-05 (v1.17.0) |
 | **Priority** | Medium |
 | **Complexity** | Low-Medium |
 | **Estimated Scope** | `_insights.yaml` schema bump (additive), `/insights compile` extended, `/ops` and `/transcript` rule-loading prelude |
