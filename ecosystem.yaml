@@ -146,6 +146,13 @@ vault_conventions:
       readers: ["/inbox", "trillian", "marvin"]
       lifecycle: "append; items move to .archive/ after processing"
 
+    - path: "CONTEXT.md"
+      purpose: "Hand-written orientation at vault root: the frame the rest of the vault is read against — what is active, what is paused, which decisions are open, what governs the calendar. INDEX.md answers WHERE things live; CONTEXT.md answers WHAT APPLIES. Singleton (CR-036): there is one context, not one per folder"
+      schema: null
+      writers: ["user (manual)"]
+      readers: ["user", "any session needing orientation"]
+      lifecycle: "updated when something material changes — frame shift, new operative commitment, resolved blocker, closed track — never on a schedule"
+
     - path: "_inbox/_tasks.yaml"
       purpose: "Personal working tasks — SOURCE OF TRUTH (CR-035, supersedes CR-022 in part). Standard v2 task schema plus triage_id (preserves the {id} token used by external sync). task: states what is to be done and nothing else; history, references and reasoning go in notes:"
       schema: "docs/schemas/tasks.md"
@@ -336,7 +343,7 @@ vault_conventions:
 
     - id: "singleton_surfaces"
       level: invariant
-      surfaces: ["INDEX.md", "_inbox/", "_outbox/", "_config/", ".handoff/", ".knowledge/", ".transcripts/", ".ephemeral/"]
+      surfaces: ["INDEX.md", "CONTEXT.md", "_inbox/", "_outbox/", "_config/", ".handoff/", ".knowledge/", ".transcripts/", ".ephemeral/"]
       rule: "The test for singleton status is stronger than counting instances: would a SECOND, FOLDER-SCOPED instance defeat the reason the surface exists? (CR-036). .handoff/ is outward-facing, self-carrying and holds no vault links (CR-033) — a scoped copy would make the snapshot inherit a context it is built to survive without. .knowledge/ synthesises ACROSS sources with INDEX.md as the single entry point (CR-027) — a scoped copy would prevent the cross-source synthesis that justifies the layer. RESOLVED 260907: .transcripts/ and .ephemeral/ are now singleton. Both had scoped copies — .transcripts/ one level down (consolidated to root under human authorisation, with relative links repaired in the same operation) and .ephemeral/ in three places (all empty, removed). Read-blocked content is only ever relocated on explicit human instruction, never by a skill acting on its own; the link repair is part of the same operation because a moved read-blocked file whose references still point at the old path is worse than the duplication it fixed."
 
     - id: "changelog_readme_conditions"

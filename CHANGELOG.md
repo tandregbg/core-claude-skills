@@ -41,6 +41,19 @@ CR-025 forbids dwelling in principle but never measured it.
 **Stale is not junk.** Outdated material is archived; material with no destination goes to
 `.ephemeral/` and may die.
 
+**`CONTEXT.md` declared as a root singleton (CR-036).** A vault's `INDEX.md` answers
+*where things live* — but nothing answered *what applies right now*: which track is
+full-time, which is paused, which commitments are the author's own hands-on work rather
+than something they steer, which decisions are open and against what deadline. That
+context was spread across a personal goals file, a week-anchor fragment and several
+registers, so orienting in it meant reading four places.
+
+`CONTEXT.md` is hand-written, updated when something material changes rather than on a
+schedule, and **singleton by the CR-036 test**: there is one context, not one per folder.
+It carries the frame, the operative commitments that compete for the same resource, what
+is blocked on others, and the open decisions — and defers all counts to their sources,
+which always win.
+
 **Contract audit against a live vault, and three fixes.** Running the levelled rules over a
 real vault found one **invariant breach** the flat list had never surfaced: a second
 `_outbox` inside a folder one level down, holding an unsent package weeks old. The
