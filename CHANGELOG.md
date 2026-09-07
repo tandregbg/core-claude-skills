@@ -11,9 +11,21 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Added
 **Prefix conventions and dot-surface levels (CR-034).** `ecosystem.yaml` now states the
-rule that governed both prefixes in practice but was never written down: underscore = live
-system surface worked in daily, dot = dormant or blocked. The test is whether the user
-opens the folder in everyday work. Mapped from 9 underscore folders, 7 dot folders,
+rule that governed both prefixes in practice but was never written down: **the prefix
+answers whether the surface is READ in everyday work.** Underscore = read routinely,
+dot = read rarely or never.
+
+**Read frequency and write ownership are separate axes.** `_insights.yaml` settles it:
+machine-written by `/insights`, yet underscored, because several skills read it
+automatically — **generated does not imply dot**. Write ownership becomes its own declared
+property per path, since a generated surface edited by hand loses its next regeneration
+silently.
+
+**`.knowledge/` is declared a known exception.** It is read frequently and its `INDEX.md`
+is the documented first stop for knowledge questions, so the rule says underscore; it
+keeps the dot for compatibility with CR-027 and every `[[wiki]]` link. Stated with its
+reason rather than hidden behind a rule it breaks — and it is **not** blocked, its
+constraint is write-side. Mapped from 9 underscore folders, 7 dot folders,
 **77 `.archive` folders** and 2 269 prefixed files.
 
 Dot surfaces are now a **typed category** rather than a list of names — dormant
