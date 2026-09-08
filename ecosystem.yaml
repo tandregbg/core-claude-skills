@@ -7,6 +7,7 @@
 # No PII. Public-safe.
 
 # contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
+# contract_version 6 (CR-038, 2026-09-08): generated-view isolation + system-file language.
 # contract_version 5 (CR-037, 2026-09-07): rule hierarchy + conflict resolution.
 # contract_version 4 (CR-036, 2026-09-07): placement classes + singleton test.
 # contract_version 3 (CR-034/CR-035, 2026-09-07): prefix_conventions replaced
@@ -15,7 +16,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 get the additional structured-vault-file declarations.
 contract_version: 2
-core_skills_version: "1.36.0"
+core_skills_version: "1.36.1"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -153,6 +154,13 @@ vault_conventions:
       readers: ["user", "any session needing orientation"]
       lifecycle: "updated when something material changes — frame shift, new operative commitment, resolved blocker, closed track — never on a schedule"
 
+    - path: "<folder>/.status/current.md"
+      purpose: "Generated situational view for one contact or org person: meeting cadence over months, insight counts by type with the most recent named, open items, and the last movement from CHANGELOG. Answers 'where does this relationship stand' without reading a year of files. Lives in a HIDDEN subfolder so scanning skills cannot reach it — structural isolation rather than a skip flag, because CR-033 showed skip-lists are missed when skills glob on the YYMMDD- prefix"
+      schema: null
+      writers: ["render_status.py (generated)"]
+      readers: ["user (read)"]
+      lifecycle: "regenerated per folder after each new conversation; hand edits are lost"
+
     - path: "_inbox/_tasks.yaml"
       purpose: "Personal working tasks — SOURCE OF TRUTH (CR-035, supersedes CR-022 in part). Standard v2 task schema plus triage_id (preserves the {id} token used by external sync). task: states what is to be done and nothing else; history, references and reasoning go in notes:"
       schema: "tasks v2"
@@ -167,7 +175,7 @@ vault_conventions:
       readers: ["import tooling"]
       lifecycle: "emptied on every import"
 
-    - path: "_inbox/_ram.md"
+    - path: "_inbox/_frame.md"
       purpose: "Hand-written context (week anchor, frame, conventions) pasted verbatim into the generated view (CR-035), so the generator never owns prose"
       schema: null
       writers: ["user (manual)"]
@@ -373,13 +381,21 @@ vault_conventions:
       level: invariant
       rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/): present, rarely read, safe to read on demand. BLOCKED — read access itself is constrained: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize, never indexed, read only when named (CR-033). A new blocked surface must inherit the behaviour without patching each skill. NOTE: .knowledge/wiki/ is NOT blocked — it is read freely and often. Its constraint is WRITE-side (generated, hand-editing forbidden, owned by /insights synthesize, CR-027), which is a different axis; see prefix_known_exception."
 
+    - id: "generated_view_isolation"
+      level: rule
+      rule: "A generated READ view that lives among its own source material must be isolated STRUCTURALLY, not by a skip flag. Put it in a hidden subfolder (<folder>/.status/current.md) rather than beside the sources as <folder>/_status.md. Reason: CR-033 found four skills reaching .handoff/ files despite an explicit skip-list, because they globbed on the YYMMDD- filename prefix rather than consulting the list. A per-folder markdown file among meeting documents is easier to hit by accident than one in a dot-folder. The dot here does not mean rarely read — the user opens it deliberately; it means unreachable by scanners, which is the .knowledge/wiki/ pattern applied at folder scope."
+
+    - id: "system_file_language"
+      level: rule
+      rule: "System and structure files carry ENGLISH names regardless of the language of their content: _config/priority.md, _config/naming-prefix.md, _inbox/_frame.md, .status/current.md. Content stays in the vault's working language. Applies going FORWARD — the derived registers with Swedish names (_INDEX-agare.md, _INDEX-koppling.md, _INDEX-maskiner.md, _INDEX-objektmodell.md, _INDEX-verksamheter.md) are read by scripts and renaming them costs more than the consistency gains; the generated wiki articles under .knowledge/wiki/ likewise keep the language of the corpus they summarise."
+
     - id: "write_ownership"
       level: rule
-      rule: "Independent of the prefix, every surface declares who may write it. HUMAN: _inbox/_capture.md, _inbox/_ram.md, _meta.yaml, .handoff/ (once, then frozen). GENERATED — hand-editing forbidden: .knowledge/wiki/ (/insights synthesize, CR-027), _INDEX-maskiner.md and _INDEX-koppling.md (scan.py), the personal working-document view (CR-035). MIXED: _tasks.yaml, _insights.yaml. A generated surface that is edited by hand loses its next regeneration silently — which is why the property is declared rather than inferred from the prefix."
+      rule: "Independent of the prefix, every surface declares who may write it. HUMAN: _inbox/_capture.md, _inbox/_frame.md, _meta.yaml, .handoff/ (once, then frozen). GENERATED — hand-editing forbidden: .knowledge/wiki/ (/insights synthesize, CR-027), _INDEX-maskiner.md and _INDEX-koppling.md (scan.py), the personal working-document view (CR-035). MIXED: _tasks.yaml, _insights.yaml. A generated surface that is edited by hand loses its next regeneration silently — which is why the property is declared rather than inferred from the prefix."
 
     - id: "audit_lifecycle"
       level: rule
-      rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three CONTENT files: the working document, one active audit, one active review. Declared system files do not count against the ceiling (_capture.md, _ram.md, _inbox.yaml, _tasks.yaml) — they are infrastructure of the surface, not material passing through it. More than three content files means something has taken up residence, which CR-025 forbids in principle but does not measure."
+      rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three CONTENT files: the working document, one active audit, one active review. Declared system files do not count against the ceiling (_capture.md, _frame.md, _inbox.yaml, _tasks.yaml) — they are infrastructure of the surface, not material passing through it. More than three content files means something has taken up residence, which CR-025 forbids in principle but does not measure."
 
     - id: "stale_vs_junk"
       level: rule

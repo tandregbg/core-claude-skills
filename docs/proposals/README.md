@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-038**
+Next available CR number: **CR-039**
 
 ---
 
@@ -16,12 +16,13 @@ _None._
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-037** (rule hierarchy + conflict resolution, v1.36.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-038** (generated-view isolation, v1.36.1).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-038 | Generated-view isolation and system-file language | v1.36.1 (2026-09-08) | A generated read view among its own sources needs a hidden subfolder, not a skip flag (CR-033 showed skip-lists get missed); the dot then means *unreachable by scanners*, a third meaning beside dormant and blocked. System files take English names, two exceptions declared |
 | CR-037 | Rule hierarchy and conflict resolution for `vault_conventions` | v1.36.0 (2026-09-07) | Thirteen rules from seven CRs sat in a flat list; two disagreed about the same surface and the inconsistency shipped. Three levels (invariant/rule/guideline, 6/6/1) declared per rule; conflict order; exceptions must be **named** in `exceptions:`; equal-specificity conflict = contract defect, report don't choose |
 | CR-036 | File placement classes and singleton surfaces | v1.36.0 (2026-09-07) | CR-010 declared *which* files exist, never how many or where. Three classes (singleton/per_folder/per_boundary); singleton test is principled — *would a scoped instance defeat the surface's purpose?*; `.transcripts`/`.ephemeral` consolidated; CHANGELOG/README gain conditions (130 of 174 CHANGELOGs had no sibling `.archive/`) |
 | CR-035 | `_tasks.yaml` as source of truth for the personal working document | v1.36.0 (2026-09-07) | Supersedes CR-022 in part. Markdown working doc reached 438 lines, 273-char median task line, 56 % non-task content. Tasks → YAML (v2 + `triage_id`); markdown becomes a generated view; `_capture.md` as write path. Median 273 → 87 chars, view 438 → 52 lines |

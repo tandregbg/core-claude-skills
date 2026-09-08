@@ -97,7 +97,7 @@ prefix_conventions:
                 underscore; keeps the dot for compatibility with CR-027.
                 NOT blocked — its constraint is write-side.
   write_ownership:                 # separate axis, never a prefix reason
-    human: [_inbox/_capture.md, _inbox/_ram.md, _meta.yaml, .handoff]
+    human: [_inbox/_capture.md, _inbox/_frame.md, _meta.yaml, .handoff]
     generated: [.knowledge/wiki, _INDEX-maskiner.md, _INDEX-koppling.md]
     mixed: [_tasks.yaml, _insights.yaml]
   rules:
@@ -149,7 +149,7 @@ should inherit the behaviour without each skill being patched.
 ## Implementation Notes
 
 **Already done in the reference vault (2026-09-07):**
-- `_config/namnkonvention-prefix.md` written as vault canon
+- `_config/naming-prefix.md` written as vault canon
 - Linked from `INDEX.md` and vault `CLAUDE.md`
 - `_contacts/<contact>/_archive` renamed to `.archive`
 - `_temp/._analys-index.md` (macOS resource file) deleted

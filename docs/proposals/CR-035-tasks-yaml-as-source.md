@@ -82,7 +82,7 @@ overdue · today · tomorrow · P0/P1 without a date · the coming seven days
 Items with neither date nor priority stay in YAML. Of 189 tasks, **19 appeared in the
 view** — which is the point: the view answers *"what do I do now?"*, not *"what exists?"*
 
-Hand-written context lives in `_inbox/_ram.md` and is pasted in verbatim, so the
+Hand-written context lives in `_inbox/_frame.md` and is pasted in verbatim, so the
 generator never owns prose.
 
 ### 3. `_inbox/_capture.md` is the write path
@@ -110,7 +110,7 @@ created 72 tracker items out of reference material.
 
 ### 5. `ecosystem.yaml` changes
 
-Add `_inbox/_tasks.yaml`, `_inbox/_capture.md` and `_inbox/_ram.md` as declared paths;
+Add `_inbox/_tasks.yaml`, `_inbox/_capture.md` and `_inbox/_frame.md` as declared paths;
 mark `_inbox/daglig-triage.md` as **generated**; and **replace** the `yaml_naming` rule
 with the fuller prefix contract from CR-034 rather than leaving two overlapping
 descriptions.

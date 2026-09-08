@@ -1,8 +1,12 @@
 # core-skills
 
-**Version:** 1.36.0
+**Version:** 1.36.1
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.36.1 (2026-09-08)
+
+- **A generated view that lives among its sources needs structural isolation, not a flag (CR-038).** Trying to place one new file — a per-folder situational view of a relationship: how often you have met, what the insights say, what is still open — surfaced a rule that was missing. The obvious name satisfied the prefix convention but created a circularity: files in those folders are scanned, so a generated view can be read back as source and synthesised into a view of itself. A skip flag was the first idea and the wrong one — CR-033 already showed skip-lists get missed when skills glob on filename prefixes. The fix is the pattern `.knowledge/wiki/` already used: a hidden subfolder no scanner walks into. Also in this release: system files now carry English names regardless of content language. See CHANGELOG `[1.36.1]`.
 
 ## What's new in v1.36.0 (2026-09-07)
 

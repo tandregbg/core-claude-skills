@@ -7,6 +7,46 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.36.1] - 2026-09-08
+
+### Added
+**Generated-view isolation (CR-038).** Placing one new file surfaced a rule that was
+missing. A per-folder situational view — meeting cadence, insight counts, open items —
+would obviously be `<folder>/_status.md`: underscore, because the user reads it. That
+satisfies CR-034 but creates a circularity, since `.md` files in those folders are scanned
+by several skills, so a generated view can be read back as source and synthesised into a
+view of itself.
+
+The first fix considered was a `skip_scan:` flag. **CR-033 already proved that fails** —
+four skills reached `.handoff/` despite an explicit skip-list, because they globbed on the
+`YYMMDD-` prefix instead of consulting the list. A markdown file sitting among meeting
+documents is *easier* to hit by accident than one in a dot-folder.
+
+`.knowledge/wiki/` solved this structurally. Applied at folder scope:
+**`<folder>/.status/current.md`**. The dot does not mean rarely read here — the user opens
+it deliberately. It means **unreachable by scanners**, a third meaning distinct from both
+dormant and blocked.
+
+**System-file language (CR-038).** System and structure files carry English names
+regardless of content language: `_config/priority.md`, `_config/naming-prefix.md`,
+`_inbox/_frame.md`, `.status/current.md`. Forward-looking, with two declared exceptions —
+derived registers read by scripts, and generated wiki articles that keep the language of
+the corpus they summarise.
+
+### Changed
+- Three files renamed to English; twenty files updated, zero broken links.
+- Naming that repeats the path is rejected: `status-<contact>.md` inside
+  `<contact>/.status/` states the identity twice and breaks when a folder is renamed —
+  which happens when a person's meeting series moves between organisational axes.
+
+### Noted
+A preparation document had reached **337 lines across ten sections**, each already tagged
+`[DECISION]` / `[MUST RESOLVE TODAY]` / `[IF TIME ALLOWS]`. The structure was sound but not
+**surveyable** — finding what had to close that day meant paging through the file. The fix
+is neither a summary nor a second file, but a table of what already exists, one row per
+section, ordered by urgency rather than number, placed first. Recommended as a mandatory
+opening section in `preparation`.
+
 ## [1.36.0] - 2026-09-07
 
 ### Added
@@ -68,7 +108,7 @@ per CR-037 an exception must be **named** in `exceptions:` to be valid, and it w
 
 **The `_inbox` ceiling was a defect in the rule, not the vault.** It counted all files,
 then the CR-035 migration legitimately added four system files. Corrected: the ceiling
-counts **content** files; declared system files (`_capture.md`, `_ram.md`, `_inbox.yaml`,
+counts **content** files; declared system files (`_capture.md`, `_frame.md`, `_inbox.yaml`,
 `_tasks.yaml`) are infrastructure of the surface, not material passing through it.
 
 **Rule hierarchy and conflict resolution (CR-037).** `vault_conventions.rules` had grown to
