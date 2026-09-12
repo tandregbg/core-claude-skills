@@ -1,8 +1,14 @@
 # core-skills
 
-**Version:** 1.37.0
+**Version:** 1.37.1
+
+**[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.37.1 (2026-09-12)
+
+- **The push guard can now be told that one identifier is public on purpose (CR-043).** The private denylist was all-deny: every line blocks, with no way to say *this host inside an otherwise-blocked domain is published deliberately*. Linking this repo to its own landing page hit exactly that. The options were all bad — delete the rule and lose protection for every other host under the domain, bypass the guard for the push, or hand-write a negative regex (the guard matches with `grep -E`, which has no lookbehind; simulating one means enumerating an eleven-character label's mismatch positions, and a fragile regex in a security control is worse than the problem). Instead: a denylist line starting with `!` is an allow-pattern, masked before any deny-pattern runs. The hook enforces the left word-boundary itself, so a longer label that merely *ends* with the allowed one is still blocked — that boundary is the whole difference between a mechanism and a hole. The scheduled privacy scan learned the same rule, because a guard and its auditor that disagree is worse than either alone. See CHANGELOG `[1.37.1]`.
 
 ## What's new in v1.37.0 (2026-09-12)
 

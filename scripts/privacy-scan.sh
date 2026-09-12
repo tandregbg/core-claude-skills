@@ -44,9 +44,16 @@ fi
 # 2. private denylist (optional here — hook enforces fail-closed; scan warns)
 DENY="$(git -C "$REPO" config guard.denylist || true)"
 if [ -n "$DENY" ] && [ -r "$DENY" ]; then
+    # Allow-lines (CR-043): "!"-prefixed patterns are masked before deny matching.
+    SCRUBBED="$INPUT"
     while IFS= read -r pat; do
-        case "$pat" in ''|'#'*) continue;; esac
-        HITS=$(printf '%s\n' "$INPUT" | grep -nE -e "$pat" | head -3 || true)
+        case "$pat" in '!'*) ;; *) continue;; esac
+        SCRUBBED=$(printf '%s\n' "$SCRUBBED" | sed -E "s#(^|[^A-Za-z0-9_.-])(${pat#!})#\\1<allowed>#g")
+    done < "$DENY"
+
+    while IFS= read -r pat; do
+        case "$pat" in ''|'#'*|'!'*) continue;; esac
+        HITS=$(printf '%s\n' "$SCRUBBED" | grep -nE -e "$pat" | head -3 || true)
         if [ -n "$HITS" ]; then
             echo "[FINDING] private denylist ($pat):"; echo "$HITS"; FAIL=1
         fi

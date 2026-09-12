@@ -7,6 +7,25 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.37.1] - 2026-09-12
+
+### Added
+
+- **Allow-lines in the private push denylist (CR-043).** A line starting with `!` is an ERE whose
+  matches are masked before any deny-pattern runs, for the narrow case where one identifier inside
+  an otherwise-blocked domain is public by design. The hook enforces a left word-boundary itself
+  (`(^|[^A-Za-z0-9_.-])`), so a longer label ending with the allowed one stays blocked.
+  `scripts/privacy-scan.sh` applies identical semantics — the guard and its scheduled auditor must
+  not disagree about what is allowed.
+- **README links to the project's landing page** from the version line.
+
+### Why
+
+ERE has no lookbehind, so "block this domain except this one host" cannot be written as a regex
+without enumerating an eleven-character label's mismatch positions. A fragile pattern in a
+security control is worse than the gap it closes — so the exception became a mechanism, with the
+boundary enforced by the hook rather than trusted to the pattern author.
+
 ## [1.37.0] - 2026-09-12
 
 ### Added

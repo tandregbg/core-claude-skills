@@ -10,6 +10,16 @@
 #
 # The denylist is PRIVATE (real names/hosts, one regex per line, # comments)
 # and must never live in this repo. Missing denylist = push blocked.
+#
+# ALLOW-LINES (CR-043): a denylist line starting with "!" is an ERE whose
+# matches are MASKED from the added lines before deny matching. It exists for
+# the narrow case where one identifier inside an otherwise-blocked domain is
+# public by design (a product's own marketing host). Prefer an allow-line over
+# deleting the deny rule: the rule keeps protecting every other form.
+# Allow-patterns must not contain "#" (it is the sed delimiter). The hook
+# enforces a left word-boundary itself, so a longer label that merely ENDS
+# with the allowed one (evilcore-skills.example.com) is still blocked.
+# Order is irrelevant — every allow-line is applied before any deny-line runs.
 # Escape hatch: `git push --no-verify` — manual review first, then own it.
 #
 # MODES (git config guard.mode, CR-030):
@@ -92,12 +102,20 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     done
 
     if [ -n "$DENYLIST" ]; then
+    # Allow-lines first: mask every "!"-prefixed pattern's matches, so a
+    # deliberately public identifier does not trip the broader deny rule.
+    SCRUBBED="$ADDED"
     while IFS= read -r pat; do
-        case "$pat" in ''|'#'*) continue;; esac
-        HITS=$(printf '%s\n' "$ADDED" | grep -cE -e "$pat" || true)
+        case "$pat" in '!'*) ;; *) continue;; esac
+        SCRUBBED=$(printf '%s\n' "$SCRUBBED" | sed -E "s#(^|[^A-Za-z0-9_.-])(${pat#!})#\\1<allowed>#g")
+    done < "$DENYLIST"
+
+    while IFS= read -r pat; do
+        case "$pat" in ''|'#'*|'!'*) continue;; esac
+        HITS=$(printf '%s\n' "$SCRUBBED" | grep -cE -e "$pat" || true)
         if [ "${HITS:-0}" -gt 0 ]; then
             echo "PUSH BLOCKED: private denylist matched ($HITS line[s]): $pat" >&2
-            printf '%s\n' "$ADDED" | grep -nE -e "$pat" | head -5 >&2
+            printf '%s\n' "$SCRUBBED" | grep -nE -e "$pat" | head -5 >&2
             FAIL=1
         fi
     done < "$DENYLIST"
