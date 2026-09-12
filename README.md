@@ -1,10 +1,14 @@
 # core-skills
 
-**Version:** 1.37.1
+**Version:** 1.37.2
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.37.2 (2026-09-12)
+
+- **The contract version field had never been bumped (CR-044).** `ecosystem.yaml` said `contract_version: 2` while the comment block directly above it documented bumps to 3, 4, 5 and 6 — each added by its own CR — and the visualiser's own notes described a contract at version 6. `git log -S` finds exactly one commit touching the value: the one that created the file. Five CRs documented a bump; none changed the number. It survived five days and four releases for a simple reason — **nothing reads the field back.** The alignment check compares the *suite* version across components and never looks at the contract version at all. Corrected to **7** in one step (6 for the documented backlog, 7 for this release's conditional-presence change), with the comment block reordered and a correction note, so a client that read 2 yesterday can find out why it reads 7 today. The obvious follow-up — have the alignment check assert the field matches the highest bump documented in its own comments — is deliberately *not* in this release: correcting data and adding a check are different changes, and the check deserves its own verification. See CHANGELOG `[1.37.2]`.
 
 ## What's new in v1.37.1 (2026-09-12)
 
@@ -173,7 +177,7 @@ It declares:
 - **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `rules` (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
 - **Visualisation features** -- the page list Marvin renders
 
-The contract is versioned (`contract_version: 2`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`.
+The contract is versioned (`contract_version: 7`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`.
 
 ## Architecture
 

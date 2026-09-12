@@ -7,6 +7,31 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.37.2] - 2026-09-12
+
+### Fixed
+
+- **`contract_version` corrected 2 → 7 (CR-044).** The field had never been changed since the file
+  was created; CR-034 through CR-038 each documented a bump in a comment without touching the value,
+  and Marvin's notes described version 6. Nothing reads the field back, so nothing caught it.
+- Comment block reordered descending, with a correction note recording that no client was ever
+  served 3, 4, 5 or 6.
+
+### Changed
+
+- **`placement_classes`: PER_FOLDER presence may be CONDITIONAL (CR-040).** A folder declaring
+  `workflows.task_ledger.mode` `external` or `none` legitimately has no `_tasks.yaml`; readers must
+  not treat that absence as an empty or stalled folder. The `<folder>/_tasks.yaml` lifecycle says the
+  same. Without this the contract and the skill disagreed, and the contract is what third-party
+  clients read.
+
+### Known gap
+
+- Nothing verifies `contract_version`. The alignment check compares `core_skills_version` across
+  three components and never looks at the contract version — which is exactly why it could sit wrong
+  for five days. A follow-up should assert it against the highest bump documented in its own comment
+  block.
+
 ## [1.37.1] - 2026-09-12
 
 ### Added
