@@ -163,6 +163,36 @@ Tasks are tracked in distributed `_tasks.yaml` files (v2 schema) at each folder 
 |------|---------|---------|
 | `_tasks.yaml` | Folder with tracked tasks | `/tasks`, `/ops`, `/daily-dashboard`, visualisation |
 
+#### Task-ledger resolution (CR-040)
+
+**The local ledger is the default, not an invariant.** A folder may declare that the work it
+coordinates is tracked somewhere else -- an issue tracker, or a change-request registry inside the
+codebase the folder shadows. Read `workflows.task_ledger` from the effective config (folder -> org ->
+default) **before touching any `_tasks.yaml`**:
+
+| `mode` | Meaning | Behaviour |
+|--------|---------|-----------|
+| `local` | Default, and what an absent key means | Today's behaviour: find or create the per-folder ledger, import and update items |
+| `external` | The work lives in a declared system of record | **Never create `_tasks.yaml`, and never walk to the nearest ancestor.** Implementation items are recorded **by reference** (the `reference_field` value) in the summary; only coordination that has no item in that system goes to the folder's declared coordination surface |
+| `none` | No ledger, no external pointer | Coordination lives in the summaries. For small or short-lived folders |
+
+```yaml
+workflows:
+  task_ledger:
+    mode: external                 # local (default) | external | none
+    system: "Codebase issue registry"      # required when external
+    pointer: "docs/issues/REGISTRY.md"     # required when external
+    reference_field: cr_id         # cr_id | jira_key | url
+```
+
+**Why the ancestor walk is the dangerous half.** Creating an unwanted ledger is visible. Walking up
+and writing a folder's coordination items into a *parent's* ledger is not -- the items land where
+nobody looks for them, and the folder appears to have no open work.
+
+**One item, one home** (the CR-022 rule, generalised): an item goes to the external system **or** the
+local ledger **or** the triage doc -- never two of them. Where a system of record already exists, a
+second ledger with the same owners and the same items is not redundancy, it is a competing truth.
+
 ---
 
 ## DOCUMENTATION STRUCTURE

@@ -1,4 +1,4 @@
-# Configuration Schema v1.3
+# Configuration Schema v1.4
 
 ## Overview
 
@@ -257,6 +257,32 @@ When `task_import.enabled` is true, action items from the meeting summary are ex
 #### Dashboard Refresh
 
 When `dashboard_refresh.enabled` is true, the org dashboard is regenerated after all file updates and task imports are complete. The `org` field determines which dashboard to update.
+
+### Task Ledger (CR-040)
+
+Optional. Declares where the work a folder coordinates is actually tracked. Absent = `local`, which is
+exactly today's behaviour, so existing configs are unaffected.
+
+```yaml
+workflows:
+  task_ledger:
+    mode: enum                     # local (default) | external | none
+    system: string                 # Required when external: name of the system of record
+    pointer: string                # Required when external: path or URL
+    reference_field: enum          # cr_id | jira_key | url (how an item is cited)
+```
+
+| `mode` | When to use |
+|--------|-------------|
+| `local` | The folder owns its work and tracks it in `_tasks.yaml`. The default |
+| `external` | The folder **coordinates** work that is tracked elsewhere -- typically a project that shadows a codebase with its own change-request registry or issue tracker. The local ledger would be a second truth with the same owners |
+| `none` | Small or short-lived folders where the summaries are enough |
+
+`external` changes `/ops` behaviour: no `_tasks.yaml` is created, no ancestor is walked to, and
+implementation items are recorded by reference. Full rules in ops-base, *Task-ledger resolution*.
+
+**Declare it rather than relying on silence.** An undeclared missing ledger is indistinguishable from
+a neglected one -- which is the thing the sweep's ledger-rot check exists to catch.
 
 ### Evolution
 

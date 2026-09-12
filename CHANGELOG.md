@@ -7,6 +7,45 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.37.0] - 2026-09-12
+
+### Added
+
+- **`workflows.task_ledger` — declared system of record per folder (CR-040).** Three modes:
+  `local` (default, unchanged behaviour), `external` (work is tracked in a declared system —
+  name, pointer and reference field required), `none` (summaries only). Config schema v1.3 → v1.4.
+- **ops-base: *Task-ledger resolution*** — the rule, the mode table, the config shape, and the
+  generalised one-item-one-home constraint.
+- **ops-config schema** — `task_ledger` block with guidance on when each mode applies.
+- **Sweep: two new findings replacing rot under `external` (CR-041)** — an incoherent declaration
+  (missing `system`/`pointer`, or an unresolvable pointer), and the duplicate the declaration exists
+  to prevent (a folder declaring `external` that still carries a local ledger).
+
+### Changed
+
+- **`/ops` resolves the ledger before touching it**, at four points: prep context gathering
+  (Step P1), the `task_yaml` row of the update-files table (Step 5), task import (Step 9), and the
+  create-if-missing fallback. Under `external`, no `_tasks.yaml` is read, created, or resolved via an
+  ancestor; action items are split into implementation items (recorded by reference, and offered to
+  be raised in the system of record when no reference exists) and coordination items.
+- **`/ops sweep` check 2 resolves the ledger mode before judging a missing `_tasks.yaml` (CR-041).**
+  `_insights.yaml` staleness is still checked in every mode — the knowledge layer is local wherever
+  the work is tracked.
+- **`/analytics pipeline` excludes non-`local` folders from tasks-per-meeting (CR-041)** and names
+  them as *external ledger* instead of leaving a zero that reads as a gap. It does not read the
+  external system.
+
+### Why
+
+The ancestor walk was the dangerous half. Creating an unwanted ledger is visible; silently writing a
+folder's coordination items into a **parent's** ledger is not — they land where nobody looks, and the
+folder reads as having no open work. Declaring the absence also separates *deliberate* from
+*neglected*, which the sweep's ledger-rot check cannot otherwise distinguish.
+
+CR-041 ships with CR-040 rather than after it: a declaration the two *reading* skills do not
+understand would have reported a correctly-configured folder as broken in its first weekly sweep, and
+a check that cries wolf stops being believed before it is ever right.
+
 ## [1.36.1] - 2026-09-08
 
 ### Added

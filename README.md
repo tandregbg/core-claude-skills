@@ -1,8 +1,13 @@
 # core-skills
 
-**Version:** 1.36.1
+**Version:** 1.37.0
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.37.0 (2026-09-12)
+
+- **A folder may declare that its work is tracked somewhere else (CR-040).** `/ops` assumed every folder receiving a meeting summary has, or should have, a local `_tasks.yaml` — *find it, or the nearest ancestor's, or create one*. That assumption breaks for a **coordination project**: one that shadows a codebase whose own change-request registry or issue tracker is already the system of record, with the same owners and the same items. There the local ledger is not redundancy, it is a competing truth — and the pattern has a measured cost: a project running three overlapping ledgers reached 440 tasks, 329 of them pending and 71 open at the top priority, at which point the scale carried no information and a working session had to be spent retiring the duplicates. New `workflows.task_ledger` key with `mode: local | external | none`; `external` means no ledger is created, **no ancestor is walked to** (the dangerous half — items land where nobody looks), and implementation items are recorded by reference instead. Default `local`, so silence keeps the existing contract.
+- **And the two skills that *read* ledgers had to learn the same word (CR-041).** A declaration is worthless if the sweep still reports the folder as rotting and the pipeline report still shows it producing nothing — so `/ops sweep` now resolves the mode before judging a missing ledger, and `/analytics` excludes those folders from tasks-per-meeting and names them instead of leaving a zero. The sweep does not simply fall silent: under `external` it swaps the rot check for two better ones — an **incoherent declaration** (missing or unresolvable pointer), and **the duplicate the declaration exists to prevent**. Shipped together deliberately, because a check that reports healthy things as broken stops being believed before it is ever right. See CHANGELOG `[1.37.0]`.
 
 ## What's new in v1.36.1 (2026-09-08)
 

@@ -196,8 +196,10 @@ The agenda file is the team-facing prep document. It looks like the prior-day pr
    - Find last 1-3 meeting summaries in the target folder
    - Extract action items assigned to each team member
    - Note decisions made, blockers identified
-3. **Read `_tasks.yaml`:**
-   - Pull active tasks per person (status: pending, in_progress, blocked)
+3. **Read the task ledger** (resolve `workflows.task_ledger` first -- see ops-base, CR-040):
+   - `local`: pull active tasks per person from `_tasks.yaml` (status: pending, in_progress, blocked)
+   - `external`: read the declared `pointer` if it is reachable; otherwise state in the prep that open
+     work lives in `system` and was not read. **Never fall back to an ancestor `_tasks.yaml`**
    - Identify blockers and their owners
 4. **Read CHANGELOG.md:**
    - Scan recent entries for context
@@ -532,6 +534,12 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
 
 1. **Index lag** -- README.md / meetings/README.md whose newest referenced date lags the folder's newest `YYMMDD-*` file or CHANGELOG head entry by >14 days. CHANGELOGs are the heartbeat; READMEs are the lag indicator -- compare them per folder.
 2. **Ledger rot** -- `_tasks.yaml` with open tasks whose `last_updated` lags folder activity by >30 days; `_insights.yaml` whose `last_compiled` stamp is absent or >30 days older than its newest entry (compile never ran / is stale).
+   **Resolve the ledger mode first (CR-041).** Read `workflows.task_ledger.mode` before judging a missing `_tasks.yaml`:
+   - `local` (default): as above, unchanged.
+   - `external`: the rot check is **skipped and replaced by two others** -- (a) **incoherent declaration**: `system` or `pointer` absent, or the pointer unresolvable; that is the real failure mode for this shape, and it is silent otherwise. (b) **The duplicate the declaration exists to prevent**: a folder declaring `external` that nonetheless contains a `_tasks.yaml`. Report both as findings with the same weight as rot.
+   - `none`: skip.
+   `_insights.yaml` staleness is checked in **every** mode -- the knowledge layer is local regardless of where the work is tracked.
+   Rationale worth keeping in the report: a *declared* absence is deliberate, an *undeclared* one is indistinguishable from neglect. Reporting a correctly-configured folder as broken every week is worse than not checking it -- the first time the sweep is right and nobody believes it, the check has stopped working.
 3. **Migration corpses** -- artifacts that look live but were superseded by a move: root symlinks/files whose same-purpose counterpart elsewhere is fresher (dashboards, `_TODAY-*`); folders inactive >60 days whose participant/topic stream demonstrably continues in a sibling folder. Offered fix: a **tombstone** (see ops-base Retirement Convention).
 4. **Outbox aging** -- run the `/outbox list` logic: sent-but-unarchived items, manifest-less items, items pending >30 days. Offered fix: `/outbox archive --all-sent`.
 5. **Sync duplicates** -- `* 2.*` / `* 3.*` files whose base file exists. Report size+mtime comparison side by side; **never auto-delete** (the larger "duplicate" is sometimes the newer content).
@@ -679,7 +687,7 @@ Update files per `workflows.update_files` from config:
 | `summary` | Meeting summary | Always created (Step 3) |
 | `changelog` | CHANGELOG.md | Add dated entry at top |
 | `readme` | README.md | Update Current Status, Active Tasks, Recent Meetings |
-| `task_yaml` | _tasks.yaml | Update/create per-folder task file (v2 schema) |
+| `task_yaml` | _tasks.yaml | Update/create per-folder task file (v2 schema). **Skipped entirely when `workflows.task_ledger.mode` is not `local` (CR-040)** |
 | `meetings_index` | meetings/README.md | Add entry to meeting index |
 
 For `changelog`, follow the format in ops-base. Always reference the meeting summary file.
@@ -749,7 +757,10 @@ If `workflows.post_processing` is configured:
 
 #### Task Import (if `task_import.enabled`)
 1. Extract action items from the meeting summary (same logic as /transcript Step 4)
-2. Find the local `_tasks.yaml` in the folder where the meeting summary was saved (or nearest ancestor). Create with v2 schema if missing.
+2. **Resolve the task ledger (CR-040)** before anything else:
+   - `mode: local` (default): find the local `_tasks.yaml` in the folder where the meeting summary was saved (or nearest ancestor). Create with v2 schema if missing.
+   - `mode: external`: **no ledger file is read, created, or walked to.** Steps 3-6 below do not apply. Instead, present the extracted action items split in two -- those whose next action is implementation (recorded **by reference** in the summary using `reference_field`, e.g. a CR id or issue key, and offered to the user to raise in `system` if no reference exists yet), and those whose next action is a decision, an owner or an escalation (offered to the folder's declared coordination surface). State the system of record once in the summary so a reader of that file alone can find the work.
+   - `mode: none`: action items stay in the summary; no import is offered.
 3. Match extracted items against existing tasks -- update status/notes for tasks mentioned
 4. Present NEW action items and offer to import (yes/no/select)
 5. For imported tasks: assign defaults (P1, source = meeting file, context from folder)
@@ -918,7 +929,7 @@ When no org config is found:
 When a target file does not exist:
 - For CHANGELOG.md: create with initial entry
 - For README.md: create basic structure
-- For _tasks.yaml: create with v2 schema (version: 2, context from folder, scope from path)
+- For _tasks.yaml: create with v2 schema (version: 2, context from folder, scope from path) -- **unless `workflows.task_ledger.mode` is `external` or `none`, in which case it is never created (CR-040)**
 - For meetings/README.md: create basic index
 
 ---

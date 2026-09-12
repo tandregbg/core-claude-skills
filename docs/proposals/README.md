@@ -10,13 +10,17 @@ Next available CR number: **CR-039**
 
 ## Proposed (Ready to Implement)
 
-_None._
+| CR | Area | Priority | Summary |
+|----|------|----------|---------|
+| CR-042 | `ops-config` schema | Low | Four keys a coordination project needs and the schema does not define — cadence (as a timezone **pair**, since the anchored end matters across DST), tracks, phases (which may be inherited from the shadowed codebase), and systems of record. Undeclared keys make a config file look authoritative while being partly inert |
+
+_Spec for CR-042 is tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-038** (generated-view isolation, v1.36.1).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-041** (declared absence is not rot, v1.37.0).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
@@ -79,4 +83,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-07-10 — CR-030 implemented (v1.33.1, guard rollout to all GitHub-remoted repos). CR-017–CR-030 specs tracked outside this repo.*
+*Last updated: 2026-09-12 — CR-040 + CR-041 implemented (v1.37.0); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*

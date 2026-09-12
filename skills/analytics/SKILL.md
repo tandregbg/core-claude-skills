@@ -415,7 +415,7 @@ The document counts alone are not the full picture — a meeting's *outcomes* li
 | Layer | Source | Field scanned |
 |-------|--------|---------------|
 | Insights | `_insights.yaml` (all folders) | `date:` + preceding `type:` per entry |
-| Tasks created | `_tasks.yaml` (v2, all folders) | `created:` per task |
+| Tasks created | `_tasks.yaml` (v2, all folders) | `created:` per task. Folders declaring `workflows.task_ledger.mode` other than `local` are **excluded** and listed separately as *external ledger* (CR-041) |
 | CHANGELOG entries | `CHANGELOG.md` (all folders) | `- **YYMMDD:` bullet dates |
 | Outbox packages | `_outbox/**` file discovery | filename YYMMDD prefix |
 | New contacts | `_contacts/<name>/` | earliest YYMMDD file per folder |
@@ -428,7 +428,8 @@ The document counts alone are not the full picture — a meeting's *outcomes* li
    - **INPUT:** transcripts, raw text (.txt)
    - **MEETING DOCS:** summaries/notes, agenda/facilitator, preparations
    - **OUTCOMES:** insights total + one row per insight type (largest types first, small ones aggregated as "other"), tasks created, CHANGELOG entries, outbox packages, new contact folders
-4. Compute **derived ratios** for quarters where the systems are fully active: insights per meeting+transcript, tasks per meeting+transcript, CHANGELOG entries per meeting+transcript
+4. Compute **derived ratios** for quarters where the systems are fully active: insights per meeting+transcript, tasks per meeting+transcript, CHANGELOG entries per meeting+transcript.
+   **Exclude folders whose task ledger is not `local` (CR-041)** from the tasks-per-meeting ratio, and name them under the table as *external ledger: work tracked in `<system>`*. Their zero is a correct pipeline, not a gap -- counting it drags the ratio down and reports a healthy project as failing. This skill does **not** read the external system: counting items in a repo registry or an issue tracker is a different and much larger job, and the ratio simply excludes what it cannot see.
 5. Compute **per-day averages by quarter:** active days / calendar days, files/day, meetings+transcripts/day, insights/day, tasks/day, files per active day (partial quarters use elapsed days)
 6. Write to `_analytics/YYMMDD-pipeline-report.md`
 
