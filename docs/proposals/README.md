@@ -20,7 +20,7 @@ _Spec for CR-042 is tracked outside this repo (they carry vault evidence); rows 
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-041** (declared absence is not rot, v1.37.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-045** (contract_version verified against its own comment block, v1.37.3).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
@@ -83,4 +83,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-12 — CR-040 + CR-041 implemented (v1.37.0); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-12 — CR-040, CR-041, CR-043, CR-044, CR-045 implemented (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*

@@ -7,6 +7,27 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.37.3] - 2026-09-12
+
+### Added
+
+- **`check-ecosystem-alignment.sh` verifies `contract_version` against its own comment block
+  (CR-045).** The highest `# contract_version N` documented in the file must equal the
+  `contract_version:` value below it. Closes the gap CR-044 named: the field drifted for five days
+  and four releases because nothing read it back. Placed first among the checks — it is about the
+  contract itself, not a component's reference to it.
+- Distinct verdicts for the degenerate cases (no comment lines to check against; unparseable field).
+
+### Why it is cheap
+
+Every bump was already written in a fixed shape, which made the comments a checkable declaration
+rather than prose. No new config, no new file, and `/ops sweep` check 8 already parses this script's
+`[OK]`/`[DRIFT]` lines — so the check reaches the weekly sweep the moment it exists.
+
+Verified in both directions: resetting the field to `2` reproduces the historical bug and the check
+reports *field says 2, comments document 7*. Had it existed on 2026-09-07 it would have failed on the
+first run after CR-034.
+
 ## [1.37.2] - 2026-09-12
 
 ### Fixed

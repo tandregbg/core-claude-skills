@@ -38,6 +38,31 @@ echo ""
 ALIGNED=0
 DRIFTED=0
 
+# Check contract_version against its own comment block (CR-045).
+# This exists because the field sat at 2 for five days and four releases while
+# CR-034..CR-038 each documented a bump above it — nothing read the value back,
+# so nothing caught it (CR-044). Every bump is documented as a comment line
+# "# contract_version N (CR-xxx, date): ...", which makes the comments a
+# checkable declaration rather than prose.
+DECLARED_MAX=$(grep -oE '^# contract_version [0-9]+' "$REPO_DIR/ecosystem.yaml" \
+    | grep -oE '[0-9]+$' | sort -n | tail -1)
+ACTUAL_CONTRACT=$(grep -oE '^contract_version: *[0-9]+' "$REPO_DIR/ecosystem.yaml" \
+    | grep -oE '[0-9]+$')
+if [ -z "$DECLARED_MAX" ]; then
+    echo "[DRIFT] contract_version: no '# contract_version N' comment lines to check against"
+    DRIFTED=$((DRIFTED + 1))
+elif [ -z "$ACTUAL_CONTRACT" ]; then
+    echo "[DRIFT] contract_version: field missing or unparseable in ecosystem.yaml"
+    DRIFTED=$((DRIFTED + 1))
+elif [ "$ACTUAL_CONTRACT" = "$DECLARED_MAX" ]; then
+    echo "[OK] contract_version: $ACTUAL_CONTRACT (highest documented bump: $DECLARED_MAX)"
+    ALIGNED=$((ALIGNED + 1))
+else
+    echo "[DRIFT] contract_version: field says $ACTUAL_CONTRACT, comments document $DECLARED_MAX"
+    echo "        A bump was written up but never applied to the value, or vice versa."
+    DRIFTED=$((DRIFTED + 1))
+fi
+
 # Check core-skills README
 README_VERSION=$(grep -o 'Version:.*' "$REPO_DIR/README.md" | head -1 | sed 's/.*\*\* //' | tr -d ' ')
 if [ "$README_VERSION" = "$CONTRACT_VERSION" ]; then

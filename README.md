@@ -1,10 +1,14 @@
 # core-skills
 
-**Version:** 1.37.2
+**Version:** 1.37.3
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.37.3 (2026-09-12)
+
+- **The contract version now checks itself (CR-045).** Correcting the field (CR-044) without adding a reader would have left the same hole open — it drifted for five days precisely because nothing compared it to anything. Every bump has always been documented in the same shape, `# contract_version N (CR-xxx, date): ...`, which makes the comment block a *declaration* rather than prose: the highest N must equal the field below it. The alignment check now asserts exactly that, and `/ops sweep` reads its verdict lines already, so it reaches the weekly sweep for free. Verified in both directions — resetting the field to its old value reproduces yesterday's bug and the check reports *"field says 2, comments document 7"*. It verifies that the number and its documentation agree; whether a conventions change *deserves* a bump stays human. See CHANGELOG `[1.37.3]`.
 
 ## What's new in v1.37.2 (2026-09-12)
 
