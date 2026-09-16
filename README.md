@@ -1,12 +1,17 @@
 # core-skills
 
-**Version:** 1.37.3
+**Version:** 1.37.4
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
+## What's new in v1.37.4 (2026-09-16)
+
+- **An outbox manifest must now say where its material actually lives (CR-032).** A routine question — *"is this folder a copy, or the only copy?"* — turned out to be unanswerable. An audit found 86 outbox items where just 3 of 71 manifests named a source, so deciding what was safe to delete meant opening every folder and grepping the vault. The PDFs were renderings of documents that lived elsewhere; the mail texts and the manifests themselves existed nowhere else. A bulk clean-up would have destroyed them. The fix is one required field, `Kanonisk källa`, answered either with a path or with `ingen (originalet bor här)` — which moves the determination to creation time, where the author knows the answer, instead of to clean-up time, where nobody does. `/ops sweep` flags manifests missing it; `archive` warns but does not abort, since refusing would strand every folder written before the rule existed. See CHANGELOG `[1.37.4]`.
+
 ## What's new in v1.37.3 (2026-09-12)
+
 
 - **The contract version now checks itself (CR-045).** Correcting the field (CR-044) without adding a reader would have left the same hole open — it drifted for five days precisely because nothing compared it to anything. Every bump has always been documented in the same shape, `# contract_version N (CR-xxx, date): ...`, which makes the comment block a *declaration* rather than prose: the highest N must equal the field below it. The alignment check now asserts exactly that, and `/ops sweep` reads its verdict lines already, so it reaches the weekly sweep for free. Verified in both directions — resetting the field to its old value reproduces yesterday's bug and the check reports *"field says 2, comments document 7"*. It verifies that the number and its documentation agree; whether a conventions change *deserves* a bump stays human. See CHANGELOG `[1.37.3]`.
 

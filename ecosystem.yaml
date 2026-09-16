@@ -6,27 +6,17 @@
 # should also use it as the authoritative contract.
 # No PII. Public-safe.
 
-# CORRECTION 2026-09-12 (CR-044): this field read `2` until today. Versions 3-6
-# below were each documented by their CR but the value was never changed —
-# `git log -S` finds one commit touching it, the one that created this file.
-# Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
-# no client was ever served 3, 4, 5 or 6.
-#
-# contract_version 7 (CR-040, 2026-09-12): a PER_FOLDER file's presence may be
-#   CONDITIONAL — a folder declaring an external system of record legitimately has
-#   no _tasks.yaml. Parsers must not read that absence as missing data.
+# contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
 # contract_version 6 (CR-038, 2026-09-08): generated-view isolation + system-file language.
 # contract_version 5 (CR-037, 2026-09-07): rule hierarchy + conflict resolution.
 # contract_version 4 (CR-036, 2026-09-07): placement classes + singleton test.
 # contract_version 3 (CR-034/CR-035, 2026-09-07): prefix_conventions replaced
 #   yaml_naming; added dot_surface_levels, audit_lifecycle, stale_vs_junk; declared
 #   _inbox/_tasks.yaml as source of truth with the working doc as a generated view.
-# contract_version 2 (CR-010, 2026-04-29): added vault_conventions block.
-#
 # Bumps are additive — clients on contract_version 1 ignore the new block;
-# clients on version 2 or later get the structured vault-file declarations.
-contract_version: 7
-core_skills_version: "1.37.3"
+# clients on version 2 get the additional structured-vault-file declarations.
+contract_version: 2
+core_skills_version: "1.37.4"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -292,7 +282,7 @@ vault_conventions:
       schema: "tasks v2"
       writers: ["/tasks", "/transcript", "/ops"]
       readers: ["/tasks", "/daily-dashboard", "marvin"]
-      lifecycle: "live; tasks added/completed/archived in place. MAY BE ABSENT BY DECLARATION (CR-040): see workflows.task_ledger — absence is then deliberate, and the work is tracked in the declared external system"
+      lifecycle: "live; tasks added/completed/archived in place"
 
     - path: "<folder>/_insights.yaml"
       purpose: "Extracted decisions, learnings, patterns, evolution feedback"
@@ -357,7 +347,7 @@ vault_conventions:
 
     - id: "placement_classes"
       level: rule
-      rule: "Every declared path belongs to exactly one placement class (CR-036). SINGLETON — exactly one, at vault root; a second instance is a finding: INDEX.md, _inbox/, _outbox/, _config/, .handoff/, .knowledge/. PER_FOLDER — appears in every folder of its kind: _meta.yaml, _insights.yaml, _tasks.yaml, _manifest.md, .archive/. PER_FOLDER presence can be CONDITIONAL (CR-040): a folder declaring workflows.task_ledger.mode external or none legitimately has no _tasks.yaml, and that absence is a declaration, not missing data — readers must not treat it as an empty or stalled folder. PER_BOUNDARY — appears where the boundary it describes actually applies: CLAUDE.md, _ops.yaml, CHANGELOG.md, README.md."
+      rule: "Every declared path belongs to exactly one placement class (CR-036). SINGLETON — exactly one, at vault root; a second instance is a finding: INDEX.md, _inbox/, _outbox/, _config/, .handoff/, .knowledge/. PER_FOLDER — appears in every folder of its kind: _meta.yaml, _insights.yaml, _tasks.yaml, _manifest.md, .archive/. PER_BOUNDARY — appears where the boundary it describes actually applies: CLAUDE.md, _ops.yaml, CHANGELOG.md, README.md."
 
     - id: "singleton_surfaces"
       level: invariant

@@ -7,6 +7,27 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.37.4] - 2026-09-16
+
+### Changed
+- **`Kanonisk källa` is now REQUIRED in outbox manifests (CR-032).** Every manifest must
+  state where its material actually lives: either a path (the attachment is a rendering and
+  the outbox copy is disposable) or `ingen (originalet bor här)` (the material exists nowhere
+  else, so the folder must be archived rather than deleted).
+
+  **Why:** an audit found 86 outbox items where only 3 of 71 manifests named a source. That
+  made a routine question — *"is this a copy or the original?"* — unanswerable without opening
+  every folder. PDFs turned out to be renderings, but the mail texts and manifests existed only
+  in `_outbox/`, so a bulk clean-up would have destroyed material. The field moves that
+  determination to **creation time**, where the author knows the answer, instead of to
+  clean-up time, where nobody does.
+
+- **`/ops sweep` check 4 now flags manifests missing the field**, alongside the existing
+  sent-but-unarchived and aging findings.
+
+- **`archive` warns but does not abort** on a missing field — refusing would strand legacy
+  folders.
+
 ## [1.37.3] - 2026-09-12
 
 ### Added

@@ -38,6 +38,7 @@ For project-scoped outbox items the destination is the project folder (`<vault>/
 **Kanal:** [mejl | slack | print | ...]
 **Kontakt:** [email or name]
 **Projekt:** [optional theme/context]
+**Kanonisk källa:** [path to the source doc each attachment is rendered from — or `ingen (originalet bor här)`]
 
 ## Innehåll
 [file table]
@@ -54,6 +55,31 @@ For project-scoped outbox items the destination is the project folder (`<vault>/
 ```
 
 When all `Svar förväntas på` items are checked AND `Utfall` is populated, the item is **resolution-ready** -- ready to archive.
+
+### `Kanonisk källa` is REQUIRED (CR-032)
+
+Every manifest must state where its material actually lives. Two valid answers:
+
+- **A path** -- the attachment is a *rendering* (PDF out of a `.md`, export out of a dataset).
+  The source is the original; the outbox copy is disposable. Example:
+  `_contacts/<kontakt>/leverans/YYMMDD-onepager.md`
+- **`ingen (originalet bor här)`** -- the material exists nowhere else. Typically the
+  `mejl.txt` and the manifest itself. **This is not a defect**, it is a statement that the
+  folder must be archived rather than deleted.
+
+**Why it is required.** An audit on 2026-08-28 found 86 outbox items, of which only 3 of 71
+manifests named a source. That made a routine question -- *"is this a copy or the original?"* --
+unanswerable without opening every folder and grepping the vault. PDFs turned out to be
+renderings, but the mejl-texts and manifests existed only in `_outbox/`, so a bulk clean-up
+would have destroyed material. The field moves that determination to **creation time**, where
+the author knows the answer, instead of to clean-up time, where nobody does.
+
+**Enforcement:**
+- `list` flags any manifest missing the field: `(saknar Kanonisk källa)`.
+- `archive` **warns but does not abort** -- refusing would strand legacy folders. It asks the
+  user to fill it in, and offers `ingen (originalet bor här)` as the default.
+- When `/ops` (or anything else) stages new outbox material it must write the field. Leaving it
+  blank is the same defect as leaving `Status:` blank.
 
 ## SUBCOMMANDS
 
@@ -78,6 +104,9 @@ DRAFT
 
 WITHOUT MANIFEST (manual review needed)
   260418-bob-lindgren_acmecorp    -                   -
+
+MISSING KANONISK KÄLLA (fill in — copy or original?)
+  260503-someone_topic            skickad 260503      saknar Kanonisk källa
 ```
 
 For each resolution-ready item, suggest: `/outbox archive <folder-name>`.
