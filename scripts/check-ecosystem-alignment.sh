@@ -100,17 +100,27 @@ LANDING_MOUNT="${LANDING_MOUNT:-$HOME/workspace/remotes/tomas/core-skills-landin
 if [ -f "$LANDING_MOUNT/app.py" ]; then
     LANDING_BUILD=$(grep 'BUILD_VERSION' "$LANDING_MOUNT/app.py" | head -1 | grep -o "'[^']*'" | tr -d "'")
     # Landing page tracks its own build version, but should reference core_skills_version in i18n
+    # The title may carry the literal version, or the {v} placeholder the page
+    # substitutes at render time with the version it fetches from the contract.
+    # A placeholder is correct by construction -- it cannot drift -- so treat it
+    # as aligned rather than reporting an unparseable version forever.
     LANDING_REF=$(python3 -c "
 import json
 try:
     d = json.load(open('$LANDING_MOUNT/static/i18n/en.json'))
     wn = d.get('whats_new', {}).get('title', '')
     import re
-    m = re.search(r'v([0-9.]+)', wn)
-    print(m.group(1) if m else 'unknown')
+    if '{v}' in wn:
+        print('parameterised')
+    else:
+        m = re.search(r'v([0-9.]+)', wn)
+        print(m.group(1) if m else 'unknown')
 except: print('unreadable')
 " 2>/dev/null)
-    if [ "$LANDING_REF" = "$CONTRACT_VERSION" ]; then
+    if [ "$LANDING_REF" = "parameterised" ]; then
+        echo "[OK] landing page i18n: version is parameterised, resolved from the contract at render time (build $LANDING_BUILD)"
+        ALIGNED=$((ALIGNED + 1))
+    elif [ "$LANDING_REF" = "$CONTRACT_VERSION" ]; then
         echo "[OK] landing page i18n: v$LANDING_REF (build $LANDING_BUILD)"
         ALIGNED=$((ALIGNED + 1))
     else

@@ -7,6 +7,21 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.38.1] - 2026-09-20
+
+### Fixed
+
+- **The landing-page check stops reporting a version it was never going to find.** The page's
+  what's-new title carries the `{v}` placeholder, substituted at render time with the version it
+  fetches from the published contract. The check greps the title for a literal `vN.N.N`, found
+  none, and reported `[DRIFT] vunknown` on every run -- including runs where the live page was
+  correctly showing the current version. A placeholder cannot drift, so it is now reported as
+  aligned, with the reason stated.
+- **Why it matters beyond the noise:** `/ops sweep` check 8 reads these verdict lines, so the
+  false alarm reached the weekly sweep, where it competed for attention with real findings. This
+  is CR-041's argument applied to the check itself -- reporting a healthy component as broken
+  every week is worse than not checking it.
+
 ## [1.38.0] - 2026-09-20
 
 ### Added
