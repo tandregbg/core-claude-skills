@@ -116,7 +116,7 @@ workflows:
   knowledge_extraction:
     enabled: true
     min_insights: 1
-    types: [decision, preference, learning, opportunity, pattern, edge_case, correction, skill_pattern]
+    types: [decision, preference, learning, opportunity, pattern, quote, metric, edge_case, correction, skill_pattern]
     max_per_meeting: 10
     evolution:
       enabled: true

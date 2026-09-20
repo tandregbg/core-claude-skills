@@ -312,7 +312,8 @@ Reads execution feedback entries (`edge_case`, `correction`) across `_insights.y
 
 For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and promote the canonical entry to a rule.
 
-1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `edge_case`, `correction`, `skill_pattern`).
+1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `metric`, `edge_case`, `correction`, `skill_pattern`).
+   **`metric` is never promotable (CR-046):** the same measurement recurring three times is a time series, not a standing instruction. Trend questions belong in `/analytics`.
 2. **Group by similarity within the folder:**
    - Same `type`
    - Fuzzy summary match (case-insensitive, ignore stop words; require ≥60% token overlap)
@@ -601,9 +602,12 @@ This is a convenience copy. The authoritative definition is in `/transcript` Ste
 | `opportunity` | Ideas not yet actioned | `/transcript`, `/ops`, `/insights reprocess` |
 | `pattern` | Recurring themes | `/transcript`, `/ops`, `/insights reprocess` |
 | `quote` | Memorable verbatim quote (exempt from promotion -- never becomes a rule) | `/transcript`, `/ops`, `/insights reprocess` |
+| `metric` | A measurement where the number is the claim (exempt from promotion -- CR-046) | `/transcript`, `/ops`, `/insights reprocess` |
 | `edge_case` | Skill hit ambiguous input | `/transcript` Step 4.5, `/ops` Step 9 |
 | `correction` | User corrected skill output | `/transcript` Step 4.5, `/ops` Step 9 |
 | `skill_pattern` | Compiled execution pattern | `/insights compile` |
+
+**`metric` vs `learning` (CR-046):** remove the number from the summary. Nothing left -> `metric`. Claim survives -> `learning` citing evidence.
 
 **Threshold:** Only non-obvious, durable, specific insights. If fewer than `min_insights` (default: 1) qualify, skip the file silently.
 

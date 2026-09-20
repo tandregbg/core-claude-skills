@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-039**
+Next available CR number: **CR-047**
 
 ---
 
@@ -20,12 +20,13 @@ _Spec for CR-042 is tracked outside this repo (they carry vault evidence); rows 
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-045** (contract_version verified against its own comment block, v1.37.3).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-046** (`metric` insight type, v1.38.0).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-046 | Two content shapes the insight taxonomy has no slot for | v1.38.0 (2026-09-20) | `metric` added — a measurement where the number *is* the claim, with optional value/unit/baseline/period/trend, and excluded from rule promotion since a repeating measurement is a time series. It had been landing in `learning`, which had grown to 36% of a corpus and stopped discriminating; the extraction contract already emitted a metrics block with nowhere to store it. The second half — a parameter bounding a decision not yet made — was deferred on thin evidence |
 | CR-038 | Generated-view isolation and system-file language | v1.36.1 (2026-09-08) | A generated read view among its own sources needs a hidden subfolder, not a skip flag (CR-033 showed skip-lists get missed); the dot then means *unreachable by scanners*, a third meaning beside dormant and blocked. System files take English names, two exceptions declared |
 | CR-037 | Rule hierarchy and conflict resolution for `vault_conventions` | v1.36.0 (2026-09-07) | Thirteen rules from seven CRs sat in a flat list; two disagreed about the same surface and the inconsistency shipped. Three levels (invariant/rule/guideline, 6/6/1) declared per rule; conflict order; exceptions must be **named** in `exceptions:`; equal-specificity conflict = contract defect, report don't choose |
 | CR-036 | File placement classes and singleton surfaces | v1.36.0 (2026-09-07) | CR-010 declared *which* files exist, never how many or where. Three classes (singleton/per_folder/per_boundary); singleton test is principled — *would a scoped instance defeat the surface's purpose?*; `.transcripts`/`.ephemeral` consolidated; CHANGELOG/README gain conditions (130 of 174 CHANGELOGs had no sibling `.archive/`) |

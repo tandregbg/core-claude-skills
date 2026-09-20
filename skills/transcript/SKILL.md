@@ -491,6 +491,7 @@ After creating the summary and updating the CHANGELOG, scan the summary for dura
 | `opportunity` | Ideas not yet actioned | "Could build SaaS from internal tool" |
 | `pattern` | Recurring themes | "Budget discussion deferred three meetings in a row" |
 | `quote` | Memorable verbatim quote | "Ska du lyckas i affär så måste du gneta. I varenda liten del av businessen." |
+| `metric` | A measurement where the number **is** the insight | "Trial-to-paid conversion rose from 4.1% to 6.8%" |
 
 ### Threshold
 
@@ -498,6 +499,29 @@ Only extract insights that are:
 - **Non-obvious** -- not something anyone in the meeting would already know
 - **Durable** -- likely still relevant in 3+ months
 - **Specific** -- includes enough context to be useful without the source
+
+**Metrics (CR-046):** Extract a measurement only when **the number is the claim** -- the test is to
+remove the number and see what survives. *"Trial-to-paid conversion rose from 4.1% to 6.8%"* leaves
+nothing behind and is a `metric`; *"Estimates made without a baseline run systematically high (here
+by a third)"* still stands without the figure and is a `learning` that cites evidence. A `metric` carries
+five optional fields so the value stays machine-readable instead of being trapped in prose:
+
+```yaml
+- id: 12
+  type: metric
+  date: 260415
+  summary: "Trial-to-paid conversion up two thirds after the new onboarding"
+  value: 6.8
+  unit: "%"
+  baseline: 4.1          # the comparison the number is meaningful against
+  period: "260401-260430"
+  trend: up              # up | down | stable
+  rationale: "Measured on the Acme cohort after the guided-setup rollout."
+```
+
+All five are optional; an entry with only `summary` is valid. This is the landing place for durable
+entries from the `metrics:` block in *Structured Extraction* below -- a measurement worth remembering
+with its source, **not** a time series. Trend queries across periods belong in `/analytics`.
 
 **Quotes:** Extract memorable, pithy statements that capture a philosophy, a hard-won lesson, or a strong opinion. The `summary` field should contain the verbatim quote (cleaned up for readability but preserving the speaker's voice). The `rationale` field provides context (who said it, what triggered it). Keep the original language -- if said in Swedish, store in Swedish.
 
@@ -565,7 +589,7 @@ next_id: 2
 
 Before writing any entry to `_insights.yaml`, verify:
 
-- `type` is one of: `decision | preference | learning | opportunity | pattern | quote | edge_case | correction | skill_pattern`. Never invent variants (`decision-pattern`, `principle`, `outcome`, `design` are known past drift -- map to the nearest canonical type instead).
+- `type` is one of: `decision | preference | learning | opportunity | pattern | quote | metric | edge_case | correction | skill_pattern`. Never invent variants (`decision-pattern`, `principle`, `outcome`, `design` are known past drift -- map to the nearest canonical type instead).
 - `confidence` (when present) is `hypothesis` or `rule` -- never `high`/`medium`/`confirmed`/`supported`. A re-confirmed insight keeps `confidence: hypothesis` and bumps `confirmation_count`; it does not rename its confidence.
 - `date` is `YYMMDD` (never ISO `YYYY-MM-DD`), `id` is an integer, and `next_id` equals `max(id)+1` after the write.
 - `tags` has at most 5 entries.

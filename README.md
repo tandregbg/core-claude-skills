@@ -1,10 +1,23 @@
 # core-skills
 
+**Version:** 1.38.0
+
 **Version:** 1.37.4
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
+
+## What's new in v1.38.0 (2026-09-20)
+
+- **`metric` is now an insight type (CR-046).** A measurement where the number *is* the claim had
+  nowhere to go and became a `learning` — a type that had swollen to 36% of one corpus and stopped
+  discriminating. The tell was already in the code: the transcript pipeline extracts a `metrics:`
+  block that nothing downstream could store. A `metric` carries optional `value`/`unit`/`baseline`/
+  `period`/`trend`, and the write-time test is mechanical: delete the number from the summary — if
+  nothing survives it is a `metric`, if the claim stands it is a `learning` citing evidence. It is
+  never promoted to a rule; a measurement repeating is a time series, not an instruction. The other
+  half of the CR, `constraint`, was deliberately deferred on thin evidence. See CHANGELOG `[1.38.0]`.
 
 ## What's new in v1.37.4 (2026-09-16)
 

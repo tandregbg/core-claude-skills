@@ -7,6 +7,39 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.38.0] - 2026-09-20
+
+### Added
+
+- **`metric` is a canonical insight type (CR-046).** A measurement where *the number is the claim*
+  had no slot in the taxonomy and landed in `learning`, which had grown to 36% of one corpus
+  (944 of 2 570 entries) and stopped working as a retrieval filter. The gap was already visible in
+  the code: `/transcript`'s Structured Extraction emits a `metrics:` block with `name`/`value`/
+  `context`/`trend` and nothing downstream could store it.
+- **Five optional fields on a `metric` entry** -- `value`, `unit`, `baseline`, `period`, `trend` --
+  so the figure stays machine-readable instead of being trapped in prose. All optional; an entry
+  with only `summary` is valid.
+- **A write-time test that needs no judgement:** remove the number from the summary. Nothing left
+  means `metric`; a claim that still stands means `learning` citing evidence.
+
+### Changed
+
+- `contract_version` 7 → **8**. Additive: clients on 7 ignore the new enum member.
+- `metric` is **excluded from CR-013 promotion**, alongside `opportunity`, `quote` and the evolution
+  types. The same measurement recurring three times is a time series, not a standing instruction;
+  trend questions belong in `/analytics`, which reads source systems rather than the insight corpus.
+- `workflows.knowledge_extraction.types` in `base.yaml` gained `metric` -- and `quote`, which had
+  been missing since it became canonical in v1.21.0. Nothing enforced the list, so quote extraction
+  worked anyway; the omission would have bitten the first reader that trusted it.
+
+### Deferred
+
+- `constraint` (the other half of CR-046) is **not** implemented. A parameter that bounds a decision
+  not yet made is a real shape, but the evidence is two independent uses six months apart against
+  119 candidate measurements. Named in the CR, revisit after another quarter of corpus growth.
+- `reference` -- provenance notes ("where did this go, which copy is authoritative") -- remains
+  without a home. Recorded in the CR so the next reviewer does not rediscover it.
+
 ## [1.37.4] - 2026-09-16
 
 ### Changed
