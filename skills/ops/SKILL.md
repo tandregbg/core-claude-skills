@@ -604,7 +604,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
 | `workflows.meeting_templates` | Per-meeting-type shape contracts + lint mode (`warn`/`strict`) -- see ops-base Template Contracts (CR-018) |
-| `workflows.post_processing` | Task import, dashboard refresh, and optional priorities artifact (`priorities_artifact.enabled`) after meeting |
+| `workflows.post_processing` | Task import, dashboard refresh, optional priorities artifact (`priorities_artifact.enabled`), and **carry-forward -> next agenda** (`carry_forward.enabled`, see `build_agenda.py`) after meeting |
 | `workflows.rolling_plans` | Participant-triggered per-axis living planning docs (update after a matching 1-on-1) |
 | `domain_additions` | Extra sections to add to summaries |
 | `templates` | Custom template paths |
@@ -766,6 +766,100 @@ If `workflows.post_processing` is configured:
 5. For imported tasks: assign defaults (P1, source = meeting file, context from folder)
 6. Mark completed items from the meeting in the local _tasks.yaml
 7. **Triage target for personal items (CR-022):** when an action item is personal/ad-hoc (owned by the user, no natural org/project folder) and the vault has a registered triage doc, offer "lägg i triage-INKORG" as an alternative target -- append the item as an open bullet under INKORG with a source link to the meeting file. One item = one home: it goes to the triage doc OR a `_tasks.yaml`, never both.
+
+#### Pre-Meeting Retrieval (if `external_systems` is declared)
+
+**A transcript only carries what was said out loud in the room.** Decisions posted to the chat, issues
+opened or closed overnight, a document linked at 07:23 — none of it reaches the record, and most of it
+never comes up in the meeting either. Observed 2026-09-21: a QA lead posted the agreed browser and
+device matrix to the series chat hours before the standup; it appears in no transcript.
+
+**Retrieve before generating the agenda and the facilitator sheet, not after.**
+
+Sources come from **`external_systems`** (CR-054, contract 16) — resolved by the normal config chain,
+`.claude/ops-config.yaml` then the folder's `_ops.yaml`. **Do not invent a second key for this.**
+
+```yaml
+external_systems:
+  chats:
+    - id: "19:meeting_...@thread.v2"     # the platform's own identifier
+      name: "Webapp-v3 project (standup)"
+      default: true
+  repos:
+    - url: "github.com/Org/repo"
+      reads: [docs, issues, releases]    # metadata only, never the code
+```
+
+**`chats:` is a retrieval source, not only a send destination.** A dispatcher reads it to know where to
+post; this step reads the same declaration to know where to *look*. The archive under `<venture>/.chats/`
+(CR-047) stores `_chat.json` carrying the platform id, so the folder is resolved **by matching that id**
+rather than by a second hand-written name that would drift.
+
+**Read the archives; do not fetch.** `<venture>/.chats/` (CR-047) and `<venture>/.githubmeta/` (CR-055)
+are siblings by design — an archiver writes, this reads. So an agenda generates **with no credential and
+no connectivity**, and the morning it is needed is not when a token turns out to have expired.
+
+**`reads:` is a declared scope, not a capability.** The archiver records the declared scope in
+`_repo.json`; honour it there. Report issues **only** where `issues` is listed, and say so where it is
+not — a skipped source that announces itself is honest; a silent one looks like an empty result.
+
+**A snapshot is a reading taken at a moment, not an event log.** If the newest one predates the last
+note, say so rather than presenting stale rows as news.
+
+`build_agenda.py` writes a **Since the last standup — not said in the room** block into the agenda.
+Both sources are **best effort**: a failure prints one line and the agenda is still generated, because
+an agenda missing because a network call failed is worse than one missing its context block.
+
+**What to do with it:** the agenda carries the facts; the **facilitator sheet** is where they turn into
+questions. An issue that moved with nobody assigned, or a decision taken in chat that half the room has
+not seen, is exactly what the round will otherwise skip.
+
+#### Carry-Forward (if `carry_forward.enabled`)
+
+**The gap this closes:** a series writes an agenda, holds the meeting, records a note -- and nothing
+compares them. Items fall through silently, and the same item can lead the agenda twice without anyone
+noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda items fell through, and
+**every one without a named owner fell**.
+
+1. **The daily note ends with `## Carried forward`** -- one line per item that did not land. This is a
+   contract, not a habit: the section is what the next agenda is built from, so a note without it
+   silently ends the chain.
+
+   ```
+   - **<item>** — <note> · **<owner>**
+   - **<Name>:** <what they owe>
+   ```
+
+2. **Owner is read from a defined position, never guessed from prose.** Trailing bold after the last
+   middot, or the label itself when it is a person's own line. **Anything else is `UNOWNED`, and that
+   is a finding rather than a formatting slip** -- an item with no owner is precisely the one that falls
+   through an agenda that lists it.
+
+3. **Generate the next agenda** -- do not hand-write it:
+
+   ```
+   python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
+   ```
+
+   It counts how many **consecutive** prior notes carried each item and puts them at the top of the
+   agenda, before the round.
+
+3b. **The recap is requested, never produced automatically.** After the pass, **offer** it and say what
+   it would carry; do not write it unasked. A recap assembled from the transcript alone is structurally
+   incomplete — the chat and the repo hold things the room never said, and only a human knows whether a
+   given week's recap needs them. Amends the **recap-artifact proposal**, whose Step 9 sub-section
+   should generate **on request** rather than as a side effect of the pass.
+
+4. **At `escalate_after` sessions (default 3) the agenda says so itself:** *an item that survives three
+   agendas is not an agenda problem -- it has no owner who is present, or it is not actually being
+   asked for.* Agenda position alone does not get an item raised.
+
+5. **The facilitator's close is the control**: read back what carries and whose name is on each. An item
+   read back without a name is the one that will be on the agenda again.
+
+Config lives in `workflows.post_processing.carry_forward` -- `note_suffix`, `agenda_suffix`, `title`,
+`time`, `escalate_after`, `round_columns`. The round table is built from the `people` roster, so the
+mechanism is identical across series and only the labels differ.
 
 #### Dashboard Refresh (if `dashboard_refresh.enabled`)
 1. After all file updates and task imports are complete

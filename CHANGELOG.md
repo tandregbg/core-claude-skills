@@ -7,6 +7,40 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.49.0] - 2026-09-21
+
+### Added
+
+- **The agenda is generated from what did not land (CR-057).** A series wrote an agenda, held the
+  meeting, recorded a note — and nothing compared them. Measured on one project: of seventeen agenda
+  items, six fell through, and the correlation was not with position on the page. Two items led the
+  agenda on two consecutive sessions and were skipped both times. **Every item that fell had no named
+  owner present.** `carry_forward` under `workflows.post_processing`, plus `skills/ops/build_agenda.py`,
+  which reads the newest note's `## Carried forward` section and writes the next agenda with those items
+  above the round, each showing how many **consecutive** sessions it has carried. At the threshold the
+  agenda says so itself: an item surviving three agendas has no owner who is present, or is not actually
+  being asked for. Owner is read from a defined position, never guessed from prose — anything else is
+  `UNOWNED`, and that is the finding rather than a parse failure.
+
+- **Retrieval before the agenda, from the declared archives (CR-058).** A transcript carries only what
+  was said out loud. On 2026-09-21 a test matrix agreed in the series chat at 07:23 appears in **no
+  transcript**, reaching neither the note nor the recap; the same morning two dozen issues had changed
+  state, almost none assigned. `build_agenda.py` writes a *Since the last standup — not said in the
+  room* block from `external_systems` (CR-054) — **the first skill-side consumer of that declaration**,
+  and the first reader of both archives it points at. `chats:` is a **retrieval source**, not only a
+  send destination. Both sources are **read from their archives** — `.chats/` (CR-047) and
+  `.githubmeta/` (CR-055) — so an agenda generates with no credential and no connectivity; the chat
+  folder resolves by **platform id** rather than a second hand-written name; `reads:` is honoured where
+  the archiver recorded it; and a snapshot older than the last note says so rather than passing stale
+  rows off as news. Adds no configuration.
+
+### Changed
+
+- **The recap is requested, not produced automatically (CR-058).** Proposed as an amendment to the
+  recap-artifact CR. The recap is the one artifact that leaves the building; assembled automatically
+  from the narrowest of three inputs it is confidently incomplete, and invisibly so to readers with no
+  transcript to check it against.
+
 ## [1.48.0] - 2026-09-21
 
 ### Changed
