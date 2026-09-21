@@ -441,19 +441,20 @@ outbound_dispatch:
   contract: "_outbox/<item>/_manifest.md — see vault_conventions for the path declaration"
 
   tools:
-    - name: "outbox-dispatcher"
-      kind: "external tool, outside this repo"
-      role: "Reads staged material, previews exactly what will be sent, delivers it through a channel"
-      reads: ["_outbox/"]
+    - name: "the dashboard"
+      kind: "external app, outside this repo"
+      role: "Reads the vault and serves it: tasks, insights, activity — and the outbox, where staged material is previewed and dispatched through a channel"
+      reads: ["_outbox/", "the vault generally"]
       writes: ["_outbox/<item>/_manifest.md — Status, Kanal and Kontakt only"]
       never: "Authors a manifest, decides what a status means, or archives. Archiving is /outbox's: eight steps across several files with judgement calls"
+      note: "Dispatch began as a separate tool and was merged in 2026-09-21. Two surfaces for one workflow was the wrong shape once the dashboard could write at all. It binds to localhost, because it can now send as the user"
 
     - name: "chat-archive/send CLI"
-      kind: "external tool, outside this repo"
+      kind: "external library + CLI, outside this repo"
       role: "Messaging-platform client: delegated auth, chat messages, Markdown to the platform's markup"
       reads: ["chats the signed-in user belongs to"]
       writes: ["<venture>/.chats/ — the archive", "chat messages"]
-      never: "Knows nothing about vaults or manifests; the dispatcher calls it"
+      never: "Knows nothing about vaults or manifests. The dashboard imports it as the messaging channel; it is a dependency of vault-aware code, not an instance of it"
 
   channels:
     - name: "teams"
