@@ -108,6 +108,17 @@ workflows:
       enabled: false
     dashboard_refresh:
       enabled: false
+    # CR-057: the next agenda is generated from the last note's "## Carried forward"
+    carry_forward:
+      enabled: false
+    # CR-059: the outbound digest for people who were not in the room.
+    # Generated ON REQUEST, never as a side effect of the pass -- it is the one
+    # artifact that leaves the building, and from the transcript alone it is
+    # confidently incomplete in a way its readers cannot check.
+    recap_artifact:
+      enabled: false
+      channel: teams
+      classification: team-wide
   # CR-027: /insights synthesize — wiki layer rendered from the insights corpus
   knowledge_synthesis:
     enabled: true

@@ -633,9 +633,10 @@ Step 9 then runs post-processing as configured. **The note ends with `## Carried
 section is what tomorrow's agenda is built from, so a note without it silently ends the chain.
 `/ops lint` checks that chain; it is the only defect in this loop that does not announce itself.
 
-**6. The recap is offered, not written.** Say what it would carry and wait to be asked. It is the one
-artifact that leaves the building; assembled automatically from the narrowest of the three inputs it is
-confidently incomplete, and invisibly so to readers who have no transcript to check it against.
+**6. The recap is offered, not written** — see Step 9, *Generate Post-Meeting Recap*. Say what it would
+carry and wait to be asked. It is the one artifact that leaves the building; assembled automatically
+from the narrowest of the three inputs it is confidently incomplete, and invisibly so to readers who
+have no transcript to check it against.
 
 **7. `/outbox` — stage it, and let the manifest carry the send record.**
 
@@ -657,12 +658,11 @@ it sent; nothing writes that unprompted, because the click is where the posted m
 | Recap | Be written unasked, or keep a second copy outside `_outbox/` |
 | Manifest status | Be advanced by a tool |
 
-### Where it is still manual
+### Where it is manual, and why
 
-**The recap has no mechanism yet.** `recap_artifact` is proposed, not implemented, so every recap is
-assembled by hand against `ops/_standards/post-meeting-recap.md`. **Steps 3, 4 and 6 are manual by
-design; step 6 is manual by accident as well**, and the difference matters when deciding what to build
-next.
+**Steps 3, 4 and 6 are manual by design, and should stay that way.** The facilitator sheet is judgement
+about people; choosing between duplicate transcripts is a judgement the machine cannot make honestly;
+and the recap is asked for rather than produced. None of the three is an unbuilt feature.
 
 ## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT
 
@@ -714,7 +714,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
 | `workflows.meeting_templates` | Per-meeting-type shape contracts + lint mode (`warn`/`strict`) -- see ops-base Template Contracts (CR-018) |
-| `workflows.post_processing` | Task import, dashboard refresh, optional priorities artifact (`priorities_artifact.enabled`), and **carry-forward -> next agenda** (`carry_forward.enabled`, see `build_agenda.py`) after meeting |
+| `workflows.post_processing` | Task import, dashboard refresh, optional priorities artifact (`priorities_artifact.enabled`), **recap on request** (`recap_artifact.enabled`), and **carry-forward -> next agenda** (`carry_forward.enabled`, see `build_agenda.py`) after meeting |
 | `workflows.rolling_plans` | Participant-triggered per-axis living planning docs (update after a matching 1-on-1) |
 | `domain_additions` | Extra sections to add to summaries |
 | `templates` | Custom template paths |
@@ -958,12 +958,6 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    It counts how many **consecutive** prior notes carried each item and puts them at the top of the
    agenda, before the round.
 
-3b. **The recap is requested, never produced automatically.** After the pass, **offer** it and say what
-   it would carry; do not write it unasked. A recap assembled from the transcript alone is structurally
-   incomplete — the chat and the repo hold things the room never said, and only a human knows whether a
-   given week's recap needs them. Amends the **recap-artifact proposal**, whose Step 9 sub-section
-   should generate **on request** rather than as a side effect of the pass.
-
 4. **At `escalate_after` sessions (default 3) the agenda says so itself:** *an item that survives three
    agendas is not an agenda problem -- it has no owner who is present, or it is not actually being
    asked for.* Agenda position alone does not get an item raised.
@@ -1046,6 +1040,98 @@ This pairs symmetrically with the pre-meeting dual mode (agenda + facilitator): 
 **Critical rule:** the slim artifact is *not* a summary of the discussion. It is the **working list**. Omit narrative, omit decision rationale, omit cross-references beyond the one back to the comprehensive summary. If it grows past one page, it has drifted into being a second summary -- trim.
 
 **Critical rule:** if the facilitator sends their priority list **after** the meeting summary has already been generated, regenerate the priorities artifact rather than editing in place. The artifact is meant to be the authoritative working list at the time it was sent; older versions stay in `.archive/` if needed.
+
+#### Generate Post-Meeting Recap (if `recap_artifact.enabled`) -- ON REQUEST
+
+The third audience. The **summary** is the archive, the **priorities artifact** is for the people doing
+the work, and the **recap** is for people who need to know and were not there. Format is a vault-side
+standard (`ops/_standards/post-meeting-recap.md`); this section governs when it is produced and what it
+must not do.
+
+**Trigger:** `workflows.post_processing.recap_artifact.enabled: true`. Default `false`.
+
+**Offer it; do not write it.** Unlike every other Step 9 artifact, the recap is **generated on request**.
+State that a recap looks warranted and what it would carry, then wait. It is the one artifact that
+leaves the building -- it reaches people who were not in the room and who read it once. Assembled from
+the transcript alone it is **confidently incomplete, and invisibly so to its readers**, who have no
+transcript to check it against. The chat archive and the repo archive hold things the room never said,
+and only a human knows whether a given week's recap needs them.
+
+**Then gate it on content.** Even when asked, a recap is warranted only where the meeting produced
+something an absent reader must act on or know:
+
+- a schedule, ownership or scope change
+- a release that landed, or a date that moved
+- a finding that changes how the work should be understood
+- an ask of the wider team
+
+**Otherwise say so and stop.** A recap that restates the working list trains people to stop reading
+recaps, which costs more than the missing recap does.
+
+**The source boundary -- the hardest constraint.** Everything in a recap comes from **the session being
+processed**. Two other rules point the other way and must not be read as licence:
+
+- *The first block carries whatever most changes the reader's world* governs **ordering within a
+  session**, not eligibility.
+- *Reframe, do not just report* means **saying what was said more clearly**, not adding what was not
+  said.
+
+Reasoning audience-first -- *"what does the absent reader need to know?"* -- answers from everything in
+context, including earlier sessions. The question is ***"what did THIS meeting produce that the absent
+need to know?"*** Three requirements follow: bound claims to this transcript (earlier summaries may
+inform framing, never supply facts); **an unsent recap has expired, not accumulated** -- it goes out
+late carrying its own date or the live parts go as a separate notice, never folded into the next one;
+and every claim traces to something said, since an oblique remark does not establish a decision.
+
+*Observed, not theorised: a hand-written recap once led with a cadence change announced four days
+earlier, in a session that never mentioned it. A human caught it on first read. A generator running
+unsupervised repeats that silently, every time.*
+
+**Staging.** A folder, never a loose file:
+
+```
+_outbox/YYMMDD-<recipient>_<subject>/     _manifest.md + the recap body
+```
+
+The folder names the **subject of the send**, the left side the **recipient** -- `/outbox` owns that
+rule. **Author the manifest; never write `status` or `status-note`.** Those record what a dispatching
+surface did first-hand, and the send itself is a human act.
+
+**Do not define a channel or recipient vocabulary here.** `channel:` in the config selects which value
+to write into the manifest's existing field; it does not create a parallel enumeration. A second schema
+beside the first is two implementations to keep in step.
+
+**Rendering, once the channel is known:**
+
+| Channel | Body |
+|---|---|
+| chat | `**bold**` labels, bullets, one message |
+| email | `UPPERCASE` labels, `- ` bullets never nested, bare links on their own line, no greeting or sign-off |
+
+The subject belongs in the manifest's `subject` field, not repeated at the top of the body. **An email
+recap must read as finished the moment it is staged** -- that channel composes a draft and a human
+presses send.
+
+**Classification is decided before writing and gates content.** Default team-wide. At every level a
+recap never carries personnel matters, raw financials, security methods, regulatory-exposure wording,
+commercial terms under negotiation, or individual criticism. **A project-assignment change is not a
+personnel matter** -- who owns which workstream is what the team needs; frame it around the work.
+
+**Config:**
+
+```yaml
+workflows:
+  post_processing:
+    recap_artifact:
+      enabled: false                # default
+      channel: teams                # written into the manifest's channel field
+      classification: team-wide     # team-wide | team-only | management-only
+      sections: [shipping, what-we-learned, customer-data]
+      dashboard_url: null           # appended as the closing line when set
+```
+
+`sections` is a **preset, not a constraint** -- a menu to start from. Forcing content into a label is
+worse than inventing one.
 
 #### Check Verticals (if configured)
 

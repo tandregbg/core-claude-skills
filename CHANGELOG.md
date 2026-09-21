@@ -7,6 +7,45 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.50.0] - 2026-09-21
+
+### Added
+
+- **The post-meeting recap, generated on request (CR-059).** Step 9's third audience: the summary is the
+  archive, the priorities artifact is for the people doing the work, the recap is for people who need to
+  know and were not there. `recap_artifact` under `workflows.post_processing`, default off.
+
+  **Shipped with one amendment to the proposal: it is offered, not produced.** Every other Step 9
+  artifact runs as a side effect of the pass. The recap does not, because it is the only one that
+  **leaves the building** — it reaches people who were not in the room and who read it once. The
+  proposal's own §5 bounds its content to a single transcript; what follows, and the proposal does not
+  say, is that the transcript is **the narrowest of the three inputs a project has**. The chat and repo
+  archives hold decisions the room never said aloud. So an automatic recap is not merely incomplete but
+  **confidently incomplete, and invisibly so to its readers**, who have no transcript to check it
+  against.
+
+  The content gate still applies after the request: a recap is warranted only where the meeting produced
+  a schedule, ownership or scope change, a release or moved date, a reframing finding, or an ask of the
+  wider team. Otherwise say so and stop — a recap that restates the working list trains people to stop
+  reading recaps.
+
+  **The source boundary is the hardest constraint and is spelled out**, because two other rules read as
+  licence to break it: *the first block carries what most changes the reader's world* governs ordering
+  within a session, not eligibility; *reframe, do not just report* means saying what was said more
+  clearly, not adding what was not said. An unsent recap has **expired, not accumulated** — it goes out
+  late carrying its own date, never folded into the next one.
+
+  Staged as a folder with a manifest, never a loose file. The generator **authors the manifest and never
+  writes `status` or `status-note`** — those record what a dispatching surface did first-hand, and the
+  send is a human act. It defines no channel or recipient vocabulary of its own; `channel:` selects
+  which value to write into the existing field.
+
+### Fixed
+
+- **`carry_forward` and `recap_artifact` are now schema-known in `ops-config/base.yaml`.** `carry_forward`
+  shipped in v1.49.0 without being declared there — the same defect CR-059 was written to name: a
+  documented key that no default declares looks solved while `/ops status` cannot report it.
+
 ## [1.49.0] - 2026-09-21
 
 ### Added

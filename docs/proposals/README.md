@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-059**
+Next available CR number: **CR-061**
 
 ---
 
@@ -83,6 +83,7 @@ CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-
 | CR-056 | `/outbox` naming | Low | **Implemented v1.48.0.** `<context>` in a staged folder name was never defined, so four items in one vault interpreted it four ways in five days. The right side names the subject of the send, not a file inside it; the left names the recipient, not the project |
 | CR-057 | `ops` Step 9 | Medium | **Implemented v1.49.0.** Nothing compared an agenda against what the meeting produced. Adds `carry_forward` and `build_agenda.py`, which counts how many consecutive sessions each unlanded item has carried and escalates at three. Owner comes from a defined position; anything else is UNOWNED, which is the finding |
 | CR-058 | `ops` Step 9 | Medium | **Implemented v1.49.0** (retrieval; the recap amendment is proposed). Reads the chat and repo archives declared in `external_systems` before the agenda — first skill-side consumer of CR-054, first reader of CR-047 and CR-055 together. No credential, no network, no new configuration |
+| CR-059 | `ops` Step 9 | Medium | **Implemented v1.50.0.** The outbound digest for people who were not in the room. Shipped with one amendment: generated **on request**, not as a side effect — it is the only Step 9 artifact that leaves the building, and from the transcript alone it is confidently incomplete in a way its readers cannot check. Renumbered from CR-054 |
 
 (CR-002 is not used; renumbering kept history intact.)
 
