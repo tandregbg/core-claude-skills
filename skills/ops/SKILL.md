@@ -119,16 +119,33 @@ When non-conforming, the Vault Health section expands. Examples:
 
 If the first word is `help`, present a usage guide instead of processing content.
 
-**Include:**
-1. One-line description of what /ops does
-2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops status`, `/ops normalize <path>`, `/ops lint <folder>`, `/ops sweep`, `/ops help`
-3. Skill comparison table: when to use /ops vs /ops prepare vs /transcript, /preparation, /tasks, /daily-dashboard
-4. Skill connection diagram: how /ops feeds into /tasks, /daily-dashboard, and how /ops prepare creates pre-meeting docs
-5. Config loading summary (3-line version, point to `/ops status` for details)
-6. Processing flow summary (9 steps, one line each)
-7. Common usage patterns (examples including prepare)
+**Render the working loop from `working_loop` in `ecosystem.yaml` — do not restate it here.** That block
+is the declaration both the README and the landing page render; a hand-written fourth copy in a help
+command is the one most likely to go stale **and the least likely to be caught**, because a help command
+is read precisely by people who cannot tell that it is wrong.
 
-**Output:** Markdown printed directly. No files created.
+**Include:**
+
+1. One-line description of what /ops does
+2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops brief <folder>`, `/ops status`,
+   `/ops lint <folder>`, `/ops sweep`, `/ops normalize <path>`, `/ops help`
+3. **The working loop, grouped by `phase` in declared order.** Per step:
+   - the `label` and what it `does`
+   - **`command`** where the step has one — the thing a person actually types
+   - **`consumes` → `produces`**, because the question after *which command* is always *what does it
+     need and what do I get*, and the declaration already holds both
+   - where a step is `manual`, show its **`why_manual` in place of a command**. That substitution is the
+     most useful line in the output: it tells the reader nothing is missing
+   - where a step is `external`, say so — the archivers and the meeting itself are not skills
+4. Config loading summary (3-line version, point to `/ops status` for details)
+5. Common usage patterns (examples including prepare)
+
+**Output:** Markdown printed directly. No files created, and nothing is executed — `/ops help` describes
+the loop, it never runs a step.
+
+**The declaration is checked** (`check-components.py`): a step cannot be both `manual` and commanded,
+cannot be silent about being neither, and cannot name a vault path nothing declares. So a command that
+drifts fails the check rather than misleading a reader.
 
 ---
 

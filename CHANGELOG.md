@@ -7,6 +7,32 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.60.0] - 2026-09-21
+
+### Added
+
+- **A loop step names its command, and `/ops help` renders the declaration (CR-063).** CR-062 declared
+  the loop so the README and landing page could render one source. It stopped one step short of the
+  question a person actually asks: *which command do I run.* A step said *"the agenda generator"* and not
+  how to invoke it, so `/ops help` — whose own spec commits it to describing the flow — was about to
+  become the **fourth** hand-written copy of the same twelve steps. **The cost of a stale copy is highest
+  there**, because a help command is read by the people who cannot tell that it is wrong.
+
+  Optional `command:` on the nine steps that have one. `/ops help` now renders by phase in declared
+  order, each step showing its command and its **`consumes` → `produces`** — the question after *which
+  command* is always *what does it need and what do I get*, and the declaration already held both.
+
+  **Manual steps show `why_manual` where the command would be.** That substitution is the most useful
+  line in the output: it tells the reader nothing is missing.
+
+### Changed
+
+- **`check-components.py` holds the two claims against each other.** A step cannot be both `manual` and
+  commanded — if it can be run it is not manual, and a reader resolves that contradiction by guessing.
+  And a step with no `command`, no `manual` and no `external` now fails: silence reads as an unfinished
+  feature, which is the failure `why_manual` exists to prevent, one field over. Both verified against a
+  deliberately broken declaration.
+
 ## [1.59.0] - 2026-09-21
 
 ### Added

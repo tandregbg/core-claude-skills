@@ -125,6 +125,18 @@ def main():
         if step.get('id') in seen_ids:
             problems.append(f"working_loop: duplicate id `{step.get('id')}`")
         seen_ids.add(step.get('id'))
+        # A step that can be run is not manual. Both claims live in one record,
+        # so hold them against each other rather than trusting either alone.
+        if step.get('manual') and step.get('command'):
+            problems.append(
+                f"working_loop {step.get('id')}: marked manual but carries a "
+                f"command - a reader resolves that contradiction by guessing")
+        # No command, not manual, not external reads as an unfinished feature -
+        # the failure why_manual exists to prevent, one field over.
+        if not any(step.get(k) for k in ('command', 'manual', 'external')):
+            problems.append(
+                f"working_loop {step.get('id')}: has no command and is neither "
+                f"manual nor external - say which, or it reads as unbuilt")
         if step.get('manual') and not step.get('why_manual'):
             problems.append(
                 f"working_loop {step.get('id')}: manual without why_manual - "

@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-062**
+Next available CR number: **CR-064**
 
 ---
 
@@ -85,6 +85,7 @@ CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-
 | CR-058 | `ops` Step 9 | Medium | **Implemented v1.49.0** (retrieval; the recap amendment is proposed). Reads the chat and repo archives declared in `external_systems` before the agenda — first skill-side consumer of CR-054, first reader of CR-047 and CR-055 together. No credential, no network, no new configuration |
 | CR-059 | `ops` Step 9 | Medium | **Implemented v1.50.0.** The outbound digest for people who were not in the room. Shipped with one amendment: generated **on request**, not as a side effect — it is the only Step 9 artifact that leaves the building, and from the transcript alone it is confidently incomplete in a way its readers cannot check. Renumbered from CR-054 |
 | CR-061 | `ops` new subcommand | Medium | **Implemented v1.55.0.** `/ops brief` — one read-only pass answering where a recurring project stands: loop position, chain integrity, what is carrying and unowned, archive freshness, staged-and-unsent, last record movement. `/bod` for a coordination project. Reads only what already exists; the gap was that nothing read it together |
+| CR-063 | `ecosystem` + `ops` help | Low | **Implemented v1.60.0.** A loop step names its `command`, and `/ops help` renders the declaration instead of becoming a fourth hand-written copy. The checker holds `manual` and `command` against each other, and a step silent about being neither now fails |
 
 (CR-002 is not used; renumbering kept history intact.)
 

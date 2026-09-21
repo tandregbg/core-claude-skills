@@ -92,7 +92,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 18
-core_skills_version: "1.59.0"
+core_skills_version: "1.60.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -706,12 +706,14 @@ working_loop:
   - id: "declare"
     phase: "once, at set-up"
     label: "the folder's config"
+    command: "edit <project>/.claude/ops-config.yaml, or the folder's _ops.yaml"
     does: "Declares which chat and repositories the work concerns, which post-meeting artifacts the series wants, and where its task ledger lives"
     produces: ["the ops config"]
 
   - id: "archive"
     phase: "before the session"
     label: "the archivers"
+    external: true
     does: "Refresh the chat and repository archives. External CLIs, run on demand - never by a skill"
     consumes: ["the ops config"]
     produces: ["<venture>/.chats/", "<venture>/.githubmeta/"]
@@ -719,6 +721,7 @@ working_loop:
   - id: "agenda"
     phase: "before the session"
     label: "the agenda generator"
+    command: "python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings"
     does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard"
     consumes: ["<venture>/.chats/", "<venture>/.githubmeta/", "the note"]
     produces: ["the agenda"]
@@ -734,12 +737,14 @@ working_loop:
   - id: "meet"
     phase: "the session"
     label: "the meeting"
+    external: true
     does: "Recorded, so everything asynchronous is invisible to it by construction - which is what the archives exist to answer"
     produces: ["a transcript"]
 
   - id: "process"
     phase: "after, the same day"
     label: "one pass over the transcript"
+    command: "/ops <transcript>"
     does: "The summary, the registers, one changelog line, and whatever the folder declared"
     consumes: ["a transcript", "the ops config"]
     produces: ["the note", "the registers", "a staged recap"]
@@ -747,6 +752,7 @@ working_loop:
   - id: "carry"
     phase: "after, the same day"
     label: "the note's carry-forward"
+    command: "written into the note by /ops; verified by /ops lint <folder>"
     does: "What did not land becomes the top of the next agenda. This is where the loop closes"
     consumes: ["the note"]
     produces: ["the agenda"]
@@ -762,6 +768,7 @@ working_loop:
   - id: "send"
     phase: "after, the same day"
     label: "staging and sending"
+    command: "/outbox list, then /outbox archive <folder> once resolved"
     does: "Staged as a folder with a manifest; a dispatching surface delivers it and records what it did"
     consumes: ["a staged recap"]
     produces: ["_outbox/<item>/_manifest.md"]
@@ -777,12 +784,14 @@ working_loop:
   - id: "compound"
     phase: "weekly"
     label: "the knowledge loop"
+    command: "/insights compile, then /insights synthesize"
     does: "Confirmed hypotheses become standing rules; the corpus renders to a wiki"
     consumes: ["the registers"]
 
   - id: "check"
     phase: "weekly"
     label: "the shape checks"
+    command: "/ops lint <folder> · /ops sweep · /ops brief <folder>"
     does: "Lint finds a broken carry-forward chain; sweep finds closure debt. Both catch the failures that announce nothing"
     consumes: ["the note", "the registers"]
 
