@@ -31,10 +31,18 @@ For project-scoped outbox items the destination is the project folder (`<vault>/
 
 ## Manifest schema
 
-`_manifest.md` is the canonical state file for an outbox item. The skill reads/writes these fields:
+`_manifest.md` is the canonical state file for an outbox item. The skill reads/writes these fields.
+
+**The labels below are Swedish because this vault is.** Each one is the written
+form of a field whose name is English — `status`, `channel`, `contact`,
+`project`, `source` — and a tool that reads manifests should key on the field
+and keep the label in a vocabulary file, never as a literal in its code. That
+way the same tool serves a vault in another language without a code change.
+See `identifier_language` in `ecosystem.yaml`.
 
 ```markdown
 **Status:** [draft | klar-att-skicka | skickad YYYY-MM-DD | arkiverad YYYY-MM-DD]
+**Statusnot:** [free text: what actually happened — channel, time, a link, a circumstance]
 **Kanal:** [mejl | slack | print | ...]
 **Kontakt:** [email or name]
 **Projekt:** [optional theme/context]
@@ -55,6 +63,26 @@ For project-scoped outbox items the destination is the project folder (`<vault>/
 ```
 
 When all `Svar förväntas på` items are checked AND `Utfall` is populated, the item is **resolution-ready** -- ready to archive.
+
+### `Statusnot` — what happened, in words
+
+`Status` is parsed; `Statusnot` is read by people. The status line answers *which
+state is this in*, and a tool matches it with a pattern. The note answers *what
+actually happened* and takes whatever detail makes the event reconstructable
+later: the channel and time, a published URL, which of several recipients it
+reached, or why a send was partial.
+
+Documented here as of CR-053 because it grew in practice and was in use by 104
+of the live vault's manifests while appearing nowhere in this schema. Examples
+from those files:
+
+```
+**Statusnot:** skickad 2026-08-30 (mejl kl ~12:00)
+**Statusnot:** PUBLISHED 2026-09-02 -- https://lnkd.in/p/d6WTTjb5
+**Statusnot:** delvis skickat -- hela-teamet-utskicket gick via Teams 26/8 (mejlvägen blockerad)
+```
+
+Optional. An item with a plain `Status` and no note is complete.
 
 ### `Kanonisk källa` is REQUIRED (CR-032)
 

@@ -12,6 +12,14 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 15 (CR-053, 2026-09-21): the manifest's fields are named by
+#   IDENTIFIER here, not by the Swedish label a vault writes them under - five
+#   entries said "Status, Kanal, Kontakt", which reads as Swedish identifiers in
+#   a public contract and invites a tool to hardcode the label. Also declares the
+#   status-note field: it was in use by 104 live manifests while appearing in no
+#   schema, and a dispatcher may write it because recording what it did is
+#   observation, not judgement.
+#
 # contract_version 14 (CR-052, 2026-09-21): inventory scanner component and the
 #   generated _INDEX-*.md registers it writes. Found by asking which parts of the
 #   graph were content rather than architecture: the scanner had been left out
@@ -64,8 +72,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 14
-core_skills_version: "1.44.0"
+contract_version: 15
+core_skills_version: "1.45.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -305,16 +313,16 @@ vault_conventions:
       lifecycle: "allowed to die; /ops sweep flags content >14 days; never referenced from vault content (CR-024)"
 
     - path: "_outbox/"
-      purpose: "Staging for outgoing material (CR-047). One folder per send event, or a loose .md for a single message. Each folder carries a _manifest.md declaring Status, Kanal, Kontakt and Kanonisk källa — that manifest is the contract any dispatcher reads"
+      purpose: "Staging for outgoing material (CR-047). One folder per send event, or a loose .md for a single message. Each folder carries a _manifest.md declaring status, channel, contact and canonical source — that manifest is the contract any dispatcher reads. Those are the FIELD NAMES; the label each is written under follows the vault language (a Swedish vault writes Status, Kanal, Kontakt, Kanonisk källa) and belongs in a dispatcher's vocabulary file, not in its code"
       schema: null  # filesystem layout, not YAML
       writers: ["/ops", "/md2pdf", "user (manual)"]
       readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "vaultpulse/trillian", "the local mail client", "user"]
       lifecycle: "staged -> sent -> archived by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `archive --all-sent` — see outbound_dispatch.known_gaps"
 
     - path: "_outbox/<item>/_manifest.md"
-      purpose: "The per-item contract every dispatcher reads: Status, Kanal, Kontakt, Kanonisk källa. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
+      purpose: "The per-item contract every dispatcher reads: status, channel, contact, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
       schema: "see the /outbox skill, which owns the vocabulary"
-      writers: ["/outbox and /ops (author it)", "a dispatching surface (Status, Kanal, Kontakt only)"]
+      writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only)"]
       readers: ["/outbox", "a dispatching surface", "user"]
       lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder"
 
@@ -503,7 +511,7 @@ vault_conventions:
 
     - id: "identifier_language"
       level: rule
-      rule: "Identifiers are ENGLISH; the words a person reads may be in any language, and are data rather than literals in code. This covers schema field names, enum values, status keys, config keys, dictionary keys and variable names — everything a second tool must agree with in order to interoperate. Display text (a manifest's Status wording, an external board's column name, a generated view's headings) stays in the vault's working language and lives in a settings or vocabulary file, so changing it is a settings change rather than a code change. Where an identifier and its label were historically the same string, the LABEL keeps the existing spelling: renaming a key costs nothing, while renaming a label changes what an external system or a person sees. A reader meeting a value it does not recognise should tolerate it rather than silently treat it as the default — see task_statuses, where recognising only the canonical set made finished tasks count as outstanding."
+      rule: "Identifiers are ENGLISH; the words a person reads may be in any language, and are data rather than literals in code. This covers schema field names, enum values, status keys, config keys, dictionary keys and variable names — everything a second tool must agree with in order to interoperate. Display text (a manifest's Status wording, an external board's column name, a generated view's headings) stays in the vault's working language and lives in a settings or vocabulary file, so changing it is a settings change rather than a code change. Where an identifier and its label were historically the same string, the LABEL keeps the existing spelling: renaming a key costs nothing, while renaming a label changes what an external system or a person sees. A reader meeting a value it does not recognise should tolerate it rather than silently treat it as the default — see task_statuses, where recognising only the canonical set made finished tasks count as outstanding. THIS DECLARATION FOLLOWS ITS OWN RULE: where a field is named here, it is named by its identifier, not by the label a vault happens to write it under. Five entries described a manifest's fields as Status/Kanal/Kontakt until 2026-09-21, which reads as Swedish identifiers in a public contract and invites a tool to hardcode the label."
 
     - id: "write_ownership"
       level: rule
@@ -534,8 +542,8 @@ outbound_dispatch:
       kind: "external app, outside this repo"
       role: "Reads the vault and serves it: tasks, insights, activity — and the outbox, where staged material is previewed and dispatched through a channel"
       reads: ["_outbox/", "the vault generally"]
-      writes: ["_outbox/<item>/_manifest.md — Status, Kanal and Kontakt only"]
-      never: "Authors a manifest, decides what a status means, or archives. Archiving is /outbox's: eight steps across several files with judgement calls"
+      writes: ["_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only"]
+      never: "Authors a manifest, decides what a status means, or archives. Archiving is /outbox's: eight steps across several files with judgement calls. The status-note is an exception that proves the rule — a dispatcher may record WHAT IT DID first-hand (channel, time, which recipient, a message id) because that is observation, not judgement; it may not write what that outcome MEANS for the item"
       note: "Dispatch began as a separate tool and was merged in 2026-09-21. Two surfaces for one workflow was the wrong shape once the dashboard could write at all. It binds to localhost, because it can now send as the user"
 
     - name: "chat-archive/send CLI"
@@ -559,7 +567,7 @@ outbound_dispatch:
     - id: "archive-of-unsent-items"
       what: "/outbox archive requires a sent status, so an item decided against — marked as superseded, replaced or withdrawn — can never be archived and stays in _outbox indefinitely"
       seen: "a steady residue of stop-marked items that nothing files"
-      proposal: "Treat a stop-marked manifest as archivable when ## Utfall states why. Utfall is already the outcome field, and 'not sent, because X' is an outcome"
+      proposal: "Treat a stop-marked manifest as archivable when its outcome section states why. That section already exists (written `## Utfall` in a Swedish vault), and 'not sent, because X' is an outcome"
       owner: "/outbox skill — the dispatcher must not invent a status the skill does not recognise"
 
 # --- Components and how they connect (CR-050) ---
@@ -593,7 +601,7 @@ components:
     writes:
       - "_inbox/_tasks.yaml — appends a captured task, marks one finished"
       - "_inbox/_inbox.yaml — capture items"
-      - "_outbox/<item>/_manifest.md — Status, Kanal, Kontakt only"
+      - "_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only"
       - "<folder>/_summary.yaml — its own derived cache"
     depends_on: ["messaging client (as a library, for the chat channel)"]
     binds: "localhost only — it can send as the user"

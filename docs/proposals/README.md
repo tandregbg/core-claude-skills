@@ -26,6 +26,8 @@ Next available CR number: **CR-048**
 
 | CR-052 | ecosystem contract | Low | **Implemented v1.44.0.** The inventory scanner writes vault files but was not in the components graph, and `_INDEX-*.md` was undeclared. Declares both. The scanner is the one component bridging the machine map and the software map — input infrastructure, output a vault file. Also fixes `check-components.py`, which let a write phrased as prose name an undeclared file |
 
+| CR-053 | `/outbox` schema + contract wording | Medium | **Implemented v1.45.0.** Two things one question exposed. The contract named a manifest's fields by their Swedish labels, which reads as Swedish identifiers in a public document. And the status-note field was used by 104 live manifests while documented nowhere. Declares it, and permits a dispatcher to write it: recording what it did is observation, not judgement |
+
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
@@ -96,4 +98,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-21 — CR-047 through CR-052 implemented (v1.39.0–v1.44.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-21 — CR-047 through CR-053 implemented (v1.39.0–v1.45.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*

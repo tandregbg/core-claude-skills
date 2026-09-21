@@ -7,6 +7,31 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.45.0] - 2026-09-21
+
+### Changed
+
+- **The manifest's fields are named by identifier, not by label (CR-053).** Five entries
+  described them as "Status, Kanal, Kontakt" — the Swedish labels a vault writes them
+  under. In a public contract that reads as Swedish identifiers, and it invites exactly
+  the mistake `identifier_language` was written to prevent: a tool hardcoding the label.
+  They are now `status`, `channel`, `contact` and `canonical source`, with one entry
+  stating that the written form follows the vault language and belongs in a
+  vocabulary file.
+  - The `identifier_language` rule now says this applies to the contract itself.
+
+### Added
+
+- **The status-note field is declared, and a dispatcher may write it.** It was in use by
+  **104 of the live vault's manifests** while appearing in no schema — it grew in
+  practice. `Status` is parsed by a pattern; the note is read by people and carries what
+  actually happened: the channel, the time, a published URL, why a send was partial.
+  - The dispatcher's permitted writes go from three fields to four. The boundary the
+    `never` clause draws is unchanged and now stated explicitly: **it may record what it
+    DID first-hand, because that is observation; it may not write what the outcome MEANS
+    for the item.** The outcome section and the reply checklist stay the skill's, which
+    is what makes archiving the skill's too.
+
 ## [1.44.0] - 2026-09-21
 
 ### Added
