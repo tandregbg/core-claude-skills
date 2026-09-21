@@ -7,6 +7,28 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.61.0] - 2026-09-21
+
+### Added
+
+- **The loop declares both of its ends.** Rendering it for the first time showed it stopping short at
+  each — obvious in the output, invisible in the declaration.
+
+  **Input.** A transcript was produced only by `meet`, as though the meeting were the sole route in. It
+  is not: a recorder into a knowledge base read over MCP, a file dropped in, or text pasted straight into
+  the session. **The loop does not care which** — it cares that the source is *named in the note*,
+  because two recordings of one meeting is the normal case and a note that cannot say which one it came
+  from cannot be corrected against it.
+
+  **Output.** The loop ended at `_outbox/<item>/_manifest.md` — a file, not a person. New `deliver` step
+  (external): a dashboard reads `_outbox/`, previews the staged item and delivers it over the channel its
+  manifest declares — a chat workspace through the messaging client, or an email draft a person presses
+  send on. It writes back `status`, `status-note`, `channel` and `contact` **only**, per the dispatch
+  contract; it never authors a manifest, decides what a status means, or archives.
+
+  `record` now consumes *the message, delivered* rather than the manifest, so the chain ends where the
+  material reaches someone. Thirteen steps; `check-components.py` passes.
+
 ## [1.60.0] - 2026-09-21
 
 ### Added

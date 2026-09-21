@@ -92,7 +92,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 18
-core_skills_version: "1.60.0"
+core_skills_version: "1.61.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -738,7 +738,7 @@ working_loop:
     phase: "the session"
     label: "the meeting"
     external: true
-    does: "Recorded, so everything asynchronous is invisible to it by construction - which is what the archives exist to answer"
+    does: "Recorded, so everything asynchronous is invisible to it by construction - which is what the archives exist to answer. The transcript ARRIVES BY SEVERAL ROUTES - a recorder into a knowledge base read over MCP, a file dropped in, or text pasted straight into the session. The loop does not care which; it cares that the source is NAMED in the note, because two recordings of one meeting is the normal case and a note that cannot say which one it came from cannot be corrected against it"
     produces: ["a transcript"]
 
   - id: "process"
@@ -773,11 +773,19 @@ working_loop:
     consumes: ["a staged recap"]
     produces: ["_outbox/<item>/_manifest.md"]
 
+  - id: "deliver"
+    phase: "after, the same day"
+    label: "the dispatching surface"
+    external: true
+    does: "A dashboard reads _outbox/, previews the staged item and delivers it over the channel its manifest declares - a chat workspace through the messaging client, or an email draft a person presses send on. It writes back status, status-note, channel and contact ONLY; it never authors a manifest, decides what a status means, or archives"
+    consumes: ["_outbox/<item>/_manifest.md"]
+    produces: ["the message, delivered"]
+
   - id: "record"
     phase: "after, the same day"
     label: "marking it sent"
     does: "The manifest's status is the only record that something actually went out"
-    consumes: ["_outbox/<item>/_manifest.md"]
+    consumes: ["the message, delivered"]
     manual: true
     why_manual: "That click is where the posted message gets read as it actually landed"
 
