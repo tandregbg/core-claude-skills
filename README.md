@@ -2,251 +2,70 @@
 
 **Version:** 1.55.0
 
-**Version:** 1.37.4
-
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
-## What's new in v1.38.0 (2026-09-20)
-
-- **`metric` is now an insight type (CR-046).** A measurement where the number *is* the claim had
-  nowhere to go and became a `learning` — a type that had swollen to 36% of one corpus and stopped
-  discriminating. The tell was already in the code: the transcript pipeline extracts a `metrics:`
-  block that nothing downstream could store. A `metric` carries optional `value`/`unit`/`baseline`/
-  `period`/`trend`, and the write-time test is mechanical: delete the number from the summary — if
-  nothing survives it is a `metric`, if the claim stands it is a `learning` citing evidence. It is
-  never promoted to a rule; a measurement repeating is a time series, not an instruction. The other
-  half of the CR, `constraint`, was deliberately deferred on thin evidence. See CHANGELOG `[1.38.0]`.
-
-## What's new in v1.37.4 (2026-09-16)
-
-- **An outbox manifest must now say where its material actually lives (CR-032).** A routine question — *"is this folder a copy, or the only copy?"* — turned out to be unanswerable. An audit found 86 outbox items where just 3 of 71 manifests named a source, so deciding what was safe to delete meant opening every folder and grepping the vault. The PDFs were renderings of documents that lived elsewhere; the mail texts and the manifests themselves existed nowhere else. A bulk clean-up would have destroyed them. The fix is one required field, `Kanonisk källa`, answered either with a path or with `ingen (originalet bor här)` — which moves the determination to creation time, where the author knows the answer, instead of to clean-up time, where nobody does. `/ops sweep` flags manifests missing it; `archive` warns but does not abort, since refusing would strand every folder written before the rule existed. See CHANGELOG `[1.37.4]`.
-
-## What's new in v1.37.3 (2026-09-12)
-
-
-- **The contract version now checks itself (CR-045).** Correcting the field (CR-044) without adding a reader would have left the same hole open — it drifted for five days precisely because nothing compared it to anything. Every bump has always been documented in the same shape, `# contract_version N (CR-xxx, date): ...`, which makes the comment block a *declaration* rather than prose: the highest N must equal the field below it. The alignment check now asserts exactly that, and `/ops sweep` reads its verdict lines already, so it reaches the weekly sweep for free. Verified in both directions — resetting the field to its old value reproduces yesterday's bug and the check reports *"field says 2, comments document 7"*. It verifies that the number and its documentation agree; whether a conventions change *deserves* a bump stays human. See CHANGELOG `[1.37.3]`.
-
-## What's new in v1.37.2 (2026-09-12)
-
-- **The contract version field had never been bumped (CR-044).** `ecosystem.yaml` said `contract_version: 2` while the comment block directly above it documented bumps to 3, 4, 5 and 6 — each added by its own CR — and the visualiser's own notes described a contract at version 6. `git log -S` finds exactly one commit touching the value: the one that created the file. Five CRs documented a bump; none changed the number. It survived five days and four releases for a simple reason — **nothing reads the field back.** The alignment check compares the *suite* version across components and never looks at the contract version at all. Corrected to **7** in one step (6 for the documented backlog, 7 for this release's conditional-presence change), with the comment block reordered and a correction note, so a client that read 2 yesterday can find out why it reads 7 today. The obvious follow-up — have the alignment check assert the field matches the highest bump documented in its own comments — is deliberately *not* in this release: correcting data and adding a check are different changes, and the check deserves its own verification. See CHANGELOG `[1.37.2]`.
-
-## What's new in v1.37.1 (2026-09-12)
-
-- **The push guard can now be told that one identifier is public on purpose (CR-043).** The private denylist was all-deny: every line blocks, with no way to say *this host inside an otherwise-blocked domain is published deliberately*. Linking this repo to its own landing page hit exactly that. The options were all bad — delete the rule and lose protection for every other host under the domain, bypass the guard for the push, or hand-write a negative regex (the guard matches with `grep -E`, which has no lookbehind; simulating one means enumerating an eleven-character label's mismatch positions, and a fragile regex in a security control is worse than the problem). Instead: a denylist line starting with `!` is an allow-pattern, masked before any deny-pattern runs. The hook enforces the left word-boundary itself, so a longer label that merely *ends* with the allowed one is still blocked — that boundary is the whole difference between a mechanism and a hole. The scheduled privacy scan learned the same rule, because a guard and its auditor that disagree is worse than either alone. See CHANGELOG `[1.37.1]`.
-
-## What's new in v1.37.0 (2026-09-12)
-
-- **A folder may declare that its work is tracked somewhere else (CR-040).** `/ops` assumed every folder receiving a meeting summary has, or should have, a local `_tasks.yaml` — *find it, or the nearest ancestor's, or create one*. That assumption breaks for a **coordination project**: one that shadows a codebase whose own change-request registry or issue tracker is already the system of record, with the same owners and the same items. There the local ledger is not redundancy, it is a competing truth — and the pattern has a measured cost: a project running three overlapping ledgers reached 440 tasks, 329 of them pending and 71 open at the top priority, at which point the scale carried no information and a working session had to be spent retiring the duplicates. New `workflows.task_ledger` key with `mode: local | external | none`; `external` means no ledger is created, **no ancestor is walked to** (the dangerous half — items land where nobody looks), and implementation items are recorded by reference instead. Default `local`, so silence keeps the existing contract.
-- **And the two skills that *read* ledgers had to learn the same word (CR-041).** A declaration is worthless if the sweep still reports the folder as rotting and the pipeline report still shows it producing nothing — so `/ops sweep` now resolves the mode before judging a missing ledger, and `/analytics` excludes those folders from tasks-per-meeting and names them instead of leaving a zero. The sweep does not simply fall silent: under `external` it swaps the rot check for two better ones — an **incoherent declaration** (missing or unresolvable pointer), and **the duplicate the declaration exists to prevent**. Shipped together deliberately, because a check that reports healthy things as broken stops being believed before it is ever right. See CHANGELOG `[1.37.0]`.
-
-## What's new in v1.36.1 (2026-09-08)
-
-- **A generated view that lives among its sources needs structural isolation, not a flag (CR-038).** Trying to place one new file — a per-folder situational view of a relationship: how often you have met, what the insights say, what is still open — surfaced a rule that was missing. The obvious name satisfied the prefix convention but created a circularity: files in those folders are scanned, so a generated view can be read back as source and synthesised into a view of itself. A skip flag was the first idea and the wrong one — CR-033 already showed skip-lists get missed when skills glob on filename prefixes. The fix is the pattern `.knowledge/wiki/` already used: a hidden subfolder no scanner walks into. Also in this release: system files now carry English names regardless of content language. See CHANGELOG `[1.36.1]`.
-
-## What's new in v1.36.0 (2026-09-07)
-
-- **The vault structure contract got a spine (CR-034, CR-036, CR-037).** `ecosystem.yaml` declared *which* files the suite produces (CR-010) but never how many of each, where they belong, which prefix they take, or which rule wins when two disagree. Thirteen rules from seven CRs sat in a flat list — and two of them contradicted each other about the same folder, which shipped in a commit before a reader caught it. Now: **the prefix answers one question, read frequency**, never write ownership (`_insights.yaml` is machine-written yet underscored, because skills read it); **three placement classes** with a principled singleton test — *would a folder-scoped instance defeat the reason the surface exists?*; and **three rule levels** (invariant / rule / guideline) with a stated conflict order, where an exception must be **named** to be valid and two equally specific rules in conflict is a contract defect to report rather than resolve silently. Auditing a live vault against the levelled rules immediately surfaced an invariant breach that the flat list had missed for 53 days. See CHANGELOG `[1.36.0]`.
-- **`_tasks.yaml` becomes the source of truth for the personal working document (CR-035).** The markdown working doc had grown to 438 lines with a **273-character median task line** and 56 % non-task content: every row carried task, history, reference data and reasoning in one sentence, which markdown cannot separate. Tasks move to YAML (standard v2 schema plus `triage_id` so external sync keeps its link identity); the markdown becomes a **generated view** showing only what has a date or P0/P1; a free-form `_capture.md` is the write path — the "door, not a dwelling" intent applied to tasks. Median task length **273 → 87 characters**, the view **438 → 52 lines**. Partially supersedes CR-022. See CHANGELOG `[1.36.0]`.
-
-## What's new in v1.35.1 (2026-08-28)
-
-- **`.handoff/` enforcement completed (CR-033).** v1.35.0 added the skip to every skill with an explicit skip-list, but four skills find files by other means. Because snapshots share the `YYMMDD-` prefix with meeting documents, `/preparation`'s cross-context scan would have offered them as cross-references and `/daily-dashboard` would have shown them as meetings — both now carry an explicit never-scanned list. `/outbox` and `/tasks` gain the boundary in writing: outbox is addressed to a person and gets sent; a snapshot is addressed to a future work session and never does. See CHANGELOG `[1.35.1]`.
-
-## What's new in v1.35.0 (2026-08-28)
-
-- **`handoff` skill (`/handoff`) — frozen context snapshots (CR-033).** A conversation often surfaces a bounded subject that belongs to *different* work: a topic a colleague should hear, a positioning question that belongs to a company document, a commitment whose execution is a separate job. Until now that material had three bad homes — buried in a meeting summary, copied into a living document that does not own it, or dropped in `.ephemeral/` where it dies. The new skill writes it to `<vault>/.handoff/` as a self-contained snapshot: one subject, no vault links, readable cold by a session with no context. **Its defining property is non-delivery** — nothing parses, indexes, sweeps or lints it, it generates no task and appears in no dashboard; a human opens it and starts new work. Isolation is the feature, and automation would destroy it. Where the source was confidential the snapshot carries an explicit boundary block (what may be shared onward, what may not, whether the source may be named) so the constraint travels with the content. See CHANGELOG `[1.35.0]`.
-
-## What's new in v1.34.0 (2026-08-28)
-
-- **External-counterpart preparation (CR-032).** `/preparation` gains six mechanisms that apply only when the counterpart is external — prospect, customer, partner, first contact: an inline `[UNVERIFIED]` marker (the CR-015/CR-016 convention, now in preparation too), source-conflict resolution with an explicit instruction about what may be said in the room, reliability grading against prior preparations, a per-counterpart sensitive-ground list, a branched opening that can tell the reader to drop the prepared agenda, and a line on what the counterpart is actually measured on. Internal preparation is unchanged. See CHANGELOG `[1.34.0]`.
-
-## What's new in v1.33.3 (2026-07-27)
-
-- **Triage external mirror (CR-017).** `/inbox triage` can now mirror today/tomorrow items to an external actions surface — gated push out, gated reconcile back, triage doc stays the source of truth. Contract only; the provider integration is local and secret-free by design. See CHANGELOG `[1.33.2]`.
-
-## What's new in v1.33.2 (2026-07-27)
-
-- **`/analytics pipeline` (CR-031).** Meetings are the input — the outcomes are insights, tasks, changelog entries, and outbox sends. The new subcommand traces the whole chain over time (quarters as columns, grouped rows), with per-meeting ratios and per-day averages including active-day density. Field-level scans only; prose is never read. Overview also gains active-day metrics, and two classification gaps are fixed. See CHANGELOG `[1.33.2]`.
-
-## What's new in v1.33.1 (2026-07-10)
-
-- **Guard modes (CR-030).** The pre-push guard now serves a whole machine: `guard.mode secrets-only` protects private sibling repos against accidental credential pastes without false-positiving on their legitimate infra content; public repos run the full regime. One shared hook, per-repo policy. See CHANGELOG `[1.33.1]`.
-
-## What's new in v1.33.0 (2026-07-10)
-
-- **Examples are now watched, not trusted (CR-029).** Every name-like token in this repo must match a public allowlist of invented example names — unknown tokens block the push even if no denylist has ever heard of them, and a weekly whole-tree privacy scan (sweep check 8) catches anything that slips. Real names can't all be enumerated; allowed fake ones can. See CHANGELOG `[1.33.0]`.
-
-## What's new in v1.32.0 (2026-07-10)
-
-- **Privacy posture completed (CR-028).** Development-evolution material is now local-only by construction: `/insights propose` writes to a vault-private path (`evolution.proposals_path`), never into this repo. RELEASING.md gains a mandatory **semantic release review** (the judgment layer above the mechanical pre-push guard — new identifiers a denylist has never seen pass every regex), documents the GitHub server-side backstop and fresh-clone requirements, and `/update-skills install` reminds about per-clone guard installation. A full history audit confirmed zero secrets ever committed; a few real-looking example slugs were genericized. See CHANGELOG `[1.32.0]`.
-
-## What's new in v1.31.0 (2026-07-10)
-
-- **The knowledge wiki (CR-027).** `/insights synthesize` renders the insights corpus into a curated wiki: topic-named living articles (synthesized prose with sources, tensions, open questions, Obsidian wikilinks) plus an auto-maintained `INDEX.md` that sessions read *first* when answering knowledge questions — index → article, no RAG, no folder scanning. Clustering is semantic and vault-wide (the first production compile run proved mechanical token-overlap can't build this layer). Human-edited articles are respected via a marker; vocabulary is canonicalized at synthesis; verticals are linked, not duplicated. Shipped as an experiment — the companion knowledge-lint lands only if the wiki earns its keep. See CHANGELOG `[1.31.0]`.
-
-## What's new in v1.30.0 (2026-07-08)
-
-- **Release process + privacy guardrails (CR-026).** New [`docs/RELEASING.md`](docs/RELEASING.md) codifies the prod-on-public-rails reality: the operating vault is production data, this repo is public, and the membrane between them is one-way (generic-by-construction writing, private CR archive, per-CR release flow, webpage/Marvin update triggers). Enforced mechanically by a **fail-closed pre-push guard** (`scripts/githooks/pre-push`): every added line in an outgoing push is scanned against built-in secret patterns plus a private identifier denylist that lives outside the repo — no denylist configured, no push. See CHANGELOG `[1.30.0]`.
-
-## What's new in v1.28.0–v1.29.0 (2026-07-08)
-
-- **v1.28.0 — File drops + the `.ephemeral` boundary (CR-024).** `_inbox/.files/` extends the inbox door to any input file with a vault destiny — drop a PDF/CSV/image, `/inbox` registers it (pairing-by-basename, like audio), processing runs the right skill and the source file moves with its output to the target's `.attachments/` or the archive. Its counterpart: `.ephemeral/` is now formally the place for disposable working material with *no* vault destiny — never referenced from vault content, allowed to die, swept after 14 days. The routing decision becomes conscious instead of gravitational. See CHANGELOG `[1.28.0]`.
-- **v1.29.0 — Structure conformance (CR-025).** The single-inbox/outbox rule gets a scheduled reader with a fuzzy matcher: `/ops sweep` check 9 (and the upgraded `/ops status` health step) finds stray and *variant* inbox/outbox folders anywhere in the tree — the class where a second outbox quietly makes the central pending list lie. Deliberate exceptions are recorded once in `workflows.sweep.structure_exemptions` and respected thereafter. See CHANGELOG `[1.29.0]`.
-
-## What's new in v1.27.0 (2026-07-08)
-
-- **Ecosystem alignment joins the closure loop (CR-023).** `/ops sweep` gains check 8: on machines that configure `workflows.sweep.alignment_check.command`, the sweep runs the existing alignment script read-only and reports every `[DRIFT]` component with a pointer to the documented update runbook — and treats `[SKIP]` (e.g. an unreachable mount) as *unverified*, not clean, since a hidden check once masked six releases of drift. Off by default; consumer vaults see no change. Detection without a scheduled reader is decoration — this gives the contract check its reader. See CHANGELOG `[1.27.0]`.
-
-## What's new in v1.26.0 (2026-07-07)
-
-- **Triage working surface (CR-022).** A hand-rolled daily-triage file in `_inbox/` organically became the personal system of record — so the system now meets it where it is. New schema contract for `_inbox/` working documents (registered `type: working_doc`, never auto-processed) with a defined triage vocabulary (INKORG → PRIO → DENNA VECKA → SENARE → UPPFÖLJNINGAR → BESLUT), bracket-tagged bullets, KLART-archive, graduation rule and no-secrets rule. Four integrations, all respecting one principle — *skills adapt to the triage doc; the triage doc never adapts to skills*: preps (`/preparation`, `/ops prepare`) pull the contact's open triage bullets and stamp them; `/daily-dashboard` surfaces PRIO/DENNA VECKA read-only; task import (`/transcript`, `/ops`) offers triage-INKORG as a target for personal items; `/inbox triage refresh|status` does mechanical upkeep (week anchor, `[x]`→archive, aging report) without ever reordering or rewording; `/ops sweep` gains a triage-hygiene check. See CHANGELOG `[1.26.0]`.
-
-## What's new in v1.21.0–v1.25.0 (2026-07-07)
-
-Five CRs (017–021) landed together, all drawn from a comprehensive private audit of ~4 months of heavy production usage. Theme: capture-side conventions held; the failure modes moved downstream — and these releases move the guards with them.
-
-- **v1.21.0 — Insights schema reconciliation (CR-020).** The no-names privacy rule (retired in the 2026-04-07 audit but never removed from skill text) is formally replaced by a reusability preference. `quote` is canonized as an insight type. New write-time vocabulary guard (canonical types, `confidence` = `hypothesis|rule` only, YYMMDD dates, integer ids, ≤5 tags), new `/insights normalize` one-shot migration for drifted files (dry-run default), and a `last_compiled` freshness stamp so a never-run compile loop is finally detectable. See CHANGELOG `[1.21.0]`.
-- **v1.22.0 — People roster + committed-spelling consistency (CR-017).** New `people:` config block (canonical + aliases) for the non-contact long tail ASR garbles most, and a pre-save check that compares draft names against spellings previously committed in the target folder (recent files + CHANGELOG) — precedent wins; a near-miss variant is flagged, never silently introduced. Also covers contextually anomalous domain terms (real-word ASR mishearings). `/ops normalize --names` backfills. See CHANGELOG `[1.22.0]`.
-- **v1.23.0 — Template contracts + shape lint (CR-018).** Per-meeting-type shape contracts (`workflows.meeting_templates`) checked at save time (heading sequence, action-table header, empty-Beslut marker) in warn or strict mode; `/ops lint <folder>` finds where an existing series silently forked. Deliberate format changes are made by editing the contract, not by letting a file drift. See CHANGELOG `[1.23.0]`.
-- **v1.24.0 — Closure sweep (CR-019).** `/ops sweep` detects the six closure-debt classes (index lag, ledger rot, migration corpses, outbox aging, sync duplicates, unrouted residue) read-only and offers fixes; new ops-base Retirement Convention (tombstone + CHANGELOG + pointer update on every artifact relocation); `/outbox archive --all-sent` batch mode. See CHANGELOG `[1.24.0]`.
-- **v1.25.0 — Filename slug policy (CR-021).** The naming rules are now an explicit slug contract: keep å/ä/ö in filenames, `YYMMDD-` prefix always, mandatory role keyword; the CR-007 driftword check now runs against slugs too. `/ops normalize --filenames` backfills with reference rewriting. See CHANGELOG `[1.25.0]`.
-
-## What's new in v1.20.1 (2026-06-27)
-
-- **`/transcript` silent raw-transcript archive (Step 2.5).** The raw input is now always preserved verbatim in a central `.transcripts/` folder in the vault root (plain markdown, `YYMMDD-...-raw.md`), with frontmatter linking back to the summary and every file the run produced, and a discreet `raw:` back-link on the summary. A read-back lock keeps the folder a quiet memory archive: it is never read back, quoted, or fed into insights/summaries unless the user explicitly asks for the raw material. See CHANGELOG `[1.20.1]`.
-
-## What's new in v1.20.0 (2026-06-05)
-
-- **Proper-noun verification (CR-016).** `/transcript` now guards against the *plausible* proper-noun garble that reads fine and matches nothing (a real surname rendered as a different real-looking one; a company name as a phonetic near-miss). Name Resolution already fixed the spelling of names it can match; CR-016 adds a verification pass that builds a known-entity set from `team[]`, `_contacts/*/_meta.yaml`, `terminology[]`, and the filename, then marks any unmatched person/company name `Name?` (or collects them into a `⚠ Namn att verifiera` note) instead of committing it as fact. It states the failure-mode principle -- invisible plausible substitutions cost more downstream than obvious garble -- and logs an `edge_case` on flag, `correction` on fix. `/preparation` also gains a one-line "names for the recording" hint (put key proper nouns in the calendar event title so the ASR has the vocabulary). Prompt-only and additive; a no-op when every name resolves. Surfaced from an independent field comparison of two Swedish transcription tools. See CHANGELOG `[1.20.0]` and `docs/proposals/CR-016-proper-noun-verification.md`.
-
-## What's new in v1.19.0 (2026-06-05)
-
-- **Undiarized-transcript owner safety (CR-015).** `/transcript` now treats action-item ownership as *inferred, not observed* whenever a transcript arrives with no speaker labels (e.g. a Deep Thought paste or raw recorder export). New "Speaker attribution & undiarized transcripts" section: detect the diarized/undiarized condition first, fail safe by writing the owner as `?` / `Name?` instead of a confident guess, and run a final owner self-check on the `Nästa steg` table before save. Undiarized input is logged as an `edge_case` (and user owner-corrections as `correction`) so the evolution loop can see the pattern. Notes the durable root fix — feed a speaker-labeled transcript — which makes the rule a no-op. Prompt-only and additive; diarized transcripts are unaffected. See CHANGELOG `[1.19.0]`.
-
-## What's new in v1.18.0 (2026-06-04)
-
-- **Rolling plans -- participant-triggered per-axis living docs (CR-014).** New optional `workflows.rolling_plans` config: living, shareable per-axis planning documents updated after a matching 1-on-1. The participant-keyed counterpart to `verticals` (topic-keyed). `/ops` offers a yes/no/select update after a meeting whose participants match a plan (move completed rows into the summary, add NOW items, reflect decisions; scaffolds a missing file from a template). `/daily-dashboard` links them read-only. Golden rule: one item = one owner = one doc. Additive; an org with no `rolling_plans` sees no change. See CHANGELOG `[1.18.0]`.
-
-## What's new in v1.17.1 (2026-05-25)
-
-- **`/ops` Step 9: optional post-meeting priorities artifact.** New opt-in subsection generates a slim `YYMMDD-priorities-post-<meeting-type>.md` companion to the comprehensive meeting summary. Pairs symmetrically with the existing pre-meeting dual mode (agenda + facilitator): post-meeting now also gets a two-layer output (comprehensive archive + slim working list). Source priority: facilitator's post-meeting message verbatim → top action-items if no message → skip if neither. Controlled by `workflows.post_processing.priorities_artifact.enabled` in the org or project ops-config (default `false`, opt-in). Bidirectional cross-references between the two files; explicit anti-bloat rule (>1 page = trim). See CHANGELOG `[1.17.1]`.
-
-## What's new in v1.17.0 (2026-05-10)
-
-- **CR-013: hypothesis → rule lifecycle for `_insights.yaml`.** Insights now have an optional `confidence` field (`hypothesis` | `rule`). `/insights compile` promotes a hypothesis to a rule when ≥3 semantically similar entries cluster in one folder, and demotes a rule back to a hypothesis when a `correction` contradicts it. `/ops` and `/transcript` load applicable rules from the CWD's folder chain as a working-context preamble before each run — rules now actively guide output, not just accumulate silently. `_insights.yaml` schema bumped 1 → 2 (additive; v1 readers ignore the new fields). See CHANGELOG `[1.17.0]` and `docs/proposals/CR-013-insight-lifecycle.md`.
-
-## What's new in v1.16.7 (2026-05-06)
-
-- **`md2pdf` works in non-interactive shells.** Bootstraps `/opt/homebrew/bin` into `PATH` and `/opt/homebrew/lib` into `DYLD_FALLBACK_LIBRARY_PATH` before importing weasyprint/markdown, so SSH sessions and cron jobs no longer crash with `cannot load library 'libgobject-2.0-0'` or `env: node: No such file or directory`. `mmdc` lookup also falls back to common Homebrew/npm/nvm locations when not on PATH. See CHANGELOG `[1.16.7]`.
-
-## What's new in v1.16.6 (2026-05-06)
-
-- **`md2pdf` autolinks + better task-list/link rendering.** Bare URLs in prose are now clickable links via `pymdownx.magiclink` (previously rendered as plain text). Long URLs wrap across lines while staying fully clickable. Task-list checkboxes now sit inline with text and inherit the same indentation as regular bullet lists. See CHANGELOG `[1.16.6]`.
-
-## What's new in v1.16.5 (2026-05-06)
-
-- **`md2pdf` task-list checkboxes.** `- [ ]` and `- [x]` now render as real checkboxes (square outline with ✓ on checked) instead of bullets followed by literal `[ ]` text. Requires `pip install pymdown-extensions`; without it the previous text-fallback behavior is preserved. See CHANGELOG `[1.16.5]`.
-
-## What's new in v1.16.4 (2026-05-06)
-
-- **`md2pdf` mindmap support and lazy-list fix.** New ` ```markmap ` fenced block renders to a visual mindmap in the PDF (translated internally to a Mermaid mindmap). Heading levels and bullets become indentation; optional `depth=N` attribute prunes deeper nodes for an executive overview. A lazy-list normalizer also lands -- a list immediately following a paragraph without a blank line is now rendered as a list (matching GFM/Obsidian behavior). `mmdc` is now required for `mermaid`/`markmap` blocks; install via `npm install -g @mermaid-js/mermaid-cli`. See CHANGELOG `[1.16.4]`.
-
-## What's new in v1.16.3 (2026-05-06)
-
-- **`outbox` skill (`/outbox`).** New lifecycle skill for `<vault>/_outbox/`. Lists pending vs resolution-ready items based on each `_manifest.md`, and archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` -- stripping the now-redundant contact-name prefix and updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Closes the gap where sent-and-replied outbox material lingered centrally instead of returning to the contact folder where it would actually be searched for. See CHANGELOG `[1.16.3]` for full subcommand list.
-
-## What's new in v1.15.2-v1.15.4 (2026-04-07)
-
-Three audit-driven improvements landed together. The full audit lives in [`docs/audits/2026-04-07-skills-output-audit.md`](docs/audits/2026-04-07-skills-output-audit.md).
-
-- **CR-005 (v1.15.2) -- Preparation agenda-card-first format.** Prep documents are now structured around a 60-second walk-in card on top (agenda + open actions), with deep-dive content below the fold. Agenda items must be tagged questions (`[DECISION]`/`[DEMO]`/`[STATUS]`/`[QUESTION]`/`[FYI]`), not topic noun phrases. Walk-in card max 5 items, prioritised by criticality. Step 0 frozen-prep check refuses mid-meeting edits. Step 2.5 cross-reference scan is mandatory with explained relevance. Single-document principle: no required-reading chains between prep files. `/ops` writes bidirectional supersede links so prep <-> transcript navigation works in both directions.
-- **CR-006 (v1.15.3) -- Summary heading reorder and standardise.** New canonical section order for transcript/ops summaries: **Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund**. Action items first (a reader scanning at 08:30 needs what they own first, not narrative). Beslut/Decisions section now mandatory with explicit "no formal decisions" marker if empty. Action item tables use a fixed 5-column format. Canonical heading names locked -- variants like Sammanfattning, Executive Summary, Action Items, Åtgärdspunkter, Huvudpunkter, Decisions Made will not be produced in new files (legacy files keep their headings; daily-dashboard recognises both for back-compat). Konklusion length floor removed -- short meetings still get a 1-sentence outcome. Three template variants by meeting length: Concise (<30 min) / Standard (30-90 min, default) / Extended (>90 min).
-- **CR-007 (v1.15.4) -- Swedish character inheritance + `/ops normalize`.** New `language_inheritance` config block in `base.yaml` automatically inherits `swedish_chars: strict` into `_projects/`/`_contacts/`/`_private/`/`_inbox/` regardless of whether the folder has its own CLAUDE.md. Catches sub-trees that previously slipped through enforcement. New `/ops normalize <path>` subcommand for hand-written docs that bypassed the pipeline -- restores Swedish characters using the new `swedish_substitutions.yaml` data file. Supports `--dry-run` and `--strict-no-ambiguous`. The `/insights` skill gains a pre-write Swedish character validator that refuses to write entries containing known character drift in `summary`/`rationale`/`context` fields. Schema bumped 1.1 → 1.2.
-
-
-
-## Skills included
-
-| Skill | Description | User-invocable |
-|-------|-------------|----------------|
-| `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by other ops skills. | No |
-| `ops-config` | Configuration system -- schema definition and base defaults for organization-specific settings. | No |
-| `transcript` | Process and summarize transcriptions from calls, meetings, or voice recordings. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund). Three template variants by meeting length. Provides structured extraction for domain skills. Offers task import. Extracts durable insights to `_insights.yaml`. | Yes (`/transcript`) |
-| `ops` | Unified meeting and operations processing -- config-driven for any organization. Subcommands: `/ops status` shows available org configs, `/ops prepare` creates pre-meeting preparation, `/ops normalize` restores Swedish characters (`--names` applies the people roster, `--filenames` fixes slug drift), `/ops lint` detects template forks in a meeting series, `/ops sweep` audits closure debt (stale indexes, ledgers, outbox, duplicates), `/ops help` shows usage guide. Extracts durable insights to `_insights.yaml`. Replaces project-ops, bravo-ops, management-ops, marketing-ops. | Yes (`/ops`) |
-| `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. Standalone. | Yes (`/update-skills`) |
-| `daily-dashboard` | Daily meeting and task dashboard generator -- works generically from any vault or with org-specific config. Creates dashboard file and desktop symlinks. Integrates with task tracker. | Yes (`/daily-dashboard`) |
-| `preparation` | Create meeting preparation documents with a 60-second walk-in agenda card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]) instead of topic noun phrases. Mandatory cross-reference scan with explained relevance. Frozen at meeting time -- no mid-meeting edits. | Yes (`/preparation`) |
-| `tasks` | Personal task tracker with cross-project correlation. Central task index, source linking, automatic carry-forward, privacy model. | Yes (`/tasks`) |
-| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, **synthesizes the corpus into a knowledge wiki** (topic articles + read-first INDEX, CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
-| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024 — the source file moves with its output to the target's `.attachments/`) and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
-| `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
-| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `pipeline`, `backlog`, `help`. | Yes (`/analytics`) |
-| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
-| `handoff` | Frozen context snapshots in `<vault>/.handoff/`. Captures one bounded subject from a conversation as a self-contained document a different work session can pick up cold — no vault links, no index entry, no task generated. **Nothing in the suite picks it up: a human opens it and starts new work.** Carries an explicit confidentiality boundary when the source was confidential, so the constraint travels with the content. Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
-
-## Shared contract: `ecosystem.yaml`
-
-[`ecosystem.yaml`](ecosystem.yaml) is the single source of truth for the suite. Marvin (formerly core-skills-visualisation), the landing page, Trillian (vault-pulse), and any future external tools should read it instead of hard-coding skill lists, schema versions, or vault file paths.
-
-It declares:
-
-- **Schema versions** -- `ops_config`, `contact_meta`, `tasks`, `insights`
-- **Insight type enums** -- content vs evolution
-- **Contact classification** -- levels, defaults, folder pattern defaults (CR-009)
-- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands
-- **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `rules` (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
-- **Visualisation features** -- the page list Marvin renders
-
-The contract is versioned (`contract_version: 7`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`.
-
-## Architecture
-
-Skills are **organization-agnostic**. They use a layered configuration system (rewritten in v1.16.0 -- CR-011):
-
-1. **Project-level** (`.claude/ops-config.yaml`) -- overrides for specific projects
-2. **Folder-local** (`<vault>/<org>/_ops.yaml`) -- per-org config, walked up from CWD until vault root
-3. **Vault-wide** (`<vault>/_config/base.yaml`, optional) -- overrides shared across all folders
-4. **Base defaults** (`~/.claude/skills/ops-config/base.yaml`) -- fallback values
-
-Pre-v1.16.0 chain (`~/.claude/skills/{org}-ops-config/{org}.yaml`) is deprecated, removed in v1.17.0. See CHANGELOG `[1.16.0]` `### Migration` for one-time migration steps.
-
-The project's `CLAUDE.md` remains the single source of truth for vault-specific details (folder structure, meeting routing, file naming conventions).
-
-### Configuration
-
-Domain skills read from their org config for:
-- `language`: Output language (english/swedish/input)
-- `team`: Participant recognition and attribution
-- `responsibility_matrix`: Owner assignments
-- `terminology`: Domain-specific terms
-- `workflows`: Which files to update, action propagation, post-processing (task import, dashboard refresh), knowledge extraction, verticals
-
-As of v1.16.0 (CR-011), org configs live in `<vault>/<org>/_ops.yaml` -- co-located with the content they describe. This repo provides `base.yaml` as fallback and `schema.md` as the schema definition.
-
-### Skill dependencies
-
-```
-core-skills (this repo)
-  ops-config (schema + base defaults)
-  ops-base (shared standards) <-- reads config
-    +-- ops (extends ops-base, config-driven, replaces all domain ops skills)
-  transcript (extraction layer) --> offers task import, writes _insights.yaml
-  preparation (standalone -- meeting preparation)
-  daily-dashboard (standalone -- generic + org mode) <-- reads _tasks.yaml
-  tasks (standalone -- personal task tracker) <-- writes _tasks.yaml
-  update-skills (standalone -- repo management)
-  insights (standalone -- extraction manager + evolution engine) --> reads transcripts + CLAUDE.md, writes _insights.yaml, compiles patterns, proposes SKILL.md changes
-  analytics (standalone -- vault metrics) --> reads file metadata (names, dates, paths), writes _analytics/
-  inbox (standalone -- universal capture) --> classifies + routes to transcript/ops/tasks
+**Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 105 entries, newest first. This
+file used to repeat the last 34 of them; it no longer does, because a second
+copy of a changelog is a second thing to keep true.
+
+## How a project runs
+
+```mermaid
+graph TB
+    subgraph before["Before the session"]
+        CH[("&lt;venture&gt;/.chats/<br/>chat archive")]
+        GM[("&lt;venture&gt;/.githubmeta/<br/>repo metadata")]
+        AG["build_agenda.py<br/>carried items + what the room has not heard"]
+        FS["facilitator sheet<br/>written by hand"]
+    end
+
+    subgraph during["The session"]
+        MEET["the meeting<br/>recorded"]
+    end
+
+    subgraph after["After, the same day"]
+        OPS["/ops — one pass"]
+        NOTE["the note<br/>incl. what did not land"]
+        REG["registers<br/>decisions · insights · tasks"]
+        RECAP["recap<br/>offered, not written"]
+        OUT["_outbox/<br/>staged with a manifest"]
+    end
+
+    subgraph weekly["Weekly"]
+        INS["/insights compile + synthesize"]
+        LINT["/ops lint · /ops sweep"]
+    end
+
+    CFG["the folder's _ops.yaml<br/>external_systems · workflows"] -.->|declares| CH
+    CFG -.->|declares| GM
+    CH --> AG
+    GM --> AG
+    AG --> FS
+    FS --> MEET
+    AG --> MEET
+    MEET --> OPS
+    OPS --> NOTE
+    OPS --> REG
+    OPS --> RECAP
+    RECAP -->|a person decides| OUT
+    OUT -->|a person marks it sent| OUT
+    NOTE -->|carry-forward| AG
+    REG --> INS
+    NOTE --> LINT
 ```
 
-`/ops` is config-driven: behaviour changes based on org config (`bravo-ops-config`, `acme-ops-config`, etc.) and project-level overrides. Organization configs live in separate repos.
+**The loop closes at the note.** What did not land in one session becomes the top
+of the next agenda, carrying a session count and an age — so an item cannot
+quietly outlive the series it belongs to.
 
----
+**Three steps are deliberately manual**, marked above: the facilitator sheet,
+deciding whether a recap is warranted, and marking a manifest sent. Each is a
+place where generating the obvious answer would be confidently wrong in a way
+the reader could not check.
 
-## How the system fits together (v1.54)
+## Why it is shaped this way
 
 Four months of heavy production use taught us where document pipelines actually fail — and the v1.21–v1.26 wave restructured the suite around those findings. The suite now works as **four cooperating layers**:
 
@@ -342,6 +161,85 @@ CR-022 formalizes what heavy real-world use converged on: a single markdown **tr
 ### The development loop around it all
 
 The suite is developed **on live production data**: real usage generates evidence, evidence becomes CRs, CRs become releases. That loop has its own guardrails (CR-026): [`docs/RELEASING.md`](docs/RELEASING.md) codifies the one-way membrane between the private operating vault and this public repo — generic-by-construction writing, a private CR archive, and a **fail-closed pre-push guard** that scans every outgoing line against secret patterns and a private identifier denylist. Ecosystem components (the visualiser, the landing page) are held on the same version by an alignment check that `/ops sweep` reads on schedule (CR-023).
+
+---
+
+## Skills included
+
+| Skill | Description | User-invocable |
+|-------|-------------|----------------|
+| `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by other ops skills. | No |
+| `ops-config` | Configuration system -- schema definition and base defaults for organization-specific settings. | No |
+| `transcript` | Process and summarize transcriptions from calls, meetings, or voice recordings. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund). Three template variants by meeting length. Provides structured extraction for domain skills. Offers task import. Extracts durable insights to `_insights.yaml`. | Yes (`/transcript`) |
+| `ops` | Unified meeting and operations processing -- config-driven for any organization. Subcommands: `/ops status` shows available org configs, `/ops prepare` creates pre-meeting preparation, `/ops normalize` restores Swedish characters (`--names` applies the people roster, `--filenames` fixes slug drift), `/ops lint` detects template forks in a meeting series, `/ops sweep` audits closure debt (stale indexes, ledgers, outbox, duplicates), `/ops help` shows usage guide. Extracts durable insights to `_insights.yaml`. Replaces project-ops, bravo-ops, management-ops, marketing-ops. | Yes (`/ops`) |
+| `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. Standalone. | Yes (`/update-skills`) |
+| `daily-dashboard` | Daily meeting and task dashboard generator -- works generically from any vault or with org-specific config. Creates dashboard file and desktop symlinks. Integrates with task tracker. | Yes (`/daily-dashboard`) |
+| `preparation` | Create meeting preparation documents with a 60-second walk-in agenda card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]) instead of topic noun phrases. Mandatory cross-reference scan with explained relevance. Frozen at meeting time -- no mid-meeting edits. | Yes (`/preparation`) |
+| `tasks` | Personal task tracker with cross-project correlation. Central task index, source linking, automatic carry-forward, privacy model. | Yes (`/tasks`) |
+| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, **synthesizes the corpus into a knowledge wiki** (topic articles + read-first INDEX, CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
+| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024 — the source file moves with its output to the target's `.attachments/`) and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
+| `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
+| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `pipeline`, `backlog`, `help`. | Yes (`/analytics`) |
+| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
+| `handoff` | Frozen context snapshots in `<vault>/.handoff/`. Captures one bounded subject from a conversation as a self-contained document a different work session can pick up cold — no vault links, no index entry, no task generated. **Nothing in the suite picks it up: a human opens it and starts new work.** Carries an explicit confidentiality boundary when the source was confidential, so the constraint travels with the content. Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
+
+## Shared contract: `ecosystem.yaml`
+
+[`ecosystem.yaml`](ecosystem.yaml) is the single source of truth for the suite. Marvin (formerly core-skills-visualisation), the landing page, Trillian (vault-pulse), and any future external tools should read it instead of hard-coding skill lists, schema versions, or vault file paths.
+
+It declares:
+
+- **Schema versions** -- `ops_config`, `contact_meta`, `tasks`, `insights`
+- **Insight type enums** -- content vs evolution
+- **Contact classification** -- levels, defaults, folder pattern defaults (CR-009)
+- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands
+- **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `rules` (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
+- **Visualisation features** -- the page list Marvin renders
+
+The contract is versioned (`contract_version: 7`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`.
+
+## Architecture
+
+Skills are **organization-agnostic**. They use a layered configuration system (rewritten in v1.16.0 -- CR-011):
+
+1. **Project-level** (`.claude/ops-config.yaml`) -- overrides for specific projects
+2. **Folder-local** (`<vault>/<org>/_ops.yaml`) -- per-org config, walked up from CWD until vault root
+3. **Vault-wide** (`<vault>/_config/base.yaml`, optional) -- overrides shared across all folders
+4. **Base defaults** (`~/.claude/skills/ops-config/base.yaml`) -- fallback values
+
+Pre-v1.16.0 chain (`~/.claude/skills/{org}-ops-config/{org}.yaml`) is deprecated, removed in v1.17.0. See CHANGELOG `[1.16.0]` `### Migration` for one-time migration steps.
+
+The project's `CLAUDE.md` remains the single source of truth for vault-specific details (folder structure, meeting routing, file naming conventions).
+
+### Configuration
+
+Domain skills read from their org config for:
+- `language`: Output language (english/swedish/input)
+- `team`: Participant recognition and attribution
+- `responsibility_matrix`: Owner assignments
+- `terminology`: Domain-specific terms
+- `workflows`: Which files to update, action propagation, post-processing (task import, dashboard refresh), knowledge extraction, verticals
+
+As of v1.16.0 (CR-011), org configs live in `<vault>/<org>/_ops.yaml` -- co-located with the content they describe. This repo provides `base.yaml` as fallback and `schema.md` as the schema definition.
+
+### Skill dependencies
+
+```
+core-skills (this repo)
+  ops-config (schema + base defaults)
+  ops-base (shared standards) <-- reads config
+    +-- ops (extends ops-base, config-driven, replaces all domain ops skills)
+  transcript (extraction layer) --> offers task import, writes _insights.yaml
+  preparation (standalone -- meeting preparation)
+  daily-dashboard (standalone -- generic + org mode) <-- reads _tasks.yaml
+  tasks (standalone -- personal task tracker) <-- writes _tasks.yaml
+  update-skills (standalone -- repo management)
+  insights (standalone -- extraction manager + evolution engine) --> reads transcripts + CLAUDE.md, writes _insights.yaml, compiles patterns, proposes SKILL.md changes
+  analytics (standalone -- vault metrics) --> reads file metadata (names, dates, paths), writes _analytics/
+  inbox (standalone -- universal capture) --> classifies + routes to transcript/ops/tasks
+```
+
+`/ops` is config-driven: behaviour changes based on org config (`bravo-ops-config`, `acme-ops-config`, etc.) and project-level overrides. Organization configs live in separate repos.
 
 ---
 
