@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 18 (CR-062, 2026-09-21, v1.59.0): working_loop — the steps a person
+#   takes, in order, with the three manual ones marked and each saying WHY. The
+#   README and the landing page both render this loop; a hand-written copy in
+#   each is two things to keep true, which is how the README's release list went
+#   seventeen versions stale without anyone noticing.
+#
 # contract_version 17 (CR-055, 2026-09-21): <venture>/.githubmeta/ declared, and a
 #   repo metadata archiver component. The sibling of .chats/: same layout, same
 #   dot-folder reasoning, one difference - a day's file is a snapshot rather than
@@ -85,8 +91,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 17
-core_skills_version: "1.58.0"
+contract_version: 18
+core_skills_version: "1.59.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -684,6 +690,101 @@ components:
 #     so they need not know about each other.
 #   - A cycle in depends_on is a defect. The landing page depending on the
 #     contract while the contract knows nothing of the landing page is correct.
+
+# --- The working loop (CR-062) ---
+#
+# components: says what the parts ARE. This says what a person DOES, in order,
+# and which part serves each step. Declared rather than drawn twice: the README
+# and the landing page both render a diagram of this loop, and a hand-written
+# copy in each is two things to keep true - which is exactly how the README's
+# "what's new" list ended up seventeen releases stale.
+#
+# Steps are ordered. `manual: true` marks a step a person performs, and those
+# are not unbuilt features: each is a place where generating the obvious answer
+# would be confidently wrong in a way the reader could not check.
+working_loop:
+  - id: "declare"
+    phase: "once, at set-up"
+    label: "the folder's config"
+    does: "Declares which chat and repositories the work concerns, which post-meeting artifacts the series wants, and where its task ledger lives"
+    produces: ["the ops config"]
+
+  - id: "archive"
+    phase: "before the session"
+    label: "the archivers"
+    does: "Refresh the chat and repository archives. External CLIs, run on demand - never by a skill"
+    consumes: ["the ops config"]
+    produces: ["<venture>/.chats/", "<venture>/.githubmeta/"]
+
+  - id: "agenda"
+    phase: "before the session"
+    label: "the agenda generator"
+    does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard"
+    consumes: ["<venture>/.chats/", "<venture>/.githubmeta/", "the note"]
+    produces: ["the agenda"]
+
+  - id: "facilitate"
+    phase: "before the session"
+    label: "the facilitator sheet"
+    does: "Turning a fact into the right question"
+    consumes: ["the agenda"]
+    manual: true
+    why_manual: "The agenda carries facts; which question to ask is judgement, not generation"
+
+  - id: "meet"
+    phase: "the session"
+    label: "the meeting"
+    does: "Recorded, so everything asynchronous is invisible to it by construction - which is what the archives exist to answer"
+    produces: ["a transcript"]
+
+  - id: "process"
+    phase: "after, the same day"
+    label: "one pass over the transcript"
+    does: "The summary, the registers, one changelog line, and whatever the folder declared"
+    consumes: ["a transcript", "the ops config"]
+    produces: ["the note", "the registers", "a staged recap"]
+
+  - id: "carry"
+    phase: "after, the same day"
+    label: "the note's carry-forward"
+    does: "What did not land becomes the top of the next agenda. This is where the loop closes"
+    consumes: ["the note"]
+    produces: ["the agenda"]
+
+  - id: "recap"
+    phase: "after, the same day"
+    label: "the recap"
+    does: "Offered rather than written: assembled from the narrowest of three inputs it would be confidently incomplete, and invisibly so to a reader with no transcript to check it against"
+    consumes: ["the note"]
+    manual: true
+    why_manual: "Whether a session warrants a recap is a judgement about the audience, not about the material"
+
+  - id: "send"
+    phase: "after, the same day"
+    label: "staging and sending"
+    does: "Staged as a folder with a manifest; a dispatching surface delivers it and records what it did"
+    consumes: ["a staged recap"]
+    produces: ["_outbox/<item>/_manifest.md"]
+
+  - id: "record"
+    phase: "after, the same day"
+    label: "marking it sent"
+    does: "The manifest's status is the only record that something actually went out"
+    consumes: ["_outbox/<item>/_manifest.md"]
+    manual: true
+    why_manual: "That click is where the posted message gets read as it actually landed"
+
+  - id: "compound"
+    phase: "weekly"
+    label: "the knowledge loop"
+    does: "Confirmed hypotheses become standing rules; the corpus renders to a wiki"
+    consumes: ["the registers"]
+
+  - id: "check"
+    phase: "weekly"
+    label: "the shape checks"
+    does: "Lint finds a broken carry-forward chain; sweep finds closure debt. Both catch the failures that announce nothing"
+    consumes: ["the note", "the registers"]
 
 visualisation_features:
   - id: dashboard

@@ -111,7 +111,42 @@ def main():
     for c in comps:
         walk(c['id'], [])
 
-    print(f"components: {len(comps)}  declared vault paths: {len(paths)}")
+    # working_loop: the steps a person takes, which both the README and the
+    # landing page render. Checked here so a step cannot name a vault path
+    # nothing declares, and so a manual step must say why it is manual - the
+    # reason is the whole point of marking it.
+    loop = doc.get('working_loop') or []
+    seen_ids = set()
+    produced = set()
+    for step in loop:
+        for field in ('id', 'phase', 'label', 'does'):
+            if field not in step:
+                problems.append(f"working_loop {step.get('id', '?')}: missing `{field}`")
+        if step.get('id') in seen_ids:
+            problems.append(f"working_loop: duplicate id `{step.get('id')}`")
+        seen_ids.add(step.get('id'))
+        if step.get('manual') and not step.get('why_manual'):
+            problems.append(
+                f"working_loop {step.get('id')}: manual without why_manual - "
+                f"a step marked manual and not explained reads as unfinished")
+        for item in (step.get('produces') or []):
+            produced.add(item)
+        for item in (step.get('consumes') or []) + (step.get('produces') or []):
+            head = looks_like_a_path(item)
+            if head and head not in paths:
+                problems.append(
+                    f"working_loop {step.get('id')}: names `{head}`, which "
+                    f"vault_conventions does not declare")
+    # Anything consumed should be produced by an earlier step or be a path.
+    for step in loop:
+        for item in (step.get('consumes') or []):
+            if item not in produced and not looks_like_a_path(item):
+                problems.append(
+                    f"working_loop {step.get('id')}: consumes `{item}`, which "
+                    f"no step produces and no path declares")
+
+    print(f"components: {len(comps)}  declared vault paths: {len(paths)}  "
+          f"loop steps: {len(loop)}")
     for cid, deps in edges.items():
         if deps:
             print(f"  {cid} -> {', '.join(deps)}")

@@ -7,6 +7,21 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.59.0] - 2026-09-21
+
+### Added
+
+- **`working_loop` — the steps a person takes, declared (CR-062).** Twelve steps in
+  order, grouped by phase, each naming what it consumes and produces. The three manual
+  ones are marked and each says **why** it is manual, because a step marked manual and
+  not explained reads as an unbuilt feature.
+  - **Declared rather than drawn twice.** The README and the landing page both render
+    a diagram of this loop. Two hand-written copies are two things to keep true — which
+    is exactly how the README's release list went seventeen versions stale.
+  - `check-components.py` now validates it: a step cannot name a vault path nothing
+    declares, cannot consume what no step produces, and cannot be marked manual
+    without a reason. Two entries failed on the first run and were fixed.
+
 ## [1.58.0] - 2026-09-21
 
 ### Fixed
