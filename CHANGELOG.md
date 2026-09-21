@@ -7,6 +7,26 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.47.0] - 2026-09-21
+
+### Added
+
+- **`<venture>/.githubmeta/` is declared, with the component that writes it (CR-055).**
+  A repository metadata archive: issues with their state and dates, releases, commit
+  subjects, a docs listing. **Metadata only — never the code**, because a vault holds
+  the record of work rather than the work.
+  - The sibling of `<venture>/.chats/`, and deliberately the same shape: a folder per
+    subject, a manifest saying what the folder is, dated raw data, a dated `.md` for
+    reading. Two archives answering the same kind of question should not need two
+    mental models.
+  - **One difference, stated rather than discovered:** a day's file is a *snapshot*,
+    not a merge. Chat messages are events and accumulate; issue state is a reading
+    taken at a moment, so the later fetch of a day is the truth rather than twice the
+    data.
+  - This is what makes CR-054's `repos:` block readable by something other than a
+    dashboard — the gap that CR-054 itself named: *a documented config key that no
+    tool reads is the same failure as an undocumented habit.*
+
 ## [1.46.0] - 2026-09-21
 
 ### Added

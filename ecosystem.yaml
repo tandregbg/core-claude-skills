@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 17 (CR-055, 2026-09-21): <venture>/.githubmeta/ declared, and a
+#   repo metadata archiver component. The sibling of .chats/: same layout, same
+#   dot-folder reasoning, one difference - a day's file is a snapshot rather than
+#   a merge, because issue state is a reading taken at a moment. Makes CR-054's
+#   repos: block readable by something other than a dashboard.
+#
 # contract_version 16 (CR-054, 2026-09-21): external_systems in the ops config —
 #   a folder declares which chats its work is posted to and which repositories it
 #   concerns. Written because the destination of a staged recap was nowhere
@@ -79,8 +85,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 16
-core_skills_version: "1.46.0"
+contract_version: 17
+core_skills_version: "1.47.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -356,6 +362,15 @@ vault_conventions:
       lifecycle: "updated when a component is added, retired or moves between repositories"
       placement: singleton
       note: "Singleton by the CR-036 test: it describes the system as a whole, so a folder-scoped copy would describe nothing. Holds instance names — repositories, hosts, employers — which is exactly what this contract does not"
+
+    - path: "<venture>/.githubmeta/"
+      purpose: "Repository metadata archive: issues with their state and dates, releases, commit subjects, a docs listing. One folder per repository, a manifest saying what it is, then a dated snapshot plus a rendered .md. Metadata only — never the code"
+      schema: null
+      writers: ["the repo metadata archiver"]
+      readers: ["user", "any session asking what changed in a repository"]
+      lifecycle: "one snapshot per day per repository; a second fetch that day replaces it, because issue state is a reading taken at a moment rather than an event"
+      placement: per_boundary
+      note: "Sibling of <venture>/.chats/ and deliberately the same shape. A dot-folder, so the raw data is skipped by rule rather than by luck"
 
     - path: "_config/"
       purpose: "Vault-wide overrides for skill defaults (optional)"
@@ -636,6 +651,14 @@ components:
     reads: []
     writes: ["_inbox/", "_inbox/.audio/"]
     depends_on: []
+
+  - id: "repo metadata archiver"
+    kind: "local CLI, run on demand"
+    role: "Archives a declared repository's metadata - issues, releases, commit subjects - into the vault, so a meeting can ask what changed since it last met"
+    reads: ["external_systems.repos in a folder's ops config", "a hosting platform's API, through its own CLI"]
+    writes: ["<venture>/.githubmeta/ — the archive"]
+    depends_on: ["the hosting platform's CLI, already authenticated"]
+    note: "Metadata only, never the code: a vault holds the record of work, not the work. Carries no credential of its own - a second auth path for one account is a second thing to rotate"
 
   - id: "inventory scanner"
     kind: "local script, run on demand"

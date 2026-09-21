@@ -30,6 +30,8 @@ Next available CR number: **CR-048**
 
 | CR-054 | `ops-config` schema | Medium | **Implemented v1.46.0.** A folder had no way to declare which chat its work is posted to or which repository it concerns, so a dispatcher guessed from a live listing and a person relied on recognising a name. Declares `external_systems` with `chats:` and `repos:`, resolved by the normal config chain. A declaration and never a credential, hand-written so no tool can append to it. Partially addresses the "systems of record" key proposed in CR-042 |
 
+| CR-055 | vault conventions | Medium | **Implemented v1.47.0.** CR-054 let a folder declare the repositories it concerns, but nothing read them. Declares `<venture>/.githubmeta/` and the component that fills it — the sibling of `.chats/`, same layout, with a day's file a snapshot rather than a merge since issue state is a reading not an event |
+
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
@@ -100,4 +102,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-21 — CR-047 through CR-054 implemented (v1.39.0–v1.46.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-21 — CR-047 through CR-055 implemented (v1.39.0–v1.47.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
