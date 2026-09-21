@@ -231,6 +231,33 @@ Print this skill's usage.
 - **Multiple contacts (ambassador case):** flag as fan-out; ask user for resolution strategy.
 - **Old outbox layout (`260427-name_topic`)** vs new (`260427-topic`): support both for `list`; new naming is for archived destinations.
 
+## Naming convention for staged folders
+
+`YYMMDD-<recipient>_<subject>/` — the underscore splits **who** from **what**.
+
+**The right side names the subject of the send, not the artifact inside it.** A staged item is a
+*folder*: it holds a `_manifest.md` and one or more files, and `_manifest.md` already enumerates them.
+Naming the folder after one of its files is a claim that stops being true the moment a second file
+arrives — an attachment, a deck, a second cut for a different audience.
+
+| Prefer | Not |
+|--------|-----|
+| `260921-team-a_standup` | `260921-team-a_standup-recap` |
+| `260921-team-c_design-review` | `260921-team-c_design-review-recap` |
+| `260916-team-e_topic-with-three-parts` | `260916-team-e_topic-with-three-parts-preread` |
+
+**The exception is when the artifact type *is* the subject** — a board deck sent as a deck, a pre-read
+sent as a pre-read, where the recipient asked for that thing and nothing else is coming. `_deck-v2` and
+`_preread` are legitimate; `_recap` almost never is, because a recap is what the file is, not what the
+send is about.
+
+**The left side names the recipient, not the project.** `team-a_standup`, not
+`team-a-v3_standup` — the project is visible from the content and from `_manifest.md`'s `Projekt:`
+field, while who it goes to is the one thing a folder listing cannot otherwise tell you.
+
+*(Introduced 2026-09-21 after three projects in one vault staged the same artifact under three
+different shapes, and a fourth named its folder after a file it no longer contained.)*
+
 ## Naming convention for archived folders
 
 When archiving into a contact's folder, the contact-name prefix is redundant. Strip it:

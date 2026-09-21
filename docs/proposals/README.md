@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-048**
+Next available CR number: **CR-059**
 
 ---
 
@@ -80,6 +80,9 @@ CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-
 | CR-004 | Skill evolution loop | v1.15.0 | Three-step feedback: capture, compile, improve |
 | CR-003 | `/inbox` skill | v1.13.0 | Universal entry point for unstructured content |
 | CR-001 | (early CRs) | (various) | Tracked in CHANGELOG by mention |
+| CR-056 | `/outbox` naming | Low | **Implemented v1.48.0.** `<context>` in a staged folder name was never defined, so four items in one vault interpreted it four ways in five days. The right side names the subject of the send, not a file inside it; the left names the recipient, not the project |
+| CR-057 | `ops` Step 9 | Medium | **Implemented v1.49.0.** Nothing compared an agenda against what the meeting produced. Adds `carry_forward` and `build_agenda.py`, which counts how many consecutive sessions each unlanded item has carried and escalates at three. Owner comes from a defined position; anything else is UNOWNED, which is the finding |
+| CR-058 | `ops` Step 9 | Medium | **Implemented v1.49.0** (retrieval; the recap amendment is proposed). Reads the chat and repo archives declared in `external_systems` before the agenda — first skill-side consumer of CR-054, first reader of CR-047 and CR-055 together. No credential, no network, no new configuration |
 
 (CR-002 is not used; renumbering kept history intact.)
 

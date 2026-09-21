@@ -7,6 +7,19 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.48.0] - 2026-09-21
+
+### Changed
+
+- **Staged folders name the subject, not the artifact inside them (CR-056).** `/outbox` documented
+  `YYMMDD-<contact-or-project>_<context>/` and never said what `<context>` means. Left undefined, four
+  staged items in one vault interpreted it four ways in five days, and one named its folder after a file
+  it later no longer contained. The right side names the **subject of the send**; a staged item is a
+  folder whose `_manifest.md` already enumerates its contents. The exception is where the artifact type
+  *is* the subject — a deck sent as a deck, a pre-read as a pre-read. The left side names the
+  **recipient**, not the project: the project is recoverable from the content and the manifest, while
+  who it goes to is the one thing a folder listing cannot otherwise tell you.
+
 ## [1.47.0] - 2026-09-21
 
 ### Added

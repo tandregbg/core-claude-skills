@@ -21,3 +21,9 @@ display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Li
 
 # --- structural (non-name) pairs the Name-Name detector also matches ---
 -(Management-Meeting|Weekly-Management|Active-Tasks|Acme-Weekly|Topic-Type|Project-Alpha|Priority-Matrix|Daily-Standup|Sprint-Review|Next-Steps|War-Room|Core-Team|Deleted-File)
+
+# --- invented staged-folder examples (CR-056/057/058, 2026-09-21) ---
+# Placeholder recipients: team-a/b/c/e = series, person-d = a person, group-f = a body.
+# Deliberately not derived from any real folder name.
+26[0-9]{4}-(team-[a-f]|person-[a-f]|group-[a-f])(-v3)?_[a-z0-9-]+
+26[0-9]{4}-team-[a-f](-v3)?-[a-z0-9-]+
