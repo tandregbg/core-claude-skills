@@ -512,6 +512,37 @@ Backup: none (use git to revert if needed)
 
 ---
 
+### `projects` -- which folders are pipelines, and which are just material (CR-065)
+
+**Trigger:** `/ops projects` · `python3 ~/.claude/skills/ops/list_projects.py [--root <vault>]`
+
+**Read-only.** A folder under a projects tree may be a running loop or a pile of transcripts, and from
+the outside they are indistinguishable — same depth, same naming, several with a CHANGELOG and a
+`meetings/` folder. Measured on one vault: **39 project-shaped folders, 4 configured, 3 with the loop
+wired.**
+
+Grouped by how far each is wired, because **the grouping is the answer**:
+
+| Group | Means |
+|---|---|
+| **Loop wired** | `carry_forward` declared — `/ops brief` and `build_agenda.py` work here |
+| **Configured, no loop** | `/ops` processes meetings; agenda and carry-forward do not apply |
+| **Material only** | No config. Notes, transcripts, documents — **not a pipeline, and often correctly so** |
+| **Empty or dormant** | No config, no dated notes, no changelog |
+
+Per row: dated meeting count and **when the record last moved** — read from the changelog where there is
+one, because *a changelog entry is a deliberate act and an mtime is whatever a sync did last*.
+
+**It does not replace a project registry.** A hand-written registry carries **intent** — what a person
+is driving, with status and sponsor — and is authoritative for it. *"What am I driving"* and *"what is
+wired"* are different questions, and answering the first from the second would drop every idea, dormant
+effort and discussion topic that correctly runs nowhere. This command links to the registry rather than
+restating it.
+
+**Pairs with `/ops brief`:** projects is wide and shallow, brief is one project deep.
+
+---
+
 ### `brief` -- where a recurring project stands, before work resumes (CR-061)
 
 **Trigger:** `/ops brief <folder>` · `python3 ~/.claude/skills/ops/project_brief.py --dir <folder>/meetings`

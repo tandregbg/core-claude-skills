@@ -7,6 +7,29 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.66.0] - 2026-09-21
+
+### Added
+
+- **`/ops projects` — which folders are pipelines, and which are just material (CR-065).** A folder
+  under a projects tree may be a running loop or a pile of transcripts, and from the outside they are
+  indistinguishable: same depth, same naming, several with a CHANGELOG and a `meetings/` folder.
+  Measured on one vault: **39 project-shaped folders, 4 carrying a config, 3 with the loop wired.**
+
+  The cost of guessing runs both ways. A session opening a folder with `meetings/` and a CHANGELOG
+  reasonably assumes the loop applies, runs `/ops brief`, and gets a report shaped by defaults that
+  folder never declared — **not wrong so much as meaningless, with nothing in it saying so.** The
+  opposite error is worse: hand-writing an agenda beside a generator that would have produced one.
+
+  Grouped by how far each is wired. **"Material only" is not a defect** and the output says so — a
+  discussion topic that runs nowhere is a legitimate thing for a vault to hold, and without that line
+  the list reads as a backlog of unfinished setup. Last movement comes from the changelog where there
+  is one, because a changelog entry is a deliberate act and an mtime is whatever a sync did last.
+
+  **It does not replace a hand-written project registry**, which carries intent and is authoritative for
+  it. *What am I driving* and *what is wired* are different questions. Pairs with `/ops brief`: wide and
+  shallow against one project deep.
+
 ## [1.65.0] - 2026-09-21
 
 ### Added
