@@ -7,6 +7,21 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.57.0] - 2026-09-21
+
+### Fixed
+
+- **`/ops brief` finds a series' staged items where the series is not a folder (CR-061 follow-up).** The
+  outbox match compared a manifest's project field against the folder the config was found in — which,
+  for an org-level series, is the **venture**, not the series. The block simply never appeared, and an
+  empty block is indistinguishable from nothing staged. New optional `carry_forward.project` names the
+  series as a manifest writes it. On the first run with it set, one series showed **two recaps blocked,
+  one of them for 27 days.**
+
+- **An item staged ahead of its session no longer reports a negative age.** Staging an agenda before the
+  meeting is the normal case; `-1d` reads as a bug rather than as *not yet due*. Future dates render as
+  `in 1d`.
+
 ## [1.56.0] - 2026-09-21
 
 ### Added

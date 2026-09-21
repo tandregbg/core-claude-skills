@@ -63,6 +63,7 @@ def main() -> None:
     md = Path(a.dir).resolve()
     cf = config(md)
     root, today = cf["_root"], datetime.date.today()
+    project_names = {root.name} | ({cf["project"]} if cf.get("project") else set())
     # An org-level series lives in a folder whose config sits further up, so root.name
     # is the venture, not the series. The declared title is the only honest label.
     out = [f"Project brief — {cf.get('title') or root.name}", ""]
@@ -132,13 +133,20 @@ def main() -> None:
         rows = []
         for man in sorted((ven / "_outbox").glob("*/_manifest.md")):
             f = dict(FIELD.findall(man.read_text(encoding="utf-8")))
-            if f.get("Projekt", "").strip() != root.name:
+            # An org-level series resolves its config from a venture folder, so
+            # root.name is the venture, not the series -- the same mismatch that made
+            # the heading wrong. A manifest names the series, so the series must be
+            # declarable rather than inferred from a directory.
+            if f.get("Projekt", "").strip() not in project_names:
                 continue
             st = f.get("Status", "").strip()
             if any(st.lower().startswith(x) for x in SENT):
                 continue
             dm = re.match(r"(\d{6})", man.parent.name)
-            age = f"{days(dm.group(1), today)}d" if dm else "?"
+            # An item staged AHEAD of its session is the normal case for an agenda,
+            # and a negative age reads as a bug rather than as "not yet due".
+            n = days(dm.group(1), today) if dm else None
+            age = "?" if n is None else (f"{n}d" if n >= 0 else f"in {-n}d")
             rows.append(f"    {man.parent.name[:38]:<38} {st[:26]:<26} {age}")
         if rows:
             out += [f"  Staged, not sent ({len(rows)})"] + rows + [""]
