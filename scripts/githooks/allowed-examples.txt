@@ -27,3 +27,6 @@ display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Li
 # Deliberately not derived from any real folder name.
 26[0-9]{4}-(team-[a-f]|person-[a-f]|group-[a-f])(-v3)?_[a-z0-9-]+
 26[0-9]{4}-team-[a-f](-v3)?-[a-z0-9-]+
+# Invented participant names for a filename example where participants vary
+# (CR-057 docs). Deliberately short and unlike any real name in this vault.
+-(Ann-Bo|Bo-Cai|Cai-Dee|Ann-Bo-Cai)

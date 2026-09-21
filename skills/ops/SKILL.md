@@ -988,8 +988,19 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
 5. **The facilitator's close is the control**: read back what carries and whose name is on each. An item
    read back without a name is the one that will be on the agenda again.
 
-Config lives in `workflows.post_processing.carry_forward` -- `note_suffix`, `agenda_suffix`, `title`,
-`time`, `escalate_after`, `round_columns`. The round table is built from the `people` roster, so the
+Config lives in `workflows.post_processing.carry_forward`, resolved by the **normal chain** -- a
+project's `.claude/ops-config.yaml`, then a folder's `_ops.yaml`, nearest first. **A recurring series is
+not always a project:** an org-level meetings folder has no project config, only an `_ops.yaml` further
+up, and looking for the former alone finds nothing and falls back to defaults silently.
+
+**`note_suffix` takes a `*` wildcard**, because real filenames are not uniform -- one series carries a
+week number (`coreteam-weekly-w38`), another carries participants who change
+(`bi-weekly-Ann-Bo-Cai[-Dee]`). An exact match finds neither.
+
+**Companion artifacts are excluded by name** -- agendas, preparations, priorities, facilitator sheets,
+appendices, recaps, staged messages. A greedy wildcard otherwise swallows them: `coreteam-weekly-w*`
+matches the `-appendix` file, `bi-weekly-*` matches the `-preparation`. Treating a preparation as a note
+would read next week's intentions as last week's record. The round table is built from the `people` roster, so the
 mechanism is identical across series and only the labels differ.
 
 #### Dashboard Refresh (if `dashboard_refresh.enabled`)

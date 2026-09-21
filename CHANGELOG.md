@@ -7,6 +7,28 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.54.0] - 2026-09-21
+
+### Fixed
+
+- **Carry-forward config is resolved by the normal chain, and `note_suffix` takes a wildcard.** Both
+  found while enabling the mechanism on two series that are not projects.
+
+  **A recurring series is not always a project.** The lookup checked only a project's
+  `.claude/ops-config.yaml`, so an org-level meetings folder — which has no project config, only an
+  `_ops.yaml` further up — found nothing and fell back to defaults **silently**. It now walks both,
+  nearest first.
+
+  **Real filenames are not uniform.** One series carries a week number (`coreteam-weekly-w38`), another
+  carries participants who change (`bi-weekly-Ann-Bo-Cai[-Dee]`). An exact `note_suffix` finds
+  neither, so it now takes a `*` wildcard.
+
+  **And a wildcard alone is not enough.** It matches greedily: `coreteam-weekly-w*` swallowed that
+  series' `-appendix` file and `bi-weekly-*` swallowed its `-preparation`. Companion artifacts are now
+  excluded by name — agendas, preparations, priorities, facilitator sheets, appendices, recaps, staged
+  messages. **Treating a preparation as a note would read next week's intentions as last week's
+  record**, which is worse than finding nothing.
+
 ## [1.53.0] - 2026-09-21
 
 ### Added

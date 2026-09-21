@@ -18,7 +18,7 @@ Config, from the project's `.claude/ops-config.yaml`:
       post_processing:
         carry_forward:
           enabled: true
-          note_suffix: daily-standup        # YYMMDD-<this>.md
+          note_suffix: daily-standup        # YYMMDD-<this>.md; `*` is a wildcard
           agenda_suffix: agenda-daily-standup
           title: "Webapp v3 — daily standup"
           time: "10:30 CET / 14:00 IST · 40 min"
@@ -39,6 +39,13 @@ except ImportError:
     sys.exit("needs pyyaml -- run with a python that has it")
 
 SECTION = re.compile(r"^## Carried forward\s*$(.*?)(?=^## |\Z)", re.M | re.S)
+# Companion artifacts that sit in the same folder as the note and must never be
+# mistaken for one. A wildcard note_suffix matches greedily -- "coreteam-weekly-w*"
+# otherwise swallows "...-w38-appendix-dashboard-db-modifications", and
+# "bi-weekly-*" swallows "bi-weekly-preparation-...". /ops lint skips the same set.
+COMPANION = ("-agenda", "agenda-", "-preparation", "preparation-", "-förberedelse",
+             "förberedelse-", "-priorities", "priorities-", "-facilitator",
+             "facilitator-", "-appendix", "-recap", "-mejl", "-teams")
 ITEM = re.compile(r"^-\s+\*\*(.+?)\*\*(.*)$", re.M)
 
 
@@ -55,12 +62,20 @@ def external(root: Path) -> dict:
 
 
 def config(meetings: Path) -> dict:
+    """Nearest declaration wins, walking up. A recurring series is not always a
+    project -- an org-level meetings folder has no `.claude/ops-config.yaml`, only a
+    folder `_ops.yaml` further up, and looking for the former alone silently found
+    nothing and fell back to defaults."""
     for root in (meetings, *meetings.parents):
-        p = root / ".claude" / "ops-config.yaml"
-        if p.exists():
+        for name in (Path(".claude") / "ops-config.yaml", Path("_ops.yaml")):
+            p = root / name
+            if not p.exists():
+                continue
             d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-            src = d.get("external_systems") or {}
             cf = (d.get("workflows", {}).get("post_processing", {}) or {}).get("carry_forward", {}) or {}
+            if not cf:
+                continue
+            src = d.get("external_systems") or {}
             cf.setdefault("note_suffix", "daily-standup")
             cf.setdefault("agenda_suffix", "agenda-" + cf["note_suffix"])
             cf.setdefault("escalate_after", 3)
@@ -276,8 +291,12 @@ def main() -> None:
 
     md = Path(a.dir).resolve()
     cf = config(md)
-    pat = re.compile(rf"^(\d{{6}})-{re.escape(cf['note_suffix'])}\.md$")
-    hist = sorted((m.group(1), p) for p in md.glob("*.md") if (m := pat.match(p.name)))
+    # `*` in note_suffix becomes a wildcard. Real series are not uniform:
+    # "coreteam-weekly-w38" carries a week number, "bi-weekly-Ann-Bo-Cai[-Dee]"
+    # carries participants that change. An exact match finds none of them.
+    pat = re.compile("^(\\d{6})-" + ".+".join(re.escape(x) for x in cf["note_suffix"].split("*")) + r"\.md$")
+    hist = sorted((m.group(1), p) for p in md.glob("*.md")
+                  if (m := pat.match(p.name)) and not any(c in p.name for c in COMPANION))
     if not hist:
         sys.exit(f"no YYMMDD-{cf['note_suffix']}.md in {md}")
 
