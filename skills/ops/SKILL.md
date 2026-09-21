@@ -986,6 +986,21 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    **Where nothing carried, say so in the section.** An omitted section is indistinguishable from a note
    nobody finished.
 
+   **The section is cumulative: it lists everything still open at the end of that session, not only what
+   that session produced.** The name means what it says — an item carries until it closes. This matters
+   because the next agenda reads **the newest note only**: a short extra session that listed only its own
+   two items would silently drop everything still open from the week before. Writing the section is
+   therefore a review of the standing list, not a summary of the last hour.
+
+   *(This is the one place the loop's rules pull in different directions. The recap is bounded to its
+   session — §2b of the recap standard — because it reports what happened. The carry-forward section is
+   cumulative because it reports what remains. Same series, opposite rule, and conflating them produces
+   either a recap that invents history or a chain that loses items.)*
+
+   **`note_suffix` may be a list** where a series has more than one filename shape — a weekly plus its
+   extra sessions, or a series renamed mid-history. Matching only the main shape silently drops the rest,
+   and **an extra session is where the most urgent items tend to live**.
+
    ```
    - **<item>** — <note> · **<owner>**
    - **<Name>:** <what they owe>

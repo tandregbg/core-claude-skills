@@ -7,6 +7,32 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.56.0] - 2026-09-21
+
+### Added
+
+- **`note_suffix` may be a list, and takes a wildcard per entry.** A series can legitimately carry more
+  than one filename shape — a weekly plus its extra sessions, or a series renamed mid-history. Matching
+  only the main shape silently drops the rest, and **an extra session is where the most urgent items tend
+  to live**: one twelve-minute extra had six actions, three of them due into the next session, and none
+  was visible to the chain.
+
+### Changed
+
+- **The carry-forward section is cumulative, and that is now stated.** It lists everything still open at
+  the end of a session, not only what that session produced. The name means what it says — an item
+  carries until it closes.
+
+  It matters because the next agenda reads **the newest note only**. Widening the pattern to include
+  extra sessions made a short extra the newest note, so a section listing only its own two items would
+  have **silently dropped everything still open from the week before**. Writing the section is a review
+  of the standing list, not a summary of the last hour.
+
+  **This is the one place the loop's rules pull in opposite directions**, and conflating them breaks
+  something either way: the recap is bounded to its own session because it reports what *happened*; the
+  carry-forward section is cumulative because it reports what *remains*. A cumulative recap invents
+  history; a bounded carry-forward loses items.
+
 ## [1.55.0] - 2026-09-21
 
 ### Added

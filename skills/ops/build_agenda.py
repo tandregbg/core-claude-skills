@@ -95,6 +95,19 @@ def config(meetings: Path) -> dict:
             "_root": meetings.parent}
 
 
+def note_pattern(suffix) -> re.Pattern:
+    """`note_suffix` is a string or a list of them, each allowing a `*` wildcard.
+
+    A list because a series can legitimately carry more than one filename shape --
+    a weekly plus its extra sessions, or a series renamed mid-history. Matching only
+    the main shape silently drops the others, and an extra session is where the most
+    urgent items tend to live.
+    """
+    pats = [suffix] if isinstance(suffix, str) else list(suffix)
+    alt = "|".join(".+".join(re.escape(x) for x in p.split("*")) for p in pats)
+    return re.compile(rf"^(\d{{6}})-(?:{alt})\.md$")
+
+
 def owner_of(label: str, rest: str) -> str:
     """Owner comes from a defined position, never from guessing at prose.
 
@@ -294,7 +307,7 @@ def main() -> None:
     # `*` in note_suffix becomes a wildcard. Real series are not uniform:
     # "coreteam-weekly-w38" carries a week number, "bi-weekly-Ann-Bo-Cai[-Dee]"
     # carries participants that change. An exact match finds none of them.
-    pat = re.compile("^(\\d{6})-" + ".+".join(re.escape(x) for x in cf["note_suffix"].split("*")) + r"\.md$")
+    pat = note_pattern(cf["note_suffix"])
     hist = sorted((m.group(1), p) for p in md.glob("*.md")
                   if (m := pat.match(p.name)) and not any(c in p.name for c in COMPANION))
     if not hist:

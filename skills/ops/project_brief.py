@@ -38,9 +38,22 @@ def venture(start: Path, sub: str) -> Path | None:
 
 
 def notes(md: Path, cf: dict) -> list[tuple[str, Path]]:
-    pat = re.compile("^(\\d{6})-" + ".+".join(re.escape(x) for x in cf["note_suffix"].split("*")) + r"\.md$")
+    pat = note_pattern(cf["note_suffix"])
     return sorted((m.group(1), p) for p in md.glob("*.md")
                   if (m := pat.match(p.name)) and not any(c in p.name for c in COMPANION))
+
+
+def note_pattern(suffix) -> re.Pattern:
+    """`note_suffix` is a string or a list of them, each allowing a `*` wildcard.
+
+    A list because a series can legitimately carry more than one filename shape --
+    a weekly plus its extra sessions, or a series renamed mid-history. Matching only
+    the main shape silently drops the others, and an extra session is where the most
+    urgent items tend to live.
+    """
+    pats = [suffix] if isinstance(suffix, str) else list(suffix)
+    alt = "|".join(".+".join(re.escape(x) for x in p.split("*")) for p in pats)
+    return re.compile(rf"^(\d{{6}})-(?:{alt})\.md$")
 
 
 def main() -> None:
