@@ -7,6 +7,39 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.39.0] - 2026-09-21
+
+### Added
+
+- **`outbound_dispatch` declares how staged material actually leaves the vault (CR-047).**
+  `_outbox/` has always been where outgoing work is staged, but nothing in the contract said
+  what delivers it. External tools now read and write vault paths without appearing anywhere a
+  client could discover them. The block names the dispatching tools, the channels they use, and
+  what each is permitted to write -- one field of one file, in the dispatcher's case.
+- **`<venture>/.chats/` is declared.** A chat archive written by an external CLI: raw provider
+  message objects plus a rendered `.md` per day. A dot-folder so the vault's own tooling ignores
+  the raw data. Its placement is PER_BOUNDARY -- it belongs to the venture whose account the
+  chats came from, never to `_private/`, because the axis is whose material it is rather than
+  how sensitive it is.
+
+### Changed
+
+- **`_outbox/` declaration brought up to date.** It described PDFs awaiting send and named
+  `mail.app` as a reader. It now states the real contract: one folder per send event, each with
+  a `_manifest.md` carrying Status, Kanal, Kontakt and Kanonisk källa, which is what any
+  dispatcher reads.
+- **contract_version 9.** Additive; clients on 8 ignore the new block.
+
+### Known gaps
+
+- **An item decided against can never be archived.** `/outbox archive` requires a sent status,
+  so anything marked superseded, replaced or withdrawn stays in `_outbox` indefinitely -- it was
+  resolved, just not by being sent. Recorded in `outbound_dispatch.known_gaps` with a proposal:
+  treat a stop-marked manifest as archivable when `## Utfall` states why, since Utfall is
+  already the outcome field and "not sent, because X" is an outcome. Owner is the `/outbox`
+  skill -- a dispatcher inventing a status the skill does not recognise would be worse than the
+  gap.
+
 ## [1.38.1] - 2026-09-20
 
 ### Fixed

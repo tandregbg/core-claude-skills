@@ -12,6 +12,11 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 9 (CR-047, 2026-09-21): outbound_dispatch block — declares the
+#   tools that deliver staged material, the channels they use, and what each
+#   may write. Also declares <venture>/.chats/
+#   and brings the _outbox/ declaration up to date with the manifest contract.
+#   Additive: clients on 8 ignore it.
 # contract_version 8 (CR-046, 2026-09-20): `metric` added to insight_types.content --
 #   a measurement where the number IS the insight, with optional value/unit/baseline/
 #   period/trend fields. Excluded from CR-013 promotion: a repeated measurement is a
@@ -29,8 +34,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 8
-core_skills_version: "1.38.1"
+contract_version: 9
+core_skills_version: "1.39.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -247,11 +252,18 @@ vault_conventions:
       lifecycle: "allowed to die; /ops sweep flags content >14 days; never referenced from vault content (CR-024)"
 
     - path: "_outbox/"
-      purpose: "Delivery: PDFs and packages ready to send"
+      purpose: "Staging for outgoing material (CR-047). One folder per send event, or a loose .md for a single message. Each folder carries a _manifest.md declaring Status, Kanal, Kontakt and Kanonisk källa — that manifest is the contract any dispatcher reads"
       schema: null  # filesystem layout, not YAML
-      writers: ["/md2pdf", "user (manual)"]
-      readers: ["vaultpulse/trillian", "mail.app", "user"]
-      lifecycle: "user-managed; nothing auto-deletes"
+      writers: ["/ops", "/md2pdf", "user (manual)"]
+      readers: ["/outbox", "outbox-dispatcher", "vaultpulse/trillian", "mail.app", "user"]
+      lifecycle: "staged -> sent -> archived by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `archive --all-sent` — see outbound_dispatch.known_gaps"
+
+    - path: "<venture>/.chats/"
+      purpose: "Chat archive from an external messaging platform (CR-047). Raw provider message objects, one JSON file per chat per day, plus a rendered .md per day and a _chat.json naming the meeting topic. A dot-folder so Obsidian ignores the raw data; the derived notes belong in the normal tree"
+      schema: null  # Graph chatMessage objects, stored verbatim
+      writers: ["the chat-archive tool"]
+      readers: ["user", "any tool reading the rendered .md"]
+      lifecycle: "append-only; re-fetching an overlapping range de-duplicates by message id. Placement is PER_BOUNDARY — it belongs to the venture whose tenant the chats came from, never to _private/"
 
     - path: "_config/"
       purpose: "Vault-wide overrides for skill defaults (optional)"
@@ -421,6 +433,45 @@ vault_conventions:
       rule: "Audio in _inbox/.audio/<basename>.m4a and the matching transcript at _inbox/<basename>.md are paired by basename. Tools that rename one must rename the other. Detailed in CR-012."
 
 # --- Visualisation app features ---
+# --- Outbound dispatch (CR-047) ---
+# How staged material actually leaves the vault. The skills author it; separate
+# tools deliver it. Declared here so a reader knows these tools exist and what
+# they are permitted to touch.
+outbound_dispatch:
+  contract: "_outbox/<item>/_manifest.md — see vault_conventions for the path declaration"
+
+  tools:
+    - name: "outbox-dispatcher"
+      kind: "external tool, outside this repo"
+      role: "Reads staged material, previews exactly what will be sent, delivers it through a channel"
+      reads: ["_outbox/"]
+      writes: ["_outbox/<item>/_manifest.md — Status, Kanal and Kontakt only"]
+      never: "Authors a manifest, decides what a status means, or archives. Archiving is /outbox's: eight steps across several files with judgement calls"
+
+    - name: "chat-archive/send CLI"
+      kind: "external tool, outside this repo"
+      role: "Messaging-platform client: delegated auth, chat messages, Markdown to the platform's markup"
+      reads: ["chats the signed-in user belongs to"]
+      writes: ["<venture>/.chats/ — the archive", "chat messages"]
+      never: "Knows nothing about vaults or manifests; the dispatcher calls it"
+
+  channels:
+    - name: "teams"
+      via: "the chat CLI, delegated as the signed-in user"
+      scopes: "delegated chat read/send plus own-profile; no application-only access"
+      status: "in use"
+    - name: "email"
+      via: "the local mail client, composing a draft — never sending. Where the client cannot be driven (a background supervisor), writes a .eml the user opens"
+      scopes: []
+      status: "in use; a draft always requires a human to press send"
+
+  known_gaps:
+    - id: "archive-of-unsent-items"
+      what: "/outbox archive requires a sent status, so an item decided against — marked as superseded, replaced or withdrawn — can never be archived and stays in _outbox indefinitely"
+      seen: "a steady residue of stop-marked items that nothing files"
+      proposal: "Treat a stop-marked manifest as archivable when ## Utfall states why. Utfall is already the outcome field, and 'not sent, because X' is an outcome"
+      owner: "/outbox skill — the dispatcher must not invent a status the skill does not recognise"
+
 visualisation_features:
   - id: dashboard
     label: Dashboard
