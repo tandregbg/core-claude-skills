@@ -142,6 +142,19 @@ echo ""
 echo "Skill count in ecosystem.yaml: $SKILL_COUNT"
 echo "Skill rows in README table: $README_SKILLS"
 
+# The components graph and vault_conventions can disagree without any version
+# number changing, which is how two undeclared paths survived until the graph
+# was first written. Checked here so it runs with everything else.
+echo ""
+if python3 "$(dirname "$0")/check-components.py" >/dev/null 2>&1; then
+    echo "[OK] components graph consistent with vault_conventions"
+    ALIGNED=$((ALIGNED+1))
+else
+    echo "[DRIFT] components graph:"
+    python3 "$(dirname "$0")/check-components.py" 2>&1 | grep '^\[FAIL\]' | sed 's/^/        /'
+    DRIFTED=$((DRIFTED+1))
+fi
+
 echo ""
 echo "=== Result: $ALIGNED aligned, $DRIFTED drifted ==="
 if [ "$DRIFTED" -gt 0 ]; then

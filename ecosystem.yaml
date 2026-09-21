@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 12 (CR-050, 2026-09-21): components block — declares how the
+#   parts touch EACH OTHER, where vault_conventions declares how they touch files.
+#   Written because "where is the full picture documented" had no single answer:
+#   it was spread across five places, none machine readable. Writing it found two
+#   vault files nothing had declared. scripts/check-components.py keeps the two
+#   blocks honest; it runs from the alignment check.
+#
 # contract_version 11 (CR-049, 2026-09-21): identifier_language rule — identifiers
 #   are English, the words a person reads are data. Written after a dispatcher was
 #   found hardcoding the vault's Swedish status words and a sync tool using Swedish
@@ -45,8 +52,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 11
-core_skills_version: "1.41.0"
+contract_version: 12
+core_skills_version: "1.42.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -215,6 +222,13 @@ vault_conventions:
       readers: ["/ops", "marvin", "external sync (todoist-task-pipeline)"]
       lifecycle: "append; status pending -> completed (see task_statuses); completed items archived to .archive/"
 
+    - path: "_inbox/_inbox.yaml"
+      purpose: "The inbox register: one entry per captured item, with its classification, routing and status. The markdown files in _inbox/ are the material; this is the index over them"
+      schema: "inbox v2 — see docs/schemas/inbox.md"
+      writers: ["/inbox", "a dashboard (capture and classification)"]
+      readers: ["/inbox", "/analytics", "a dashboard"]
+      lifecycle: "append on capture; status pending -> processed; processed entries archived with their files"
+
     - path: "_inbox/_capture.md"
       purpose: "Free-form write path for tasks (CR-035). One line each; import moves them into _tasks.yaml and empties this file. Syntax: @tag or [Tag] -> context, !P0..!P3 -> priority, clock+YYMMDD -> due"
       schema: null
@@ -284,6 +298,13 @@ vault_conventions:
       writers: ["/ops", "/md2pdf", "user (manual)"]
       readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "vaultpulse/trillian", "the local mail client", "user"]
       lifecycle: "staged -> sent -> archived by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `archive --all-sent` — see outbound_dispatch.known_gaps"
+
+    - path: "_outbox/<item>/_manifest.md"
+      purpose: "The per-item contract every dispatcher reads: Status, Kanal, Kontakt, Kanonisk källa. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
+      schema: "see the /outbox skill, which owns the vocabulary"
+      writers: ["/outbox and /ops (author it)", "a dispatching surface (Status, Kanal, Kontakt only)"]
+      readers: ["/outbox", "a dispatching surface", "user"]
+      lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder"
 
     - path: "<venture>/.chats/"
       purpose: "Chat archive from an external messaging platform (CR-047). Raw provider message objects, one JSON file per chat per day, plus a rendered .md per day and a _chat.json naming the meeting topic. A dot-folder so Obsidian ignores the raw data; the derived notes belong in the normal tree"
@@ -503,6 +524,83 @@ outbound_dispatch:
       seen: "a steady residue of stop-marked items that nothing files"
       proposal: "Treat a stop-marked manifest as archivable when ## Utfall states why. Utfall is already the outcome field, and 'not sent, because X' is an outcome"
       owner: "/outbox skill — the dispatcher must not invent a status the skill does not recognise"
+
+# --- Components and how they connect (CR-050) ---
+#
+# vault_conventions declares how each part touches FILES. This declares how the
+# parts touch EACH OTHER: what imports what, what calls out to a third-party
+# service, and which direction each dependency runs.
+#
+# Written after three writers/readers rows went stale within hours of being
+# true, and after a question that had no single answer: "where is the full
+# picture documented?" It was spread across five places, none of them machine
+# readable.
+#
+# Kinds are ROLES, not product names. This file is public and describes a
+# framework, so a component is "a dashboard", not an instance. An installation
+# maps its own tools onto these roles; the private map of which repo plays
+# which role belongs beside that installation, not here.
+components:
+  - id: "skills"
+    kind: "instruction sets loaded into a session"
+    role: "The framework itself. Read and write vault files; hold what each file MEANS"
+    reads: ["the vault, per vault_conventions"]
+    writes: ["the vault, per vault_conventions"]
+    depends_on: []
+    note: "A skill cannot start a session — it is loaded INTO one. Anything that must start something is a tool, not a skill"
+
+  - id: "dashboard"
+    kind: "local web application"
+    role: "Reads the vault and serves it: tasks, insights, activity, and the outbox where staged material is dispatched"
+    reads: ["the vault broadly"]
+    writes:
+      - "_inbox/_tasks.yaml — appends a captured task, marks one finished"
+      - "_inbox/_inbox.yaml — capture items"
+      - "_outbox/<item>/_manifest.md — Status, Kanal, Kontakt only"
+      - "<folder>/_summary.yaml — its own derived cache"
+    depends_on: ["messaging client (as a library, for the chat channel)"]
+    binds: "localhost only — it can send as the user"
+    note: "Not read-only, and has not been since it gained the outbox. What it may write is deliberately narrower than what it may read"
+
+  - id: "messaging client"
+    kind: "library plus CLI"
+    role: "Talks to a chat platform: delegated auth, read and send messages, Markdown to the platform's markup"
+    reads: ["chats the signed-in user belongs to"]
+    writes: ["<venture>/.chats/ — the archive", "chat messages"]
+    depends_on: ["an auth library", "an HTTP library"]
+    note: "Knows nothing about vaults or manifests. A dependency of vault-aware code, not an instance of it — which is why it is its own component rather than part of the dashboard"
+
+  - id: "task pipeline"
+    kind: "local scripts, run on demand"
+    role: "Keeps an external task service in step with the vault's task ledger"
+    reads: ["_inbox/_tasks.yaml", "_inbox/_capture.md", "_inbox/_frame.md"]
+    writes: ["_inbox/_tasks.yaml", "the generated triage view", "the external service"]
+    depends_on: ["an external task service (one script only)"]
+    note: "The vault is the source of truth; the external service is a mirror. Only one of its scripts reaches the service at all — the rest never leave the vault"
+
+  - id: "capture app"
+    kind: "companion application"
+    role: "Drops captured material into the vault from outside a session"
+    reads: []
+    writes: ["_inbox/", "_inbox/.audio/"]
+    depends_on: []
+
+  - id: "landing page"
+    kind: "public website"
+    role: "Explains the framework and how to install it"
+    reads: ["this file, fetched from the public repo"]
+    writes: []
+    depends_on: ["this contract"]
+    note: "A CONSUMER of the contract, never a source of it. The dependency runs contract -> site; inverting it would make the framework depend on a website"
+
+# How to read the graph above:
+#   - `depends_on` is a build/runtime dependency: A cannot work without B.
+#   - Two components that only share a vault file are NOT dependent. They are
+#     coupled through the file, and vault_conventions is where that is declared.
+#     This is the point of the split: a file is a contract between components,
+#     so they need not know about each other.
+#   - A cycle in depends_on is a defect. The landing page depending on the
+#     contract while the contract knows nothing of the landing page is correct.
 
 visualisation_features:
   - id: dashboard

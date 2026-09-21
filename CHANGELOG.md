@@ -7,6 +7,28 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.42.0] - 2026-09-21
+
+### Added
+
+- **`components:` — how the parts connect (CR-050).** `vault_conventions` declares how
+  each part touches *files*. This declares how the parts touch *each other*: what
+  imports what, what calls a third-party service, and which direction each dependency
+  runs. Six components, as roles rather than product names, so an installation maps its
+  own tools onto them.
+  - **Writing it found two undeclared vault files.** `_inbox/_inbox.yaml` — a real
+    register with a v2 schema, written by two skills and a dashboard — was in no
+    declaration at all, and `_outbox/<item>/_manifest.md` was covered only by its
+    parent folder although two different parties write it. Both are declared now.
+  - `scripts/check-components.py` verifies every path a component claims against
+    `vault_conventions`, checks `depends_on` for cycles, and requires the fields a
+    reader relies on. It runs from the alignment check, so the two blocks cannot drift
+    apart silently — which is exactly how those two paths stayed undeclared.
+  - The rule the graph encodes: **two components that only share a vault file are not
+    dependent on each other.** The file is the contract between them. That is why a
+    dashboard and a task pipeline can both write the task ledger without knowing the
+    other exists.
+
 ## [1.41.0] - 2026-09-21
 
 ### Added
