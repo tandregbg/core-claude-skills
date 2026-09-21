@@ -554,6 +554,84 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
 
 ---
 
+## THE DAILY LOOP, END TO END
+
+What actually runs, in order, for a recurring series. **Three of these steps are not `/ops`**, and two
+are deliberately not automated at all — those are the interesting ones.
+
+### Before the meeting
+
+**1. Refresh the archives — external CLIs, not skills.**
+
+```
+<the chat archiver>     ->  <venture>/.chats/        (CR-047)
+<the repo archiver>     ->  <venture>/.githubmeta/   (CR-055)
+```
+
+Both are local CLIs run on demand, each authenticated in its own right. **No skill fetches.** A skill
+reads what an archiver wrote, which is why an agenda can be generated with no credential and no
+connectivity — see Step 9, Pre-Meeting Retrieval.
+
+**2. Generate the agenda.**
+
+```
+python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
+```
+
+Reads the previous note's `## Carried forward`, counts consecutive sessions per item, and pulls the
+*Since the last standup* block from both archives. Refuses to overwrite an existing agenda.
+
+**3. Write the facilitator sheet by hand. This is not generated, and should not be.**
+
+The agenda carries facts; the sheet turns them into questions, and which question to ask is judgement.
+The sheet also holds person-axis material — who to draw out, what is likely to be avoided — which is
+precisely what must never be staged anywhere it could be sent.
+
+### After the meeting, the same day
+
+**4. Choose the transcript source. List, then let a human pick.**
+
+Two recordings of one meeting is the normal case, not the exception — one per capturing tool, differing
+in length and speaker resolution. Present `document_id`, title, duration and transcript variant with a
+recommendation; **do not choose.** Record the chosen id in the note, so the record says which recording
+it came from.
+
+**5. `/ops` — one pass produces the note, the registers and one CHANGELOG line.**
+
+Step 9 then runs post-processing as configured. **The note ends with `## Carried forward`** — that
+section is what tomorrow's agenda is built from, so a note without it silently ends the chain.
+
+**6. The recap is offered, not written.** Say what it would carry and wait to be asked. It is the one
+artifact that leaves the building; assembled automatically from the narrowest of the three inputs it is
+confidently incomplete, and invisibly so to readers who have no transcript to check it against.
+
+**7. `/outbox` — stage it, and let the manifest carry the send record.**
+
+```
+_outbox/YYMMDD-<recipient>_<subject>/     _manifest.md + the recap
+```
+
+**The `Status` field is the only record that a recap was actually posted.** A human sends it and marks
+it sent; nothing writes that unprompted, because the click is where the posted message gets read.
+
+### What each step must not do
+
+| Step | Must not |
+|---|---|
+| Retrieval | Fetch. It reads archives; refreshing them is the archivers' job |
+| Agenda | Be hand-edited, or overwrite an existing one |
+| Facilitator sheet | Be generated, or be staged in `_outbox/` |
+| Transcript | Be chosen by the machine when duplicates exist |
+| Recap | Be written unasked, or keep a second copy outside `_outbox/` |
+| Manifest status | Be advanced by a tool |
+
+### Where it is still manual
+
+**The recap has no mechanism yet.** `recap_artifact` is proposed, not implemented, so every recap is
+assembled by hand against `ops/_standards/post-meeting-recap.md`. **Steps 3, 4 and 6 are manual by
+design; step 6 is manual by accident as well**, and the difference matters when deciding what to build
+next.
+
 ## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT
 
 - **`/ops prepare`**: Use **before** a team meeting to create a structured preparation with status tracking. Pulls context from recent meetings and tasks. Optionally incorporates pre-submitted async updates from team members. Outputs one file (`preparation`/`förberedelse`) by default, or two files (`facilitator` + `agenda`) when the meeting type is configured `preparation_mode: dual`.
