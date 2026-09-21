@@ -7,6 +7,33 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.55.0] - 2026-09-21
+
+### Added
+
+- **`/ops brief` — where a recurring project stands, before work resumes (CR-061).** A session opening a
+  project cold had no way to ask. `/ops status` reports which *config* applies; `/ops sweep` audits a
+  whole vault; `/bod` does exactly this job but for a **software** project — app log, running version,
+  health check — none of which a coordination project has. So orientation meant opening the changelog,
+  the newest note and the open questions and inferring the rest: four files, performed identically every
+  session, with whatever nobody wrote down simply lost.
+
+  Six read-only blocks: loop position (including **whether the next agenda exists yet** — the common
+  failure is not a missing note but a missing agenda), chain integrity, what is carrying with sessions
+  and age and how many are `UNOWNED`, archive freshness, **staged-and-unsent**, and the changelog's last
+  entry. It writes nothing, fetches nothing and judges nothing.
+
+  Everything it reads was already machine-readable. **The gap was that nothing read it together** — the
+  same session that wrote this had earlier worked an hour from a stale checkout because no step asked,
+  and found a recap written on a Friday and never sent because a file in a meetings folder carries no
+  status.
+
+### Fixed
+
+- **A series whose config lives further up now labels itself correctly.** An org-level meetings folder
+  resolves its config from a venture `_ops.yaml`, so the folder name was the venture, not the series.
+  The declared `title` is used where there is one.
+
 ## [1.54.0] - 2026-09-21
 
 ### Fixed

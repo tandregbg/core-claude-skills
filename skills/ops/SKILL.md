@@ -495,6 +495,39 @@ Backup: none (use git to revert if needed)
 
 ---
 
+### `brief` -- where a recurring project stands, before work resumes (CR-061)
+
+**Trigger:** `/ops brief <folder>` · `python3 ~/.claude/skills/ops/project_brief.py --dir <folder>/meetings`
+
+**Read-only. Writes nothing, fetches nothing, judges nothing.**
+
+`/ops status` reports which *config* applies. `/ops sweep` audits closure debt across a vault. This
+reports one folder's **current state** — the question a session asks when it opens a project cold and
+would otherwise rebuild the answer from four files, losing whatever nobody wrote down.
+
+Six blocks, each reading files that already exist:
+
+1. **Loop position** — newest note, next session, **whether that agenda exists yet.** The common failure
+   is not a missing note but a missing next agenda, and nothing else surfaces it.
+2. **Chain integrity** — whether the newest note ends with `## Carried forward`. The one failure in the
+   loop that announces nothing: without it the next agenda carries zero items and looks correct.
+3. **What is carrying** — each item with sessions, age and owner. `UNOWNED` is counted and named,
+   because an item nobody is named against is the one that falls through an agenda that lists it.
+4. **Archive freshness** — newest snapshot per declared chat and repository. **A stale archive is worse
+   than none:** retrieval still produces a block and it reads as current.
+5. **Staged, not sent** — `_outbox/` folders naming this project whose status is not sent, with age. A
+   file in a meetings folder carries no status; this is the only place an unsent item shows.
+6. **Record movement** — the changelog's most recent entry. *When did anyone last write this project
+   down*, not *when was a file touched*.
+
+**It is `/bod` for a coordination project**, and the parallel is deliberate: both read state before work
+begins and neither writes. The expensive mistake is not doing the wrong work — it is doing the right
+work against a picture that was true yesterday.
+
+A folder with no `post_processing` block still gets blocks 1, 5 and 6.
+
+---
+
 ### `lint` -- Check existing files against template contracts (CR-018)
 
 **Trigger:** `/ops lint <folder>`
@@ -601,6 +634,10 @@ What actually runs, in order, for a recurring series. **Three of these steps are
 are deliberately not automated at all — those are the interesting ones.
 
 ### Before the meeting
+
+**0. `/ops brief` — where did this leave off?** One read-only pass: loop position, whether the next
+agenda exists, chain integrity, what is carrying and what is unowned, how stale the archives are, what
+is staged and unsent. Run it when picking a project up cold, before deciding what the session is for.
 
 **1. Refresh the archives — external CLIs, not skills.**
 
