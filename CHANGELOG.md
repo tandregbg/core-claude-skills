@@ -7,6 +7,29 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.51.0] - 2026-09-21
+
+### Fixed
+
+- **A reappearing carry-forward item keeps its count (CR-057 follow-up).** The session counter counted
+  *consecutive* appearances and broke on the first absence, so an item carried on the 16th, dropped from
+  the 19th and carried again on the 21st read as brand new and its escalation clock restarted. **A
+  genuinely stuck item could hide indefinitely by skipping every third session** — which is the exact
+  outcome the escalation exists to prevent.
+
+  It now counts appearances. Two rules make that safe: a note with **no carry-forward section is
+  skipped rather than counted as an absence** — that note says nothing about any item, and reading its
+  silence as *resolved* is the same mistake in a different place — and an item missing for more than two
+  sessions is treated as a fresh raise, because *carried in March, back in September* is a new problem
+  wearing an old name.
+
+  **Gaps are reported rather than hidden** (`3 · skipped 1`). A gap has two readings that are identical
+  from here — a note that dropped the item by mistake, or one resolved and later re-raised — so the
+  count stands and the ambiguity is shown to the person who can resolve it.
+
+  Measured on a real series: two items that both read as **1** under the old logic are **4** and
+  **3 · skipped 1**, and both now trip the escalation.
+
 ## [1.50.0] - 2026-09-21
 
 ### Added

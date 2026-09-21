@@ -548,10 +548,20 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
    recording; an *omitted* section is indistinguishable from a day nobody wrote up. Only the omission
    breaks the chain.
 
-   Also flag any item that **reappears after being absent** — carried on 16th and 21st but not the 19th
-   is either a note that dropped it by mistake or an item someone re-raised, and the two look identical
-   downstream. The session counter reads it as a fresh item and the escalation clock restarts, so a
-   genuinely stuck item can hide indefinitely by skipping every third session.
+   **A reappearing item keeps its count.** The counter counts *appearances*, not consecutive ones — an
+   item carried on the 16th, dropped from the 19th and carried again on the 21st is on its third
+   session, not its first. An earlier version broke on the first absence, which let a genuinely stuck
+   item hide indefinitely by skipping every third session.
+
+   Two rules make that safe. **A note with no carry-forward section is skipped, not counted as an
+   absence** — that note says nothing about any item, and reading its silence as *resolved* is the same
+   mistake in a different place. And an item missing for more than `MAX_GAP` sessions (default 2) is
+   treated as a **fresh raise**, because *carried in March, back in September* is a new problem wearing
+   an old name.
+
+   **Gaps are reported, not hidden** — `3 · skipped 1`. A gap has two readings that look identical from
+   here: a note that dropped the item by mistake, or an item resolved and later re-raised. Only a person
+   can tell them apart, so the count stands and the ambiguity is shown.
 
 ---
 

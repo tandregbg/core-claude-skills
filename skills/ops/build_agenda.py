@@ -109,14 +109,42 @@ def carried(path: Path) -> list[tuple[str, str]]:
     return [(a.strip(), b.strip(" —-:·")) for a, b in ITEM.findall(m.group(1))] if m else []
 
 
-def streak(k: str, history: list[Path]) -> int:
-    n = 0
-    for p in reversed(history):
+# How many sessions an item may be missing from and still be the same item. Beyond
+# this it is treated as a fresh raise, because "carried in March, back in September"
+# is a new problem wearing an old name.
+MAX_GAP = 2
+
+
+def streak(k: str, history: list[tuple[str, Path]]) -> tuple[int, int]:
+    """How many sessions an item has survived, and how many it skipped.
+
+    Counts APPEARANCES, not consecutive ones. An earlier version broke on the first
+    absence, so an item carried on the 16th, dropped from the 19th and carried again
+    on the 21st read as brand new and its escalation clock restarted -- letting a
+    genuinely stuck item hide indefinitely by skipping every third session.
+
+    A note with no carry-forward section is skipped entirely rather than counted as
+    an absence: that note says nothing about any item, and treating its silence as
+    "resolved" is the same mistake in a different place.
+
+    Returns (sessions, gaps). Gaps are reported rather than hidden, because a gap has
+    two readings that look identical from here -- a note that dropped the item by
+    mistake, or an item someone resolved and later re-raised -- and only a person can
+    tell them apart.
+    """
+    seen = gaps = missing = 0
+    for _, p in reversed(history):
+        if not has_section(p):
+            continue
         if any(key(l) == k for l, _ in carried(p)):
-            n += 1
+            seen += 1
+            gaps += missing
+            missing = 0
         else:
-            break
-    return n
+            missing += 1
+            if missing > MAX_GAP:
+                break
+    return seen, gaps
 
 
 # --- retrieval -------------------------------------------------------------
@@ -229,9 +257,7 @@ def main() -> None:
     last_date, last = hist[-1]
     target = a.date or next_weekday(last_date)
     day = datetime.datetime.strptime(target, "%y%m%d").date()
-    paths = [p for _, p in hist]
-
-    items = sorted(((l, r, streak(key(l), paths)) for l, r in carried(last)), key=lambda t: -t[2])
+    items = sorted(((l, r, *streak(key(l), hist)) for l, r in carried(last)), key=lambda t: -t[2])
     out = md / f"{target}-{cf['agenda_suffix']}.md"
     if out.exists():
         sys.exit(f"{out.name} exists -- delete it first if you mean to regenerate")
@@ -245,11 +271,17 @@ def main() -> None:
         L += ["## Carried forward — before anything else", "",
               f"From [{last.name}]({last.name}). **Every line needs a name said out loud, or it carries again.**",
               "", "| Item | Owner | Sessions |", "|---|---|---|"]
-        for lab, rest, n in items:
+        for lab, rest, n, g in items:
             mark = f"**{n}** ⚠" if n >= E else str(n)
+            if g:
+                mark += f" · skipped {g}"
             L.append(f"| {lab.rstrip(':')} | {owner_of(lab, rest)} | {mark} |")
         L.append("")
-        stuck = [l.rstrip(":") for l, _, n in items if n >= E]
+        if any(g for *_, g in items):
+            L += ["*\"skipped\" means the item was absent from a note that had a carry-forward section,"
+                  " then returned. It still counts — but check whether it was dropped by mistake or"
+                  " resolved and re-raised, because the two look identical from here.*", ""]
+        stuck = [l.rstrip(":") for l, _, n, _ in items if n >= E]
         if stuck:
             L += [f"> ⚠ **{', '.join(stuck)}** {'has' if len(stuck) == 1 else 'have'} carried **{E}+ sessions**.",
                   "> An item that survives three agendas is not an agenda problem — it has no owner who is",
