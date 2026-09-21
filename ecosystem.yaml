@@ -206,9 +206,9 @@ vault_conventions:
     - path: "_inbox/_tasks.yaml"
       purpose: "Personal working tasks — SOURCE OF TRUTH (CR-035, supersedes CR-022 in part). Standard v2 task schema plus triage_id (preserves the {id} token used by external sync). task: states what is to be done and nothing else; history, references and reasoning go in notes:"
       schema: "tasks v2"
-      writers: ["user (manual)", "import from _inbox/_capture.md"]
+      writers: ["user (manual)", "import from _inbox/_capture.md", "a dashboard may append a captured task and mark one finished — those two fields only"]
       readers: ["/ops", "marvin", "external sync (todoist-task-pipeline)"]
-      lifecycle: "append; status open -> done; completed items archived to .archive/"
+      lifecycle: "append; status pending -> completed (see task_statuses); completed items archived to .archive/"
 
     - path: "_inbox/_capture.md"
       purpose: "Free-form write path for tasks (CR-035). One line each; import moves them into _tasks.yaml and empties this file. Syntax: @tag or [Tag] -> context, !P0..!P3 -> priority, clock+YYMMDD -> due"
@@ -277,7 +277,7 @@ vault_conventions:
       purpose: "Staging for outgoing material (CR-047). One folder per send event, or a loose .md for a single message. Each folder carries a _manifest.md declaring Status, Kanal, Kontakt and Kanonisk källa — that manifest is the contract any dispatcher reads"
       schema: null  # filesystem layout, not YAML
       writers: ["/ops", "/md2pdf", "user (manual)"]
-      readers: ["/outbox", "outbox-dispatcher", "vaultpulse/trillian", "mail.app", "user"]
+      readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "vaultpulse/trillian", "the local mail client", "user"]
       lifecycle: "staged -> sent -> archived by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `archive --all-sent` — see outbound_dispatch.known_gaps"
 
     - path: "<venture>/.chats/"
