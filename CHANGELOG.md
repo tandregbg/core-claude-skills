@@ -7,6 +7,24 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.65.0] - 2026-09-21
+
+### Added
+
+- **`avskriven` — resolved without being sent (CR-047, implemented).** Some items are
+  resolved by a decision *not* to send them: a recap the meeting made unnecessary,
+  questions that will be asked in conversation instead. `archive` required a sent
+  status, so those could never be filed — they accumulated in `_outbox/` looking
+  unfinished while actually being done.
+  - Archivable on the same terms as `skickad`, **with one addition: `## Utfall` must say
+    why.** "Not sent, because X" is an outcome; an item filed without one is
+    indistinguishable later from one somebody abandoned.
+  - `list` shows them under **RESOLVED, NOT SENT** rather than among the pending,
+    because a pending list containing resolved items is a list nobody trusts.
+  - A dispatching surface may set the status, for the same reason it may set
+    `skickad`: whether something was sent is an observation. It must not write
+    `## Utfall` — what the outcome *means* is this skill's judgement.
+
 ## [1.64.0] - 2026-09-21
 
 ### Added

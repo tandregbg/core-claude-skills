@@ -41,7 +41,7 @@ way the same tool serves a vault in another language without a code change.
 See `identifier_language` in `ecosystem.yaml`.
 
 ```markdown
-**Status:** [draft | klar-att-skicka | skickad YYYY-MM-DD | arkiverad YYYY-MM-DD]
+**Status:** [draft | klar-att-skicka | skickad YYYY-MM-DD | avskriven YYYY-MM-DD | arkiverad YYYY-MM-DD]
 **Statusnot:** [free text: what actually happened — channel, time, a link, a circumstance]
 **Kanal:** [mejl | slack | print | ...]
 **Kontakt:** [email or name]
@@ -63,6 +63,34 @@ See `identifier_language` in `ecosystem.yaml`.
 ```
 
 When all `Svar förväntas på` items are checked AND `Utfall` is populated, the item is **resolution-ready** -- ready to archive.
+
+### `avskriven` -- resolved without being sent (CR-047)
+
+Some items are resolved by a decision not to send them. A recap that the
+meeting made unnecessary, a draft overtaken by events, questions that will be
+asked in conversation instead. They were dealt with; they simply never became
+a send event.
+
+Before this status existed those items could never be archived, because
+`archive` required a sent status -- so they accumulated in `_outbox/`
+indefinitely, looking unfinished while actually being done.
+
+```markdown
+**Status:** avskriven 2026-09-21
+**Statusnot:** Tas muntligt vid nästa samtal -- inget som behöver skickas
+```
+
+**Archivable on the same terms as `skickad`, with one addition: `## Utfall`
+must say why.** "Not sent, because X" is an outcome, and an item filed without
+one is indistinguishable later from an item that was abandoned.
+
+`list` shows these under **RESOLVED, NOT SENT** rather than among the pending,
+because a pending list that includes resolved items is a list nobody trusts.
+
+A dispatching surface may set this status (contract `writers` on
+`_manifest.md`), for the same reason it may set `skickad`: whether something
+was sent is an observation. It must not write the `Utfall` -- what the outcome
+*means* is the judgement this skill owns.
 
 ### `Statusnot` — what happened, in words
 
