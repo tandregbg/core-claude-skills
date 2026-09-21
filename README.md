@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.52.0
+**Version:** 1.53.0
 
 **Version:** 1.37.4
 

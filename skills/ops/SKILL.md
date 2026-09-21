@@ -968,7 +968,20 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    It counts how many **consecutive** prior notes carried each item and puts them at the top of the
    agenda, before the round.
 
-4. **At `escalate_after` sessions (default 3) the agenda says so itself:** *an item that survives three
+4. **Escalate on sessions OR elapsed days, whichever trips first.** `escalate_after` (default 3) and
+   `escalate_after_days` (default 14).
+
+   **A session is not a unit of time.** Three sessions is three days on a daily standup and up to three
+   months on a fortnightly one, so a session count alone escalates far too late on an irregular series —
+   which is precisely where items go missing. Measured across four real series, none was regular:
+   nominally-weekly meetings showed gaps of 7, 14, 21 and 26 days, and a fortnightly one had a 59-day
+   gap. On that series an item could carry for two months and still read as `2`, below threshold and
+   invisible.
+
+   The days rule is effectively inert on a daily series, where sessions trip first. It exists for
+   everything else.
+
+   At either threshold the agenda says so itself: *an item that survives three
    agendas is not an agenda problem -- it has no owner who is present, or it is not actually being
    asked for.* Agenda position alone does not get an item raised.
 

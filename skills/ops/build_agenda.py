@@ -64,6 +64,7 @@ def config(meetings: Path) -> dict:
             cf.setdefault("note_suffix", "daily-standup")
             cf.setdefault("agenda_suffix", "agenda-" + cf["note_suffix"])
             cf.setdefault("escalate_after", 3)
+            cf.setdefault("escalate_after_days", 14)
             cf["people"] = [p_["name"] for p_ in (d.get("people") or []) if p_.get("name")]
             cf["ext"] = src or external(root)
             if not cf.get("schedule_days"):
@@ -74,7 +75,8 @@ def config(meetings: Path) -> dict:
             cf["_root"] = root
             return cf
     return {"note_suffix": "daily-standup", "agenda_suffix": "agenda-daily-standup",
-            "escalate_after": 3, "people": [], "ext": external(meetings.parent),
+            "escalate_after": 3, "escalate_after_days": 14, "people": [],
+            "ext": external(meetings.parent),
             "_root": meetings.parent}
 
 
@@ -120,8 +122,8 @@ def carried(path: Path) -> list[tuple[str, str]]:
 MAX_GAP = 2
 
 
-def streak(k: str, history: list[tuple[str, Path]]) -> tuple[int, int]:
-    """How many sessions an item has survived, and how many it skipped.
+def streak(k: str, history: list[tuple[str, Path]]) -> tuple[int, int, str | None]:
+    """How many sessions an item has survived, how many it skipped, and since when.
 
     Counts APPEARANCES, not consecutive ones. An earlier version broke on the first
     absence, so an item carried on the 16th, dropped from the 19th and carried again
@@ -132,24 +134,31 @@ def streak(k: str, history: list[tuple[str, Path]]) -> tuple[int, int]:
     an absence: that note says nothing about any item, and treating its silence as
     "resolved" is the same mistake in a different place.
 
-    Returns (sessions, gaps). Gaps are reported rather than hidden, because a gap has
-    two readings that look identical from here -- a note that dropped the item by
-    mistake, or an item someone resolved and later re-raised -- and only a person can
-    tell them apart.
+    Returns (sessions, gaps, first_seen). Gaps are reported rather than hidden,
+    because a gap has two readings that look identical from here -- a note that
+    dropped the item by mistake, or an item someone resolved and later re-raised --
+    and only a person can tell them apart.
+
+    `first_seen` exists because **a session is not a unit of time.** Three sessions
+    is three days on a daily standup and up to three months on a fortnightly one, so
+    a session count alone escalates far too late on an irregular series -- which is
+    exactly where items go missing.
     """
     seen = gaps = missing = 0
-    for _, p in reversed(history):
+    first = None
+    for date, p in reversed(history):
         if not has_section(p):
             continue
         if any(key(l) == k for l, _ in carried(p)):
             seen += 1
             gaps += missing
             missing = 0
+            first = date
         else:
             missing += 1
             if missing > MAX_GAP:
                 break
-    return seen, gaps
+    return seen, gaps, first
 
 
 # --- retrieval -------------------------------------------------------------
@@ -275,12 +284,20 @@ def main() -> None:
     last_date, last = hist[-1]
     target = a.date or next_session(last_date, cf.get("schedule_days"))
     day = datetime.datetime.strptime(target, "%y%m%d").date()
-    items = sorted(((l, r, *streak(key(l), hist)) for l, r in carried(last)), key=lambda t: -t[2])
+    today = datetime.datetime.strptime(target, "%y%m%d").date()
+
+    def age(first: str | None) -> int:
+        return 0 if not first else (today - datetime.datetime.strptime(first, "%y%m%d").date()).days
+
+    items = sorted(((l, r, n, g, age(f)) for l, r in carried(last)
+                    for n, g, f in [streak(key(l), hist)]),
+                   key=lambda t: (-t[2], -t[4]))
     out = md / f"{target}-{cf['agenda_suffix']}.md"
     if out.exists():
         sys.exit(f"{out.name} exists -- delete it first if you mean to regenerate")
 
     E = cf["escalate_after"]
+    ED = cf.get("escalate_after_days")
     L = [f"# {cf.get('title', md.parent.name)}",
          f"### {day.strftime('%A %-d %B')}" + (f" · {cf['time']}" if cf.get("time") else ""),
          "", "---", ""]
@@ -288,9 +305,12 @@ def main() -> None:
     if items:
         L += ["## Carried forward — before anything else", "",
               f"From [{last.name}]({last.name}). **Every line needs a name said out loud, or it carries again.**",
-              "", "| Item | Owner | Sessions |", "|---|---|---|"]
-        for lab, rest, n, g in items:
-            mark = f"**{n}** ⚠" if n >= E else str(n)
+              "", "| Item | Owner | Sessions · age |", "|---|---|---|"]
+        for lab, rest, n, g, d in items:
+            hot = n >= E or (ED and d >= ED)
+            mark = f"**{n}** ⚠" if hot else str(n)
+            if d >= 7 or (ED and d >= ED):
+                mark += f" · {d}d"
             if g:
                 mark += f" · skipped {g}"
             L.append(f"| {lab.rstrip(':')} | {owner_of(lab, rest)} | {mark} |")
@@ -299,11 +319,13 @@ def main() -> None:
             L += ["*\"skipped\" means the item was absent from a note that had a carry-forward section,"
                   " then returned. It still counts — but check whether it was dropped by mistake or"
                   " resolved and re-raised, because the two look identical from here.*", ""]
-        stuck = [l.rstrip(":") for l, _, n, _ in items if n >= E]
+        stuck = [l.rstrip(":") for l, _, n, _, d in items if n >= E or (ED and d >= ED)]
         if stuck:
-            L += [f"> ⚠ **{', '.join(stuck)}** {'has' if len(stuck) == 1 else 'have'} carried **{E}+ sessions**.",
-                  "> An item that survives three agendas is not an agenda problem — it has no owner who is",
-                  "> present, or it is not actually being asked for.",
+            L += [f"> ⚠ **{', '.join(stuck)}** — at or past {E} sessions, or carried more than {ED} days.",
+                  "> An item that survives that long is not an agenda problem — it has no owner who is",
+                  "> present, or it is not actually being asked for. **A session is not a unit of time:**",
+                  f"> {E} sessions is three days on a daily series and two months on a fortnightly one,",
+                  "> which is why the age counts too.",
                   "> **Decide today: give it a date and a name, or drop it.**", ""]
     elif has_section(last):
         L += ["## Carried forward", "", "*Nothing carried — the previous note says so explicitly.*", ""]

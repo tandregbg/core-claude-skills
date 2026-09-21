@@ -111,6 +111,8 @@ workflows:
     # CR-057: the next agenda is generated from the last note's "## Carried forward"
     carry_forward:
       enabled: false
+      escalate_after: 3          # sessions
+      escalate_after_days: 14    # ...or days carried, whichever trips first
     # CR-059: the outbound digest for people who were not in the room.
     # Generated ON REQUEST, never as a side effect of the pass -- it is the one
     # artifact that leaves the building, and from the transcript alone it is

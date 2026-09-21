@@ -7,6 +7,25 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.53.0] - 2026-09-21
+
+### Added
+
+- **Carry-forward escalates on sessions *or* elapsed days, whichever trips first.** `escalate_after_days`
+  under `carry_forward`, default 14.
+
+  **A session is not a unit of time.** Three sessions is three days on a daily standup and up to three
+  months on a fortnightly one — so a session count alone escalates far too late on an irregular series,
+  which is precisely where items go missing. Measured across four real series before adding this, and
+  **none of them was regular**: nominally-weekly meetings showed gaps of 7, 14, 21 and 26 days, and a
+  fortnightly series had a 59-day gap in its record. On that series an item could carry for two months
+  and still read as `2` — below threshold and invisible, which is the exact failure the escalation
+  exists to catch, reintroduced by measuring in the wrong unit.
+
+  The days rule is effectively inert on a daily series, where sessions trip first. It exists for
+  everything else. Age is shown in the table from seven days, so the count and its meaning are visible
+  together rather than one standing in for the other.
+
 ## [1.52.0] - 2026-09-21
 
 ### Fixed
