@@ -803,7 +803,7 @@ If `_tasks.yaml` doesn't exist but legacy files do (e.g., `todo-Alex.md`), the d
 
 ### Task File Schema
 
-See `~/.claude/skills/tasks/skill.md` for the complete `_tasks.yaml` schema.
+See `~/.claude/skills/tasks/SKILL.md` for the complete `_tasks.yaml` schema.
 
 ### Cross-Project Task Display
 

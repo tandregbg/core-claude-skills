@@ -16,6 +16,8 @@ Next available CR number: **CR-048**
 
 | CR-047 | `/outbox` | Medium | Archiving an item that was decided against. `archive` requires a sent status, so anything marked superseded, replaced or withdrawn can never be filed and accumulates indefinitely — it was resolved, just not by being sent. Proposes a terminal `avskriven` state, archivable when `## Utfall` states why, plus a `RESOLVED, NOT SENT` section in `list` and an `--all-resolved` batch mode |
 
+| CR-048 | `tasks` schema | Medium | **Implemented v1.40.0.** The status enum was defined in the skill but not in `ecosystem.yaml`, so nothing could check it. Three dialects grew in the gap — `open`/`done`, `todo`/`waiting`, and one-off words like `superseded` and `obsolete` — and a reader that knew only the canonical set counted finished tasks as outstanding. Declares `task_statuses` split into `active` and `finished`, plus the rule that a reader tolerates an unknown status rather than treating it as active |
+
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
@@ -86,4 +88,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-12 — CR-040, CR-041, CR-043, CR-044, CR-045 implemented (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-21 — CR-047 and CR-048 implemented (v1.39.0, v1.40.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*

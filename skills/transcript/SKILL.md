@@ -693,7 +693,7 @@ This step integrates with the `/tasks` skill:
 - Same source linking convention
 - Tasks appear in `/daily-dashboard` automatically
 
-See `~/.claude/skills/tasks/skill.md` for the complete task schema.
+See `~/.claude/skills/tasks/SKILL.md` for the complete task schema.
 
 ---
 

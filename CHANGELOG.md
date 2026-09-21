@@ -7,6 +7,24 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.40.0] - 2026-09-21
+
+### Added
+
+- **The task status enum is declared (CR-048).** `schemas.tasks: 2` named a version
+  but nothing said which statuses were legal, so three other dialects grew in the gap:
+  `open`/`done` written by an external task pipeline, `todo`/`waiting` in operational
+  files, and one-off words like `superseded`, `paused` and `obsolete`. The schema in
+  the tasks skill has always said `pending | in_progress | blocked | completed |
+  cancelled`; declaring it in `ecosystem.yaml` is what makes it checkable by a tool
+  that never opens the skill.
+  - Split into `active` and `finished` rather than one flat list, because every
+    consumer asks one of those two questions rather than testing a specific word.
+  - Carries the rule that made the drift harmful in practice: **a reader should
+    tolerate an unknown status rather than treat it as active.** A dashboard counting
+    only `completed` as finished showed finished tasks as outstanding and put some on
+    its overdue list.
+
 ## [1.39.0] - 2026-09-21
 
 ### Added

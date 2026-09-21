@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 10 (CR-048, 2026-09-21): task_statuses enum — declares which
+#   statuses a task may carry. schemas.tasks named a version but never the legal
+#   values, and three dialects grew in the gap; a reader that knew only the
+#   canonical set counted finished tasks as outstanding. Split active/finished,
+#   since that is the question every consumer actually asks.
+#
 # contract_version 9 (CR-047, 2026-09-21): outbound_dispatch block — declares the
 #   tools that deliver staged material, the channels they use, and what each
 #   may write. Also declares <venture>/.chats/
@@ -34,8 +40,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 9
-core_skills_version: "1.39.0"
+contract_version: 10
+core_skills_version: "1.40.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -46,6 +52,22 @@ schemas:
   contact_meta: "1.1"
   tasks: 2
   insights: 2
+
+# --- Task status enum ---
+# Declared here because it was not, and three other dialects grew in its
+# absence: `open`/`done`, `todo`/`waiting`, and one-off words like
+# `superseded`. A tool reading only the canonical set counted finished tasks
+# as outstanding. The schema in the tasks skill has always said this; saying
+# it here too is what makes it checkable.
+task_statuses:
+  active:
+    - pending
+    - in_progress
+    - blocked
+  finished:
+    - completed
+    - cancelled
+  note: "A reader should tolerate an unknown status rather than treat it as active; a writer should emit only these."
 
 # --- Insight type enums ---
 insight_types:
