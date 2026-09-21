@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 19 (CR-064, 2026-09-21, v1.63.0): a dispatching surface may
+#   add ONE external_systems.chats entry to a folder's ops config, on explicit
+#   confirmation. The file stays hand-written in every other respect; this is
+#   the one fact a dispatcher knows first-hand and a person cannot easily get
+#   right — two of the live vault's chats share a name exactly, so a pick from
+#   a listing of seventy is a coin flip nothing records.
+#
 # contract_version 18 (CR-062, 2026-09-21, v1.59.0): working_loop — the steps a person
 #   takes, in order, with the three manual ones marked and each saying WHY. The
 #   README and the landing page both render this loop; a hand-written copy in
@@ -91,8 +98,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 18
-core_skills_version: "1.62.0"
+contract_version: 19
+core_skills_version: "1.63.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -420,7 +427,8 @@ vault_conventions:
     - path: "<folder>/_ops.yaml"
       purpose: "Per-folder ops config (org config, team, language, terminology)"
       schema: "skills/ops-config/schema.md"
-      writers: ["user (manual)"]
+      writers: ["user (manual)", "a dispatching surface may add an external_systems.chats entry, on explicit confirmation and nothing else"]
+      note: "The file is hand-written and /ops owns its schema. The one exception is narrow and deliberate: a dispatcher knows first-hand which chat an item was actually sent to, and a chat picked from a live listing of seventy is where a wrong guess costs most. It may offer to record that ONE fact, showing the exact lines first, and may never write on send or infer anything else"
       readers: ["/ops", "/insights", "/tasks", "/analytics", "/daily-dashboard"]
       lifecycle: "stable; rarely changes"
       # Canonical location as of v1.16.0 (CR-011). Pre-v1.16.0 configs lived in ~/.claude/skills/{org}-ops-config/; that fallback is removed in v1.17.0.

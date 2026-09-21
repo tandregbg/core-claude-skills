@@ -7,6 +7,26 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.63.0] - 2026-09-21
+
+### Changed
+
+- **A dispatching surface may record one chat in a folder's ops config (CR-064).**
+  `<folder>/_ops.yaml` was declared `user (manual)` only. It still is, in every respect
+  but one: a dispatcher may add a single `external_systems.chats` entry, and only after
+  showing the exact lines and being confirmed.
+  - **Why this one fact.** It is the only thing a dispatcher knows first-hand that a
+    person cannot easily get right: two chats in the live vault share a name exactly,
+    so picking from a listing of seventy is a coin flip that nothing records. The next
+    session guesses again.
+  - **Never on send.** The block stays hand-written precisely so a tool cannot turn an
+    accident into a declaration; an offer made after a successful send would be exactly
+    that. The offer appears only when a project has no chat declared at all.
+  - It refuses rather than guesses: an unknown project, a duplicate, a file whose shape
+    it does not understand, or unparseable YAML all leave the file untouched. A second
+    chat is never made the default — changing which chat is default is a decision, not
+    an addition.
+
 ## [1.62.0] - 2026-09-21
 
 ### Fixed
