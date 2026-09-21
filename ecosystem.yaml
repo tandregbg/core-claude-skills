@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 14 (CR-052, 2026-09-21): inventory scanner component and the
+#   generated _INDEX-*.md registers it writes. Found by asking which parts of the
+#   graph were content rather than architecture: the scanner had been left out
+#   although it writes vault files, and check-components.py had let its write pass
+#   because the entry was phrased as prose rather than a path. Both fixed.
+#
 # contract_version 13 (CR-051, 2026-09-21): _infrastructure/ and _architecture/
 #   declared. The first was named in prefix_conventions since CR-034 but never
 #   declared as a path; the second is its counterpart for the software system —
@@ -58,8 +64,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 13
-core_skills_version: "1.43.0"
+contract_version: 14
+core_skills_version: "1.44.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -358,6 +364,14 @@ vault_conventions:
       readers: ["/tasks", "/daily-dashboard", "marvin"]
       lifecycle: "deprecated in favour of per-folder _tasks.yaml; kept for back-compat"
 
+    - path: "_INDEX-*.md"
+      purpose: "Generated registers at vault root: what runs where, and which project maps to which machine. Swept from a machine list held outside the vault, so the vault is the view and not the source"
+      schema: null
+      writers: ["an inventory scanner (generated)"]
+      readers: ["user", "any session answering an operations question"]
+      lifecycle: "regenerated in full on each sweep — a hand edit is lost silently, which is why write_ownership names it GENERATED"
+      placement: singleton
+
     - path: "_Dashboard.md"
       purpose: "Daily dashboard composition"
       schema: null  # markdown; structure documented in /daily-dashboard SKILL.md
@@ -607,6 +621,14 @@ components:
     reads: []
     writes: ["_inbox/", "_inbox/.audio/"]
     depends_on: []
+
+  - id: "inventory scanner"
+    kind: "local script, run on demand"
+    role: "Sweeps the machines a vault describes and regenerates the registers that say what runs where"
+    reads: ["its own machine list — the source of truth for which machines exist"]
+    writes: ["_INDEX-*.md — the generated machine and mapping registers"]
+    depends_on: []
+    note: "The one component that bridges the two maps: its INPUT is infrastructure and its OUTPUT is a vault file. Generated — hand-editing a register loses it on the next sweep"
 
   - id: "landing page"
     kind: "public website"

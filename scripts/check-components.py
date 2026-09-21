@@ -40,6 +40,20 @@ def looks_like_a_path(text):
     return head if (head.startswith('_') or head.startswith('<') or head.startswith('.')) else None
 
 
+def mentions_a_path(text):
+    """A path named mid-sentence, which looks_like_a_path would miss.
+
+    Prose is allowed — "the vault, per vault_conventions" is a legitimate
+    entry — but prose that NAMES a file is a path written informally, and was
+    slipping through unchecked: "the generated registers at vault root" passed
+    while declaring nothing. Anything with a vault-file shape is checked.
+    """
+    import re
+    for token in re.findall(r'[<_.][\w<>*/.-]*\.(?:yaml|md|json|toml)\b|[<_][\w<>*/.-]+/', text):
+        if not token.startswith(('http', 'www')):
+            yield token.rstrip(',;')
+
+
 def main():
     doc = yaml.safe_load(open(os.path.join(HERE, 'ecosystem.yaml'), encoding='utf-8'))
     comps = doc.get('components')
@@ -62,6 +76,15 @@ def main():
                     problems.append(
                         f"{c['id']}: {direction} `{head}`, which vault_conventions "
                         f"does not declare")
+                    continue
+                if head:
+                    continue
+                # Prose entry: still check any file it names.
+                for token in mentions_a_path(item):
+                    if token not in paths:
+                        problems.append(
+                            f"{c['id']}: {direction} names `{token}` in prose, "
+                            f"which vault_conventions does not declare")
 
     # depends_on: either names a component, or is external. External is fine -
     # msal and an HTTP library are real dependencies - but it must not be a

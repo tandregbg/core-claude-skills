@@ -7,6 +7,27 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.44.0] - 2026-09-21
+
+### Added
+
+- **The inventory scanner is a component, and `_INDEX-*.md` is a declared path (CR-052).**
+  A local script sweeps the machines a vault describes and regenerates the registers
+  saying what runs where. It writes vault files and was not in the graph.
+  - It is the one component that **bridges the two maps**: its input is
+    infrastructure and its output is a vault file. That is why declaring it also
+    settles where the boundary runs.
+  - The registers are GENERATED in the `write_ownership` sense — a hand edit is lost
+    on the next sweep.
+
+### Fixed
+
+- **`check-components.py` let a prose write pass unchecked.** An entry phrased as
+  "the generated registers at vault root" named a file without looking like a path,
+  so nothing verified it — which is how the scanner's write passed on the first
+  attempt while declaring nothing. Prose is still allowed, but any vault-file shape
+  inside it is now checked.
+
 ## [1.43.0] - 2026-09-21
 
 ### Added

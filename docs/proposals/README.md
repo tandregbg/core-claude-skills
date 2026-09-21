@@ -24,6 +24,8 @@ Next available CR number: **CR-048**
 
 | CR-051 | vault conventions | Low | **Implemented v1.43.0.** `_infrastructure/` was named in `prefix_conventions` but never declared as a path. Declares it, and its counterpart `_architecture/` for the software system — the generic `components:` block is the source, and that folder is where the roles map onto actual repositories. Both SINGLETON |
 
+| CR-052 | ecosystem contract | Low | **Implemented v1.44.0.** The inventory scanner writes vault files but was not in the components graph, and `_INDEX-*.md` was undeclared. Declares both. The scanner is the one component bridging the machine map and the software map — input infrastructure, output a vault file. Also fixes `check-components.py`, which let a write phrased as prose name an undeclared file |
+
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
@@ -94,4 +96,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-21 — CR-047 through CR-051 implemented (v1.39.0–v1.43.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-21 — CR-047 through CR-052 implemented (v1.39.0–v1.44.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
