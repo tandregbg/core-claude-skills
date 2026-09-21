@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-047**
+Next available CR number: **CR-048**
 
 ---
 
@@ -14,7 +14,9 @@ Next available CR number: **CR-047**
 |----|------|----------|---------|
 | CR-042 | `ops-config` schema | Low | Four keys a coordination project needs and the schema does not define — cadence (as a timezone **pair**, since the anchored end matters across DST), tracks, phases (which may be inherited from the shadowed codebase), and systems of record. Undeclared keys make a config file look authoritative while being partly inert |
 
-_Spec for CR-042 is tracked outside this repo (they carry vault evidence); rows here are generic._
+| CR-047 | `/outbox` | Medium | Archiving an item that was decided against. `archive` requires a sent status, so anything marked superseded, replaced or withdrawn can never be filed and accumulates indefinitely — it was resolved, just not by being sent. Proposes a terminal `avskriven` state, archivable when `## Utfall` states why, plus a `RESOLVED, NOT SENT` section in `list` and an `--all-resolved` batch mode |
+
+_Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
 
