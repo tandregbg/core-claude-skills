@@ -7,6 +7,25 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.43.0] - 2026-09-21
+
+### Added
+
+- **`_infrastructure/` and `_architecture/` declared (CR-051).** Two vault-root
+  surfaces that answer the same question one layer apart: `_infrastructure/` documents
+  the machines — topology, connectivity, who operates what from where — and
+  `_architecture/` documents the software system: which components exist, which
+  repository holds each, what reads and writes the vault.
+  - `_infrastructure/` has been named in `prefix_conventions` since CR-034 but was
+    never declared as a path, so nothing said who writes it or what it holds.
+  - Both are SINGLETON by the CR-036 test: each describes the system as a whole, so a
+    folder-scoped copy would describe nothing.
+  - The split matters for what each may contain. `components:` in this file is the
+    source and is deliberately generic — "a dashboard", "a messaging client" — because
+    this file is public. `_architecture/` is where those roles map onto actual
+    repositories, hosts and employers, which is exactly what this contract must not
+    carry.
+
 ## [1.42.0] - 2026-09-21
 
 ### Added

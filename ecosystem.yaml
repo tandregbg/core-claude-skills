@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 13 (CR-051, 2026-09-21): _infrastructure/ and _architecture/
+#   declared. The first was named in prefix_conventions since CR-034 but never
+#   declared as a path; the second is its counterpart for the software system —
+#   the same question one layer up. Both SINGLETON: each describes the whole,
+#   so a folder-scoped copy would describe nothing.
+#
 # contract_version 12 (CR-050, 2026-09-21): components block — declares how the
 #   parts touch EACH OTHER, where vault_conventions declares how they touch files.
 #   Written because "where is the full picture documented" had no single answer:
@@ -52,8 +58,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 12
-core_skills_version: "1.42.0"
+contract_version: 13
+core_skills_version: "1.43.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -312,6 +318,23 @@ vault_conventions:
       writers: ["the chat-archive tool"]
       readers: ["user", "any tool reading the rendered .md"]
       lifecycle: "append-only; re-fetching an overlapping range de-duplicates by message id. Placement is PER_BOUNDARY — it belongs to the venture whose tenant the chats came from, never to _private/"
+
+    - path: "_infrastructure/"
+      purpose: "The INTERNAL architecture: machines, topology, connectivity, who operates what from where. Named in prefix_conventions since CR-034 but never declared in its own right until CR-051"
+      schema: null
+      writers: ["user (manual)", "survey scripts (inventory snapshots)"]
+      readers: ["user", "any session answering an operations question"]
+      lifecycle: "a map file per layer plus dated surveys; the maps are stable, the surveys are snapshots and are not updated in place"
+      placement: singleton
+
+    - path: "_architecture/"
+      purpose: "The EXTERNAL architecture: the software system — which components exist, which repository holds each, what reads and writes the vault, and where each configuration lives. The counterpart to _infrastructure/, which answers the same questions about machines"
+      schema: "components: in this file is the generic source; _architecture/ maps it onto actual repositories"
+      writers: ["user (manual)"]
+      readers: ["user", "any session answering how the parts fit together"]
+      lifecycle: "updated when a component is added, retired or moves between repositories"
+      placement: singleton
+      note: "Singleton by the CR-036 test: it describes the system as a whole, so a folder-scoped copy would describe nothing. Holds instance names — repositories, hosts, employers — which is exactly what this contract does not"
 
     - path: "_config/"
       purpose: "Vault-wide overrides for skill defaults (optional)"
