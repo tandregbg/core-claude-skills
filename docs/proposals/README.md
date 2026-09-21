@@ -18,6 +18,8 @@ Next available CR number: **CR-048**
 
 | CR-048 | `tasks` schema | Medium | **Implemented v1.40.0.** The status enum was defined in the skill but not in `ecosystem.yaml`, so nothing could check it. Three dialects grew in the gap — `open`/`done`, `todo`/`waiting`, and one-off words like `superseded` and `obsolete` — and a reader that knew only the canonical set counted finished tasks as outstanding. Declares `task_statuses` split into `active` and `finished`, plus the rule that a reader tolerates an unknown status rather than treating it as active |
 
+| CR-049 | ecosystem contract | Medium | **Implemented v1.41.0.** `system_file_language` covered file names but not what is inside them, and two tools had drifted: a dispatcher hardcoding the vault's status words, and a sync tool using display strings as dictionary keys in 38 places. Declares `identifier_language` — identifiers English, display text data in a settings file, and where the two were one string the label keeps the spelling |
+
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
@@ -88,4 +90,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-21 — CR-047 and CR-048 implemented (v1.39.0, v1.40.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-21 — CR-047, CR-048 and CR-049 implemented (v1.39.0–v1.41.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*

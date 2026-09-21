@@ -12,6 +12,11 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 11 (CR-049, 2026-09-21): identifier_language rule — identifiers
+#   are English, the words a person reads are data. Written after a dispatcher was
+#   found hardcoding the vault's Swedish status words and a sync tool using Swedish
+#   display strings as dictionary keys in 38 places.
+#
 # contract_version 10 (CR-048, 2026-09-21): task_statuses enum — declares which
 #   statuses a task may carry. schemas.tasks named a version but never the legal
 #   values, and three dialects grew in the gap; a reader that knew only the
@@ -40,8 +45,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 10
-core_skills_version: "1.40.0"
+contract_version: 11
+core_skills_version: "1.41.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -437,6 +442,10 @@ vault_conventions:
     - id: "system_file_language"
       level: rule
       rule: "System and structure files carry ENGLISH names regardless of the language of their content: _config/priority.md, _config/naming-prefix.md, _inbox/_frame.md, .status/current.md. Content stays in the vault's working language. Applies going FORWARD — the derived registers with Swedish names (_INDEX-agare.md, _INDEX-koppling.md, _INDEX-maskiner.md, _INDEX-objektmodell.md, _INDEX-verksamheter.md) are read by scripts and renaming them costs more than the consistency gains; the generated wiki articles under .knowledge/wiki/ likewise keep the language of the corpus they summarise."
+
+    - id: "identifier_language"
+      level: rule
+      rule: "Identifiers are ENGLISH; the words a person reads may be in any language, and are data rather than literals in code. This covers schema field names, enum values, status keys, config keys, dictionary keys and variable names — everything a second tool must agree with in order to interoperate. Display text (a manifest's Status wording, an external board's column name, a generated view's headings) stays in the vault's working language and lives in a settings or vocabulary file, so changing it is a settings change rather than a code change. Where an identifier and its label were historically the same string, the LABEL keeps the existing spelling: renaming a key costs nothing, while renaming a label changes what an external system or a person sees. A reader meeting a value it does not recognise should tolerate it rather than silently treat it as the default — see task_statuses, where recognising only the canonical set made finished tasks count as outstanding."
 
     - id: "write_ownership"
       level: rule

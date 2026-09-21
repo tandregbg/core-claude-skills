@@ -7,6 +7,23 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.41.0] - 2026-09-21
+
+### Added
+
+- **`identifier_language` rule (CR-049).** Identifiers are English; the words a person
+  reads are data. Schema fields, enum values, status keys, config keys, dictionary keys
+  and variable names are what a second tool must agree with to interoperate, so they
+  carry one language. Display text stays in the vault's working language and lives in a
+  settings or vocabulary file.
+  - The existing `system_file_language` rule covered file *names* only. This covers
+    what is inside them, which is where the drift actually was: a dispatcher hardcoding
+    the vault's Swedish status words, and a sync tool using Swedish display strings as
+    dictionary keys in 38 places.
+  - Where the two were historically the same string, the **label** keeps the existing
+    spelling. Renaming a key costs nothing; renaming a label changes what an external
+    system or a person sees.
+
 ## [1.40.0] - 2026-09-21
 
 ### Added
