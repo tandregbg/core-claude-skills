@@ -92,7 +92,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 18
-core_skills_version: "1.61.0"
+core_skills_version: "1.62.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -703,6 +703,14 @@ components:
 # are not unbuilt features: each is a place where generating the obvious answer
 # would be confidently wrong in a way the reader could not check.
 working_loop:
+  - id: "orient"
+    phase: "when picking it up"
+    label: "where it left off"
+    command: "python3 ~/.claude/skills/ops/project_brief.py --dir <project>/meetings"
+    does: "Reads one folder's current state before any work resumes: loop position and whether the next agenda exists, whether the carry-forward chain is intact, what is carrying and how much of it is unowned, how stale the archives are, what is staged and unsent, and when the record last moved. Read-only - it writes nothing, fetches nothing and caches nothing, because an orientation file that persists can itself go stale and then lie"
+    consumes: ["the note", "_outbox/<item>/_manifest.md", "<venture>/.chats/", "<venture>/.githubmeta/"]
+    produces: ["a reading of the current state"]
+
   - id: "declare"
     phase: "once, at set-up"
     label: "the folder's config"
@@ -799,7 +807,7 @@ working_loop:
   - id: "check"
     phase: "weekly"
     label: "the shape checks"
-    command: "/ops lint <folder> · /ops sweep · /ops brief <folder>"
+    command: "/ops lint <folder>, then /ops sweep"
     does: "Lint finds a broken carry-forward chain; sweep finds closure debt. Both catch the failures that announce nothing"
     consumes: ["the note", "the registers"]
 

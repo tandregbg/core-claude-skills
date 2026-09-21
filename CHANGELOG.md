@@ -7,6 +7,23 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.62.0] - 2026-09-21
+
+### Fixed
+
+- **`/ops brief` is declared where it is actually used — picking a project up — not under the weekly
+  checks.** CR-061 built it for orientation *before work resumes*; the loop filed it inside the weekly
+  `check` step alongside lint and sweep. Those are different jobs at different times, and someone
+  reading the declaration would have run it once a week instead of every time they opened a project
+  cold — the one moment it exists for.
+
+  New first step `orient`, in its own phase, *when picking it up*. It is the only step that answers
+  **"where did this leave off"**, and the loop had no phase for that at all: it began at set-up and
+  assumed whoever ran it already knew the state.
+
+  Removed from the `check` command at the same time. **One command declared in two steps is the drift
+  CR-062 exists to prevent** — the two copies diverge and the reader cannot tell which is current.
+
 ## [1.61.0] - 2026-09-21
 
 ### Added
