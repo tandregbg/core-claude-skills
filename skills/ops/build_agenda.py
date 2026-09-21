@@ -93,6 +93,17 @@ def key(label: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", label.rstrip(":").lower())[:28]
 
 
+def has_section(path: Path) -> bool:
+    """An ABSENT section and an EMPTY one mean different things.
+
+    Empty is a real answer -- nothing carried that day. Absent is indistinguishable
+    from a note nobody finished, and it is the one failure in this loop that is
+    otherwise silent: the next agenda generates with zero carried items and looks
+    perfectly correct. So the absence is said out loud, here and in the agenda.
+    """
+    return SECTION.search(path.read_text(encoding="utf-8")) is not None
+
+
 def carried(path: Path) -> list[tuple[str, str]]:
     m = SECTION.search(path.read_text(encoding="utf-8"))
     return [(a.strip(), b.strip(" —-:·")) for a, b in ITEM.findall(m.group(1))] if m else []
@@ -244,8 +255,17 @@ def main() -> None:
                   "> An item that survives three agendas is not an agenda problem — it has no owner who is",
                   "> present, or it is not actually being asked for.",
                   "> **Decide today: give it a date and a name, or drop it.**", ""]
+    elif has_section(last):
+        L += ["## Carried forward", "", "*Nothing carried — the previous note says so explicitly.*", ""]
     else:
-        L += ["## Carried forward", "", "*Nothing carried. Say so — it is a real answer.*", ""]
+        L += ["## Carried forward — ⚠ CHAIN BROKEN", "",
+              f"**[{last.name}]({last.name}) has no `## Carried forward` section**, so nothing could be",
+              "carried into this agenda. That is not the same as nothing carrying: an absent section is",
+              "indistinguishable from a note nobody finished.",
+              "",
+              "**Before the meeting:** add the section to that note — even if the honest content is",
+              "*nothing carried* — and regenerate. Otherwise anything left open at the last session is",
+              "now invisible to this one.", ""]
 
     after = since(last_date)
     chat, repo = from_chat(cf, after), from_repo(cf, after)
@@ -270,6 +290,8 @@ def main() -> None:
           "  without a name is the one that will be here again", ""]
 
     out.write_text("\n".join(L), encoding="utf-8")
+    if not has_section(last):
+        print(f"  ⚠ {last.name} has no '## Carried forward' section — chain broken, nothing carried in")
     print(f"  {last.name} -> {out.name}  ({len(items)} carried"
           + (f", {len(stuck)} at {E}+ sessions" if items and stuck else "")
           + f"; {len(chat)} chat, {len(repo)} repo)")

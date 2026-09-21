@@ -522,6 +522,37 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
 
 4. **Never rewrites files.** Lint reports; the user decides between amending the contract (accept the fork as deliberate) and fixing the files.
 
+5. **Carry-forward chain check** -- only where `workflows.post_processing.carry_forward.enabled`.
+
+   For each `YYMMDD-<note_suffix>.md` in the folder, check the note ends with a `## Carried forward`
+   section. **This is the one failure in the meeting loop that is silent.** A note missing the section
+   does not error, does not warn, and produces a next agenda with zero carried items that looks
+   perfectly correct — the chain ends and the output stays plausible. Every other defect in the loop
+   announces itself.
+
+   Report the **break**, not the file count — the chain is what matters:
+
+   ```
+   /ops lint <project>/meetings
+
+   carry-forward chain (5 notes checked):
+     Chain intact 260916 -> 260919. BROKEN at 260921:
+     - 260921-daily-standup.md has no "## Carried forward" section
+     - so 260922's agenda was generated from 260919 and is 2 sessions stale
+
+     260918: section present but empty
+       -- "nothing carried" is a real answer; say it in the section rather than omitting it.
+   ```
+
+   **An empty section is a finding, not an error.** A day where nothing carried is legitimate and worth
+   recording; an *omitted* section is indistinguishable from a day nobody wrote up. Only the omission
+   breaks the chain.
+
+   Also flag any item that **reappears after being absent** — carried on 16th and 21st but not the 19th
+   is either a note that dropped it by mistake or an item someone re-raised, and the two look identical
+   downstream. The session counter reads it as a fresh item and the escalation clock restarts, so a
+   genuinely stuck item can hide indefinitely by skipping every third session.
+
 ---
 
 ### `sweep` -- Closure/staleness audit (CR-019)
@@ -600,6 +631,7 @@ it came from.
 
 Step 9 then runs post-processing as configured. **The note ends with `## Carried forward`** — that
 section is what tomorrow's agenda is built from, so a note without it silently ends the chain.
+`/ops lint` checks that chain; it is the only defect in this loop that does not announce itself.
 
 **6. The recap is offered, not written.** Say what it would carry and wait to be asked. It is the one
 artifact that leaves the building; assembled automatically from the narrowest of the three inputs it is
@@ -901,7 +933,11 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
 
 1. **The daily note ends with `## Carried forward`** -- one line per item that did not land. This is a
    contract, not a habit: the section is what the next agenda is built from, so a note without it
-   silently ends the chain.
+   silently ends the chain. **`/ops lint` verifies it** (lint step 5) -- write the section even on a day
+   when nothing carried, because an empty section and an absent one mean different things.
+
+   **Where nothing carried, say so in the section.** An omitted section is indistinguishable from a note
+   nobody finished.
 
    ```
    - **<item>** — <note> · **<owner>**
