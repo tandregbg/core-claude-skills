@@ -7,6 +7,27 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.58.0] - 2026-09-21
+
+### Fixed
+
+- **The gap-explainer rendered on every agenda that had any item older than a day.** The carried-item
+  tuple grew from four fields to five in v1.53.0 and one unpacking was left as `*_, g`, which from then
+  on read the **age** where it meant the **gap count**. So a footnote explaining what `skipped` means
+  appeared under tables where no item was skipped. A wrong explanation is worse than none: it teaches the
+  reader a column that is not there.
+
+- **A round table with no roster and no extra columns rendered malformed and empty** — a header with one
+  cell, a separator with two, and a blank row. A table is only worth its space when it has rows; with no
+  roster the section now carries the prompt alone.
+
+### Changed
+
+- **Carried items are split into what is owed *into* this session and what is still carrying.** Sixteen
+  undifferentiated rows is a wall, and the five raised at the last session — the actionable ones — sorted
+  to the bottom because the sort ranks by session count. The split puts them first and labels both
+  groups; below two items the table stays single.
+
 ## [1.57.0] - 2026-09-21
 
 ### Fixed

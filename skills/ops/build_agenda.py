@@ -335,10 +335,17 @@ def main() -> None:
          "", "---", ""]
 
     if items:
+        fresh = [i for i in items if i[2] <= 1]
+        old = [i for i in items if i[2] > 1]
         L += ["## Carried forward — before anything else", "",
-              f"From [{last.name}]({last.name}). **Every line needs a name said out loud, or it carries again.**",
-              "", "| Item | Owner | Sessions · age |", "|---|---|---|"]
-        for lab, rest, n, g, d in items:
+              f"From [{last.name}]({last.name}). **Every line needs a name said out loud, or it carries again.**", ""]
+        if fresh and old:
+            L += [f"**Owed into this session ({len(fresh)})** — raised last time, due now.", ""]
+        L += ["| Item | Owner | Sessions · age |", "|---|---|---|"]
+        for lab, rest, n, g, d in (fresh + old if fresh and old else items):
+            if old and fresh and (lab, rest, n, g, d) == old[0]:
+                L += ["", f"**Still carrying ({len(old)})** — open across more than one session.", "",
+                      "| Item | Owner | Sessions · age |", "|---|---|---|"]
             hot = n >= E or (ED and d >= ED)
             mark = f"**{n}** ⚠" if hot else str(n)
             if d >= 7 or (ED and d >= ED):
@@ -347,7 +354,7 @@ def main() -> None:
                 mark += f" · skipped {g}"
             L.append(f"| {lab.rstrip(':')} | {owner_of(lab, rest)} | {mark} |")
         L.append("")
-        if any(g for *_, g in items):
+        if any(g for _, _, _, g, _ in items):
             L += ["*\"skipped\" means the item was absent from a note that had a carry-forward section,"
                   " then returned. It still counts — but check whether it was dropped by mistake or"
                   " resolved and re-raised, because the two look identical from here.*", ""]
@@ -382,13 +389,15 @@ def main() -> None:
         if repo:
             L += ["**Issues that moved**"] + [f"- {r}" for r in repo[:15]] + [""]
 
-    cols = cf.get("round_columns") or []
+    cols, people = cf.get("round_columns") or [], cf["people"]
     L += ["---", "", "## Round", ""]
     if cols:
         L.append(f"**Say your {cols[0].lower()} before anything else.**\n")
-    L += ["**What moved · what you are blocked on and who owns the other end · what you need a decision on.**",
-          "", "| | " + " | ".join(cols + [""]), "|---|" + "---|" * (len(cols) + 1)]
-    L += [f"| **{n}** |" + " |" * (len(cols) + 1) for n in cf["people"]] or ["| | |"]
+    L.append("**What moved · what you are blocked on and who owns the other end · what you need a decision on.**")
+    if people:
+        # A table is only worth its space when it has rows to hold.
+        L += ["", "| | " + " | ".join(cols + [""]), "|---|" + "---|" * (len(cols) + 1)]
+        L += [f"| **{n}** |" + " |" * (len(cols) + 1) for n in people]
     L += ["", "---", "", "## Close", "", "- Read-back: what the recap says",
           "- **Read-back: what carries to tomorrow, and whose name is on each.** An item read back",
           "  without a name is the one that will be here again", ""]
