@@ -66,6 +66,11 @@ def config(meetings: Path) -> dict:
             cf.setdefault("escalate_after", 3)
             cf["people"] = [p_["name"] for p_ in (d.get("people") or []) if p_.get("name")]
             cf["ext"] = src or external(root)
+            if not cf.get("schedule_days"):
+                mt = (d.get("meeting_types") or {}).values()
+                sched = next((m.get("schedule", {}).get("days") for m in mt
+                              if isinstance(m, dict) and m.get("schedule", {}).get("days")), None)
+                cf["schedule_days"] = cf.get("schedule_days") or sched
             cf["_root"] = root
             return cf
     return {"note_suffix": "daily-standup", "agenda_suffix": "agenda-daily-standup",
@@ -234,9 +239,22 @@ def from_repo(cf: dict, after: datetime.date) -> list[str]:
     return out
 
 
-def next_weekday(yymmdd: str) -> str:
+DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+def next_session(yymmdd: str, days: list[str] | None) -> str:
+    """The next day this series actually meets.
+
+    Not every standup is daily. A twice-weekly Monday/Thursday series generating a
+    Tuesday agenda produces a file nobody opens, and the carry-forward chain then
+    looks broken on Thursday because the Tuesday file is the newest thing with no
+    note behind it. Falls back to the next weekday where no schedule is declared.
+    """
+    want = {DAYS.index(x.lower()) for x in (days or []) if x.lower() in DAYS}
     d = datetime.datetime.strptime(yymmdd, "%y%m%d").date() + datetime.timedelta(days=1)
-    while d.weekday() > 4:
+    for _ in range(14):
+        if (d.weekday() in want) if want else (d.weekday() <= 4):
+            return d.strftime("%y%m%d")
         d += datetime.timedelta(days=1)
     return d.strftime("%y%m%d")
 
@@ -255,7 +273,7 @@ def main() -> None:
         sys.exit(f"no YYMMDD-{cf['note_suffix']}.md in {md}")
 
     last_date, last = hist[-1]
-    target = a.date or next_weekday(last_date)
+    target = a.date or next_session(last_date, cf.get("schedule_days"))
     day = datetime.datetime.strptime(target, "%y%m%d").date()
     items = sorted(((l, r, *streak(key(l), hist)) for l, r in carried(last)), key=lambda t: -t[2])
     out = md / f"{target}-{cf['agenda_suffix']}.md"

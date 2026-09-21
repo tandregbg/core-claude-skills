@@ -7,6 +7,21 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.52.0] - 2026-09-21
+
+### Fixed
+
+- **The agenda generator honours a declared schedule instead of assuming daily.** Not every standup is
+  daily. A twice-weekly Monday/Thursday series generating a Tuesday agenda produces a file nobody opens
+  — and worse, the carry-forward chain then looks broken on Thursday, because the Tuesday file is the
+  newest thing in the folder with no note behind it. A cadence mismatch would have manufactured the
+  exact failure the chain check was added to detect.
+
+  The next session is read from `carry_forward.schedule_days`, falling back to any
+  `meeting_types.*.schedule.days` already declared, and finally to the next weekday. Found when enabling
+  the mechanism on a second series whose cadence had changed from daily five days earlier — the config
+  said so, nothing had read it.
+
 ## [1.51.0] - 2026-09-21
 
 ### Fixed
