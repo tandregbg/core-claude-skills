@@ -246,9 +246,22 @@ core-skills (this repo)
 
 ---
 
-## How the system fits together (v1.31)
+## How the system fits together (v1.54)
 
 Four months of heavy production use taught us where document pipelines actually fail — and the v1.21–v1.26 wave restructured the suite around those findings. The suite now works as **four cooperating layers**:
+
+### 0. Retrieval — what the room never said
+
+A meeting record is built from a recording, so **everything asynchronous is invisible to it by
+construction**: decisions posted to a chat, issues opened overnight, a document linked an hour before
+the meeting. That is not an oversight anyone can be careful about — the loop has one input where the
+work has three.
+
+A folder declares the chat and the repositories its work concerns (`external_systems`); archivers write
+them to `<venture>/.chats/` and `<venture>/.githubmeta/`; and the agenda generator **reads those
+archives, never the network**. An agenda therefore renders with no credential and no connectivity, and
+a declared read scope is honoured where the archiver recorded it. This layer runs **before** the
+meeting, not after.
 
 ### 1. Capture — get everything in, safely
 
@@ -268,7 +281,59 @@ Every meeting silently accumulates durable insights (`_insights.yaml`); `/insigh
 
 ### 4. Closure — the loop most systems never build
 
-Append-only systems rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses, stray inbox/outbox folders quietly fork the pending list — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops sweep` (CR-019, extended by CR-023/CR-025) detects all nine closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook, merge-or-exempt for structural strays); run it weekly and staleness stops accumulating.
+**Two kinds of closure, and the second was the late addition.** The first is folder-level rot. The
+second is an item that never gets resolved *inside* a recurring series: a note ends with what did not
+land, the next agenda is generated from it, and each item carries a session count **and an age** —
+because a session is not a unit of time, and three sessions is three days on a daily series and two
+months on a fortnightly one. Whichever threshold trips first, the agenda says so in itself. Owner is
+read from a defined position and anything else reads `UNOWNED`, which is the finding rather than a parse
+failure: an item nobody is named against is the one that falls through an agenda that lists it.
+
+`/ops lint` walks that chain, because it holds the one failure in the loop that announces nothing — a
+note missing its section produces a next agenda with zero carried items that **looks perfectly
+correct**.
+
+Append-only systems also rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses, stray inbox/outbox folders quietly fork the pending list — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops sweep` (CR-019, extended by CR-023/CR-025) detects all nine closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook, merge-or-exempt for structural strays); run it weekly and staleness stops accumulating.
+
+### A project using the full set
+
+The layers above say why the suite is shaped this way. This is the order they actually run in, for one
+project with everything enabled.
+
+**Once, at set-up.** Create the folder and its config. Declare four things and the rest follows:
+`external_systems` (which chat, which repositories, and the read scope), `workflows.post_processing`
+(which of the four post-meeting artifacts this series wants), `workflows.meeting_templates` (the shape
+contract), and `workflows.task_ledger` — **`external` where the work already has a register elsewhere**,
+which is how a project avoids growing a second ledger beside the real one.
+
+**Before each session.** Archivers refresh the chat and repository archives — external CLIs, run on
+demand, never by a skill. `build_agenda.py` then writes the agenda: carried items at the top with their
+session count and age, then what the archives hold that the room has not heard. **The facilitator sheet
+is written by hand** — the agenda carries facts, and turning a fact into the right question is
+judgement, not generation.
+
+**After each session, the same day.** Choose the transcript source: duplicates are the normal case, one
+per capturing tool, so **list them and let a person pick** rather than choosing on their behalf. Then
+`/ops` makes one pass — the summary, the registers, one changelog line — and Step 9 runs what the
+project declared: tasks imported or routed to the external register, the slim priorities artifact for
+the people doing the work, **the note's carry-forward section**, and **the recap offered rather than
+written**.
+
+**`/outbox` stages what goes out**, as a folder with a manifest. The manifest's status is the only
+record that something was actually sent, and **a person advances it** — that click is where the posted
+message gets read.
+
+**Weekly.** `/insights compile` promotes confirmed hypotheses to rules; `/insights synthesize` renders
+the wiki; `/ops lint` checks the shape contracts and the carry-forward chain; `/ops sweep` finds the
+closure debt. `/daily-dashboard` runs whenever you want the day's view.
+
+**When something belongs elsewhere.** `/outbox archive` files a resolved send into the recipient's
+folder. `/handoff` freezes a bounded subject for a different piece of work — self-contained, indexed
+nowhere, and moved only when a human opens it.
+
+**Three steps are manual, and all three are deliberate:** the facilitator sheet, choosing between
+duplicate sources, and asking before a recap. None is an unbuilt feature. Each is a place where
+generating the obvious answer would be confidently wrong in a way the reader could not check.
 
 ### The triage surface — where the human stays in charge
 
