@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 16 (CR-054, 2026-09-21): external_systems in the ops config —
+#   a folder declares which chats its work is posted to and which repositories it
+#   concerns. Written because the destination of a staged recap was nowhere
+#   declared: it was chosen from a live list of seventy chats by recognising the
+#   name. A declaration, never a credential; hand-written, so a tool may read it
+#   but never append what it happened to use.
+#
 # contract_version 15 (CR-053, 2026-09-21): the manifest's fields are named by
 #   IDENTIFIER here, not by the Swedish label a vault writes them under - five
 #   entries said "Status, Kanal, Kontakt", which reads as Swedish identifiers in
@@ -72,8 +79,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 15
-core_skills_version: "1.45.0"
+contract_version: 16
+core_skills_version: "1.46.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

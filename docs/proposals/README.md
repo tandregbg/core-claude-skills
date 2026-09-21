@@ -28,6 +28,8 @@ Next available CR number: **CR-048**
 
 | CR-053 | `/outbox` schema + contract wording | Medium | **Implemented v1.45.0.** Two things one question exposed. The contract named a manifest's fields by their Swedish labels, which reads as Swedish identifiers in a public document. And the status-note field was used by 104 live manifests while documented nowhere. Declares it, and permits a dispatcher to write it: recording what it did is observation, not judgement |
 
+| CR-054 | `ops-config` schema | Medium | **Implemented v1.46.0.** A folder had no way to declare which chat its work is posted to or which repository it concerns, so a dispatcher guessed from a live listing and a person relied on recognising a name. Declares `external_systems` with `chats:` and `repos:`, resolved by the normal config chain. A declaration and never a credential, hand-written so no tool can append to it. Partially addresses the "systems of record" key proposed in CR-042 |
+
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
 ---
@@ -98,4 +100,4 @@ Currently empty. Move CRs here that are explicitly retired or superseded.
 
 ---
 
-*Last updated: 2026-09-21 — CR-047 through CR-053 implemented (v1.39.0–v1.45.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*
+*Last updated: 2026-09-21 — CR-047 through CR-054 implemented (v1.39.0–v1.46.0). Earlier: CR-040, CR-041, CR-043, CR-044, CR-045 (v1.37.0–v1.37.3); CR-042 proposed. CR-017 onward: specs tracked outside this repo.*

@@ -12,7 +12,7 @@ This document defines the YAML schema for ops-config files.
 ## Root Properties
 
 ```yaml
-schema_version: "1.2"           # Required: Schema version
+schema_version: "1.3"           # Required: Schema version
 organization: string            # Required: Organization name
 language: enum                  # Required: Output language
 swedish_chars: enum             # Optional: Swedish character enforcement (strict)
@@ -735,6 +735,81 @@ Skills resolve strings in this order (first match wins):
 3. **Hardcoded fallback** -- strings already in skill templates
 
 This means org configs can override individual strings without providing the full table.
+
+---
+
+## External Systems
+
+Optional (CR-054). Declares the systems a folder's work actually lives in, so a
+tool need not guess and a person need not remember.
+
+The motivating case: a recap staged in `_outbox/` has to reach a specific Teams
+chat, and nothing said which. The chat was chosen from a live list of seventy by
+recognising the name — which works until it does not, and leaves no record of
+where the project posts.
+
+```yaml
+external_systems:                 # Optional. Everything under it is optional too.
+  chats:                          # Chat destinations this folder's work goes to
+    - id: string                  # REQUIRED. The platform's own identifier
+      name: string                # REQUIRED. What a person calls it
+      platform: string            # Default: teams
+      purpose: string             # Optional. Why this chat, e.g. "standup recaps"
+      default: boolean            # Optional. Offer this one first
+  repos:                          # Source repositories this folder's work concerns
+    - url: string                 # REQUIRED. The repository, e.g. github.com/org/name
+      name: string                # Optional. Short name; defaults to the last path part
+      reads: [string]             # Optional. What may be read: docs, issues, releases,
+                                  #   pulls. Metadata only - never the code itself
+      purpose: string             # Optional
+  boards: [...]                   # Same shape; reserved, nothing reads it yet
+```
+
+### What this block is, and is not
+
+**It is a declaration, not a credential.** No tokens, no secrets. How a tool
+authenticates is its own business and lives in that tool's config; this only says
+*which* chat and *which* repository. That separation is why the block can sit in
+a vault file at all.
+
+**A tool may not invent an entry.** The block is hand-written, by the person who
+decides what a project's channels are. A dispatcher reads it and offers what it
+finds; it never appends a chat it happened to send to, because that would turn an
+accident into a declaration.
+
+**A missing block is not a defect.** It means nothing has been declared for that
+folder, and a tool should fall back to whatever it did before rather than refuse
+to work. Most folders will never need one.
+
+**`reads:` under a repo is a scope, not a capability.** It states what a tool is
+welcome to look at. The intended use is metadata — documentation, issues,
+releases — not cloning a codebase into the vault.
+
+### Inheritance
+
+Resolved by the normal chain (`config_resolution_order`): the nearest `_ops.yaml`
+walking up wins. So an org-level chat can be declared once in
+`<vault>/<org>/_ops.yaml` and a project overrides it with its own.
+
+A project that declares `chats:` replaces the inherited list rather than adding
+to it — a project posting to its own standup chat does not also want the org's
+general channel offered first. Use `team_additions`-style explicitness if both
+are wanted: list both in the project.
+
+### Example
+
+```yaml
+external_systems:
+  chats:
+    - id: "19:meeting_ZjNiY2ZjMGQ...@thread.v2"
+      name: "mobile-app R4+R5 standup"
+      purpose: "standup recaps and release notes"
+      default: true
+  repos:
+    - url: "github.com/example-org/mobile-app"
+      reads: [docs, issues, releases]
+      purpose: "release notes and open issues referenced in recaps"
+```
 
 ---
 

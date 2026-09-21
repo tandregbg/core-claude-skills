@@ -7,6 +7,26 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.46.0] - 2026-09-21
+
+### Added
+
+- **`external_systems` in the ops config (CR-054).** A folder declares the systems its
+  work actually lives in: the chats it posts to, and the repositories it concerns.
+  Resolved by the existing config chain, so an org declares once and a project
+  overrides.
+  - **Why:** a recap staged in `_outbox/` has to reach a specific chat, and nothing said
+    which. The chat was picked from a live list of seventy by recognising the name —
+    which works until it does not, and leaves no record of where a project posts.
+  - **A declaration, not a credential.** No tokens. It says *which* chat and *which*
+    repository; how a tool authenticates stays in that tool's own config. That
+    separation is what lets the block live in a vault file at all.
+  - **Hand-written.** A tool may read it and offer what it finds; it must never append a
+    chat it happened to send to, because that turns an accident into a declaration.
+  - `reads:` under a repository is a scope — `docs`, `issues`, `releases`, `pulls`. The
+    intent is metadata, never cloning a codebase into the vault.
+  - A missing block is not a defect. A tool falls back to what it did before.
+
 ## [1.45.0] - 2026-09-21
 
 ### Changed
