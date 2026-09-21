@@ -7,6 +7,31 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.64.0] - 2026-09-21
+
+### Added
+
+- **The README's loop diagram is generated from `working_loop`, and staleness fails the check.**
+  `scripts/render-loop.py` renders the Mermaid graph from the declaration; `--write` replaces the block
+  between markers, `--check` fails when the committed block no longer matches, and
+  `check-components.py` runs that check so drift is caught without anyone remembering to look.
+
+  **The hand-drawn diagram was already two steps behind within hours of being written** — missing
+  `orient` and `deliver`, both added the same day. CR-062 declared the loop so the README and the
+  landing page would stop being two hand-written copies; a hand-drawn picture beside the declaration was
+  simply the third. Both now render one source.
+
+### Fixed
+
+- **Two steps declared they produced the same artifact, which hid the edge that closes the loop.**
+  `carry` and `agenda` both listed *the agenda* as output, so the renderer attributed it to the first
+  and `carry` appeared to produce nothing anyone used. `carry` now produces **the note's carry-forward
+  section** and `agenda` consumes it — which is what actually happens.
+
+  Found by drawing the graph from the declaration. **A duplicate producer is invisible in prose and
+  obvious in a diagram**, which is most of the argument for generating the picture rather than drawing
+  it.
+
 ## [1.63.0] - 2026-09-21
 
 ### Changed

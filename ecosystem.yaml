@@ -99,7 +99,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 19
-core_skills_version: "1.63.0"
+core_skills_version: "1.64.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -739,7 +739,7 @@ working_loop:
     label: "the agenda generator"
     command: "python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings"
     does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard"
-    consumes: ["<venture>/.chats/", "<venture>/.githubmeta/", "the note"]
+    consumes: ["<venture>/.chats/", "<venture>/.githubmeta/", "the note's carry-forward section"]
     produces: ["the agenda"]
 
   - id: "facilitate"
@@ -771,7 +771,7 @@ working_loop:
     command: "written into the note by /ops; verified by /ops lint <folder>"
     does: "What did not land becomes the top of the next agenda. This is where the loop closes"
     consumes: ["the note"]
-    produces: ["the agenda"]
+    produces: ["the note's carry-forward section"]
 
   - id: "recap"
     phase: "after, the same day"

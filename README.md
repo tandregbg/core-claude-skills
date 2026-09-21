@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.63.0
+**Version:** 1.64.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -12,58 +12,68 @@ copy of a changelog is a second thing to keep true.
 
 ## How a project runs
 
+<!-- working-loop:start -->
 ```mermaid
 graph TB
-    subgraph before["Before the session"]
-        CH[("&lt;venture&gt;/.chats/<br/>chat archive")]
-        GM[("&lt;venture&gt;/.githubmeta/<br/>repo metadata")]
-        AG["build_agenda.py<br/>carried items + what the room has not heard"]
-        FS["facilitator sheet<br/>written by hand"]
+    subgraph p0["when picking it up"]
+        orient["<b>orient</b><br/>where it left off"]
+    end
+    subgraph p1["once, at set-up"]
+        declare["<b>declare</b><br/>the folder's config"]
+    end
+    subgraph p2["before the session"]
+        archive["<b>archive</b><br/>the archivers  ·  external"]
+        agenda["<b>agenda</b><br/>the agenda generator"]
+        facilitate["<b>facilitate</b><br/>the facilitator sheet  ·  by hand"]
+    end
+    subgraph p3["the session"]
+        meet["<b>meet</b><br/>the meeting  ·  external"]
+    end
+    subgraph p4["after, the same day"]
+        process["<b>process</b><br/>one pass over the transcript"]
+        carry["<b>carry</b><br/>the note's carry-forward"]
+        recap["<b>recap</b><br/>the recap  ·  by hand"]
+        send["<b>send</b><br/>staging and sending"]
+        deliver["<b>deliver</b><br/>the dispatching surface  ·  external"]
+        record["<b>record</b><br/>marking it sent  ·  by hand"]
+    end
+    subgraph p5["weekly"]
+        compound["<b>compound</b><br/>the knowledge loop"]
+        check["<b>check</b><br/>the shape checks"]
     end
 
-    subgraph during["The session"]
-        MEET["the meeting<br/>recorded"]
-    end
-
-    subgraph after["After, the same day"]
-        OPS["/ops — one pass"]
-        NOTE["the note<br/>incl. what did not land"]
-        REG["registers<br/>decisions · insights · tasks"]
-        RECAP["recap<br/>offered, not written"]
-        OUT["_outbox/<br/>staged with a manifest"]
-    end
-
-    subgraph weekly["Weekly"]
-        INS["/insights compile + synthesize"]
-        LINT["/ops lint · /ops sweep"]
-    end
-
-    CFG["the folder's _ops.yaml<br/>external_systems · workflows"] -.->|declares| CH
-    CFG -.->|declares| GM
-    CH --> AG
-    GM --> AG
-    AG --> FS
-    FS --> MEET
-    AG --> MEET
-    MEET --> OPS
-    OPS --> NOTE
-    OPS --> REG
-    OPS --> RECAP
-    RECAP -->|a person decides| OUT
-    OUT -->|a person marks it sent| OUT
-    NOTE -->|carry-forward| AG
-    REG --> INS
-    NOTE --> LINT
+    process -->|the note| orient
+    send -->|_outbox/&lt;item&gt;/_manifest.md| orient
+    archive -->|&lt;venture&gt;/.chats/| orient
+    archive -->|&lt;venture&gt;/.githubmeta/| orient
+    declare -->|the ops config| archive
+    archive -->|&lt;venture&gt;/.chats/| agenda
+    archive -->|&lt;venture&gt;/.githubmeta/| agenda
+    carry -->|the note's carry-forward section| agenda
+    agenda -->|the agenda| facilitate
+    meet -->|a transcript| process
+    declare -->|the ops config| process
+    process -->|the note| carry
+    process -->|the note| recap
+    process -->|a staged recap| send
+    send -->|_outbox/&lt;item&gt;/_manifest.md| deliver
+    deliver -->|the message, delivered| record
+    process -->|the registers| compound
+    process -->|the note| check
+    process -->|the registers| check
 ```
 
-**The loop closes at the note.** What did not land in one session becomes the top
-of the next agenda, carrying a session count and an age — so an item cannot
-quietly outlive the series it belongs to.
+**14 steps, 6 phases.** Generated from `working_loop` in `ecosystem.yaml` — the same declaration the landing page reads. Do not edit this block by hand; run `python3 scripts/render-loop.py --write`.
 
-**Three steps are deliberately manual**, marked above: the facilitator sheet,
-deciding whether a recap is warranted, and marking a manifest sent. Each is a
-place where generating the obvious answer would be confidently wrong in a way
-the reader could not check.
+**The loop closes at the note.** What did not land in one session becomes the top of the next agenda, carrying a session count and an age — so an item cannot quietly outlive the series it belongs to.
+
+**3 steps are deliberately by hand**, marked above. Each is a place where generating the obvious answer would be confidently wrong in a way the reader could not check:
+
+- **facilitate** — The agenda carries facts; which question to ask is judgement, not generation
+- **recap** — Whether a session warrants a recap is a judgement about the audience, not about the material
+- **record** — That click is where the posted message gets read as it actually landed
+
+<!-- working-loop:end -->
 
 ## Why it is shaped this way
 

@@ -17,7 +17,9 @@ Run it after editing either block:  python3 scripts/check-components.py
 """
 
 import os
+import subprocess
 import sys
+from pathlib import Path
 
 try:
     import yaml
@@ -156,6 +158,17 @@ def main():
                 problems.append(
                     f"working_loop {step.get('id')}: consumes `{item}`, which "
                     f"no step produces and no path declares")
+
+    # The README renders this loop. A generated block that nobody re-renders is
+    # the same stale copy the declaration was written to remove, so check it here
+    # rather than hoping someone remembers.
+    try:
+        r = subprocess.run([sys.executable, str(Path(__file__).parent / "render-loop.py"),
+                            "--check"], capture_output=True, text=True)
+        if r.returncode != 0:
+            problems.append((r.stdout + r.stderr).strip().replace("[FAIL] ", "README: "))
+    except Exception as e:                      # never block the main check on this
+        problems.append(f"README loop block: could not verify ({type(e).__name__})")
 
     print(f"components: {len(comps)}  declared vault paths: {len(paths)}  "
           f"loop steps: {len(loop)}")
