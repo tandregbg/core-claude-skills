@@ -38,6 +38,22 @@
 #   name. A declaration, never a credential; hand-written, so a tool may read it
 #   but never append what it happened to use.
 #
+# contract_version 24 (CR-072, 2026-09-22): a folder may declare itself a
+#   RECURRING SERIES with a top-level `series:` block (`name`, `cadence`) in its
+#   ops config. Written because `/ops projects` — whose whole job is to say what
+#   is wired — scans only the project trees, so a fully wired weekly living in a
+#   meetings tree was invisible to it. The declaration also licenses resolving
+#   `carry_forward` UP the config chain for that folder: a series inherits its
+#   loop from an ancestor config, and reading only its own file reports a running
+#   loop as no loop. DECLARED, NEVER INFERRED — every folder carrying an org
+#   config would otherwise read as a series, including the org root. The chain
+#   walk is deliberately NOT extended to project folders: an org-level
+#   carry_forward names one series in its `note_suffix`, so sibling projects
+#   inheriting it would be reported as having loops that do not exist, and
+#   over-reporting a loop is worse than under-reporting one — the promised
+#   agenda is never generated and nobody finds out until an item has fallen
+#   through. Additive: clients on 23 ignore the block.
+#
 # contract_version 23 (CR-070, 2026-09-22): `classification` gains a third value,
 #   management-only — NAMED RECIPIENTS rather than a group. The first two values
 #   scale a group; the third leaves group distribution. CR-066 settled the enum by
@@ -146,15 +162,15 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 23
-core_skills_version: "1.71.3"
+contract_version: 24
+core_skills_version: "1.72.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
 # `confirmation_count`, `confirmations[]`, and `contradicted_by[]` fields per
 # entry. Bump is additive — v1 readers ignore unknown fields.
 schemas:
-  ops_config: "1.3"
+  ops_config: "1.4"
   contact_meta: "1.1"
   tasks: 2
   insights: 2

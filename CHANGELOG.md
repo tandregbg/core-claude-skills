@@ -16,6 +16,45 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   No version bump: this is repository governance, not a change to any skill, so it does not
   trigger the landing-page/Marvin cascade in `docs/RELEASING.md`.
 
+## [1.72.0] - 2026-09-22
+
+### Added
+
+- **CR-072: a folder can declare itself a recurring series.** `/ops projects` answers one question --
+  *what is wired* -- and scanned only `_projects` and `_products`. A recurring series does not have to
+  live there. On the vault this was found on, the **most** heavily wired loop in the vault -- generated
+  agendas, an enforced carry-forward contract, a staged recap, 68 dated notes, its own changelog,
+  tasks and insights -- lives in a meetings tree and appeared in the listing not at all. **A command
+  that reports what is wired and silently omits the most wired thing is worse than no command**, because
+  its output is complete-looking and nothing tells the reader the scan had a scope.
+  A top-level `series: {name, cadence}` block opts the folder in. **Declared, never inferred:** treating
+  any config-carrying folder with dated notes as a series classifies every org root as one.
+  `cadence` is shown, because `escalate_after: 3` is three weeks on a weekly and three months on a
+  quarterly -- the same argument CR-057 made when it put `escalate_after_days` beside the session count.
+
+### Fixed
+
+- **An inherited loop read as no loop.** `carry_forward` was resolved from the folder's own config only,
+  so a series -- which inherits its loop from an ancestor config -- was classified *configured, no loop*
+  while its loop demonstrably ran. The declaration licenses a nearest-wins walk up the chain.
+  **The walk is deliberately not extended to project folders.** An org-level `carry_forward` block names
+  one series in its `note_suffix`; letting siblings inherit it reported two correctly-classified
+  projects as loop wired on the test vault. That is CR-067 in the opposite direction, and it is the
+  worse of the two: an under-reported loop is found the moment someone runs the agenda command, an
+  over-reported one is found after an item has fallen through an agenda nobody generated.
+- **A folder holding dated notes directly read as empty.** Note counts and last-movement looked in
+  `<folder>/meetings/` and nowhere else -- correct for a project, which *has* a meetings folder, wrong
+  for a series, which *is* one. Both now fall back to the folder itself. **Not suspected, and not
+  limited to series:** three project folders moved out of *empty or dormant* on the test vault, holding
+  three, one and one dated notes plus a README each. One had been written to four days earlier and was
+  reported as having no content at all.
+
+**Contract:** additive, 23 -> 24. `schemas.ops_config` 1.3 -> 1.4. A client on 23 ignores the block.
+
+**Known and deliberately unfixed:** a *project* whose loop is genuinely declared at org level is still
+misreported. It cannot be fixed by inheritance, because the org block names its series -- the block
+would have to say whether it is generic or series-specific. Separate CR, separate contract change.
+
 ## [1.71.3] - 2026-09-22
 
 ### Fixed

@@ -518,7 +518,7 @@ Backup: none (use git to revert if needed)
 
 **Read-only.** A folder under a projects tree may be a running loop or a pile of transcripts, and from
 the outside they are indistinguishable — same depth, same naming, several with a CHANGELOG and a
-`meetings/` folder. Measured on one vault: **39 project-shaped folders, 4 configured, 3 with the loop
+`meetings/` folder. Measured on one vault: **40 project-shaped folders, 5 configured, 4 with the loop
 wired.**
 
 Grouped by how far each is wired, because **the grouping is the answer**:
@@ -532,6 +532,35 @@ Grouped by how far each is wired, because **the grouping is the answer**:
 
 Per row: dated meeting count and **when the record last moved** — read from the changelog where there is
 one, because *a changelog entry is a deliberate act and an mtime is whatever a sync did last*.
+
+**A series IS its meetings folder; a project HAS one (CR-072).** Both counts read the subfolder when it
+exists and the folder itself when it does not. Reading only the subfolder reported folders holding
+dated notes directly as having none and as never having moved — on one vault, three folders sat in
+*empty or dormant* while one of them had been written to four days earlier.
+
+**A recurring series declares itself.** A weekly that lives in a meetings tree rather than under
+`_projects/` is invisible to a scan that only knows the project trees, however completely its loop runs.
+A top-level `series:` block opts the folder in:
+
+```yaml
+series:
+  name: <what the series is called>
+  cadence: weekly          # shown in the listing
+```
+
+**Declared, never inferred** — every folder carrying an org config would otherwise read as a series,
+including the org root. The declaration does two things: it brings the folder into the scan, and it
+**licenses resolving `carry_forward` up the config chain**, because a series inherits its loop from an
+ancestor config and reading only its own file reports a running loop as *no loop*.
+
+**The chain walk is not applied to project folders**, deliberately. An org-level `carry_forward` block
+is typically written for one named series — its `note_suffix` names that series — so letting every
+sibling project inherit it would report loops that do not exist. That is the CR-067 failure in the
+opposite direction, and over-reporting a loop is worse than under-reporting one: the agenda it promises
+is never generated and nobody finds out until an item has fallen through.
+
+**The cadence is shown because escalation thresholds are counted in sessions.** `escalate_after: 3` is
+three weeks on a weekly and three months on a quarterly. The number means nothing without it.
 
 **It does not replace a project registry.** A hand-written registry carries **intent** — what a person
 is driving, with status and sponsor — and is authoritative for it. *"What am I driving"* and *"what is
