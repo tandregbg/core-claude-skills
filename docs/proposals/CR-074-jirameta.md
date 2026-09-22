@@ -113,8 +113,8 @@ the private architecture map names them.
 ## Verifying it, when built
 
 ```sh
-gmc --vault "$VAULT" show          # the sibling, for comparison
-jira-meta-cli --vault "$VAULT" show   # declared boards, last fetch, archived days
+githubmetacli --vault "$VAULT" show   # the sibling, for comparison
+jirametacli --vault "$VAULT" show     # declared boards, last fetch, archived days
 python3 skills/ops/project_brief.py --dir <project>   # a third Archives line
 ```
 
