@@ -282,6 +282,7 @@ Consult the project CLAUDE.md for archive policy. General rules:
 - Nothing in `.ephemeral/` is ever input to vault content, and no vault file may reference a path inside it.
 - `/ops sweep` (check 6) flags content older than 14 days; deletion is the expected outcome, not archiving.
 - If something in `.ephemeral/` turns out to have a vault destiny after all, it exits through `_inbox/.files/` (see `docs/schemas/inbox.md`, CR-024) like any other input file.
+- **Taking anything out of `.ephemeral/` is a MOVE, never a copy, and it is renamed on the way.** The moment a file is read, cited, attached or acted on, it has a destination and stops being ephemeral -- so it leaves in the same action, renamed to the slug contract (`YYMMDD-` + a role keyword, å/ä/ö kept). Reading a file and leaving it where it was is the failure: `.ephemeral/` is swept at 14 days, so a copy means the original is on a deletion clock while the reference points at the survivor, and two files now disagree about which is real. A file that was worth opening was never ephemeral; the drop-time decision was simply wrong, and moving it is how that gets corrected. State the old and new path when it happens, so the move is in the record rather than silent.
 - The routing rule at drop time: **vault destiny → `_inbox/.files/`; no destiny → `.ephemeral/`.** Made consciously, once, instead of by gravity.
 
 ---

@@ -1184,6 +1184,26 @@ must not do.
 
 **Trigger:** `workflows.post_processing.recap_artifact.enabled: true`. Default `false`.
 
+**Read the declared standard before writing, every time — and never write from a previous recap.**
+The format belongs to a vault-side document, not to this skill: **this skill states no word, bullet or
+block counts and must never acquire any**, because how much a recap contains is a property of what the
+session produced and of the venture's own contract, not of the tool. So the shape has to be fetched, not
+remembered.
+
+Two failure modes, both observed on 2026-09-22:
+
+- **Writing from the last recap instead of the standard.** The previous file is a *precedent*, and a
+  precedent that already drifted hands the drift on with full confidence. Measured on one series: four
+  consecutive recaps each ran several times the budget its own standard set, each written from the one
+  before it, growing every day, and nothing noticed. A template that merely *points at* the standard is
+  not the standard, and neither is yesterday's file.
+- **Not applying the rules that can be checked.** Where the standard states something countable, count
+  it before staging and put the measurement in the manifest. An unverified claim of conformance is
+  what let four recaps drift in a row; a number in the manifest makes the next comparison possible.
+
+Where a venture's own deviation and its standard pull against each other, say so rather than silently
+picking one — that conflict is the venture's to resolve, and it recurs every session until it is.
+
 **Offer it; do not write it.** Unlike every other Step 9 artifact, the recap is **generated on request**.
 State that a recap looks warranted and what it would carry, then wait. It is the one artifact that
 leaves the building -- it reaches people who were not in the room and who read it once. Assembled from

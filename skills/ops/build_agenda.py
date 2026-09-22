@@ -26,6 +26,8 @@ Config, from the project's `.claude/ops-config.yaml`:
           round_columns: [Track]            # extra blank columns in the round table
     people:
       - name: Name                        # the round table, in order
+      - name: Other
+        adjacent: true                    # on the project, not in the round
 
 Nothing here is series-specific. Owner is read from a defined position, never guessed
 from prose -- see `owner_of`.
@@ -94,7 +96,14 @@ def config(meetings: Path) -> dict:
             cf.setdefault("agenda_suffix", "agenda-" + cf["note_suffix"])
             cf.setdefault("escalate_after", 3)
             cf.setdefault("escalate_after_days", 14)
-            cf["people"] = [p_["name"] for p_ in (d.get("people") or []) if p_.get("name")]
+            # `adjacent: true` means the person belongs to the project but not to the
+            # daily round -- a name with a permanently empty row trains the room to
+            # skip rows, and the round is the one place that must be read in full.
+            # Keep the whole entry, not just the name: the round table's first column
+            # is answerable from `areas`/`role`, and emitting it blank made the table
+            # look unbuilt when the config had the answer all along.
+            cf["people"] = [p_ for p_ in (d.get("people") or [])
+                            if p_.get("name") and not p_.get("adjacent")]
             cf["ext"] = src or external(root)
             if not cf.get("schedule_days"):
                 mt = (d.get("meeting_types") or {}).values()
@@ -133,9 +142,31 @@ def owner_of(label: str, rest: str) -> str:
     """
     if (m := re.search(r"·\s*\*\*(.+?)\*\*\s*$", rest)):
         return m.group(1).strip()
+    # An item with an owner but NO note loses its separator: carried() strips a
+    # leading " —-:·", so `- **item** · **Bob**` arrives here as `**Bob**`
+    # alone and the middot the pattern above needs is gone. Reading that as UNOWNED
+    # silently converts owned items into the one class this whole mechanism exists
+    # to surface -- the worst possible direction for the error to run.
+    if (m := re.fullmatch(r"\s*\*\*(.+?)\*\*\s*", rest)):
+        return m.group(1).strip()
     if label.endswith(":"):
         return label.rstrip(":")
     return "UNOWNED"
+
+
+def item_of(label: str, rest: str) -> str:
+    """What the item IS, which is not always the bold label.
+
+    `- **<item>** — <note> · **<owner>**`   the label is the item
+    `- **<Name>:** <what they owe>`         the label is the OWNER; the item is the rest
+
+    Reading the label as the item in the second shape printed a row saying
+    "Bob | Bob" and threw the three things they owed on the floor -- the agenda
+    still looked complete, which is why it survived a session.
+    """
+    if label.endswith(":"):
+        return rest.strip(" —-:·") or label.rstrip(":")
+    return label.rstrip(":")
 
 
 def key(label: str) -> str:
@@ -233,14 +264,23 @@ def from_chat(cf: dict, after: datetime.date) -> list[str]:
         return [f"declared chat not in the archive: {c.get('name')}"]
     out = []
     for f in sorted(d.glob("*.md")):
-        if (m := re.search(r"(\d{4}-\d{2}-\d{2})\.md$", f.name)) and \
-           datetime.date.fromisoformat(m.group(1)) >= after:
-            for line in f.read_text(encoding="utf-8").splitlines():
-                if line.startswith("### "):
-                    out.append(f"{m.group(1)} {line[4:].strip()}")
-                elif out and line.strip() and not line.startswith(("#", "---", "[")):
-                    if not out[-1].endswith(")"):
-                        out[-1] += f" — {line.strip()[:120]}"
+        if not ((m := re.search(r"(\d{4}-\d{2}-\d{2})\.md$", f.name))
+                and datetime.date.fromisoformat(m.group(1)) >= after):
+            continue
+        filled = True
+        for line in f.read_text(encoding="utf-8").splitlines():
+            # The archive keeps its own trailing sections (held-back boilerplate and
+            # why it matched). They are provenance for the archive, not chat traffic.
+            if line.startswith("## "):
+                break
+            if line.startswith("### "):
+                out.append(f"{m.group(1)} {line[4:].strip()}")
+                filled = False
+            elif not filled and line.strip() and not line.startswith(("#", "---", "[")):
+                # One opening snippet per message. Concatenating every line flattens a
+                # long post into an unreadable wall and buries the messages after it.
+                out[-1] += f" — {line.strip()[:160]}"
+                filled = True
     return out
 
 
@@ -262,7 +302,7 @@ def from_repo(cf: dict, after: datetime.date) -> list[str]:
         return []
     venture = next((p for p in cf["_root"].parents if (p / ".githubmeta").is_dir()), None)
     if not venture:
-        return ["no .githubmeta/ archive found above this project"]
+        return [{"note": "no .githubmeta/ archive found above this project"}]
 
     declared = {re.sub(r"^(https?://)?(www\.)?github\.com/", "", r.get("url", "")).strip("/")
                 for r in repos if r.get("url")}
@@ -272,21 +312,30 @@ def from_repo(cf: dict, after: datetime.date) -> list[str]:
         if info.get("repo") not in declared:
             continue
         if "issues" not in (info.get("reads") or []):
-            out.append(f"{info['repo']}: issues not in declared reads — skipped")
+            out.append({"note": f"{info['repo']}: issues not in declared reads — skipped"})
             continue
         snaps = sorted(meta.parent.glob(f"{meta.parent.name}-*.json"))
         if not snaps:
-            out.append(f"{info['repo']}: no snapshot in the archive")
+            out.append({"note": f"{info['repo']}: no snapshot in the archive"})
             continue
         snap = json.loads(snaps[-1].read_text(encoding="utf-8"))
         taken = snap.get("day", "")
         if taken and datetime.date.fromisoformat(taken) < after:
-            out.append(f"{info['repo']}: newest snapshot is {taken}, older than the last note — not refreshed")
+            out.append({"note": f"{info['repo']}: newest snapshot is {taken}, older than the last note — not refreshed"})
             continue
         for i in snap.get("issues") or []:
             if datetime.date.fromisoformat(i["updatedAt"][:10]) >= after:
-                who = ", ".join(a.get("login", "?") for a in i.get("assignees") or []) or "unassigned"
-                out.append(f"{info['repo']}#{i['number']} [{i['state'].lower()}] {i['title']} — {who}")
+                who = ", ".join(a.get("login", "?") for a in i.get("assignees") or []) or ""
+                # Raising an issue IS movement. It arrives with updatedAt == createdAt,
+                # so it is already in this list -- but reading as plain "open" it is
+                # indistinguishable from a three-week-old issue someone relabelled.
+                labs = [(l.get("name") if isinstance(l, dict) else str(l))
+                        for l in (i.get("labels") or [])]
+                areas = [l for l in labs if l and l.startswith("area:")]
+                out.append({"repo": info["repo"], "n": i["number"], "title": i["title"],
+                            "state": i["state"].lower(), "who": who,
+                            "area": (areas[0][5:] if areas else "no area"),
+                            "new": datetime.date.fromisoformat(i["createdAt"][:10]) >= after})
     return out
 
 
@@ -368,13 +417,13 @@ def main() -> None:
                 mark += f" · {d}d"
             if g:
                 mark += f" · skipped {g}"
-            L.append(f"| {lab.rstrip(':')} | {owner_of(lab, rest)} | {mark} |")
+            L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {mark} |")
         L.append("")
         if any(g for _, _, _, g, _ in items):
             L += ["*\"skipped\" means the item was absent from a note that had a carry-forward section,"
                   " then returned. It still counts — but check whether it was dropped by mistake or"
                   " resolved and re-raised, because the two look identical from here.*", ""]
-        stuck = [l.rstrip(":") for l, _, n, _, d in items if n >= E or (ED and d >= ED)]
+        stuck = [item_of(l, r) for l, r, n, _, d in items if n >= E or (ED and d >= ED)]
         if stuck:
             L += [f"> ⚠ **{', '.join(stuck)}** — at or past {E} sessions, or carried more than {ED} days.",
                   "> An item that survives that long is not an agenda problem — it has no owner who is",
@@ -396,14 +445,26 @@ def main() -> None:
 
     after = since(last_date)
     chat, repo = from_chat(cf, after), from_repo(cf, after)
-    if chat or repo:
-        L += ["---", "", "## Since the last standup — not said in the room", "",
-              "*Retrieved from the chat archive and the repo. Read before the round; most of it will not"
-              " come up otherwise.*", ""]
-        if chat:
-            L += ["**In the chat**"] + [f"- {c}" for c in chat[:12]] + [""]
-        if repo:
-            L += ["**Issues that moved**"] + [f"- {r}" for r in repo[:15]] + [""]
+    # The chat archive is deliberately NOT printed here. It is context for whoever
+    # writes the agenda and the facilitator sheet -- raw message lines pasted into
+    # a team-facing document are noise, and quoting a colleague's message back at
+    # the room reads as surveillance rather than preparation. Retrieved, counted,
+    # used; not reproduced.
+    if chat:
+        print(f"  {len(chat)} chat message(s) since {last_date} — read them for the"
+              " facilitator sheet; they are not printed into the agenda")
+
+    # What each person is carrying INTO this session, routed to their own row.
+    # The chain already knows it -- it was being printed once at the top and then
+    # dropped, so the round asked everyone the same empty question.
+    owed: dict[str, list[tuple[str, int]]] = {}
+    for lab, rest, n, _g, _d in items:
+        who = owner_of(lab, rest)
+        if who == "UNOWNED":
+            continue
+        for nm in re.split(r",|\band\b|·", who):
+            if nm := nm.strip().strip("*"):
+                owed.setdefault(nm.lower(), []).append((item_of(lab, rest), n))
 
     cols, people = cf.get("round_columns") or [], cf["people"]
     L += ["---", "", "## Round", ""]
@@ -412,13 +473,111 @@ def main() -> None:
     L.append("**What moved · what you are blocked on and who owns the other end · what you need a decision on.**")
     if people:
         # A table is only worth its space when it has rows to hold.
-        L += ["", "| | " + " | ".join(cols + [""]), "|---|" + "---|" * (len(cols) + 1)]
-        L += [f"| **{n}** |" + " |" * (len(cols) + 1) for n in people]
+        # The header must carry the same cell count as the separator and the rows:
+        # one for the name, one per configured column, one for the free text.
+        head = [""] + cols + ["Owed into today"]
+        L += ["", "| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+        for p_ in people:
+            first = ", ".join(p_.get("areas") or []) or p_.get("role", "") if cols else ""
+            # Match aliases too: a note names whoever was spoken, which is not
+            # always the roster's canonical spelling, and a silent miss here
+            # empties the row rather than erroring.
+            keys = [p_["name"]] + list(p_.get("aliases") or [])
+            mine = [x for k in keys for x in owed.get(k.lower(), [])]
+            seen, uniq = set(), []
+            for t, n in mine:
+                if t not in seen:
+                    seen.add(t); uniq.append((t, n))
+            due = " · ".join(t if n <= 1 else f"{t} (**{n}×**)" for t, n in uniq)
+            cells = [f"**{p_['name']}**"] + ([first] + [""] * (len(cols) - 1) if cols else []) + [due]
+            L.append("| " + " | ".join(cells) + " |")
+        if (un := [item_of(l, r) for l, r, *_ in items if owner_of(l, r) == "UNOWNED"]):
+            L += ["", f"**Nobody owes these: {', '.join(un)}.** They are on no row above, which is"
+                  " why they keep carrying. Give each one a name in the round or take it off the list."]
     L += ["", "---", "", "## Close", "", "- Read-back: what the recap says",
           "- **Read-back: what carries to tomorrow, and whose name is on each.** An item read back",
           "  without a name is the one that will be here again", ""]
 
+    if repo:
+        notes = [r["note"] for r in repo if "note" in r]
+        rows = [r for r in repo if "note" not in r]
+        L += ["---", "", "## Appendix — what moved in the repo", ""]
+        if notes:
+            L += [f"- {n}" for n in notes] + [""]
+        if rows:
+            # A flat list of forty issues is not something anyone reads before a
+            # standup. Two questions are worth answering -- WHERE did it move, and
+            # WHAT has no name on it -- so the appendix answers those and stops.
+            areas = sorted({r["area"] for r in rows})
+            L += [f"**{len(rows)} issues moved since the last note.** Raising one counts as movement.", "",
+                  "| Area | Opened | Closed | Other movement | No assignee |",
+                  "|---|--:|--:|--:|--:|"]
+            for ar in areas:
+                g = [r for r in rows if r["area"] == ar]
+                op = sum(1 for r in g if r["new"])
+                cl = sum(1 for r in g if r["state"] == "closed")
+                ot = len(g) - op - cl
+                na = sum(1 for r in g if not r["who"])
+                L.append(f"| {ar} | {op or ''} | {cl or ''} | {ot or ''} | "
+                         + (f"**{na}**" if na else "") + " |")
+            tot = (sum(1 for r in rows if r["new"]), sum(1 for r in rows if r["state"] == "closed"))
+            nam = sum(1 for r in rows if not r["who"])
+            L += [f"| **all** | **{tot[0]}** | **{tot[1]}** | "
+                  f"**{len(rows) - tot[0] - tot[1]}** | **{nam}**|", ""]
+
+            fresh = [r for r in rows if r["new"] and r["state"] != "closed"]
+            if fresh:
+                # Not simply "opened": one raised and closed inside the window is
+                # in the Opened column but not here, and a reader who spots the
+                # mismatch is right to distrust the whole table.
+                L += [f"**Opened since the last note and still open ({len(fresh)})**", ""]
+                for r in sorted(fresh, key=lambda r: -r["n"]):
+                    L.append(f"- #{r['n']} {r['title'][:90]} — "
+                             + (r["who"] or "**no assignee**"))
+                L.append("")
+            if nam:
+                L += [f"*{nam} of the {len(rows)} carry no assignee. That is the same shape as an"
+                      " unowned carry-forward line, in a second place.*", ""]
+
     out.write_text("\n".join(L), encoding="utf-8")
+
+    # ---- the Teams post: same facts, a shape that survives being pasted --------
+    # Markdown tables flatten into unreadable runs in a chat client, so the post
+    # carries no table at all. It is not a summary of the agenda; it is the part
+    # a participant needs in order to arrive prepared.
+    T = [f"**{cf.get('title', md.parent.name)} — {day.strftime('%A %-d %B')}**"
+         + (f"  ·  {cf['time']}" if cf.get("time") else ""), ""]
+    if cf.get("purpose"):
+        T += [cf["purpose"], ""]
+    T += ["**Bring:** what moved · what you are blocked on and who owns the other end · what you"
+          " need a decision on."
+          + (f" Say your {cols[0].lower()} first." if cols else ""), ""]
+    if owed:
+        T += ["**Carried from the last session — every line needs a name said out loud:**"]
+        for p_ in people:
+            keys = [p_["name"]] + list(p_.get("aliases") or [])
+            mine, seen = [], set()
+            for k in keys:
+                for t, _n in owed.get(k.lower(), []):
+                    if t not in seen:
+                        seen.add(t); mine.append(t)
+            if mine:
+                T.append(f"- **{p_['name']}:** " + " · ".join(mine))
+        T.append("")
+    if items:
+        un2 = [item_of(l, r) for l, r, *_ in items if owner_of(l, r) == "UNOWNED"]
+        if un2:
+            T += [f"**Nobody owes these: {', '.join(un2)}.** They have been on the agenda without a"
+                  " name; today they get one or come off.", ""]
+    if repo and [r for r in repo if "note" not in r]:
+        rws = [r for r in repo if "note" not in r]
+        T += [f"**Repo since the last note:** {len(rws)} issues moved, "
+              f"{sum(1 for r in rws if r['new'])} opened, "
+              f"{sum(1 for r in rws if r['state'] == 'closed')} closed, "
+              f"{sum(1 for r in rws if not r['who'])} with no assignee. Breakdown in the full agenda.", ""]
+    T += [f"Full agenda: `{out.name}`"]
+    post = md / f"{target}-teams-{cf['agenda_suffix']}.md"
+    post.write_text("\n".join(T) + "\n", encoding="utf-8")
     if not has_section(last):
         print(f"  ⚠ {last.name} has no '## Carried forward' section — chain broken, nothing carried in")
     print(f"  {last.name} -> {out.name}  ({len(items)} carried"
