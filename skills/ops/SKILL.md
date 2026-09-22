@@ -1000,6 +1000,14 @@ post; this step reads the same declaration to know where to *look*. The archive 
 (CR-047) stores `_chat.json` carrying the platform id, so the folder is resolved **by matching that id**
 rather than by a second hand-written name that would drift.
 
+**Read EVERY declared chat (CR-071).** `default:` answers *"where does this project post?"* — one answer,
+and the dispatcher's. Retrieval asks *"what was said anywhere that bears on this session?"*, which has no
+default. A project running across three chats whose agenda reads one produces a block that is
+complete-looking and partial. Report the count **per chat** when more than one carried traffic: an
+undivided total does not say where to go and read. A declared chat that is not in the archive prints as a
+problem and is **never counted as a message** — same rule as `reads:` below, a skipped source that
+announces itself is honest; a silent one looks like an empty result.
+
 **Read the archives; do not fetch.** `<venture>/.teamschats/` (CR-047) and `<venture>/.githubmeta/` (CR-055)
 are siblings by design — an archiver writes, this reads. So an agenda generates **with no credential and
 no connectivity**, and the morning it is needed is not when a token turns out to have expired.

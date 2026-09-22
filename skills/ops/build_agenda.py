@@ -243,26 +243,9 @@ def since(yymmdd: str) -> datetime.date:
     return datetime.datetime.strptime(yymmdd, "%y%m%d").date()
 
 
-def from_chat(cf: dict, after: datetime.date) -> list[str]:
-    """Messages posted to the series chat since the last note -- said in writing,
-    never in the room, therefore absent from every transcript.
-
-    `external_systems.chats` declares the chat by its PLATFORM ID. The archive
-    (CR-047) stores `_chat.json` carrying that same id, so the folder is resolved by
-    matching rather than by a second hand-written name that could drift.
-    """
-    chats = cf.get("ext", {}).get("chats") or []
-    if not chats:
-        return []
-    c = next((x for x in chats if x.get("default")), chats[0])
-    venture = next((p for p in cf["_root"].parents if (p / ".teamschats").is_dir()), None)
-    if not venture:
-        return ["no .teamschats/ archive found above this project"]
-    d = next((f.parent for f in (venture / ".teamschats").glob("*/_chat.json")
-              if json.loads(f.read_text(encoding="utf-8")).get("chat_id") == c.get("id")), None)
-    if not d:
-        return [f"declared chat not in the archive: {c.get('name')}"]
-    out = []
+def _chat_messages(d: Path, after: datetime.date) -> list[tuple[str, str]]:
+    """(date, line) per message in one archived chat folder."""
+    out: list[tuple[str, str]] = []
     for f in sorted(d.glob("*.md")):
         if not ((m := re.search(r"(\d{4}-\d{2}-\d{2})\.md$", f.name))
                 and datetime.date.fromisoformat(m.group(1)) >= after):
@@ -274,13 +257,55 @@ def from_chat(cf: dict, after: datetime.date) -> list[str]:
             if line.startswith("## "):
                 break
             if line.startswith("### "):
-                out.append(f"{m.group(1)} {line[4:].strip()}")
+                out.append((m.group(1), f"{m.group(1)} {line[4:].strip()}"))
                 filled = False
             elif not filled and line.strip() and not line.startswith(("#", "---", "[")):
                 # One opening snippet per message. Concatenating every line flattens a
                 # long post into an unreadable wall and buries the messages after it.
-                out[-1] += f" — {line.strip()[:160]}"
+                out[-1] = (out[-1][0], out[-1][1] + f" \u2014 {line.strip()[:160]}")
                 filled = True
+    return out
+
+
+def from_chat(cf: dict, after: datetime.date) -> list[dict]:
+    """Messages posted to the series chats since the last note -- said in writing,
+    never in the room, therefore absent from every transcript.
+
+    `external_systems.chats` declares each chat by its PLATFORM ID. The archive
+    (CR-047) stores `_chat.json` carrying that same id, so the folder is resolved by
+    matching rather than by a second hand-written name that could drift.
+
+    **Every declared chat is read (CR-071).** `default:` answers "where does this
+    project POST?" -- one answer, and the dispatcher's. Reading asks "what was said
+    anywhere that bears on this session?", which has no default: a project whose work
+    runs across three chats and whose agenda quietly reads one produces a block that
+    is complete-looking and partial.
+
+    Returns one record per declared chat -- `{name, messages, problem}` -- so the
+    caller can report per chat. A chat that cannot be resolved carries a `problem`
+    and NO messages: a diagnostic counted as traffic is worse than no count at all.
+    """
+    chats = cf.get("ext", {}).get("chats") or []
+    if not chats:
+        return []
+    venture = next((p for p in cf["_root"].parents if (p / ".teamschats").is_dir()), None)
+    if not venture:
+        return [{"name": None, "messages": [],
+                 "problem": "no .teamschats/ archive found above this project"}]
+    # One pass over the archive; declared ids are then looked up rather than the
+    # archive re-globbed and re-parsed once per declared chat.
+    byid = {}
+    for f in (venture / ".teamschats").glob("*/_chat.json"):
+        try:
+            byid[json.loads(f.read_text(encoding="utf-8")).get("chat_id")] = f.parent
+        except (OSError, ValueError):
+            continue  # best effort: one unreadable _chat.json must not lose the rest
+    out = []
+    for c in chats:
+        d = byid.get(c.get("id"))
+        out.append({"name": c.get("name"),
+                    "messages": _chat_messages(d, after) if d else [],
+                    "problem": None if d else "declared chat not in the archive"})
     return out
 
 
@@ -450,9 +475,21 @@ def main() -> None:
     # a team-facing document are noise, and quoting a colleague's message back at
     # the room reads as surveillance rather than preparation. Retrieved, counted,
     # used; not reproduced.
-    if chat:
-        print(f"  {len(chat)} chat message(s) since {last_date} — read them for the"
+    total = sum(len(c["messages"]) for c in chat)
+    if total:
+        print(f"  {total} chat message(s) since {last_date} — read them for the"
               " facilitator sheet; they are not printed into the agenda")
+        # Which chat to go and read. With one declared chat the name is noise; with
+        # several, an undivided total does not say where the traffic was.
+        if len([c for c in chat if c["messages"]]) > 1:
+            for c in chat:
+                if c["messages"]:
+                    print(f"    {c['name']}: {len(c['messages'])}")
+    # Problems print SEPARATELY and are never counted as messages. Folded into the
+    # total they would report traffic that does not exist and hide the reason.
+    for c in chat:
+        if c["problem"]:
+            print(f"  chat not read — {c['problem']}: {c['name'] or '(declared chats)'}")
 
     # What each person is carrying INTO this session, routed to their own row.
     # The chain already knows it -- it was being printed once at the top and then

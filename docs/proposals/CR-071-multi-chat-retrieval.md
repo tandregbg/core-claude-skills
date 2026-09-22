@@ -5,7 +5,7 @@
 | **CR Number** | CR-071 |
 | **Date** | 2026-09-22 |
 | **Author** | User + Claude Code |
-| **Status** | **Proposed — not implemented.** `from_chat` is under active rewrite; implementing now would conflict |
+| **Status** | **Implemented** in v1.71.2 (2026-09-22), after the in-flight `from_chat` rewrite landed in v1.71.1 |
 | **Priority** | Medium-High |
 | **Complexity** | Low |
 | **Estimated Scope** | `skills/ops/build_agenda.py` (`from_chat`) and the `/ops` SKILL.md retrieval section. **`project_brief.py` is already correct** — see change 4 |

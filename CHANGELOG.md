@@ -7,6 +7,25 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.71.2] - 2026-09-22
+
+### Fixed
+- **CR-071: the agenda read one of a project's chats.** `external_systems.chats` has always been a
+  list, but `from_chat` took a single item from it (`next((x for x in chats if x.get("default")),
+  chats[0])`) and dropped the rest without a word. `default:` is a dispatch concept — *where does this
+  project post?*, one answer — that had been reused for retrieval, which has no default. Every declared
+  chat is now read. Measured on a live project declaring three chats: **12 of 218 messages** were being
+  retrieved over a four-week window.
+- **A retrieval failure was counted as a message.** `from_chat` returned its own diagnostics in the same
+  list as chat traffic, so "declared chat not in the archive" rendered as `1 chat message(s) since …`.
+  Problems now print separately and never reach the count.
+
+### Changed
+- `from_chat` returns one record per declared chat (`{name, messages, problem}`) instead of a flat list,
+  so the caller reports **per chat**. Where more than one chat carried traffic the agenda prints a
+  breakdown under the total — an undivided number does not say which chat to go and read.
+- The archive is indexed once per run rather than re-globbed and re-parsed per declared chat.
+
 ## [1.71.1] - 2026-09-22
 
 ### Fixed
