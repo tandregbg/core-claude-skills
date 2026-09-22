@@ -118,6 +118,31 @@ Orgs with no `meeting_templates` config get the `default` CR-006 contract in war
 
 ---
 
+## STATUS / RESULTS REPORTING (CR-069)
+
+A **status report** is the measurement-driven sibling of the meeting summary above. Where a summary is *event-driven* (input = a transcript, looking backward at what was said), a status report is *measurement-driven* (input = a data source + a period, looking forward at where something stands). A daily product-metrics readout, a campaign-performance report, a project-health check, an experiment result -- all the same shape.
+
+**This is a shared standard, not a skill.** A skill produces a status report by **referencing** this standard -- exactly as meeting summaries reference the TWO-TIER format. The skill supplies the domain (the data source, the metric names, the reconciliation identities, the freshness thresholds); this standard supplies the structure and the discipline. Do **not** put status reporting inside `/ops`: `/ops` processes meetings (input = transcript), and a status report's input is a data source, not a conversation.
+
+### Required elements
+
+A conforming status report has all six:
+
+1. **Scorecard first.** Lead with 3-6 headline measures as a **trend** (movement over a period), never a point-in-time snapshot, plus one line naming the single biggest thing slowing progress. The reader gets the verdict before any detail.
+2. **Trend anchoring / partial-period guard.** Compute deltas over *complete* periods; if the latest data point is a partial period (an early-in-the-day snapshot, an in-progress week), anchor the trend on the last complete period and label the partial one -- a partial delta must not read as a stall or a spike.
+3. **Reconciliation invariants.** The report declares the identities its own numbers must satisfy (a total equals the sum of its parts; two independently-computed figures of the same quantity agree) and states in the footer that they hold. A failing invariant blocks publication.
+4. **Honest provenance and blind spots.** Stamp the data source and as-of timestamp; name explicitly what the data *cannot* show (a quantity there is no feed for). Never imply a metric that was not measured, or present a coarser or older series as current.
+5. **Data-freshness gate -- warn, do not fail silently.** Before writing, check each source against a declared freshness expectation *and its own cadence*; if a source is stale, or is a lower-cadence rollup than the report implies, WARN at the top of the report (or refuse to publish a stale one).
+6. **Owner-ranked actions.** Close with what to do, ranked by impact, each with a named owner and the number that justifies it. A recommendation without an owner is not an action.
+
+### The contract
+
+A producing skill declares its report's domain rules; this standard requires only that they **exist and are honoured**. The concrete metrics, thresholds, reconciliation identities, and cadences live in the skill (or its per-report template), not here. A status-report skill states, in its SKILL.md, which data sources it reads, their freshness expectations and cadences, and the reconciliation identities -- the analogue of the meeting `meeting_templates` contract. Absence of any of the six required elements is a format failure, reported the same way (warn by default).
+
+This standard is business-agnostic: it names no product, org, or dataset. It applies equally to a company's daily metrics report and a personal project's progress check.
+
+---
+
 ## TASK MANAGEMENT
 
 ### Priority Levels

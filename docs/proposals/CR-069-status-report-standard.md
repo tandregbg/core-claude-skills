@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Implemented v1.70.0 |
 | **Contract** | 21 → 22 (**additive** — declares a standard, changes no existing one) |
 | **Date** | 2026-09-22 |
 | **Area** | `ops-base` (shared standards) |

@@ -7,6 +7,11 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.70.0] - 2026-09-22
+
+### Added
+- **Status/Results Report standard in `ops-base`** (CR-069) — the measurement-driven sibling of the TWO-TIER meeting summary. A status report's input is a data source + a period (not a transcript), and it looks forward: "is this working, and what is the one thing slowing it." Declares six required elements — scorecard-first trend (not a snapshot), partial-period guard, reconciliation invariants, honest provenance + blind spots, a warn-not-fail data-freshness gate, and owner-ranked actions. A producing skill references the standard and supplies its own metrics, reconciliation identities, freshness thresholds and cadences. Business-agnostic; explicitly NOT a `/ops` format (that processes meetings). `contract_version` 21 → 22 (additive — changes no existing format or section order).
+
 ## [1.69.0] - 2026-09-22
 
 ### Changed

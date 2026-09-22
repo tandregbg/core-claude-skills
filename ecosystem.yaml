@@ -38,6 +38,16 @@
 #   name. A declaration, never a credential; hand-written, so a tool may read it
 #   but never append what it happened to use.
 #
+# contract_version 22 (CR-069, 2026-09-22): a STATUS/RESULTS REPORT standard is
+#   declared in ops-base, beside the TWO-TIER meeting-summary format. Additive —
+#   it introduces a new report kind (measurement-driven: data source + period),
+#   changes no existing format or section order. A producing skill references the
+#   standard and supplies its own metrics, reconciliation identities, freshness
+#   thresholds and cadences; the standard supplies the six required elements
+#   (scorecard-first trend, partial-period guard, reconciliation invariants,
+#   honest provenance + blind spots, a warn-not-fail freshness gate, owner-ranked
+#   actions). Business-agnostic; not a `/ops` format (that processes meetings).
+#
 # contract_version 21 (CR-068, 2026-09-22): `<venture>/.chats/` is renamed to
 #   `<venture>/.teamschats/`. A BREAKING rename, not an addition: a client on 20
 #   reading the old path finds nothing. "chats" had become ambiguous once Claude
@@ -121,7 +131,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 21
+contract_version: 22
 core_skills_version: "1.69.0"
 
 # --- Schema versions ---
