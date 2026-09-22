@@ -273,7 +273,7 @@ Clone the repo anywhere you like, then create one symlink:
 
 ```bash
 # Clone to any directory (~/Projects, ~/src, /opt, etc.)
-git clone https://github.com/your-username/core-claude-skills.git core-skills
+git clone https://github.com/tandregbg/core-claude-skills.git core-skills
 
 # Create the bootstrap symlink
 mkdir -p ~/.claude/skills
