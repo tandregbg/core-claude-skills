@@ -69,7 +69,22 @@ def classify(d: Path) -> tuple[str, dict]:
             "changelog": (d / "CHANGELOG.md").exists()}
     if cfg is not None:
         pp = (cfg.get("workflows") or {}).get("post_processing") or {}
-        if pp.get("carry_forward"):
+        cf = pp.get("carry_forward")
+        # Absent is not the same as declared-without-a-flag: no block means no loop,
+        # a block without `enabled` means one written before the flag existed.
+        if cf is not None:
+            cf = cf if isinstance(cf, dict) else {"enabled": bool(cf)}
+        else:
+            cf = None
+        # Read the field, not the block (CR-067): a block written to DISABLE
+        # carry-forward is a non-empty dict, and testing the block reports it as
+        # wired. Declaring enabled: false is the only way a project can decline an
+        # org-level carry_forward, so "off" must not read as "on".
+        #
+        # Absent means enabled, matching build_agenda: a block written before the
+        # flag existed described a working loop, and no existing config should
+        # change classification because a field was added.
+        if cf is not None and cf.get("enabled", True):
             return "wired", info
         return "configured", info
     if notes or info["changelog"]:

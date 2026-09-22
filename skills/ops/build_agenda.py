@@ -73,8 +73,22 @@ def config(meetings: Path) -> dict:
                 continue
             d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
             cf = (d.get("workflows", {}).get("post_processing", {}) or {}).get("carry_forward", {}) or {}
+            if not isinstance(cf, dict):
+                cf = {"enabled": bool(cf)}
             if not cf:
                 continue
+            # Read the field, not the block (CR-067). A block written to DISABLE
+            # carry-forward is a non-empty dict, so testing the block alone treats
+            # "off" as "on" -- and `enabled: false` is the only way a project can
+            # decline a carry_forward an org layer enabled above it.
+            #
+            # A disabled declaration STOPS resolution; it does not fall through.
+            # Nearest declaration wins (see the docstring), and continuing the walk
+            # would let a further-away "on" override a nearer "off" -- which is the
+            # opt-out failing in the one direction it exists for. Defaults ON when
+            # the key is absent: a block predating the flag must keep working.
+            if not cf.get("enabled", True):
+                return {"enabled": False, "_root": root}
             src = d.get("external_systems") or {}
             cf.setdefault("note_suffix", "daily-standup")
             cf.setdefault("agenda_suffix", "agenda-" + cf["note_suffix"])
@@ -304,6 +318,8 @@ def main() -> None:
 
     md = Path(a.dir).resolve()
     cf = config(md)
+    if not cf.get("enabled", True):
+        sys.exit(f"carry-forward is disabled for {cf.get('_root', md)} — no agenda built")
     # `*` in note_suffix becomes a wildcard. Real series are not uniform:
     # "coreteam-weekly-w38" carries a week number, "bi-weekly-Ann-Bo-Cai[-Dee]"
     # carries participants that change. An exact match finds none of them.
