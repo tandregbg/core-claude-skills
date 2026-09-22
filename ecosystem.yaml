@@ -38,6 +38,18 @@
 #   name. A declaration, never a credential; hand-written, so a tool may read it
 #   but never append what it happened to use.
 #
+# contract_version 20 (CR-066, 2026-09-22): the manifest declares `classification` —
+#   who may receive the item, distinct from `channel`/`contact` which say where it
+#   is going. Already in use by 20 live manifests before being declared, the same
+#   way status-note was: practice ran ahead of the schema. Two values,
+#   team-wide-safe (the default when absent) and team-only; a third, `internal`,
+#   had appeared as an undeclared synonym and was normalised away — the drift a
+#   field with no declared options produces. AUTHORED BY THE SKILL, READ-ONLY to a
+#   dispatcher, which is what lets it inform a send without the dispatcher deciding
+#   policy. A dispatching surface WARNS when a send would widen the audience beyond
+#   the declared value and requires confirmation; it does not refuse. Additive:
+#   clients on 19 ignore it.
+#
 # contract_version 15 (CR-053, 2026-09-21): the manifest's fields are named by
 #   IDENTIFIER here, not by the Swedish label a vault writes them under - five
 #   entries said "Status, Kanal, Kontakt", which reads as Swedish identifiers in
@@ -98,8 +110,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 19
-core_skills_version: "1.66.0"
+contract_version: 20
+core_skills_version: "1.68.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -346,7 +358,8 @@ vault_conventions:
       lifecycle: "staged -> sent -> archived by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `archive --all-sent` — see outbound_dispatch.known_gaps"
 
     - path: "_outbox/<item>/_manifest.md"
-      purpose: "The per-item contract every dispatcher reads: status, channel, contact, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
+      purpose: "The per-item contract every dispatcher reads: status, channel, contact, classification, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
+      classification: "Who may RECEIVE the item, as distinct from where it is going (channel/contact). Values: team-wide-safe (anyone internal — the default when absent) and team-only (the working team; not interns or contractors). Authored by the skill and READ-ONLY to a dispatcher: a dispatching surface may write channel and contact, so without this an operator can widen the audience of an item never written for it, and nothing in the file objects. A dispatcher WARNS and requires confirmation when a send would widen beyond the declared value; it does not refuse, because refusing is enforcing policy and that is not a dispatcher's to decide (CR-047)"
       schema: "see the /outbox skill, which owns the vocabulary"
       writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only)"]
       readers: ["/outbox", "a dispatching surface", "user"]

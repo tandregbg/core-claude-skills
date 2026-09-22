@@ -5,9 +5,9 @@
 | **CR Number** | CR-066 |
 | **Date** | 2026-09-21 |
 | **Author** | User + Claude Code |
-| **Status** | Proposed — question, not a decision · **evidence added 2026-09-22** |
+| **Status** | **Decided 2026-09-22 — option B, warn on widening.** Declared in contract_version 20; the warning itself belongs to the dispatching surface, outside this repo |
 | **Priority** | Medium |
-| **Complexity** | Low (schema), Medium (enforcement) |
+| **Complexity** | Low (schema), Medium (the warning) |
 | **Estimated Scope** | `/outbox` skill manifest schema; dispatcher `rules.toml` field map |
 | **Related CRs** | CR-059 (`recap_artifact`), **CR-047** (`outbound_dispatch`, write boundary + known_gaps), **CR-049** (identifier language), **CR-053** (fields by identifier) |
 | **Contract** | Written against contract_version 19 |
@@ -100,9 +100,13 @@ Three positions, and this CR does not pick one.
 
 **C. Refuse.** A restricted item cannot be sent to a broadcast channel at all; the classification must be changed in the manifest first — which is an edit to the file, by the skill that owns it, leaving a trace.
 
-**B is the likely answer**, and CR-047's boundary is the reason it can be: a warning reads a field the skill authored and asks the operator to confirm. It does not decide what the value *means* — the skill did that when it wrote it. **C is where the boundary strains**: refusing is the dispatcher enforcing policy, which is the thing it is declared never to do.
+**Decided: B.** CR-047's boundary is the reason it can be. A warning **reads a field the skill authored and asks the operator to confirm**; it does not decide what the value means — the skill did that when it wrote it. That keeps the dispatcher observing rather than judging, which is the line it is declared never to cross.
 
-**If the boundary should hold strictly, the honest answer is A** — the field exists, the surface shows it, and enforcement lives wherever policy lives.
+**C was rejected on the same boundary.** Refusing is enforcing policy, and a dispatcher that refuses a send has decided what a classification *means* for an item. The gap it would close is real but narrow, and it buys it by breaking the property that makes the whole outbox/dispatcher split work.
+
+**A was rejected as insufficient given the data.** 19 of 20 manifests sit at the most permissive value. A field displayed and not acted on would read as decoration, and the skew suggests authors reach for the safe default — so the one case that matters is precisely the one a passive display would let through.
+
+**What B means concretely:** the dispatching surface compares the item's classification against the audience of the chosen channel. If the send would widen it, the surface says so and requires confirmation. It never blocks, never edits the classification, and never treats an unrecognised value as permissive — an unknown classification warns like the narrowest known one.
 
 ---
 
