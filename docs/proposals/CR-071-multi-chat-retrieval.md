@@ -71,6 +71,31 @@ Checked: `project_brief.py` already iterates (`for c in ext.get("chats") or []`)
 
 ---
 
+## Adjacent finding: the archiver fetches meeting threads only
+
+Declaring a real project's chats surfaced a second gap, independent of the reader bug.
+
+Teams carries two kinds of thread, and the id shows which:
+
+| Form | Kind |
+|------|------|
+| `19:meeting_<base64>@thread.v2` | chat attached to a recurring meeting |
+| `19:<hex>@thread.v2` | standing group chat, no meeting behind it |
+
+A venture archive checked on 2026-09-22 held **35 chats, all of them meeting threads, and no group
+chat at all**. The project's UI/UX discussion is a standing group chat, so no amount of fixing
+`from_chat` would surface it: **there is nothing archived to read.**
+
+This matters because the two gaps compound in the same direction. A collapsed reader drops a chat it
+was told about; an archiver that fetches one kind of thread drops a chat nobody can tell it about.
+Both end in a retrieval block that looks complete.
+
+**Out of scope for this CR** -- the archiver is a separate component (CR-047) and the cause is not
+yet confirmed to be a filter rather than, say, permissions. Filed here so the next person reading
+`declared chat not in the archive` against a correct id does not go looking in `from_chat`.
+
+---
+
 ## Not proposed
 
 - **Discovering chats.** A tool may read what is declared and must never append a chat it happened to see. CR-054's hand-written property is the point: *"a tool may read it but must never append what it happened to use — that would turn an accident into a declaration."*
