@@ -7,6 +7,15 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [Unreleased]
+
+### Added
+- **MIT LICENSE.** The repository has been public since it was created, and the README invites
+  anyone to clone it and symlink a skill — but with no license file the default was
+  all-rights-reserved, which said the opposite. MIT states what the repo already behaves like.
+  No version bump: this is repository governance, not a change to any skill, so it does not
+  trigger the landing-page/Marvin cascade in `docs/RELEASING.md`.
+
 ## [1.71.2] - 2026-09-22
 
 ### Fixed
