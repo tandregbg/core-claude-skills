@@ -94,6 +94,26 @@ Both end in a retrieval block that looks complete.
 yet confirmed to be a filter rather than, say, permissions. Filed here so the next person reading
 `declared chat not in the archive` against a correct id does not go looking in `from_chat`.
 
+### Resolved, 2026-09-22 (teams-chat-cli 0.4.4)
+
+**A filter, not permissions.** The chat was reachable the whole time: read live, it returned its
+topic and its messages on the first try. The sweep called `list_chats(all_types=args.all_types)`
+with that flag defaulting to false, which kept `chatType == "meeting"` client-side. `--all-types`
+had always existed, so nothing was ever unfetchable -- the archive was empty because no run had
+asked for it.
+
+Worth recording because the evidence pointed the other way: 35 of 35 archived chats being meeting
+threads reads as an inability to fetch group chats, and it was a default.
+
+A sweep now takes **meeting threads and named group chats** (`ARCHIVED_BY_DEFAULT`). One-on-ones
+stay out -- private correspondence, and dozens landing in a vault is not a sweep's decision -- as do
+unnamed group chats, which have nothing to name a folder. Thirteen named group chats came into scope
+on the live tenant.
+
+The UI/UX chat now holds 44 days of history back to June. Verified after: this project's brief
+resolves all three declared chats, and `from_chat` reads **150 messages with zero retrieval
+failures** where it previously read 12 of 218.
+
 ---
 
 ## Not proposed
