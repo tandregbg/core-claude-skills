@@ -7,6 +7,25 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.68.0] - 2026-09-22
+
+### Added
+
+- **`classification` declared in the manifest (CR-066, contract_version 20).** Who may RECEIVE an item,
+  as distinct from `channel`/`contact` which say where it is going. Two values: `team-wide-safe`
+  (the default when absent) and `team-only`.
+- **Declared after the fact, like the status-note.** 20 live manifests already carried the field before
+  any schema mentioned it — and had grown an undeclared synonym, `internal`, used once. That drift at
+  n=20, unnoticed, is the argument for declaring it.
+- **Authored by the skill, read-only to a dispatcher.** A dispatching surface may write `channel` and
+  `contact`, so without this an operator can widen the audience of an item never written for it and
+  nothing in the file objects.
+- **Decided: warn on widening, do not refuse.** A warning reads a field the skill authored and asks for
+  confirmation; refusing would be the dispatcher deciding what a classification *means*, which CR-047
+  declares is not its to decide. Passive display was rejected too: 19 of 20 manifests sit at the most
+  permissive value, so a field shown and never acted on would read as decoration.
+- The warning itself belongs to the dispatching surface, outside this repo.
+
 ## [1.67.0] - 2026-09-22
 
 ### Fixed
