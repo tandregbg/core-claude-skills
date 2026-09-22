@@ -38,6 +38,21 @@
 #   name. A declaration, never a credential; hand-written, so a tool may read it
 #   but never append what it happened to use.
 #
+# contract_version 23 (CR-070, 2026-09-22): `classification` gains a third value,
+#   management-only — NAMED RECIPIENTS rather than a group. The first two values
+#   scale a group; the third leaves group distribution. CR-066 settled the enum by
+#   surveying 20 live manifests, which establishes what the values are CALLED but
+#   not how many there are: a survey finds only what someone already wrote. The
+#   21st manifest, staged hours later, was a confirmation recap to one named person
+#   carrying judgements about third parties — team-only would have recorded the
+#   wrong KIND of audience, and the author wrote an undeclared value instead,
+#   following a standard that already defined three levels. A schema that cannot
+#   express what its source document mandates relocates drift rather than
+#   preventing it. PERMISSIVENESS ORDER IS NOW EXPLICIT (team-wide-safe >
+#   team-only > management-only) because warn-on-widening needs it and a
+#   dispatcher inferring an order is a dispatcher deciding policy (CR-047).
+#   Additive: clients on 22 see an unrecognised value and tolerate it (CR-049).
+#
 # contract_version 22 (CR-069, 2026-09-22): a STATUS/RESULTS REPORT standard is
 #   declared in ops-base, beside the TWO-TIER meeting-summary format. Additive —
 #   it introduces a new report kind (measurement-driven: data source + period),
@@ -131,8 +146,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 22
-core_skills_version: "1.69.0"
+contract_version: 23
+core_skills_version: "1.71.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -380,7 +395,7 @@ vault_conventions:
 
     - path: "_outbox/<item>/_manifest.md"
       purpose: "The per-item contract every dispatcher reads: status, channel, contact, classification, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
-      classification: "Who may RECEIVE the item, as distinct from where it is going (channel/contact). Values: team-wide-safe (anyone internal — the default when absent) and team-only (the working team; not interns or contractors). Authored by the skill and READ-ONLY to a dispatcher: a dispatching surface may write channel and contact, so without this an operator can widen the audience of an item never written for it, and nothing in the file objects. A dispatcher WARNS and requires confirmation when a send would widen beyond the declared value; it does not refuse, because refusing is enforcing policy and that is not a dispatcher's to decide (CR-047)"
+      classification: "Who may RECEIVE the item, as distinct from where it is going (channel/contact). Values, most to least permissive: team-wide-safe (anyone internal — the default when absent), team-only (the working team; not interns or contractors) and management-only (named recipients, not a group — CR-070). The order is part of the declaration, not an inference: the first two scale a group, the third leaves group distribution, and widening from it into any channel is the step that turns individual assessment into a group communication. Authored by the skill and READ-ONLY to a dispatcher: a dispatching surface may write channel and contact, so without this an operator can widen the audience of an item never written for it, and nothing in the file objects. A dispatcher WARNS and requires confirmation when a send would widen beyond the declared value; it does not refuse, because refusing is enforcing policy and that is not a dispatcher's to decide (CR-047)"
       schema: "see the /outbox skill, which owns the vocabulary"
       writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only)"]
       readers: ["/outbox", "a dispatching surface", "user"]

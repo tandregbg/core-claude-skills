@@ -1,12 +1,12 @@
 # core-skills
 
-**Version:** 1.69.0
+**Version:** 1.71.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
-**Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 105 entries, newest first. This
+**Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 122 entries, newest first. This
 file used to repeat the last 34 of them; it no longer does, because a second
 copy of a changelog is a second thing to keep true.
 

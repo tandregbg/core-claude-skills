@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-070**
+Next available CR number: **CR-071**
 
 ---
 
@@ -41,12 +41,13 @@ _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evi
 
 ## Implemented
 
-Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-046** (`metric` insight type, v1.38.0).
+Implemented CRs are tracked in [CHANGELOG.md](../../CHANGELOG.md). Highest implemented: **CR-070** (`management-only` classification, v1.71.0).
 
 CR-017–CR-030 were drafted and implemented 2026-07-07/10 from a private vault-usage audit and live usage; the full CR specs contain vault-specific evidence and are tracked privately (not in this repo), so their rows carry generic notes only.
 
 | CR | Title | Version | Notes |
 |----|-------|---------|-------|
+| CR-070 | A third `classification` value — `management-only` | v1.71.0 (2026-09-22) | Named recipients rather than a group; the first two values scale a group, the third leaves group distribution. CR-066 had settled the enum by surveying live manifests, which establishes what values are *called* but not how many exist — the next item staged needed one the survey could not have seen, and was written with an undeclared value by an author following a standard that already defined three levels. Permissiveness order declared explicitly, since warn-on-widening needs it. Also lands the field in the `/outbox` manifest schema, where CR-066 had not reached |
 | CR-046 | Two content shapes the insight taxonomy has no slot for | v1.38.0 (2026-09-20) | `metric` added — a measurement where the number *is* the claim, with optional value/unit/baseline/period/trend, and excluded from rule promotion since a repeating measurement is a time series. It had been landing in `learning`, which had grown to 36% of a corpus and stopped discriminating; the extraction contract already emitted a metrics block with nowhere to store it. The second half — a parameter bounding a decision not yet made — was deferred on thin evidence |
 | CR-038 | Generated-view isolation and system-file language | v1.36.1 (2026-09-08) | A generated read view among its own sources needs a hidden subfolder, not a skip flag (CR-033 showed skip-lists get missed); the dot then means *unreachable by scanners*, a third meaning beside dormant and blocked. System files take English names, two exceptions declared |
 | CR-037 | Rule hierarchy and conflict resolution for `vault_conventions` | v1.36.0 (2026-09-07) | Thirteen rules from seven CRs sat in a flat list; two disagreed about the same surface and the inconsistency shipped. Three levels (invariant/rule/guideline, 6/6/1) declared per rule; conflict order; exceptions must be **named** in `exceptions:`; equal-specificity conflict = contract defect, report don't choose |

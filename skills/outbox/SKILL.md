@@ -46,6 +46,7 @@ See `identifier_language` in `ecosystem.yaml`.
 **Kanal:** [mejl | slack | print | ...]
 **Kontakt:** [email or name]
 **Projekt:** [optional theme/context]
+**Klassificering:** [team-wide-safe | team-only | management-only]
 **Kanonisk källa:** [path to the source doc each attachment is rendered from — or `ingen (originalet bor här)`]
 
 ## Innehåll
@@ -91,6 +92,31 @@ A dispatching surface may set this status (contract `writers` on
 `_manifest.md`), for the same reason it may set `skickad`: whether something
 was sent is an observation. It must not write the `Utfall` -- what the outcome
 *means* is the judgement this skill owns.
+
+### `Klassificering` — who may receive it (CR-066, CR-070)
+
+**Distinct from `Kanal` and `Kontakt`, which say where it is going.** This field says who may
+*receive* it, and it is what lets a dispatching surface warn before a send widens the audience of
+something never written for it.
+
+| Value | Audience | The test |
+|---|---|---|
+| `team-wide-safe` | Anyone internal — **the default when absent** | Would it survive being forwarded anywhere inside the organisation? |
+| `team-only` | The working team; not interns or contractors | Is the restriction about *employment status*? |
+| `management-only` | **Named recipients** | Is there a list of people, rather than a group? |
+
+**Listed most to least permissive, and the order is part of the schema.** The first two scale a
+group; the third leaves group distribution altogether. Widening out of `management-only` into any
+channel is the step that turns an individual assessment into a group communication — the one a
+warning most needs to catch.
+
+**Authored by the skill, read-only to a dispatcher.** A dispatching surface may write `Status`,
+`Statusnot`, `Kanal` and `Kontakt`; it does not write this field. It warns and asks for confirmation
+when a send would widen beyond the declared value, and does not refuse — refusing would be the
+dispatcher deciding what a classification means, which is not its to decide (CR-047).
+
+**Decide it before writing the body, not after.** An item written for everyone and reclassified at
+the end is an item whose sentences were composed for the wrong reader.
 
 ### `Statusnot` — what happened, in words
 

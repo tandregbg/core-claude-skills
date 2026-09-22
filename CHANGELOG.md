@@ -7,6 +7,36 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.71.0] - 2026-09-22
+
+### Added
+
+- **`classification` gains a third value, `management-only` (CR-070, contract_version 23).** Named
+  recipients rather than a group. The first two values scale a group; the third leaves group
+  distribution altogether.
+- **The permissiveness order is now declared, not inferred:** `team-wide-safe` > `team-only` >
+  `management-only`. Warn-on-widening needs the order, and a dispatcher guessing it would be a
+  dispatcher deciding policy (CR-047).
+- **`Klassificering` added to the `/outbox` manifest schema** with all three values and the test for
+  each — a CR-066 loose end. The field had been declared in the contract but never reached the
+  document an author reads while staging, which is how a sixth value gets invented next time.
+
+### Changed
+
+- **CR-066 settled the enum at two values by surveying live manifests.** That method establishes what
+  the values are *called*; it cannot establish how many there are, because a survey finds only what
+  someone already wrote. The next manifest staged needed a value the survey could not have seen, and
+  was written with an undeclared one — by an author correctly following a standard that already
+  defined three levels. **A schema that cannot express what its source document mandates relocates
+  drift rather than preventing it.**
+
+### Fixed
+
+- **`core_skills_version` was 1.69.0 while the changelog was at 1.70.0.** Corrected as part of this
+  bump; `README.md` carried the same lag.
+- **The README's changelog entry count said 105; the file held 122.** A count nobody recomputes drifts
+  silently, which is the same failure class as the undeclared enum value this release fixes.
+
 ## [1.70.0] - 2026-09-22
 
 ### Added
