@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-073**
+Next available CR number: **CR-075**
 
 ---
 
@@ -35,6 +35,10 @@ Next available CR number: **CR-073**
 | CR-055 | vault conventions | Medium | **Implemented v1.47.0.** CR-054 let a folder declare the repositories it concerns, but nothing read them. Declares `<venture>/.githubmeta/` and the component that fills it — the sibling of `.teamschats/`, same layout, with a day's file a snapshot rather than a merge since issue state is a reading not an event |
 
 | CR-068 | vault conventions | Medium | **Implemented v1.69.0, breaking (contract 21).** `<venture>/.chats/` becomes `<venture>/.teamschats/`. "Chats" stopped being unambiguous once Claude Code transcripts were also called chats, and only `teamschatcli` ever wrote the folder — the name now says whose messages are in it, the way its sibling `.githubmeta/` does. `external_systems.chats` is deliberately NOT renamed: that key names a class of system, not a path |
+
+| CR-073 | Marvin, `.handoff/` | Low | **Proposed.** Whether `.handoff/` gets an `_outbox`-style surface in Marvin. It should not: CR-033 gives it a total block, and a snapshot may carry a confidentiality boundary, so a browsable reader could route restricted content past the constraint governing it. Proposes the narrowest useful thing instead — a name-and-date listing built from filenames, opening nothing. No contract change |
+
+| CR-074 | vault conventions, `external_systems` | Medium | **Proposed, additive (24→25).** `<venture>/.jirameta/`, a third archive in the shape CR-055 set: a folder per board, dated JSON, a dated `.md`, and a rewritten `status.md`. The vault archives what was said and what shipped; what was *tracked* is missing, and it is the half that says what is planned. Declared per folder under `external_systems.jira`. Differs from `.githubmeta/` in one respect worth stating: Jira has no `gh`, so it needs an API token |
 
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
