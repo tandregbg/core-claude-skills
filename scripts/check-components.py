@@ -17,6 +17,7 @@ Run it after editing either block:  python3 scripts/check-components.py
 """
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -112,6 +113,34 @@ def main():
 
     for c in comps:
         walk(c['id'], [])
+
+    # The reverse direction. Above, a component's writes are checked against
+    # the declared paths; nothing checked that a path naming a component as a
+    # writer is claimed by that component. The two halves disagreed for a day:
+    # <folder>/_ops.yaml permitted a dispatching surface to write it (CR-064)
+    # while the dashboard component's writes did not mention it.
+    conventions = doc.get('vault_conventions') or {}
+    for entry in ((conventions.get('vault_root') or [])
+                  + (conventions.get('per_folder') or [])):
+        if not isinstance(entry, dict):
+            continue
+        writers = ' '.join(entry.get('writers') or []).lower()
+        for comp in comps:
+            cid = comp['id'].lower()
+            # Match whole words only, and never a skill. `/daily-dashboard`
+            # contains "dashboard" and is a skill, not this component - a
+            # substring match read it as a missing claim.
+            skills_named = re.findall(r'/[\w-]+', writers)
+            without_skills = writers
+            for skill in skills_named:
+                without_skills = without_skills.replace(skill, ' ')
+            named = (re.search(rf'\b{re.escape(cid)}\b', without_skills)
+                     or (cid == 'dashboard'
+                         and 'dispatching surface' in without_skills))
+            if named and entry['path'] not in ' '.join(comp.get('writes') or []):
+                problems.append(
+                    f"{comp['id']}: vault_conventions names it a writer of "
+                    f"`{entry['path']}`, but its `writes` does not say so")
 
     # working_loop: the steps a person takes, which both the README and the
     # landing page render. Checked here so a step cannot name a vault path

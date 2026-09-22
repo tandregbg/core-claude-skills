@@ -111,7 +111,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 20
-core_skills_version: "1.68.0"
+core_skills_version: "1.68.1"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -652,6 +652,7 @@ components:
       - "_inbox/_inbox.yaml — capture items"
       - "_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only"
       - "<folder>/_summary.yaml — its own derived cache"
+      - "<folder>/_ops.yaml — one external_systems.chats entry, on explicit confirmation (CR-064)"
     depends_on: ["messaging client (as a library, for the chat channel)"]
     binds: "localhost only — it can send as the user"
     note: "Not read-only, and has not been since it gained the outbox. What it may write is deliberately narrower than what it may read"

@@ -7,6 +7,21 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.68.1] - 2026-09-22
+
+### Fixed
+
+- **The two halves of the contract could disagree about who writes what, and nothing
+  noticed.** `<folder>/_ops.yaml` has permitted a dispatching surface to add one
+  `external_systems.chats` entry since CR-064 — but the `dashboard` component's
+  `writes` never said so. `check-components.py` validated a component's writes
+  *against* the declared paths and not the reverse, so a path naming a component as a
+  writer that the component did not claim passed silently for a day.
+  - Checked in both directions now. Verified by removing the claim and watching it
+    fail.
+  - The match is whole-word and skips skills: `/daily-dashboard` contains "dashboard"
+    and is a skill, not that component — a substring match read it as a missing claim.
+
 ## [1.68.0] - 2026-09-22
 
 ### Added
