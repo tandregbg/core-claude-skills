@@ -7,6 +7,53 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.71.1] - 2026-09-22
+
+### Fixed
+
+- **The generated round table rendered as a collapsed list.** The header row carried two cells against
+  a three-cell separator. Header, separator and rows now come from one cell list, so any
+  `round_columns` configuration stays consistent.
+- **The round table was also empty.** `config()` kept only each person's name and discarded `areas`
+  and `role`, so the first configured column was blank although the roster had held the answer since
+  the series began. It is now prefilled from the roster; the remaining column stays blank because it
+  is filled live.
+- **A person-line's carried item was read from the label instead of the remainder**, printing a row
+  whose item and owner were the same name and dropping what that person actually owed. `item_of()`
+  now distinguishes the two carry-forward shapes.
+- **An item with an owner but no note read as UNOWNED.** `carried()` strips a leading `" —-:·"`, which
+  removed the very separator `owner_of()` looks for. The error ran in the worst possible direction:
+  it converted owned items into the one class the mechanism exists to surface. Owners are also matched
+  against `aliases`, so a roster rename no longer quietly empties a row.
+
+### Changed
+
+- **Carried items now route to their owner's row in the round.** The chain already held the
+  information; it was printed once at the top and then dropped, so the round asked everyone the same
+  empty question. Items with no owner are named under the table, where the absence bites.
+- **`adjacent: true` excludes a person from the round table only** — not from name resolution
+  elsewhere. A name with a permanently empty row teaches the room to skip rows.
+- **The chat archive is retrieved but no longer printed into the agenda.** It is context for whoever
+  writes the agenda and the facilitator sheet, not team-facing content: raw message lines are noise,
+  and quoting a colleague's own message back at the room reads as surveillance rather than
+  preparation. The run reports the count so a silent archive is still distinguishable from a quiet one.
+- **Repository movement moves to an appendix and becomes a per-area pivot** rather than a flat list,
+  and **opening an issue now counts as movement** and is marked — an issue arrives with
+  `updatedAt == createdAt`, so it was already in the list but indistinguishable from one merely
+  relabelled. Unassigned counts are totalled, because that is the same shape as an unowned
+  carry-forward line in a second place.
+- **A second output is written: a plain-text post for a chat client.** Markdown tables flatten into
+  unreadable runs when pasted into chat, so the post carries no table at all. The full agenda keeps
+  the detail and the post links to it.
+- **The recap step must read the declared vault-side standard before writing**, never write from a
+  previous recap, and count whatever that standard states as countable. **No counts are stated in the
+  skill and none may be added** — how much a recap carries is a property of the session and of the
+  venture's contract, not of the tool. A precedent that has already drifted hands the drift on with
+  full confidence.
+- **Taking anything out of `.ephemeral/` is a move, never a copy, renamed on the way.** A copy leaves
+  the original on the 14-day sweep clock while the reference points at the survivor, and the two files
+  then disagree about which is real.
+
 ## [1.71.0] - 2026-09-22
 
 ### Added
