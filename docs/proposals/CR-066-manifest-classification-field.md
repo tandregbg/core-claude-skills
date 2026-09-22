@@ -43,9 +43,10 @@ With these values, as written:
 
 | Value | Count |
 |---|--:|
-| `team-wide-safe` | **18** |
+| `team-wide-safe` | **19** |
 | `team-only` | 1 |
-| `internal` | 1 |
+
+*As first surveyed there was a third value, `internal`, used once. **Settled 2026-09-22: it means the same as `team-wide-safe`**, and the one manifest was normalised. The enum is two values, not three.*
 
 **So the field exists and is in use. What it lacks is a declaration** — the dispatching surface reads it as an unrecognised extra and shows it read-only, which is the tolerant behaviour CR-049 asked for, working exactly as intended.
 
@@ -53,8 +54,8 @@ With these values, as written:
 
 **Two observations the data hands us:**
 
-1. **The vocabulary has not converged.** `internal` and `team-wide-safe` are not obviously distinct, and one of the three values appears once. An undeclared field drifts because nothing tells an author what the options are — which is an argument for declaring it, not against.
-2. **Adoption is skewed to one value.** 18 of 20 are the most open setting, so the field is currently carrying almost no restriction. Its value is in the two exceptions, and in the ones nobody wrote because there was no field to write.
+1. **An undeclared field drifts.** The survey found a third value, `internal`, used once and meaning the same as `team-wide-safe`. Nothing told its author what the options were, because there were no declared options. That is the argument for declaring it: not that the drift was harmful here, but that it happened at n=20 without anyone noticing.
+2. **Adoption is skewed to one value.** 19 of 20 are the most open setting, so the field is currently carrying almost no restriction. Its value is in the two exceptions, and in the ones nobody wrote because there was no field to write.
 
 ---
 
@@ -76,11 +77,12 @@ With these values, as written:
 
 | Value | In use | Meaning |
 |---|--:|---|
-| `team-wide-safe` | 18 | Anyone internal may read it |
+| `team-wide-safe` | 19 | Anyone internal may read it. **The default when absent** |
 | `team-only` | 1 | The working team; not interns or contractors |
-| `internal` | 1 | **Unclear** — overlaps `team-wide-safe`; see open question 6 |
 
-**Absent means the most open value** — every existing manifest stays valid and nothing changes for material already staged.
+**Two values, settled.** `internal` was a synonym for `team-wide-safe` and has been normalised away.
+
+**Absent means `team-wide-safe`** — every existing manifest stays valid and nothing changes for material already staged.
 
 **A gap the data shows:** there is no observed value for *named recipients only*, the narrowest case and the one where a mis-send is least recoverable. Either it has not arisen, or people avoided the field for exactly the material that most needed it.
 
@@ -108,12 +110,12 @@ Three positions, and this CR does not pick one.
 
 1. **Does this belong in the manifest at all**, or is audience a property of the *channel* rather than the item? A channel known to be broadcast could carry the constraint instead — fewer fields, but then every new channel needs classifying.
 2. **Who sets it?** The authoring skill from the meeting's own classification, or a human at staging time?
-3. **How many values?** The data says three are in use and one of them is ambiguous. Declaring what exists is safe; adding a fourth for named-recipients-only is a judgement about material that has not been staged yet.
+3. **Should a third value exist for named-recipients-only?** Two are in use and settled. A narrowest tier is the case where a mis-send is least recoverable — but nothing has been staged that needed it, and inventing a tier ahead of the material is how the drift in question 1 starts.
 4. **Does a wrong value fail safe, and does that conflict with tolerating unknown values?** An unparseable classification arguably should read as the *most* restrictive — the opposite both of how an absent field behaves and of the "tolerate what you do not recognise" rule CR-049 carried forward. Absent and unrecognised may need to differ here, which is unusual enough to state rather than assume.
 
-6. **Is `internal` the same as `team-wide-safe`?** Both appear once and twice respectively in the same vault with no stated difference. If they are the same, one is a typo the schema should not enshrine; if they differ, the difference has never been written down. **Answer this before declaring the enum, not after.**
+6. ~~**Is `internal` the same as `team-wide-safe`?**~~ **Answered 2026-09-22: yes.** Use `team-wide-safe`; the single `internal` manifest was normalised. The enum is two values.
 
-7. **Does the 18-to-2 skew mean the field is working or unused?** A field almost always set to its most permissive value either reflects genuinely open material, or reflects an author reaching for the safe default. The two look identical in the data and imply opposite things about whether enforcement would help.
+7. **Does the 19-to-1 skew mean the field is working or unused?** A field almost always set to its most permissive value either reflects genuinely open material, or reflects an author reaching for the safe default. The two look identical in the data and imply opposite things about whether enforcement would help.
 
 5. **Or does it belong in `known_gaps` rather than the schema?** CR-047 records the archive-of-unsent-items gap that way — described, owned, unresolved — rather than adding a field ahead of the decision. This may be the same shape.
 
