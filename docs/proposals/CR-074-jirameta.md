@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Implemented v1.72.1 |
 | **Contract** | 24 → 25 (**additive** — one new declared path) |
 | **Date** | 2026-09-22 |
 | **Area** | `vault_conventions`, `external_systems`, a new CLI in `vault-tools` |
@@ -117,3 +117,30 @@ gmc --vault "$VAULT" show          # the sibling, for comparison
 jira-meta-cli --vault "$VAULT" show   # declared boards, last fetch, archived days
 python3 skills/ops/project_brief.py --dir <project>   # a third Archives line
 ```
+
+
+---
+
+## Implementation notes (2026-09-22)
+
+Built as `vault-tools/jira-meta-cli` 0.1.0 and verified against the live tracker, not
+only fixtures — a working token was recovered from a host that runs one of the existing
+tools. Three things the build found that the proposal did not anticipate:
+
+**The search endpoint this would have used is gone.** `/rest/api/3/search` answers
+**410 Gone**; `search/jql` replaces it and pages by token (`nextPageToken`/`isLast`)
+rather than by offset with a total. The proposal cited an existing tool's JQL as a
+working starting point — that tool is broken against today's API and nobody had noticed,
+because it fails only when run. A test pins the new endpoint.
+
+**A capped fetch must say so.** Two real boards held more open issues than the fetch cap
+and returned exactly the cap. An archive recording 500 of 900 open issues reads as a
+complete board, and every count drawn from it is wrong. Both rendered views now carry
+`partial: yes` and the fetch output says `(capped)`.
+
+**`reads: []` is not the same as no `reads:`.** Absent means unspecified, so the default
+applies; empty means read nothing. A falsy check collapsed them and fetched issues from a
+board that had asked for none.
+
+Thirty tests, no network: `tests/fixtures/board.json` was recorded from a real board and
+scrubbed — invented keys and summaries, real structure.

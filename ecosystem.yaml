@@ -38,6 +38,15 @@
 #   name. A declaration, never a credential; hand-written, so a tool may read it
 #   but never append what it happened to use.
 #
+# contract_version 25 (CR-074, 2026-09-22): <venture>/.jirameta/ declared, and
+#   external_systems gains a `jira:` key beside `chats:` and `repos:`. The vault
+#   archived what was SAID and what SHIPPED; what was TRACKED was missing, and it
+#   is the half that says what is planned rather than what already happened.
+#   Same layout as .githubmeta/ so a reader that walks one walks all three.
+#   Metadata only -- an issue's description and comments are the conversation
+#   itself and stay in the tracker. Additive: a folder declaring no board is
+#   unaffected, and clients on 24 ignore the path.
+#
 # contract_version 24 (CR-072, 2026-09-22): a folder may declare itself a
 #   RECURRING SERIES with a top-level `series:` block (`name`, `cadence`) in its
 #   ops config. Written because `/ops projects` — whose whole job is to say what
@@ -162,8 +171,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 24
-core_skills_version: "1.72.0"
+contract_version: 25
+core_skills_version: "1.72.1"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -449,6 +458,15 @@ vault_conventions:
       lifecycle: "one snapshot per day per repository; a second fetch that day replaces it, because issue state is a reading taken at a moment rather than an event"
       placement: per_boundary
       note: "Sibling of <venture>/.teamschats/ and deliberately the same shape. A dot-folder, so the raw data is skipped by rule rather than by luck"
+
+    - path: "<venture>/.jirameta/"
+      purpose: "Issue-tracker metadata archive: issues with their status, assignee and dates, plus released versions. One folder per board, a manifest saying what it is, a dated snapshot, a rendered .md, and a status.md holding current state. Metadata only — never descriptions or comment threads"
+      schema: null
+      writers: ["the jira metadata archiver"]
+      readers: ["user", "any session asking where a board stands"]
+      lifecycle: "one snapshot per day per board; a second fetch that day replaces it, because issue state is a reading taken at a moment rather than an event. status.md is rewritten on every fetch; the dated files are the record"
+      placement: per_boundary
+      note: "Third archive in the shape CR-047 set and CR-055 followed: what was said (.teamschats/), what shipped (.githubmeta/), what is tracked (.jirameta/). A capped fetch declares itself partial rather than recording a truncated board as a complete one (CR-074)"
 
     - path: "_config/"
       purpose: "Vault-wide overrides for skill defaults (optional)"
@@ -739,6 +757,14 @@ components:
     writes: ["<venture>/.githubmeta/ — the archive"]
     depends_on: ["the hosting platform's CLI, already authenticated"]
     note: "Metadata only, never the code: a vault holds the record of work, not the work. Carries no credential of its own - a second auth path for one account is a second thing to rotate"
+
+  - id: "jira metadata archiver"
+    kind: "local CLI, run on demand"
+    role: "Archives a declared issue board's metadata - issues with their status and assignee, released versions - into the vault, so a meeting can ask where work stands without opening the tracker"
+    reads: ["external_systems.jira in a folder's ops config", "the issue tracker's REST API"]
+    writes: ["<venture>/.jirameta/ — the archive"]
+    depends_on: ["an API token held outside the vault"]
+    note: "Metadata only - an issue's description and comments are the conversation itself and stay in the tracker. Read-only by construction: every call is a GET, so the archive can never become a participant in the work it records. UNLIKE its GitHub sibling it holds a credential, because the tracker has no already-authenticated CLI to borrow - the one place the pattern is less clean (CR-074). A fetch that hits its cap declares itself partial rather than recording a truncated board as a complete one"
 
   - id: "inventory scanner"
     kind: "local script, run on demand"

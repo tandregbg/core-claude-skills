@@ -16,6 +16,33 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   No version bump: this is repository governance, not a change to any skill, so it does not
   trigger the landing-page/Marvin cascade in `docs/RELEASING.md`.
 
+## [1.72.1] - 2026-09-22
+
+### Added
+
+- **`<venture>/.jirameta/` is declared (contract 24 → 25), with `external_systems.jira`
+  beside `chats:` and `repos:` (ops_config schema 1.4).** The vault archived what was
+  *said* (`.teamschats/`) and what *shipped* (`.githubmeta/`); what was **tracked** was
+  missing, and it is the half that says what is planned rather than what already
+  happened. Third archive, same layout, so a reader that walks one walks all three.
+  - Metadata only: status, assignee, dates, released versions. An issue's description
+    and comment thread are the conversation itself — they stay in the tracker.
+  - `status.md` is rewritten on each fetch and the dated files are the record, for the
+    reason CR-055 gave: issue state is a *reading* taken at a moment, not an event.
+  - Written by a `jira metadata archiver` component. **It holds a credential**, unlike
+    its GitHub sibling, which borrows an already-authenticated `gh`. The tracker has no
+    equivalent, and that is the one place this pattern is less clean than the one it
+    copies — stated rather than discovered during setup.
+  - Read-only by construction: every call is a GET, so the archive cannot become a
+    participant in the work it records.
+  - **A capped fetch declares itself partial.** Found while building it: two real boards
+    held more open issues than the limit and reported a round number equal to it.
+    Recording 500 of 900 silently reads as a complete board and makes every count drawn
+    from it wrong.
+  - One schema subtlety worth reading twice: an **absent** `reads` takes the default,
+    `reads: []` means read nothing. A falsy check collapses the two, which it did once.
+  - CR-074. Implemented in `vault-tools/jira-meta-cli` 0.1.0.
+
 ## [1.72.0] - 2026-09-22
 
 ### Added

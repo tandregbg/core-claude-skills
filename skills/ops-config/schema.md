@@ -762,7 +762,15 @@ external_systems:                 # Optional. Everything under it is optional to
       reads: [string]             # Optional. What may be read: docs, issues, releases,
                                   #   pulls. Metadata only - never the code itself
       purpose: string             # Optional
-  boards: [...]                   # Same shape; reserved, nothing reads it yet
+  jira:                           # Issue boards this folder's work is tracked on
+    - key: string                 # REQUIRED. The project key, e.g. ABC. An issue
+                                  #   key or a browse URL is accepted and reduced
+      name: string                # Optional. What a person calls the board
+      reads: [string]             # Optional. What may be read: issues, sprints,
+                                  #   releases. ABSENT means the default applies;
+                                  #   [] means read nothing -- a different statement
+      purpose: string             # Optional
+      default: boolean            # Optional. Offer this one first
 ```
 
 ### What this block is, and is not
@@ -809,6 +817,12 @@ external_systems:
     - url: "github.com/example-org/mobile-app"
       reads: [docs, issues, releases]
       purpose: "release notes and open issues referenced in recaps"
+  jira:
+    - key: "ABC"
+      name: "Mobile app board"
+      reads: [issues, releases]
+      purpose: "what is planned, as against what shipped"
+      default: true
 ```
 
 ---
