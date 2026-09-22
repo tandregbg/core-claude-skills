@@ -26,7 +26,7 @@
 #   seventeen versions stale without anyone noticing.
 #
 # contract_version 17 (CR-055, 2026-09-21): <venture>/.githubmeta/ declared, and a
-#   repo metadata archiver component. The sibling of .chats/: same layout, same
+#   repo metadata archiver component. The sibling of .teamschats/: same layout, same
 #   dot-folder reasoning, one difference - a day's file is a snapshot rather than
 #   a merge, because issue state is a reading taken at a moment. Makes CR-054's
 #   repos: block readable by something other than a dashboard.
@@ -37,6 +37,17 @@
 #   declared: it was chosen from a live list of seventy chats by recognising the
 #   name. A declaration, never a credential; hand-written, so a tool may read it
 #   but never append what it happened to use.
+#
+# contract_version 21 (CR-068, 2026-09-22): `<venture>/.chats/` is renamed to
+#   `<venture>/.teamschats/`. A BREAKING rename, not an addition: a client on 20
+#   reading the old path finds nothing. "chats" had become ambiguous once Claude
+#   Code transcripts were also called chats, and the folder holds one provider's
+#   messages only; the name now says which. It aligns with `.githubmeta/`, its
+#   sibling since CR-055, where the source is likewise in the name. NOTE the one
+#   thing that does NOT change: `external_systems.chats` stays `chats` - that is a
+#   config KEY naming a class of system, not a path, and a venture may declare
+#   chats from a provider that is not Teams. Historic entries below and in the
+#   CHANGELOG keep the old path: they record what was true when written.
 #
 # contract_version 20 (CR-066, 2026-09-22): the manifest declares `classification` —
 #   who may receive the item, distinct from `channel`/`contact` which say where it
@@ -90,7 +101,7 @@
 #
 # contract_version 9 (CR-047, 2026-09-21): outbound_dispatch block — declares the
 #   tools that deliver staged material, the channels they use, and what each
-#   may write. Also declares <venture>/.chats/
+#   may write. Also declares <venture>/.teamschats/
 #   and brings the _outbox/ declaration up to date with the manifest contract.
 #   Additive: clients on 8 ignore it.
 # contract_version 8 (CR-046, 2026-09-20): `metric` added to insight_types.content --
@@ -110,8 +121,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 20
-core_skills_version: "1.68.1"
+contract_version: 21
+core_skills_version: "1.69.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -365,7 +376,7 @@ vault_conventions:
       readers: ["/outbox", "a dispatching surface", "user"]
       lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder"
 
-    - path: "<venture>/.chats/"
+    - path: "<venture>/.teamschats/"
       purpose: "Chat archive from an external messaging platform (CR-047). Raw provider message objects, one JSON file per chat per day, plus a rendered .md per day and a _chat.json naming the meeting topic. A dot-folder so Obsidian ignores the raw data; the derived notes belong in the normal tree"
       schema: null  # Graph chatMessage objects, stored verbatim
       writers: ["the chat-archive tool"]
@@ -396,7 +407,7 @@ vault_conventions:
       readers: ["user", "any session asking what changed in a repository"]
       lifecycle: "one snapshot per day per repository; a second fetch that day replaces it, because issue state is a reading taken at a moment rather than an event"
       placement: per_boundary
-      note: "Sibling of <venture>/.chats/ and deliberately the same shape. A dot-folder, so the raw data is skipped by rule rather than by luck"
+      note: "Sibling of <venture>/.teamschats/ and deliberately the same shape. A dot-folder, so the raw data is skipped by rule rather than by luck"
 
     - path: "_config/"
       purpose: "Vault-wide overrides for skill defaults (optional)"
@@ -599,7 +610,7 @@ outbound_dispatch:
       kind: "external library + CLI, outside this repo"
       role: "Messaging-platform client: delegated auth, chat messages, Markdown to the platform's markup"
       reads: ["chats the signed-in user belongs to"]
-      writes: ["<venture>/.chats/ — the archive", "chat messages"]
+      writes: ["<venture>/.teamschats/ — the archive", "chat messages"]
       never: "Knows nothing about vaults or manifests. The dashboard imports it as the messaging channel; it is a dependency of vault-aware code, not an instance of it"
 
   channels:
@@ -661,7 +672,7 @@ components:
     kind: "library plus CLI"
     role: "Talks to a chat platform: delegated auth, read and send messages, Markdown to the platform's markup"
     reads: ["chats the signed-in user belongs to"]
-    writes: ["<venture>/.chats/ — the archive", "chat messages"]
+    writes: ["<venture>/.teamschats/ — the archive", "chat messages"]
     depends_on: ["an auth library", "an HTTP library"]
     note: "Knows nothing about vaults or manifests. A dependency of vault-aware code, not an instance of it — which is why it is its own component rather than part of the dashboard"
 
@@ -730,7 +741,7 @@ working_loop:
     label: "where it left off"
     command: "python3 ~/.claude/skills/ops/project_brief.py --dir <project>/meetings"
     does: "Reads one folder's current state before any work resumes: loop position and whether the next agenda exists, whether the carry-forward chain is intact, what is carrying and how much of it is unowned, how stale the archives are, what is staged and unsent, and when the record last moved. Read-only - it writes nothing, fetches nothing and caches nothing, because an orientation file that persists can itself go stale and then lie"
-    consumes: ["the note", "_outbox/<item>/_manifest.md", "<venture>/.chats/", "<venture>/.githubmeta/"]
+    consumes: ["the note", "_outbox/<item>/_manifest.md", "<venture>/.teamschats/", "<venture>/.githubmeta/"]
     produces: ["a reading of the current state"]
 
   - id: "declare"
@@ -746,14 +757,14 @@ working_loop:
     external: true
     does: "Refresh the chat and repository archives. External CLIs, run on demand - never by a skill"
     consumes: ["the ops config"]
-    produces: ["<venture>/.chats/", "<venture>/.githubmeta/"]
+    produces: ["<venture>/.teamschats/", "<venture>/.githubmeta/"]
 
   - id: "agenda"
     phase: "before the session"
     label: "the agenda generator"
     command: "python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings"
     does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard"
-    consumes: ["<venture>/.chats/", "<venture>/.githubmeta/", "the note's carry-forward section"]
+    consumes: ["<venture>/.teamschats/", "<venture>/.githubmeta/", "the note's carry-forward section"]
     produces: ["the agenda"]
 
   - id: "facilitate"

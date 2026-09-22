@@ -57,7 +57,7 @@ own.
   phase: before the session
   label: the agenda generator
   command: "python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings"
-  consumes: ["<venture>/.chats/", "<venture>/.githubmeta/", "the note"]
+  consumes: ["<venture>/.teamschats/", "<venture>/.githubmeta/", "the note"]
   produces: ["the agenda"]
 ```
 

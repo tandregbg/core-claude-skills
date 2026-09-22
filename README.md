@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.68.1
+**Version:** 1.69.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -44,10 +44,10 @@ graph TB
 
     process -->|the note| orient
     send -->|_outbox/&lt;item&gt;/_manifest.md| orient
-    archive -->|&lt;venture&gt;/.chats/| orient
+    archive -->|&lt;venture&gt;/.teamschats/| orient
     archive -->|&lt;venture&gt;/.githubmeta/| orient
     declare -->|the ops config| archive
-    archive -->|&lt;venture&gt;/.chats/| agenda
+    archive -->|&lt;venture&gt;/.teamschats/| agenda
     archive -->|&lt;venture&gt;/.githubmeta/| agenda
     carry -->|the note's carry-forward section| agenda
     agenda -->|the agenda| facilitate
@@ -87,7 +87,7 @@ the meeting. That is not an oversight anyone can be careful about — the loop h
 work has three.
 
 A folder declares the chat and the repositories its work concerns (`external_systems`); archivers write
-them to `<venture>/.chats/` and `<venture>/.githubmeta/`; and the agenda generator **reads those
+them to `<venture>/.teamschats/` and `<venture>/.githubmeta/`; and the agenda generator **reads those
 archives, never the network**. An agenda therefore renders with no credential and no connectivity, and
 a declared read scope is honoured where the archiver recorded it. This layer runs **before** the
 meeting, not after.

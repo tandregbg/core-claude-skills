@@ -7,6 +7,35 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.69.0] - 2026-09-22
+
+### Changed
+
+- **BREAKING (contract 20 -> 21): `<venture>/.chats/` is now `<venture>/.teamschats/`.**
+  CR-047 declared `.chats/` when there was one kind of chat. There are now two, and
+  the other -- Claude Code's own session transcripts -- is the one a person is more
+  likely to go looking for. A vault folder called `.chats/` does not say which it
+  holds, and the wrong guess fails silently: you open it, find Graph message JSON,
+  and conclude the archive is broken.
+  - The folder was never generic. Only `teamschatcli fetch` writes it. The name
+    claimed a breadth the content never had.
+  - It now matches `.githubmeta/`, declared by CR-055 as its deliberate sibling:
+    same layout, source named in the folder.
+  - **`external_systems.chats` is NOT renamed.** That is a config key naming a class
+    of system, and a venture may declare chats from a provider that is not Teams. The
+    key stays generic because the concept is; the path is specific because its writer
+    is. Renaming both would be a misreading.
+  - Breaking, and not staged behind a transition period. Every reader could be
+    enumerated -- two `/ops` scripts, one `DATA_DIR`, five documents -- and all moved
+    in the same pass before anything wrote to the old path again. A compatibility
+    window for clients you can count is ceremony.
+  - The live archive (36 chats, 169 files) was backed up to
+    `~/Projects/_archive/260922-chats-before-rename.tar.gz` before the move, and
+    `teamschatcli` was re-run afterwards to prove it resolves the new path.
+  - **Entries below keep the old path.** They record what the folder was called when
+    they were written. A changelog rewritten to match the present is not evidence.
+  - CR-068.
+
 ## [1.68.1] - 2026-09-22
 
 ### Fixed

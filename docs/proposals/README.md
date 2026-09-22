@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-066**
+Next available CR number: **CR-069**
 
 ---
 
@@ -30,7 +30,9 @@ Next available CR number: **CR-066**
 
 | CR-054 | `ops-config` schema | Medium | **Implemented v1.46.0.** A folder had no way to declare which chat its work is posted to or which repository it concerns, so a dispatcher guessed from a live listing and a person relied on recognising a name. Declares `external_systems` with `chats:` and `repos:`, resolved by the normal config chain. A declaration and never a credential, hand-written so no tool can append to it. Partially addresses the "systems of record" key proposed in CR-042 |
 
-| CR-055 | vault conventions | Medium | **Implemented v1.47.0.** CR-054 let a folder declare the repositories it concerns, but nothing read them. Declares `<venture>/.githubmeta/` and the component that fills it — the sibling of `.chats/`, same layout, with a day's file a snapshot rather than a merge since issue state is a reading not an event |
+| CR-055 | vault conventions | Medium | **Implemented v1.47.0.** CR-054 let a folder declare the repositories it concerns, but nothing read them. Declares `<venture>/.githubmeta/` and the component that fills it — the sibling of `.teamschats/`, same layout, with a day's file a snapshot rather than a merge since issue state is a reading not an event |
+
+| CR-068 | vault conventions | Medium | **Implemented v1.69.0, breaking (contract 21).** `<venture>/.chats/` becomes `<venture>/.teamschats/`. "Chats" stopped being unambiguous once Claude Code transcripts were also called chats, and only `teamschatcli` ever wrote the folder — the name now says whose messages are in it, the way its sibling `.githubmeta/` does. `external_systems.chats` is deliberately NOT renamed: that key names a class of system, not a path |
 
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 

@@ -30,7 +30,7 @@ def vault(start: Path) -> Path | None:
 
 
 def venture(start: Path, sub: str) -> Path | None:
-    """The archives are PER VENTURE, not at the vault root -- `<venture>/.chats/`.
+    """The archives are PER VENTURE, not at the vault root -- `<venture>/.teamschats/`.
     Walking up for the folder that holds them is the same resolution build_agenda
     uses; computing it from the vault root instead silently finds nothing and
     reports 'no snapshot', which reads as an archiver problem rather than a bug."""
@@ -104,7 +104,7 @@ def main() -> None:
 
     # 4. archive freshness -- a stale archive is worse than none: it still reads as current
     ext, ven = cf.get("ext") or {}, vault(root)
-    chats_dir, meta_dir = venture(root, ".chats"), venture(root, ".githubmeta")
+    chats_dir, meta_dir = venture(root, ".teamschats"), venture(root, ".githubmeta")
     lines = []
     for c in ext.get("chats") or []:
         d = None

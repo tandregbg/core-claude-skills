@@ -224,10 +224,10 @@ def from_chat(cf: dict, after: datetime.date) -> list[str]:
     if not chats:
         return []
     c = next((x for x in chats if x.get("default")), chats[0])
-    venture = next((p for p in cf["_root"].parents if (p / ".chats").is_dir()), None)
+    venture = next((p for p in cf["_root"].parents if (p / ".teamschats").is_dir()), None)
     if not venture:
-        return ["no .chats/ archive found above this project"]
-    d = next((f.parent for f in (venture / ".chats").glob("*/_chat.json")
+        return ["no .teamschats/ archive found above this project"]
+    d = next((f.parent for f in (venture / ".teamschats").glob("*/_chat.json")
               if json.loads(f.read_text(encoding="utf-8")).get("chat_id") == c.get("id")), None)
     if not d:
         return [f"declared chat not in the archive: {c.get('name')}"]

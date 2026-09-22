@@ -690,7 +690,7 @@ is staged and unsent. Run it when picking a project up cold, before deciding wha
 **1. Refresh the archives — external CLIs, not skills.**
 
 ```
-<the chat archiver>     ->  <venture>/.chats/        (CR-047)
+<the chat archiver>     ->  <venture>/.teamschats/        (CR-047)
 <the repo archiver>     ->  <venture>/.githubmeta/   (CR-055)
 ```
 
@@ -996,11 +996,11 @@ external_systems:
 ```
 
 **`chats:` is a retrieval source, not only a send destination.** A dispatcher reads it to know where to
-post; this step reads the same declaration to know where to *look*. The archive under `<venture>/.chats/`
+post; this step reads the same declaration to know where to *look*. The archive under `<venture>/.teamschats/`
 (CR-047) stores `_chat.json` carrying the platform id, so the folder is resolved **by matching that id**
 rather than by a second hand-written name that would drift.
 
-**Read the archives; do not fetch.** `<venture>/.chats/` (CR-047) and `<venture>/.githubmeta/` (CR-055)
+**Read the archives; do not fetch.** `<venture>/.teamschats/` (CR-047) and `<venture>/.githubmeta/` (CR-055)
 are siblings by design — an archiver writes, this reads. So an agenda generates **with no credential and
 no connectivity**, and the morning it is needed is not when a token turns out to have expired.
 

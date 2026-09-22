@@ -9,7 +9,7 @@
 | **Priority** | Medium |
 | **Complexity** | Low |
 | **Estimated Scope** | `skills/ops/SKILL.md` Step 9, `skills/ops/build_agenda.py`. **No new config key** |
-| **Related CRs** | **CR-054** (`external_systems`) and **CR-055** (`.githubmeta/`) — both consumed here, **CR-047** (`.chats/`), CR-057 (carry-forward) |
+| **Related CRs** | **CR-054** (`external_systems`) and **CR-055** (`.githubmeta/`) — both consumed here, **CR-047** (`.teamschats/`), CR-057 (carry-forward) |
 | **Contract** | **None.** Consumes contract 16 as it stands. This CR deliberately adds nothing to the schema |
 | **Breaking Changes** | No. Retrieval is inert unless a folder declares `external_systems` |
 
@@ -79,7 +79,7 @@ the same fact to drift.
 
 ### 2. Both sources are read from their archive — neither reaches the network
 
-`.chats/` (CR-047) and `.githubmeta/` (CR-055) are siblings by design, so the reader treats them as
+`.teamschats/` (CR-047) and `.githubmeta/` (CR-055) are siblings by design, so the reader treats them as
 siblings: **an archiver writes, this reads.** An earlier draft called a client live for issues, which
 duplicated the archiver and was asymmetric with how chats were already read. It now reads
 `<venture>/.githubmeta/<slug>/`.
