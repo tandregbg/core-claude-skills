@@ -7,6 +7,26 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.67.0] - 2026-09-22
+
+### Fixed
+
+- **A disabled config block is truthy, and two readers treated "off" as "on" (CR-067).**
+  `list_projects.py` tested `if pp.get("carry_forward")` and `build_agenda.py` tested `if not cf`.
+  A block written to DISABLE the feature is a non-empty dict, so both read it as enabled. This is
+  not cosmetic: the config chain makes `enabled: false` the only way a project can decline a
+  carry_forward an org layer turned on above it, so **the one correct way to say no was the way
+  that said yes**.
+- **`build_agenda.py` also fell through.** Skipping a disabled block and continuing the upward walk
+  let a further-away `enabled: true` override a nearer `enabled: false` — the opt-out failing in the
+  single direction it exists for. A disabled declaration now stops resolution, matching the
+  function's own contract that the nearest declaration wins. It exits with a message rather than
+  building an agenda against an inherited note suffix.
+- **Three states, not two.** No block means no loop; a block without `enabled` means one written
+  before the flag existed and stays wired; only explicit `false` disables. Normalising a missing
+  block to `{}` makes the default fire and reports every configured-but-loopless project as wired —
+  caught in verification, not in review.
+
 ## [1.66.0] - 2026-09-21
 
 ### Added
