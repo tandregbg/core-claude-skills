@@ -8,7 +8,7 @@
 | **Status** | **Proposed — not implemented.** `from_chat` is under active rewrite; implementing now would conflict |
 | **Priority** | Medium-High |
 | **Complexity** | Low |
-| **Estimated Scope** | `skills/ops/build_agenda.py` (`from_chat`), `project_brief.py` archive freshness, `/ops` SKILL.md retrieval section |
+| **Estimated Scope** | `skills/ops/build_agenda.py` (`from_chat`) and the `/ops` SKILL.md retrieval section. **`project_brief.py` is already correct** — see change 4 |
 | **Related CRs** | CR-054 (`external_systems`), CR-047 (chat archive), CR-058 (pre-meeting retrieval), CR-067 (same silent-failure shape) |
 | **Contract** | Written against contract_version 23 |
 | **Breaking Changes** | No |
@@ -65,9 +65,9 @@ Today the missing case returns `["declared chat not in the archive: <name>"]` **
 
 Each declared chat resolves independently; a miss becomes one line beside the others' content, not instead of it. **A skipped source that announces itself is honest; a silent one looks like an empty result** — `/ops` already states this rule for the repo `reads:` scope, and it should hold here.
 
-### 4. `/ops brief` archive freshness, same treatment
+### 4. `/ops brief` needs no change — and shows the intended shape
 
-The brief reports newest snapshot per declared chat. Its own stated rationale — *"a stale archive is worse than none: retrieval still produces a block and it reads as current"* — applies per chat, so a project with one fresh and one stale archive must not report as fresh.
+Checked: `project_brief.py` already iterates (`for c in ext.get("chats") or []`) and reports newest snapshot **per declared chat**. It is correct today, and it is the reference for what `from_chat` should do — two readers of the same declaration disagreeing about whether it is a list is the actual defect.
 
 ---
 
@@ -85,7 +85,7 @@ The brief reports newest snapshot per declared chat. Its own stated rationale �
 2. With two or more declared, each line names its source; with one, no label appears.
 3. A declared chat absent from the archive produces **one line saying so**, alongside the other chat's content rather than replacing it.
 4. A project declaring one chat behaves exactly as today.
-5. `/ops brief` reports freshness per declared chat, and a single stale archive is visible.
+5. `/ops brief` is unchanged and still reports freshness per declared chat (regression check only).
 
 ---
 
