@@ -16,6 +16,25 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   No version bump: this is repository governance, not a change to any skill, so it does not
   trigger the landing-page/Marvin cascade in `docs/RELEASING.md`.
 
+## [1.71.3] - 2026-09-22
+
+### Fixed
+
+- **One unreadable archive config no longer takes the whole project brief down.** The brief resolved a
+  declared chat by reading every `_chat.json` under the archive directory with no guard. On a
+  cloud-backed vault a file synced from another machine is *dataless* until it is pulled, and the read
+  raises `OSError` (`EDEADLK`, *"Resource deadlock avoided"*) rather than returning nothing — so the
+  first such file aborted the run before any output.
+- **The failure was also in the wrong place.** Archive freshness is the least important of the brief's
+  six blocks; it was killing the five that matter — loop position, chain integrity, what is carrying,
+  what is staged unsent, and when the record last moved. Unreadable configs are now skipped, and the
+  chat line reports how many could not be read: a silently shortened list is the same class of defect
+  as the crash, only quieter.
+
+**Observed:** 110 archived chat folders on one vault, 74 of them not yet materialised locally after
+another machine had refreshed the archive. The brief had worked minutes earlier with 37 folders, all
+local — the defect was latent until the archive grew past what one machine had pulled.
+
 ## [1.71.2] - 2026-09-22
 
 ### Fixed

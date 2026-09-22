@@ -109,8 +109,24 @@ def main() -> None:
     for c in ext.get("chats") or []:
         d = None
         if chats_dir:
-            d = next((f.parent for f in chats_dir.glob("*/_chat.json")
-                      if json.loads(f.read_text(encoding="utf-8")).get("chat_id") == c.get("id")), None)
+            # One unreadable _chat.json must not take the whole brief down. On an
+            # iCloud-backed vault a file synced from another machine is dataless
+            # until it is pulled, and the read raises EDEADLK rather than returning
+            # nothing -- so the archive block, which is the least important of the
+            # six, was killing the five that matter. Skip what cannot be read and
+            # say how many, because a silently short list is the other failure.
+            unread = 0
+            for f in chats_dir.glob("*/_chat.json"):
+                try:
+                    if json.loads(f.read_text(encoding="utf-8")).get("chat_id") == c.get("id"):
+                        d = f.parent
+                        break
+                except (OSError, ValueError):
+                    unread += 1
+            if d is None and unread:
+                lines.append(f"    chat  {str(c.get('name'))[:30]:<30} "
+                             f"not resolved -- {unread} archive config(s) unreadable")
+                continue
         newest = max((m.group(1) for f in d.glob("*.md")
                       if (m := re.search(r"(\d{4}-\d{2}-\d{2})\.md$", f.name))), default=None) if d else None
         lines.append(f"    chat  {str(c.get('name'))[:30]:<30} {newest or 'no snapshot'}")
