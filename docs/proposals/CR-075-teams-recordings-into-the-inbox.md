@@ -166,6 +166,25 @@ constraints belong in the design rather than in a later incident:
   retention decision is enforced, in personal iCloud. That is the real question in this
   CR, and it is not a technical one.
 
+## The larger shape this belongs to
+
+This CR is one link in something bigger, and it is the link where the something-bigger
+becomes visible. The chain is: *an organisation with many meetings* → raw material →
+Deep Thought → extracted knowledge in the vault → insights and decisions.
+
+The three existing archives are not three storage folders that happen to share a layout;
+they are **three channels into one place** — what was said, what shipped, what is
+planned. This proposes the fourth and most sensitive: what was said *in the room*, which
+is the part that was never written down anywhere.
+
+That is worth naming because each CR reads reasonably on its own, and the accumulation
+does not follow from any one of them. What is emerging is an apparatus that collects an
+organisation's working day into a personal knowledge base. That may be exactly right —
+it is the point of the vault — but it should be a **decision**, not the sum of reasonable
+steps. The private architecture map carries the same note, and the question neither
+answers: where is the line between *my working material* and *the organisation's material
+that happens to pass through me*?
+
 ## Why the answer might be no
 
 If the meetings worth processing are already being captured another way, this buys
