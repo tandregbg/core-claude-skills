@@ -56,6 +56,22 @@ def note_pattern(suffix) -> re.Pattern:
     return re.compile(rf"^(\d{{6}})-(?:{alt})\.md$")
 
 
+def slurp(f: Path) -> str | None:
+    """Read a vault file, or None if it cannot be read right now.
+
+    A cloud-backed vault serves a file synced from another machine as *dataless*
+    until it is pulled, and the read raises OSError (EDEADLK) rather than returning
+    nothing. This brief reads six kinds of file it does not own, so the failure is a
+    CLASS, not a case: fixing it at the chat archive alone left the outbox manifest
+    to take the whole run down twenty minutes later. Every such read goes through
+    here, and the caller decides what a missing file means.
+    """
+    try:
+        return f.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".", help="the project's meetings folder")
@@ -118,7 +134,7 @@ def main() -> None:
             unread = 0
             for f in chats_dir.glob("*/_chat.json"):
                 try:
-                    if json.loads(f.read_text(encoding="utf-8")).get("chat_id") == c.get("id"):
+                    if json.loads(slurp(f) or "{}").get("chat_id") == c.get("id"):
                         d = f.parent
                         break
                 except (OSError, ValueError):
@@ -148,7 +164,9 @@ def main() -> None:
     if ven:
         rows = []
         for man in sorted((ven / "_outbox").glob("*/_manifest.md")):
-            f = dict(FIELD.findall(man.read_text(encoding="utf-8")))
+            if (txt := slurp(man)) is None:
+                continue
+            f = dict(FIELD.findall(txt))
             # An org-level series resolves its config from a venture folder, so
             # root.name is the venture, not the series -- the same mismatch that made
             # the heading wrong. A manifest names the series, so the series must be
@@ -170,7 +188,7 @@ def main() -> None:
     # 6. record movement -- when anyone last wrote this project down, not when a file was touched
     ch = root / "CHANGELOG.md"
     if ch.exists():
-        m = re.search(r"^## \[(\d{4}-\d{2}-\d{2})\]", ch.read_text(encoding="utf-8"), re.M)
+        m = re.search(r"^## \[(\d{4}-\d{2}-\d{2})\]", slurp(ch) or "", re.M)
         out += ["  Record", f"    CHANGELOG last entry   {m.group(1) if m else 'none parsed'}", ""]
 
     print("\n".join(out))

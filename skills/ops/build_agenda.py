@@ -105,6 +105,10 @@ def config(meetings: Path) -> dict:
             cf["people"] = [p_ for p_ in (d.get("people") or [])
                             if p_.get("name") and not p_.get("adjacent")]
             cf["ext"] = src or external(root)
+            # The project's declared track axis (four permanent surfaces, one owner
+            # each). Its presence is what makes the round's first column a STATED
+            # axis rather than a looked-up attribute -- see the round table below.
+            cf["tracks"] = [str(t) for t in (d.get("tracks") or []) if t]
             if not cf.get("schedule_days"):
                 mt = (d.get("meeting_types") or {}).values()
                 sched = next((m.get("schedule", {}).get("days") for m in mt
@@ -503,10 +507,23 @@ def main() -> None:
             if nm := nm.strip().strip("*"):
                 owed.setdefault(nm.lower(), []).append((item_of(lab, rest), n))
 
+    # A declared axis is STATED in the room, not looked up from the roster. Where
+    # the config declares `tracks:`, the round's first column is that axis: the
+    # legend is printed and the column stays empty, because which track a person
+    # reports on changes per session and most participants own none of them.
+    # Prefilling it from `areas` put non-track values under a "Track" header and
+    # contradicted the instruction above the table -- worse than blank, because a
+    # wrong prefilled answer teaches the wrong vocabulary.
+    tracks = cf.get("tracks") or []
     cols, people = cf.get("round_columns") or [], cf["people"]
     L += ["---", "", "## Round", ""]
-    if cols:
+    # The legend below says this better when there is one; printing both repeats
+    # the instruction and buries the values.
+    if cols and not tracks:
         L.append(f"**Say your {cols[0].lower()} before anything else.**\n")
+    if tracks:
+        L.append("**Track before anything else.** "
+                 + " · ".join(t[:1].upper() + t[1:] for t in tracks) + ". One per item, never two.\n")
     L.append("**What moved · what you are blocked on and who owns the other end · what you need a decision on.**")
     if people:
         # A table is only worth its space when it has rows to hold.
@@ -515,7 +532,7 @@ def main() -> None:
         head = [""] + cols + ["Owed into today"]
         L += ["", "| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
         for p_ in people:
-            first = ", ".join(p_.get("areas") or []) or p_.get("role", "") if cols else ""
+            first = "" if tracks else (", ".join(p_.get("areas") or []) or p_.get("role", "") if cols else "")
             # Match aliases too: a note names whoever was spoken, which is not
             # always the roster's canonical spelling, and a silent miss here
             # empties the row rather than erroring.
