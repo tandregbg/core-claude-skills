@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-075**
+Next available CR number: **CR-076**
 
 ---
 
@@ -39,6 +39,8 @@ Next available CR number: **CR-075**
 | CR-073 | Marvin, `.handoff/` | Low | **Proposed.** Whether `.handoff/` gets an `_outbox`-style surface in Marvin. It should not: CR-033 gives it a total block, and a snapshot may carry a confidentiality boundary, so a browsable reader could route restricted content past the constraint governing it. Proposes the narrowest useful thing instead — a name-and-date listing built from filenames, opening nothing. No contract change |
 
 | CR-074 | vault conventions, `external_systems` | Medium | **Proposed, additive (24→25).** `<venture>/.jirameta/`, a third archive in the shape CR-055 set: a folder per board, dated JSON, a dated `.md`, and a rewritten `status.md`. The vault archives what was said and what shipped; what was *tracked* is missing, and it is the half that says what is planned. Declared per folder under `external_systems.jira`. Differs from `.githubmeta/` in one respect worth stating: Jira has no `gh`, so it needs an API token |
+
+| CR-075 | `teams-chat-cli`, `_inbox/.audio/` | Medium | **Proposed.** Fetch a meeting RECORDING into `_inbox/.audio/` with a paired stub (CR-012), so the existing chain transcribes it: Trillian's retry path drives off the stub's frontmatter, not off where the audio came from, so no change is needed there. The media is the point — Teams' own transcript is the lower-quality artefact and becomes a **backup lane** for when the recording has aged out. **It does not attend meetings**: it reads afterwards, only where recording was already enabled. No contract change. Needs `OnlineMeetings.Read` + `OnlineMeetingRecording.Read.All` (delegated, user-scoped), transcripts second |
 
 _Specs for CR-042 and CR-047 are tracked outside this repo (they carry vault evidence); rows here are generic._
 
