@@ -177,6 +177,18 @@ they are **three channels into one place** — what was said, what shipped, what
 planned. This proposes the fourth and most sensitive: what was said *in the room*, which
 is the part that was never written down anywhere.
 
+**Two steps in the middle, and they are not the same step.** The transcription backend
+extracts *text from conversation* — audio in, transcript out, one conversation at a time,
+knowing nothing about the vault. The skills then do the *judgement*, inside the user's
+session, with the contract, the project's config and prior insights in context: what is a
+decision, whose task it is, what belongs in a recap.
+
+That boundary is why this CR is shaped as it is. Swap the transcriber and the chain still
+works — better or worse text, same processing — which is exactly why Teams' own transcript
+can serve as a **backup lane** rather than being a threat. Swap the judgement layer and
+there is no chain left, only a pile of transcripts. The media is worth fetching because it
+feeds the replaceable step; the irreplaceable step is already here.
+
 That is worth naming because each CR reads reasonably on its own, and the accumulation
 does not follow from any one of them. What is emerging is an apparatus that collects an
 organisation's working day into a personal knowledge base. That may be exactly right —
