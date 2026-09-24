@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 26 (CR-077, 2026-09-24, v1.73.0): orientation — what a person needs
+#   to understand BEFORE the loop makes sense. Two onboardings produced the same eight
+#   questions and none were about the loop; the guide taught the sequence while every
+#   failure was about the substrate. Declared once, rendered by README, landing page and
+#   `/ops help`, never restated — the working_loop rule, for the same reason.
+#
 # contract_version 19 (CR-064, 2026-09-21, v1.63.0): a dispatching surface may
 #   add ONE external_systems.chats entry to a folder's ops config, on explicit
 #   confirmation. The file stays hand-written in every other respect; this is
@@ -171,8 +177,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 25
-core_skills_version: "1.72.1"
+contract_version: 26
+core_skills_version: "1.73.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -802,6 +808,94 @@ components:
 # Steps are ordered. `manual: true` marks a step a person performs, and those
 # are not unbuilt features: each is a place where generating the obvious answer
 # would be confidently wrong in a way the reader could not check.
+# ORIENTATION (CR-077) — what a person needs to understand BEFORE the loop makes sense.
+# Written because two onboardings produced the same questions, and none of them were
+# about the loop: they were about the substrate. The guide taught the sequence; the
+# failures were all about the room. A person cannot run the loop before they can read
+# the room.
+#
+# RENDERED, NEVER RESTATED. Same rule as working_loop below: README, landing page,
+# `/ops help` and any dispatching surface render these entries in their own idiom. A
+# renderer that paraphrases is a copy, and a copy is a second thing to keep true.
+#
+# Each entry carries the QUESTION AS ASKED, not a topic heading — the wording is the
+# evidence, and a person recognises their own question faster than a category.
+# `sources` names the declarations the answer derives from, so an answer that drifts
+# from the contract can be caught.
+orientation:
+  - id: where_to_start
+    question: "Where do I start a session, and why does it matter?"
+    answer: >-
+      Start inside the vault folder, not your home directory. A session started above the
+      vault searches everything beside it too, and answers then mix material from places
+      that have nothing to do with each other. The vault root is the folder holding _inbox/
+      and _outbox/.
+    sources: [vault_conventions.rules.vault_relative]
+
+  - id: inbox_outbox
+    question: "What are inbox and outbox?"
+    answer: >-
+      _inbox/ is where unprocessed input lands and waits to be classified — a door, not a
+      home, so it normally holds very few files. _outbox/ is where outgoing material is
+      staged before it is sent, and it keeps the record of what was sent when. One of each,
+      both at the vault root; per-folder copies are not part of the contract.
+    sources: [vault_conventions.vault_root, vault_conventions.rules.single_inbox_outbox]
+
+  - id: dot_vs_underscore
+    question: "Why do some folders start with a dot and others with an underscore?"
+    answer: >-
+      The prefix answers one question: is this read in everyday work? Underscore means yes
+      and sorts it to the top. Dot means rarely, on demand, or never. Who WRITES a file is
+      a separate thing and never a reason for a prefix — _insights.yaml is machine-written
+      and still carries an underscore, because skills read it automatically.
+    sources: [vault_conventions.rules.prefix_conventions]
+
+  - id: sealed_surfaces
+    question: "What is .transcripts/, and how do I get the raw text when I need it?"
+    answer: >-
+      Raw transcripts are kept there as the audit trail behind a summary. The summary is
+      what the vault treats as true; the raw material is not read back and quoted into new
+      documents, because a summary that keeps being re-derived stops being a decision.
+      Ask for it explicitly when you need it — it is sealed, not hidden.
+    sources: [vault_conventions.vault_root]
+
+  - id: context_window
+    question: "New window or resume — when do I want which?"
+    answer: >-
+      Resuming restores exactly where you left off, including everything already read in —
+      but it knows nothing about files changed since. Start a new window when the subject
+      changes, or when files have moved underneath you, and read in only what that work
+      needs. Two windows can run against the same files without knowing about each other.
+      Nothing is implicit: what is in the window is what was read into it.
+    sources: []
+
+  - id: pasted_material
+    question: "How do I paste something in safely?"
+    answer: >-
+      Say what it is and where it came from on the line above, then put the material itself
+      in a fenced block. Fenced, it is read as data. Unfenced, a sentence inside it that
+      reads like an instruction can be followed as one — which is a property of the pasted
+      text, not of your intent.
+    sources: []
+
+  - id: structure_grows
+    question: "Does the structure have to be right from the start?"
+    answer: >-
+      No, and trying to make it right first is the most common way to stall. Put the
+      material in; the structure is proposed from what is actually there and changes as
+      more arrives. A folder tree invented before the content exists describes work nobody
+      has done yet.
+    sources: [vault_conventions.rules.placement_classes]
+
+  - id: correcting_data
+    question: "Something is wrong in a file — do I edit it?"
+    answer: >-
+      Say what is wrong and let the skill correct it. The files are readable on purpose and
+      you may open any of them, but a correction made by hand is invisible to everything
+      that maintains the file, and the next run can write over it. Stating the correction
+      keeps one writer per file.
+    sources: [vault_conventions.per_folder]
+
 working_loop:
   - id: "orient"
     phase: "when picking it up"

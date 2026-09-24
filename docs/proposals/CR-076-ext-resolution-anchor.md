@@ -5,7 +5,7 @@
 | **CR Number** | CR-076 |
 | **Date** | 2026-09-22 |
 | **Author** | User + Claude Code |
-| **Status** | **Proposed** |
+| **Status** | **Implemented 2026-09-24, v1.73.0** |
 | **Priority** | **High** -- it silently empties the one block that carries what the room did not say |
 | **Complexity** | Low |
 | **Estimated Scope** | `skills/ops/build_agenda.py` (`config`, `external`, `from_chat`, the run summary). `project_brief.py` imports `config` and is fixed by the same change |
@@ -123,3 +123,22 @@ that each touched the retrieval path.
 The schema is correct and `contract_version` does not move. `external_systems` has always been
 declared as resolved by the normal config chain; this makes the reader do what the contract already
 says. No vault file changes shape, and no existing declaration has to be rewritten or moved.
+
+---
+
+## Outcome (2026-09-24, v1.73.0)
+
+`external()` now walks up from the folder it is given, nearest declaration wins — the same
+chain every other key uses. `project_brief.py` imports `config` and is fixed by the same change.
+
+**And the miss is no longer silent:** when nothing in the chain declares `external_systems.chats`,
+the run says so, distinguishing *undeclared* from *declared but quiet*. Both rendered as an empty
+section before, which is how this went unnoticed.
+
+**Honest scope note.** Checked against the live vault after the fix: **no folder there was
+actually affected.** The two folders declaring `carry_forward` without `external_systems`
+(an org root and a marketing project) have no declaration anywhere above them either, so they
+resolved to nothing before and after. The bug was real and the reasoning holds — a project
+declaring the loop in its own config and its chats one level up would have lost the block
+entirely — but this repo should not claim a recovered failure it cannot point at. The change is
+correct and, here, latent.

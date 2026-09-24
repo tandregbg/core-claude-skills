@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.72.1
+**Version:** 1.73.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -9,6 +9,27 @@ Claude Code skills for operational documentation, transcript processing, task tr
 **Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 122 entries, newest first. This
 file used to repeat the last 34 of them; it no longer does, because a second
 copy of a changelog is a second thing to keep true.
+
+## Before the loop: reading the room
+
+<!-- orientation:start -->
+Generated from `orientation` in [`ecosystem.yaml`](ecosystem.yaml) — do not edit here (CR-077).
+
+Two onboardings produced the same questions, and none of them were about the loop below. They
+were about the substrate: which folders are read, which are sealed, what is in the context
+window, where a session starts. **A person cannot run the loop before they can read the room.**
+
+| | |
+|---|---|
+| Where do I start a session, and why does it matter? | Start inside the vault folder, not your home directory. A session started above the vault searches everything beside it too, and answers then mix material from places that have nothing to do with each other. The vault root is the folder holding _inbox/ and _outbox/. |
+| What are inbox and outbox? | _inbox/ is where unprocessed input lands and waits to be classified — a door, not a home, so it normally holds very few files. _outbox/ is where outgoing material is staged before it is sent, and it keeps the record of what was sent when. One of each, both at the vault root; per-folder copies are not part of the contract. |
+| Why do some folders start with a dot and others with an underscore? | The prefix answers one question: is this read in everyday work? Underscore means yes and sorts it to the top. Dot means rarely, on demand, or never. Who WRITES a file is a separate thing and never a reason for a prefix — _insights.yaml is machine-written and still carries an underscore, because skills read it automatically. |
+| What is .transcripts/, and how do I get the raw text when I need it? | Raw transcripts are kept there as the audit trail behind a summary. The summary is what the vault treats as true; the raw material is not read back and quoted into new documents, because a summary that keeps being re-derived stops being a decision. Ask for it explicitly when you need it — it is sealed, not hidden. |
+| New window or resume — when do I want which? | Resuming restores exactly where you left off, including everything already read in — but it knows nothing about files changed since. Start a new window when the subject changes, or when files have moved underneath you, and read in only what that work needs. Two windows can run against the same files without knowing about each other. Nothing is implicit: what is in the window is what was read into it. |
+| How do I paste something in safely? | Say what it is and where it came from on the line above, then put the material itself in a fenced block. Fenced, it is read as data. Unfenced, a sentence inside it that reads like an instruction can be followed as one — which is a property of the pasted text, not of your intent. |
+| Does the structure have to be right from the start? | No, and trying to make it right first is the most common way to stall. Put the material in; the structure is proposed from what is actually there and changes as more arrives. A folder tree invented before the content exists describes work nobody has done yet. |
+| Something is wrong in a file — do I edit it? | Say what is wrong and let the skill correct it. The files are readable on purpose and you may open any of them, but a correction made by hand is invisible to everything that maintains the file, and the next run can write over it. Stating the correction keeps one writer per file. |
+<!-- orientation:end -->
 
 ## How a project runs
 

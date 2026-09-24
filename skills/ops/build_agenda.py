@@ -51,15 +51,22 @@ COMPANION = ("-agenda", "agenda-", "-preparation", "preparation-", "-förberedel
 ITEM = re.compile(r"^-\s+\*\*(.+?)\*\*(.*)$", re.M)
 
 
-def external(root: Path) -> dict:
+def external(start: Path) -> dict:
     """external_systems (CR-054, contract 16) resolved by the normal config chain:
-    project `.claude/ops-config.yaml`, then the folder's `_ops.yaml`."""
-    for name in (".claude/ops-config.yaml", "_ops.yaml"):
-        p = root / name
-        if p.exists():
-            d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-            if es := d.get("external_systems"):
-                return es
+    project `.claude/ops-config.yaml`, then `_ops.yaml`, WALKING UP from `start`.
+
+    CR-076: this used to read only `start`'s own two files. `config()` calls it with
+    the folder where `carry_forward` was found, so a project declaring the loop in its
+    own config and its chats one level up (the venture) resolved to `{}` -- and the
+    miss was silent, because an empty block renders as a section with nothing in it
+    rather than as an error. Nearest declaration wins, same as every other key."""
+    for root in (start, *start.parents):
+        for name in (".claude/ops-config.yaml", "_ops.yaml"):
+            p = root / name
+            if p.exists():
+                d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+                if es := d.get("external_systems"):
+                    return es
     return {}
 
 
@@ -479,6 +486,13 @@ def main() -> None:
     # a team-facing document are noise, and quoting a colleague's message back at
     # the room reads as surveillance rather than preparation. Retrieved, counted,
     # used; not reproduced.
+    # CR-076: say when nothing was DECLARED, as distinct from declared-but-empty.
+    # An undeclared block and a quiet week both render as no messages, and the one
+    # that is a configuration miss is the one worth naming -- silently empty is how
+    # this went unnoticed in the first place.
+    if not (cf.get("ext") or {}).get("chats"):
+        print("  no external_systems.chats declared in the config chain"
+              " — nothing to retrieve (declare it, or ignore if intended)")
     total = sum(len(c["messages"]) for c in chat)
     if total:
         print(f"  {total} chat message(s) since {last_date} — read them for the"

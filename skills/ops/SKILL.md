@@ -124,8 +124,15 @@ is the declaration both the README and the landing page render; a hand-written f
 command is the one most likely to go stale **and the least likely to be caught**, because a help command
 is read precisely by people who cannot tell that it is wrong.
 
+**Render orientation FIRST, from `orientation` in `ecosystem.yaml` (CR-077) — do not restate it
+here either.** A person who types `help` is more often lost in the substrate than in the sequence:
+where to start a session, what the folders are, what is in the context window. Present the entries
+in declared order, each as its `question` then its `answer`, under a heading that marks them as
+orientation rather than commands. Then the loop.
+
 **Include:**
 
+0. The orientation entries, in declared order
 1. One-line description of what /ops does
 2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops brief <folder>`, `/ops status`,
    `/ops lint <folder>`, `/ops sweep`, `/ops normalize <path>`, `/ops help`
@@ -203,6 +210,40 @@ The agenda file is the team-facing prep document. It looks like the prior-day pr
 **Critical rule:** the agenda file does NOT mention or hint at the facilitator file. The visible document must not advertise that a private one exists. Cross-references go from facilitator → agenda only, not the other direction.
 
 **Critical rule:** if the same content fits both files, it goes in the agenda file. The facilitator file should only contain content that would change behaviour or expose sensitive context if shared with the team.
+
+---
+
+#### Step P0: Which agenda does this project use? (CR-082)
+
+**Run this before P1, and print the answer before writing anything.**
+
+Resolve `carry_forward` through the normal config chain (`config()` in `build_agenda.py` —
+nearest declaration wins, walking up).
+
+| `carry_forward.enabled` | The agenda comes from |
+|---|---|
+| **true** — the loop is wired | **`build_agenda.py`.** The template in P3 is NOT used for the agenda |
+| absent or **false** | P1–P5 as described below |
+
+**When the loop is wired:**
+
+```bash
+python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
+```
+
+It writes `YYMMDD-<agenda_suffix>.md` and the chat post, carrying what the transcript cannot:
+the carried-forward block with session counts, the round from the declared roster, and the
+*Since the last standup* block from the archives. **Hand-writing the agenda in a wired project
+silently drops all three** — the agenda looks complete and is missing the half that comes from
+outside the room.
+
+In **dual** mode the facilitator file is still written here, as a layer **on top of** the
+generated agenda: read the generated file, add only facilitator content. Never regenerate the
+agenda's own content into it.
+
+**Announce the path before saving** — which route was taken (generated or template) and the
+exact filenames to be written. A hand-written agenda in a wired project then cannot happen
+silently; it is the one outcome the run states out loud.
 
 ---
 
@@ -615,6 +656,12 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
 
 1. Resolve the contract registry (`workflows.meeting_templates` from the merged config; `default` = CR-006 canonical).
 2. For each `YYMMDD-*.md` meeting summary in the folder (skip preps, agendas, emails, `.archive/`): resolve its contract by `match` glob and run the three checks (heading sequence, action-table header row, empty-Beslut marker).
+2b. **`agenda_suffix` names the project (CR-082).** Where `carry_forward` is declared, check that
+   `agenda_suffix` contains the project's folder slug. A default or generic suffix
+   (`agenda-daily-standup`) produces filenames that say nothing about where they came from — and an
+   agenda leaves its folder routinely: staged in `_outbox/`, attached to a chat post, forwarded.
+   Report it with the rename as the offered fix; **never rename implicitly**
+   (`/ops normalize --filenames` stays the only route, and existing files are left alone).
 3. **Group findings by series and by first-deviating date** -- the output should read "this series forked at YYMMDD", not a flat per-file list:
 
 ```
@@ -736,11 +783,19 @@ python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YY
 Reads the previous note's `## Carried forward`, counts consecutive sessions per item, and pulls the
 *Since the last standup* block from both archives. Refuses to overwrite an existing agenda.
 
-**3. Write the facilitator sheet by hand. This is not generated, and should not be.**
+**`/ops prepare` in a wired project runs exactly this** — see `prepare`, Step P0. There is one way
+to make an agenda here, not two.
+
+**3. `prepare` drafts the facilitator sheet; the facilitator owns it.** (CR-082)
 
 The agenda carries facts; the sheet turns them into questions, and which question to ask is judgement.
 The sheet also holds person-axis material — who to draw out, what is likely to be avoided — which is
 precisely what must never be staged anywhere it could be sent.
+
+**A draft is judgement offered, not judgement made.** `prepare` in dual mode writes it as a layer on
+top of the generated agenda; the facilitator then edits it, and the edit is the point. What must not
+happen is the sheet being treated as finished output — it is the one artifact in this loop whose value
+comes from a person having disagreed with it.
 
 ### After the meeting, the same day
 
@@ -777,15 +832,16 @@ it sent; nothing writes that unprompted, because the click is where the posted m
 |---|---|
 | Retrieval | Fetch. It reads archives; refreshing them is the archivers' job |
 | Agenda | Be hand-edited, or overwrite an existing one |
-| Facilitator sheet | Be generated, or be staged in `_outbox/` |
+| Facilitator sheet | Be staged in `_outbox/`, or be sent as drafted without a facilitator having edited it |
 | Transcript | Be chosen by the machine when duplicates exist |
 | Recap | Be written unasked, or keep a second copy outside `_outbox/` |
 | Manifest status | Be advanced by a tool |
 
 ### Where it is manual, and why
 
-**Steps 3, 4 and 6 are manual by design, and should stay that way.** The facilitator sheet is judgement
-about people; choosing between duplicate transcripts is a judgement the machine cannot make honestly;
+**Steps 3, 4 and 6 stay in human hands, and should.** The facilitator sheet is judgement
+about people — drafted by `prepare` (CR-082) but never finished by it;
+choosing between duplicate transcripts is a judgement the machine cannot make honestly;
 and the recap is asked for rather than produced. None of the three is an unbuilt feature.
 
 ## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT

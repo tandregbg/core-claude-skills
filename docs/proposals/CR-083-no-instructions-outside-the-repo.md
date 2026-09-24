@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented 2026-09-24, v1.73.0** |
 | **Contract** | none (process + one config default) |
 | **Date** | 2026-09-24 |
 | **Area** | `docs/RELEASING.md`, `insights` (`evolution.proposals_path`), the private companion folder |

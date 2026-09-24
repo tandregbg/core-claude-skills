@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented 2026-09-24, v1.73.0** |
 | **Contract** | none (skill text + one check) |
 | **Date** | 2026-09-24 |
 | **Area** | `ops` (`prepare`, THE DAILY LOOP, `build_agenda.py`), `ops-config` (`carry_forward.agenda_suffix`) |

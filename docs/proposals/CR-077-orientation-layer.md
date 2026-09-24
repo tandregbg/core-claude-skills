@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented 2026-09-24, v1.73.0** |
 | **Contract** | additive (25 → 26) |
 | **Date** | 2026-09-23 |
 | **Area** | `ecosystem.yaml` (`vault_conventions`), landing page `/guide`, README, `/ops help` |

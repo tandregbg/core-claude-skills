@@ -450,7 +450,13 @@ Reads compiled `skill_pattern` entries and generates concrete SKILL.md improveme
    b. Identify the relevant step or section
    c. Generate a concrete proposed change as a markdown file
 
-4. **Save proposals** to the configured **private proposals path** — `workflows.knowledge_extraction.evolution.proposals_path` (default `<vault>/.skill-evolution/proposals/`, vault-relative). **Never inside the skill repo** (CR-028): generated proposals derive from vault data and are development-evolution material — local only. Format:
+4. **Save proposals** to `workflows.knowledge_extraction.evolution.proposals_path` — **default `docs/proposals/generated/` inside this repo**, gitignored until reviewed (CR-083).
+
+   *This reverses CR-028's "never inside the skill repo".* The reason CR-028 gave was privacy: proposals derive from vault data. But **a proposal is an instruction** — it says how a skill should work — and instructions belong where the skill lives, or they are reviewed nowhere the repo can see. Written into the vault they never entered the index and no session reading the repo could find them.
+
+   **The privacy requirement is unchanged and is met differently:** a generated proposal is written **name-free**, the same rule every CR since CR-047 follows, and the pre-push guard scans it on the way out. **Evidence stays in the vault** — a proposal may say *observed in one vault*; it never needs the names to be right.
+
+   A vault may still override the path, but nothing in this repo assumes it does. Format:
    ```markdown
    # Proposal: [Short title]
 

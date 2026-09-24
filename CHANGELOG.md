@@ -10,6 +10,87 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 ## [Unreleased]
 
 ### Added
+
+## [1.73.0] - 2026-09-24
+
+### Added
+
+- **`orientation` in the contract — what a person needs before the loop makes sense (CR-077).**
+  Two onboardings on consecutive days produced the same questions, and **none of them were about
+  the loop**: what inbox and outbox are, why some folders start with a dot, where a session
+  starts, when to resume and when not, how to paste something safely. The guide taught the
+  *sequence*; every observed failure was about the *substrate*. A person cannot run the loop
+  before they can read the room.
+  - Eight entries, each carrying **the question as asked** rather than a topic heading — the
+    wording is the evidence, and people recognise their own question faster than a category.
+  - **Declared once, rendered by README, the landing page and `/ops help`, never restated.** The
+    `working_loop` rule for the same reason: a hand-written copy in a help command is the one
+    most likely to go stale and the least likely to be caught, because help is read precisely by
+    people who cannot tell it is wrong.
+  - Two entries fix rather than document: *structure does not have to be right from the start*
+    (the paralysis that stalled a real session), and *correct data with an instruction, not by
+    editing the file*.
+
+### Changed
+
+- **`/inbox` routes an `idea` to an `_ideas.md` instead of leaving an orphan.** The
+  classifier already recognised `idea`; the target column said *"None (already saved)"*,
+  so an idea captured through the skill became an inbox item nothing ever looked at again.
+  It now appends **one line, verbatim**, to the nearest `_ideas.md` — the project's if the
+  content names one, the organisation's if it has one, otherwise `_inbox/_ideas.md` as the
+  default. No inbox item, no frontmatter, no archive cycle.
+  - **Never creates an `_ideas.md` that does not exist** — falls back to the inbox default.
+    New surfaces are the owner's decision.
+  - **Never routes an idea into a task ledger, an issue tracker or a changelog.** These
+    files exist precisely because they have *no* automatic input into project work; an idea
+    becomes a task only when the owner writes it into `_capture.md` themselves.
+  - **Does not ask which file** when the content places itself — a confirmation prompt costs
+    more than the filing saves, and the whole value of the surface is that writing is free.
+
+- **One way to make an agenda (CR-082).** A user asked for the preparation for a recurring
+  standup in a wired project and got an agenda they did not recognise, under filenames that did
+  not name the project. Two causes, and only the first was the operator's: the subcommand was
+  offered, accepted and never run — and **running it would not have produced the right agenda
+  either**, because the skill described three ways to make one and they disagreed.
+  - **New Step P0 in `prepare`:** resolve `carry_forward` first. Wired → `build_agenda.py`
+    writes the agenda, and P3's template is not used. Not wired → P1–P5 as before. Hand-writing
+    the agenda in a wired project silently drops the carried-forward block, the round from the
+    roster and the *Since the last standup* block — the agenda looks complete and is missing the
+    half that comes from outside the room.
+  - **The path is announced before anything is saved**, so a hand-written agenda in a wired
+    project cannot happen silently.
+  - **The facilitator contradiction is resolved:** `prepare` drafts the sheet, the facilitator
+    owns it. A draft is judgement offered, not judgement made — it is the one artifact whose
+    value comes from a person having disagreed with it.
+  - **`/ops lint` reports an `agenda_suffix` that does not name its project.** An agenda leaves
+    its folder routinely — staged, attached, forwarded — and a generic filename then says nothing
+    about where it came from. Reported with the rename offered; never renamed implicitly.
+
+- **`external_systems` resolved from the wrong folder (CR-076).** `config()` found
+  `carry_forward` by walking up, then anchored `external_systems` to *that same folder* and read
+  only its own config. A project declaring the loop in its own config and its chats one level up
+  lost the block entirely — **and the miss was silent**, because an empty block renders as a
+  section with nothing in it rather than as an error. `external()` now walks the chain like every
+  other key, and an undeclared block is now stated in the run summary rather than rendering the
+  same as a quiet week. `project_brief.py` imports `config` and is fixed by the same change.
+  *(Checked against a live vault after the fix: no folder there was actually affected — the
+  change is correct and, there, latent. Recorded in the CR rather than claimed as a recovery.)*
+
+- **No instructions outside the repo (CR-083).** CR-026 created a private companion folder in
+  the vault because early CR specs carried real names as evidence. The split was about privacy
+  and it was right; it had since drifted into holding **process** — a README with the guard setup
+  and status discipline, and generated skill proposals written where no session reading the repo
+  could find them. **Two places saying how to work is one place too many.**
+  - The guard setup and CR status discipline move into `docs/RELEASING.md`; the private README
+    shrinks to *data for the pre-push guard; no instructions live here*.
+  - **`/insights propose` now writes to `docs/proposals/generated/`** — in the repo, gitignored
+    until reviewed, written **name-free** like every CR since CR-047, and scanned by the pre-push
+    guard on the way out. This reverses CR-028's *never inside the skill repo*: a proposal is an
+    instruction, and an instruction belongs where the skill lives.
+  - **The evidence rule is unchanged.** Audits, full specs and the denylist stay in the vault; a
+    proposal may say *observed in one vault*, never whose.
+  - Found while implementing: the vault override pointed at a path that **no longer existed**,
+    so the setting had already been silently broken.
 - **`/inbox` routes an `idea` to an `_ideas.md` instead of leaving an orphan.** The
   classifier already recognised `idea`; the target column said *"None (already saved)"*,
   so an idea captured through the skill became an inbox item nothing ever looked at again.

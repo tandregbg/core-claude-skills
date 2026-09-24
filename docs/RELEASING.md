@@ -100,15 +100,47 @@ The guard scans **added lines of the outgoing range** only. It does not
 replace rule 1 (write generic by construction) or the semantic review
 (step 6) — it is the mechanical floor, not the ceiling.
 
-## Development-evolution material is local-only (CR-028)
+## No instructions outside this repo (CR-083)
 
-Everything the evolution loop produces from vault data stays in the vault:
-CR specs (private archive), audits (gitignored + private archive), the
-denylist (vault), and **generated skill proposals** — `/insights propose`
-writes to `workflows.knowledge_extraction.evolution.proposals_path`
-(vault-relative; default `.skill-evolution/proposals/`), never into this
-repo. The repo receives only the *implemented, genericized* result of
-evolution, through the flow above.
+**Everything that tells a skill or a person how to work lives here. The private companion
+folder holds DATA — never instructions.**
+
+CR-026 created `<vault>/_private/core-skills/` because early CR specs carried real names as
+evidence. That split was about privacy and it was right. It then drifted into holding *process*:
+a README with the guard setup and status discipline, and generated skill proposals. A session
+reading this repo could see neither, and two places saying how to work is one place too many.
+
+| Stays private | Comes here |
+|---|---|
+| **The denylist** — publishing it publishes what it protects | The guard setup (below) |
+| **Evidence** — audits, transcripts, the specs that cite them | CR status discipline (this file) |
+| | Generated proposals — `docs/proposals/generated/`, gitignored |
+
+**The test for anything new:** if this changed tomorrow, which repo's commit would change it?
+If the answer is this one, it lives here.
+
+**Guard setup, per clone** (was in the private README):
+
+```bash
+git config core.hooksPath scripts/githooks
+git config guard.denylist /absolute/path/to/private/push-denylist.txt
+```
+
+The denylist path points outside the repo by design — the file is data and must not be published.
+
+**CR-001 to CR-046 in the private folder are frozen.** Not moved, not linked as current; the
+public index carries their titles. From CR-047 on, specs are written name-free here, so the
+split has already ended in practice.
+
+## Development-evolution EVIDENCE is local-only (CR-028, narrowed by CR-083)
+
+Everything the evolution loop produces **from vault data** stays in the vault: CR specs
+(private archive), audits (gitignored + private archive) and the denylist. The repo receives
+only the *implemented, genericized* result of evolution, through the flow above.
+
+**Generated skill proposals are the one exception, moved here by CR-083** —
+`docs/proposals/generated/`, gitignored, written name-free. A proposal is an instruction, and
+an instruction belongs where the skill lives; the evidence behind it does not follow it.
 
 ## Server-side backstop + history
 
