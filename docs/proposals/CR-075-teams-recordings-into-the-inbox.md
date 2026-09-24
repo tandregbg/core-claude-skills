@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed — scope case sharpened 2026-09-24 |
+| **Status** | **Proposed — dormant 2026-09-24; needs an administrator, not a commit** |
 | **Contract** | no change (25) |
 | **Date** | 2026-09-23 |
 | **Area** | `teams-chat-cli`, `_inbox/.audio/`, the inbox schema |
@@ -201,9 +201,10 @@ that happens to pass through me*?
 
 `Files.Read` was granted on 2026-09-23, and testing it changed what these scopes are actually for.
 
-**Recordings of meetings you ORGANISED are already reachable.** Teams saves a recording to the
-organiser's OneDrive, and `Files.Read` opens what that user can open: 32 recordings, 3.9 GB, all
-from 2026, sitting in `/me/drive/root:/Recordings`. No new scope is needed for any of them.
+**Recordings of meetings the signed-in user ORGANISED are already reachable.** Teams saves a
+recording to the organiser's own drive, and `Files.Read` opens what that user can open — they sit
+under `/me/drive/root:/Recordings`. Confirmed against one account, which held a year's worth of
+them. No new scope is needed for any of these.
 
 **Recordings of meetings you only ATTENDED are not**, and the reason is not a missing permission.
 The file lives in the *organiser's* drive; attending a meeting does not give you the file, it gives
@@ -256,3 +257,20 @@ a personal vault the right place for them?**
 - **Does not add scopes to `SCOPES` before consent** — that breaks `login` for everyone
   until granted. Afterwards it is one line plus `teamschatcli login --force`, since a
   cached token still carries the old scopes.
+
+---
+
+## Decision (2026-09-24): dormant
+
+**Held, and the reason is not technical.** Everything on this side is understood and tested; the
+blocker is that two Graph scopes must be granted by an administrator, and the need today does not
+justify the ask.
+
+**Nothing decays while it waits.** The scope table was tested against a live chat on 2026-09-23
+and records what returns 403 today. When the need is stronger, the request is already written:
+`OnlineMeetingRecording.Read.All` is the one that matters — a recording yields a good transcript,
+a transcript yields nothing better than itself — and `OnlineMeetingTranscript.Read.All` is
+requested second, as the fallback lane, framed that way to whoever grants it.
+
+**What would make this worth asking for:** recordings routinely needed that the vault cannot
+reach by any other route, often enough that fetching them by hand is the constraint.

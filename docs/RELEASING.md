@@ -100,6 +100,37 @@ The guard scans **added lines of the outgoing range** only. It does not
 replace rule 1 (write generic by construction) or the semantic review
 (step 6) — it is the mechanical floor, not the ceiling.
 
+## Where a piece of documentation belongs (CR-078)
+
+**The component that owns the behaviour owns the documentation.** `components:` in
+`ecosystem.yaml` declares it per component as `documentation_owner`.
+
+| If the fact is about | It belongs to |
+|---|---|
+| A declared vault surface, prefix, placement or rule | **this repo** — `orientation` (CR-077) |
+| A step in the working loop | **this repo** — `working_loop` (CR-062) |
+| What another product does: recording, speakers, its cloud access | **that product's own help** |
+| Operating-system and terminal basics | **neither** — link outward |
+
+**The test for anything new:** *if this behaviour changed tomorrow, which repo's commit
+would change it?* That repo documents it. If the answer is a repo that is not this one,
+this repo links and does not explain — owning it means maintaining it forever.
+
+**Why the boundary needs saying out loud:** the tempting move is one complete page covering
+everything a new user meets, because that is what they experience — one continuous confusion.
+But a page spanning three components can only be maintained by whoever notices all three
+changing, which is one person. **The user's experience being continuous does not make the
+ownership continuous.** A page may read as one journey while each section is owned where its
+behaviour lives.
+
+### Documentation for a workaround preserves the workaround
+
+Before writing documentation that explains how to work around a defect, ask whether the
+defect should be fixed instead. A fixed defect deletes its own documentation; a documented
+one acquires a constituency.
+
+Where a doc does describe a workaround, it says whether the underlying thing is being fixed.
+
 ## No instructions outside this repo (CR-083)
 
 **Everything that tells a skill or a person how to work lives here. The private companion

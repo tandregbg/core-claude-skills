@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 27 (CR-078, 2026-09-24, v1.74.0): documentation_owner on each
+#   component. The routing question — where does this fact get written — had no
+#   declared answer, so it was answered by whatever was convenient and the same fact
+#   ended up in two places that drifted. The test: if this behaviour changed tomorrow,
+#   which repo's commit would change it? That repo documents it.
+#
 # contract_version 26 (CR-077, 2026-09-24, v1.73.0): orientation — what a person needs
 #   to understand BEFORE the loop makes sense. Two onboardings produced the same eight
 #   questions and none were about the loop; the guide taught the sequence while every
@@ -177,8 +183,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 26
-core_skills_version: "1.73.0"
+contract_version: 27
+core_skills_version: "1.74.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -710,9 +716,19 @@ outbound_dispatch:
 # framework, so a component is "a dashboard", not an instance. An installation
 # maps its own tools onto these roles; the private map of which repo plays
 # which role belongs beside that installation, not here.
+# CR-078: `documentation_owner` says WHERE a fact about this component is written.
+#   this_repo - the behaviour lives here, so the doc does too
+#   external  - another repo's commit would change it; this contract links, never explains
+#   none      - OS/terminal basics: link outward, own nothing
+# The test for anything new: if this behaviour changed tomorrow, which repo's commit
+# would change it? That repo documents it. A user's experience being continuous does
+# not make the ownership continuous - a page may READ as one journey while each
+# section is owned where its behaviour lives.
+
 components:
   - id: "skills"
     kind: "instruction sets loaded into a session"
+    documentation_owner: this_repo   # CR-078: The skills ARE this repo; behaviour and doc change in the same commit
     role: "The framework itself. Read and write vault files; hold what each file MEANS"
     reads: ["the vault, per vault_conventions"]
     writes: ["the vault, per vault_conventions"]
@@ -721,6 +737,7 @@ components:
 
   - id: "dashboard"
     kind: "local web application"
+    documentation_owner: external   # CR-078: Its own repo owns how it is run; this contract owns only which vault files it may read
     role: "Reads the vault and serves it: tasks, insights, activity, and the outbox where staged material is dispatched"
     reads: ["the vault broadly"]
     writes:
@@ -735,6 +752,7 @@ components:
 
   - id: "messaging client"
     kind: "library plus CLI"
+    documentation_owner: external   # CR-078: Provider-specific: auth and platform vocabulary change in its repo
     role: "Talks to a chat platform: delegated auth, read and send messages, Markdown to the platform's markup"
     reads: ["chats the signed-in user belongs to"]
     writes: ["<venture>/.teamschats/ — the archive", "chat messages"]
@@ -743,6 +761,7 @@ components:
 
   - id: "task pipeline"
     kind: "local scripts, run on demand"
+    documentation_owner: external   # CR-078: Local scripts with their own README; the contract owns the file shapes, not the invocation
     role: "Keeps an external task service in step with the vault's task ledger"
     reads: ["_inbox/_tasks.yaml", "_inbox/_capture.md", "_inbox/_frame.md"]
     writes: ["_inbox/_tasks.yaml", "the generated triage view", "the external service"]
@@ -751,6 +770,7 @@ components:
 
   - id: "capture app"
     kind: "companion application"
+    documentation_owner: external   # CR-078: Recording, speaker assignment and reprocessing are the product's behaviour, not the vault's
     role: "Drops captured material into the vault from outside a session"
     reads: []
     writes: ["_inbox/", "_inbox/.audio/"]
@@ -758,6 +778,7 @@ components:
 
   - id: "repo metadata archiver"
     kind: "local CLI, run on demand"
+    documentation_owner: external   # CR-078: Its own CLI and credentials; the contract owns the archive layout
     role: "Archives a declared repository's metadata - issues, releases, commit subjects - into the vault, so a meeting can ask what changed since it last met"
     reads: ["external_systems.repos in a folder's ops config", "a hosting platform's API, through its own CLI"]
     writes: ["<venture>/.githubmeta/ — the archive"]
@@ -766,6 +787,7 @@ components:
 
   - id: "jira metadata archiver"
     kind: "local CLI, run on demand"
+    documentation_owner: external   # CR-078: Same as its siblings: shape declared here, tool documents itself
     role: "Archives a declared issue board's metadata - issues with their status and assignee, released versions - into the vault, so a meeting can ask where work stands without opening the tracker"
     reads: ["external_systems.jira in a folder's ops config", "the issue tracker's REST API"]
     writes: ["<venture>/.jirameta/ — the archive"]
@@ -774,6 +796,7 @@ components:
 
   - id: "inventory scanner"
     kind: "local script, run on demand"
+    documentation_owner: external   # CR-078: A local script; the contract owns the vault files it produces
     role: "Sweeps the machines a vault describes and regenerates the registers that say what runs where"
     reads: ["its own machine list — the source of truth for which machines exist"]
     writes: ["_INDEX-*.md — the generated machine and mapping registers"]
@@ -782,6 +805,7 @@ components:
 
   - id: "landing page"
     kind: "public website"
+    documentation_owner: this_repo   # CR-078: Renders orientation and working_loop from this contract; what it SAYS about the framework is declared here
     role: "Explains the framework and how to install it"
     reads: ["this file, fetched from the public repo"]
     writes: []

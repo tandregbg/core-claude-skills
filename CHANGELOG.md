@@ -11,6 +11,40 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Added
 
+## [1.74.0] - 2026-09-24
+
+### Added
+
+- **`documentation_owner` on every component (CR-078).** The routing question — *where does
+  this fact get written* — had no declared answer, so it was answered by whatever was convenient
+  and the same fact ended up in two places that drifted apart. Declared per component:
+  **`this_repo`** for the skills and the landing page, **`external`** for the seven tools with
+  their own repos and their own commits.
+  - **The test for anything new:** if this behaviour changed tomorrow, which repo's commit would
+    change it? That repo documents it. If it is not this one, this repo links and does not
+    explain — owning it means maintaining it forever.
+  - **Why it needs saying out loud:** the tempting move is one page covering everything a new
+    user meets, because that is what they experience. But a page spanning three components can
+    only be maintained by whoever notices all three changing, which is one person. **A user's
+    experience being continuous does not make the ownership continuous.**
+  - **Standing question added to the release process:** documentation for a workaround preserves
+    the workaround. A fixed defect deletes its own documentation; a documented one acquires a
+    constituency. Where a doc does describe one, it says whether the thing is being fixed.
+  - Nothing existing was moved or rewritten. This governs what is written next.
+
+### Decided, not implemented
+
+- **CR-079 (starting a vault from an existing history) is HELD.** The vault side is meaningless
+  until there is something to import, and what a capture product can actually export is still
+  unknown. Building the receiving end against an assumed format fixes its shape before the
+  sending end exists. **What unblocks it is not code:** find out what the product's interface can
+  already export, and in what form. The `.ephemeral/`-into-`_inbox/` question it answers stays
+  settled either way — an import is neither scratch nor queue, so it is a third surface.
+- **CR-075 (Teams recordings into the inbox) is DORMANT.** Everything on this side is understood
+  and tested; the blocker is two Graph scopes an administrator must grant, and today's need does
+  not justify the ask. Nothing decays while it waits — the scope table records what returns 403,
+  tested against a live chat, and the request is already written if the need sharpens.
+
 ## [1.73.0] - 2026-09-24
 
 ### Added

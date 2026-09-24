@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Proposed — held 2026-09-24, waiting on the export side** |
 | **Contract** | additive (27 → 28), depends on CR-077 |
 | **Date** | 2026-09-23 |
 | **Area** | `/inbox`, `vault_conventions` (`_inbox/.import/`), `.transcripts/` |
@@ -100,3 +100,23 @@ guess an owner it was not given. Wrong attribution at this volume is worse than 
 - **Does not make import automatic.** No watcher, no folder that processes itself. Startup is a
   deliberate act with a person present.
 - Does not change `_inbox/`, `.ephemeral/` or `.transcripts/` as declared. Additive.
+
+---
+
+## Decision (2026-09-24): held, and what unblocks it
+
+**Not implemented, deliberately.** The vault side of an import is meaningless until there is
+something to import, and **what a product can actually export is still unknown** — that was the
+first question the originating handoff asked and it has not been answered.
+
+Building `_inbox/.import/` and `/inbox import` against an assumed format would fix the shape of
+the receiving end before the sending end exists, which is the expensive way round.
+
+**What unblocks this, and it is not code:** find out what the capture product's interface can
+already export — source records, transcripts, extractions, speakers, tags — and in what form.
+That answers the open format question (markdown plus frontmatter, or JSON needing an import
+step) and tells us whether a bulk export exists at all or would be a loop over a per-item API.
+
+**What this CR already settles and does not need revisiting:** `.ephemeral/` does **not** move
+into `_inbox/`. An import is neither scratch nor queue, so it is a third surface. That reasoning
+holds whatever the export turns out to look like.

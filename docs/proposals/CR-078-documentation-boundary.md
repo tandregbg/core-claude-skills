@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented 2026-09-24, v1.74.0** |
 | **Contract** | additive (26 → 27), depends on CR-077 |
 | **Date** | 2026-09-23 |
 | **Area** | `ecosystem.yaml` (`components`), `docs/RELEASING.md` |
@@ -81,3 +81,18 @@ preserves it.
 
 Routing rules are generic by construction. The worked examples in this CR name behaviour classes
 — *a capture product*, *a cloud reader* — never a product, customer or person.
+
+---
+
+## Outcome (2026-09-24, v1.74.0)
+
+`documentation_owner` is declared on all nine components: **`this_repo`** for the skills and
+the landing page (it renders `orientation` and `working_loop` from this contract), **`external`**
+for the seven tools that have their own repos and their own commits.
+
+The rule and its test are in `docs/RELEASING.md`, together with the standing question —
+**documentation for a workaround preserves the workaround**, so ask whether the defect should
+be fixed first. A fixed defect deletes its own documentation; a documented one acquires a
+constituency.
+
+No existing documentation was moved or rewritten. This governs what is written next.
