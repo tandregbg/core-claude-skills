@@ -982,6 +982,23 @@ Update files per `workflows.update_files` from config:
 
 For `changelog`, follow the format in ops-base. Always reference the meeting summary file.
 
+### Step 5.4: Archive the Raw Source (silent, always) (CR-085)
+
+**Run the RAW SOURCE ARCHIVE contract in `ops-base`.** Same definition `/transcript` Step 2.5 runs —
+`.transcripts/<summary-stem>-raw.md`, frontmatter plus verbatim input, the `Råmaterial:` back-link in
+the summary, one confirmation line, the read-back lock, and the skip conditions.
+
+**Do not restate the contract here.** `/ops` is documented as a superset of `/transcript` and went
+without this step precisely because the contract lived in one skill instead of the shared base.
+
+Where the input came from a transcript store rather than pasted text, record the store's **document
+id**, original filename, duration and transcript variant — the id is what ties the archive to the
+recording rather than merely proving something was said.
+
+**One session, several folders:** one raw file for the input, `summaries:` listing each summary it
+fed, `disposition:` stating the split. A part routed to a frozen snapshot is named there and never
+linked.
+
 ### Step 5.5: Knowledge Extraction (silent)
 
 After updating files, scan the meeting summary for durable insights worth accumulating. This step writes to `_insights.yaml` in the same folder as the CHANGELOG -- it is a silent accumulation layer that never surfaces in any skill output.

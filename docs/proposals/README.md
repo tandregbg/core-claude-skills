@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-085**
+Next available CR number: **CR-087**
 
 ---
 
@@ -12,6 +12,8 @@ Next available CR number: **CR-085**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-085 | `ops`, `ops-base`, `transcript` | **High** | **Implemented v1.75.0.** `/ops` never archived its source transcript, though it is documented as a superset of `/transcript`, which has done so since Step 2.5 — a summary with no way back to what was said, and the absence cannot announce itself. The fix is not a patch: **the contract moves to `ops-base` so there is one definition and two callers**, because two copies is how this happened. Adds `summaries:`/`disposition:` for one session feeding several folders — one raw file per input, never one per summary |
+| CR-086 | `ops` (`project new`, `prepare`, `sweep`) | Medium | **Proposed.** No skill creates a project, so folder shape is copied by eye and three registers are updated by hand. Adds `/ops project new`, a declared `registry:` block (**propose** for hand-written registers, which carry judgement a skill cannot know), graduation of a plan row into its own project, a duplicate check before `prepare` writes, and a sweep finding for an unregistered project. **Idempotent registration** is what makes two sessions editing one register harmless. Four questions left open deliberately |
 | CR-076 | `ops` (`build_agenda.py`) | **High** | **Implemented v1.73.0.** `external_systems` is anchored to the folder where `carry_forward` was found, then read from that folder only — so a series declaring its chats in its own `_ops.yaml`, under an org-level `carry_forward`, resolves to `{}`. Inverted relative to the documented nearest-wins chain. The miss is silent: `0 chat` is the declared-chat count, identical to a project that declares none, and `from_chat` returns early without a `problem` record. Empties the one agenda block that carries what the transcript cannot (CR-058) |
 
 | CR-077 | contract + landing page `/guide` + README | **High** | **Implemented v1.73.0.** The orientation layer. Two onboardings showed every question was about the *substrate* — what inbox and outbox are, which surfaces are sealed, where a session starts, what is in the context window — while `/guide` teaches the *loop*. The facts already live in `vault_conventions`; this renders them, the way CR-062 renders `working_loop`, rather than writing a third hand-maintained copy. Additive (25→26) |

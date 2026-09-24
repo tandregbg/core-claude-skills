@@ -293,68 +293,13 @@ If NO `CHANGELOG.md` exists in the target location, create one automatically. Th
 
 ## Step 2.5: Archive Raw Transcript (silent, always)
 
-After the summary has a target folder (Step 2), silently archive the **verbatim raw input** -- the original transcription text exactly as it was provided, before any cleaning. This preserves a way back to the source. It is a quiet memory archive, never an active part of the workflow.
+**Run the RAW SOURCE ARCHIVE contract in `ops-base` (CR-085).** It is the single definition —
+location, filename, frontmatter, back-link, the one confirmation line, the read-back lock, the skip
+conditions, and the shape for one input feeding several summaries.
 
-**Skip only if:** the user explicitly said "spara inte råmaterialet" / "don't save the raw", OR Step 2 chose "Just output the summary" (option 4) with no target folder.
-
-### Where
-
-Central folder in the **vault root**: `<vault-root>/.transcripts/`. Create it if missing.
-
-Find the vault root by walking **up** from the summary's target folder until you reach the directory that contains `_inbox`/`_outbox`/`_contacts` (the same root-detection other skills use). The raw file always lands in this single central folder, regardless of which contact/project folder the summary was saved to.
-
-### Filename
-
-Mirror the summary's filename stem, with a `-raw` suffix:
-
-```
-YYMMDD-samtal-[Names]-[topic]-raw.md
-```
-
-(Same stem as the summary so the pair is trivially matched.)
-
-### Content
-
-Plain readable markdown (no gzip). Frontmatter block + verbatim raw text:
-
-```markdown
----
-type: raw-transcript
-date: YYMMDD
-source: deep-thought            # or "pasted" / "file"
-summary: ../_contacts/<folder>/YYMMDD-samtal-...md   # relative link to the summary
-created_files:                  # every file this run created or updated
-  - ../_contacts/<folder>/YYMMDD-samtal-...md
-  - ../_contacts/<folder>/_insights.yaml
-  - ../_contacts/<folder>/_tasks.yaml
----
-
-<verbatim raw text exactly as it was provided, unedited>
-```
-
-If **multiple recordings** were provided in one run (they merged into one summary), store **all** of them in the same raw file with clear separators (`## Inspelning 1`, `## Inspelning 2`, ...). Include each recording's original metadata line (filename, timestamp) if present.
-
-### Back-link
-
-Add a `raw:` line near the top of the **summary** file so the raw archive is reachable from the summary. Use the same discreet style as the Step 1.5 preparation cross-reference, e.g.:
-
-```markdown
-**Råmaterial:** [.transcripts/YYMMDD-...-raw.md](../../.transcripts/YYMMDD-...-raw.md)
-```
-
-(Adjust the relative path to the summary's actual depth from the vault root.)
-
-### Silent output
-
-Confirm with a single line only -- do not echo the raw content:
-
-```
-Råmaterial arkiverat: .transcripts/YYMMDD-...-raw.md (visas ej om inte explicit efterfrågat).
-```
-
-### Read-back lock
-
-Files in `.transcripts/` must NEVER be read back, quoted, re-summarized, or fed into `_insights.yaml`/summaries unless the user EXPLICITLY asks for the raw material ("visa råtexten", "vad sa han ordagrant", "öppna råfilen"). The CHANGELOG (Step 3) must NOT link the raw file -- keep it out of the running log; traceability lives in the raw file's own frontmatter and the summary's `raw:` line.
+**Do not restate it here.** This step used to hold the contract itself, and `/ops` — documented as a
+superset of this skill — was built without ever inheriting it, because there was no single definition
+to inherit. One definition, two callers.
 
 ---
 

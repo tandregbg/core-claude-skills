@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 28 (CR-085, 2026-09-24, v1.75.0): the after-meeting step produces a
+#   raw source archive. /ops never archived its source although it is documented as a
+#   superset of /transcript, which has done so since Step 2.5 — the contract lived in one
+#   skill instead of the shared base, so there was no single definition to inherit. Moved
+#   to ops-base: one definition, two callers. Raw frontmatter gains summaries: and
+#   disposition: for one input feeding several folders.
+#
 # contract_version 27 (CR-078, 2026-09-24, v1.74.0): documentation_owner on each
 #   component. The routing question — where does this fact get written — had no
 #   declared answer, so it was answered by whatever was convenient and the same fact
@@ -183,8 +190,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 27
-core_skills_version: "1.74.0"
+contract_version: 28
+core_skills_version: "1.75.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -415,6 +422,18 @@ vault_conventions:
       writers: ["/handoff"]
       readers: ["user (explicit request only)", "/handoff read"]
       lifecycle: "written once, never updated, never archived, never indexed; ALL other skills must skip this folder entirely — no parse, index, summarise, sweep or lint"
+
+    # CR-085: declared, late. The folder has been in use and read-blocked since the
+    # transcript skill's Step 2.5, and the rules block already names it as a surface
+    # folder walks must skip — but it was never a declared path, so a loop step naming
+    # it failed the components check. Undeclared is not the same as unused; it is
+    # unreadable to anything that checks.
+    - path: ".transcripts/<stem>-raw.md"
+      purpose: "Raw source archive: the verbatim input behind each summary, one file per input (CR-085). A summary is a reading of what was said; this is what it was read from"
+      schema: null  # frontmatter + verbatim text, defined in skills/ops-base/SKILL.md
+      writers: ["/ops", "/transcript"]
+      readers: ["user (explicit request only)"]
+      lifecycle: "written once, silently, at summary time; NEVER read back, quoted, re-summarised or fed into _insights.yaml or any summary unless the user explicitly asks for the raw material. Folder walks skip it as they skip .archive/. The CHANGELOG does not link it — traceability lives in its own frontmatter and the summary's back-link"
 
     - path: ".ephemeral/"
       purpose: "Disposable working material with NO vault destiny (session scratch, snapshots, intermediates)"
@@ -971,9 +990,12 @@ working_loop:
     phase: "after, the same day"
     label: "one pass over the transcript"
     command: "/ops <transcript>"
-    does: "The summary, the registers, one changelog line, and whatever the folder declared"
+    does: "The summary, the registers, one changelog line, the raw source archived to .transcripts/ (CR-085), and whatever the folder declared"
     consumes: ["a transcript", "the ops config"]
-    produces: ["the note", "the registers", "a staged recap"]
+    # CR-085: the raw archive is written unasked and read back only on explicit
+    # request. A summary without its source has no arbiter, and the absence
+    # cannot announce itself — the summary looks complete either way.
+    produces: ["the note", "the registers", ".transcripts/<stem>-raw.md", "a staged recap"]
 
   - id: "carry"
     phase: "after, the same day"

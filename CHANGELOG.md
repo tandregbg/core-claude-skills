@@ -9,6 +9,45 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.75.0] - 2026-09-24
+
+### Added
+
+- **`/ops` archives its source transcript, and the contract has one definition (CR-085).**
+  `/transcript` has archived the verbatim input since Step 2.5 — `.transcripts/<stem>-raw.md`, a
+  back-link in the summary, one confirmation line, a read-back lock. **`/ops` never did**, although
+  it is documented as a superset of `/transcript`. A meeting processed with `/ops` produced a summary
+  with no way back to what was actually said, and **the absence could not announce itself**: the
+  summary looks complete either way.
+  - **The fix is not a patch.** Copying the step into `/ops` would reproduce the cause — the contract
+    was written in one skill instead of the shared base, so there was no single definition to
+    inherit. It now lives in `ops-base` as RAW SOURCE ARCHIVE; both skills point at it and neither
+    restates it. A grep finds one definition and two references.
+  - **One input, several destinations.** A session covering separable subjects may feed several
+    folders. Frontmatter gains `summaries:` (the list) and `disposition:` (how it was split and why),
+    with `summary:` kept as primary. **One raw file per input, never one per summary** — the input is
+    what happened; the summaries are readings of it. A part routed to a frozen snapshot is named in
+    `disposition:` and never linked, because such a snapshot carries no links in either direction.
+  - Where the input came from a transcript store, the frontmatter records its **document id**,
+    filename, duration and variant. Without the id the archive proves only that something was said.
+  - **`.transcripts/` is now declared in `vault_conventions`** (contract 27 → 28). It had been in use
+    and read-blocked since Step 2.5 was written, and the rules block already named it as a folder
+    walks must skip — but it was never a declared path, so `check-components.py` refused the new loop
+    output. **Undeclared is not the same as unused; it is unreadable to anything that checks** — the
+    same failure shape this CR set out to fix.
+  - `working_loop` now lists the raw archive in the after-meeting step's `produces`, so `/ops help`
+    renders it and the components check validates it.
+
+### Proposed, not implemented
+
+- **CR-086 — creating a project and registering it.** No skill creates a project, so folder shape is
+  copied by eye and several registers are updated by hand; during the session that prompted this, a
+  parallel session had already written one of the rows. Proposes `/ops project new`, a declared
+  `registry:` block where a hand-written register goes through **propose** (it carries judgement a
+  skill cannot know), graduation of a plan row into its own project, a duplicate check before
+  `prepare` writes, and a sweep finding for an unregistered project. **Idempotent registration** is
+  what makes two sessions harmless rather than merely unlikely. Four questions left open deliberately.
+
 ## [1.74.0] - 2026-09-24
 
 ### Added

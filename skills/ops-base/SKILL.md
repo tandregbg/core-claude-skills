@@ -265,6 +265,98 @@ Consult the project CLAUDE.md for:
 
 ---
 
+## RAW SOURCE ARCHIVE (CR-085)
+
+**The one definition. `/ops` and `/transcript` both run this; neither restates it.**
+
+A summary is a reading of something that was said. Without the source, a disagreement about what
+was said has no arbiter — and the absence cannot announce itself, because the summary looks
+complete either way.
+
+**When:** after the summary has a target folder, before post-processing.
+
+**Skip only if:** the user explicitly said not to save the raw material, or there is no target
+folder (summary printed, nothing written).
+
+### Where and what
+
+- **Location:** `<vault-root>/.transcripts/`, created if missing. Always this one central folder,
+  whatever folder the summary went to. Find the root by walking up until the directory holding
+  `_inbox`/`_outbox`/`_contacts`.
+- **Filename:** the summary's stem plus `-raw`, so the pair matches trivially.
+- **Content:** frontmatter, then the **verbatim** input, unedited and uncleaned.
+
+```markdown
+---
+type: raw-transcript
+date: YYMMDD
+source: <store name> | pasted | file
+source_id: <document id in the store>      # what makes this traceable to the recording
+source_file: <original filename>
+duration: <as reported>
+variant: <transcript variant, where the store offers several>
+summary: <relative path to the primary summary>
+summaries:                                  # every summary this input fed
+  - <relative path>
+disposition: <one line: how the session was split, and why>
+created_files:
+  - <every file this run created or updated>
+---
+
+<verbatim text>
+```
+
+`source_id` matters more than it looks: without it the archive proves only that *something* was
+said. With it, the raw file points back at the recording it came from.
+
+Several recordings merged into one summary go in **one** file with clear separators, each keeping
+its own metadata line.
+
+### One input, several destinations
+
+One session can cover separable subjects belonging in different folders.
+
+- **One raw file per input, never one per summary.** The input is what happened; the summaries are
+  readings of it.
+- `summaries:` lists them all; `summary:` stays as the primary for backward compatibility.
+- `disposition:` states the split in one line.
+- **Every** summary carries the back-link.
+- A part routed to a frozen snapshot is **named in `disposition:` but never linked** — such a
+  snapshot carries no links in either direction, and a raw file pointing at one would breach that
+  from the outside.
+
+### Back-link in the summary
+
+A discreet line near the top, matching the style of the preparation cross-reference:
+
+```markdown
+**Råmaterial:** [.transcripts/<stem>-raw.md](<relative path>)
+```
+
+### Silent, and locked
+
+Confirm with **one line**, never echoing content:
+
+```
+Råmaterial arkiverat: .transcripts/<stem>-raw.md
+```
+
+**Read-back lock.** Files in `.transcripts/` are never read back, quoted, re-summarised or fed into
+`_insights.yaml` or any summary — unless the user explicitly asks for the raw material. Folder walks
+skip `.transcripts/` as they skip `.archive/`. **The CHANGELOG does not link the raw file:**
+traceability lives in the frontmatter and the summary's back-link, not in the running log.
+
+### The ledger boundary, stated so it is not inferred
+
+A vault may hold a rule that one conversation must never be split across two **ledger ids** — written
+for corpora where each entry is a ledger row with its own identity and attribution.
+
+**Ordinary summaries may split a session by subject**, and this contract permits it. The ledger rule
+governs ledger corpora. If a vault means it more widely, its own conventions say so; the skill keeps
+the conservative default and infers nothing.
+
+---
+
 ## ARCHIVE POLICY
 
 Consult the project CLAUDE.md for archive policy. General rules:
