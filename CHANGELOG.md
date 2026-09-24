@@ -9,8 +9,6 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
-### Added
-
 ## [1.74.0] - 2026-09-24
 
 ### Added
