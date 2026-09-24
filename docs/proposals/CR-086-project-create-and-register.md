@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Proposed — the four open questions decided 2026-09-24; ready to implement** |
 | **Contract** | additive — a `registry:` config block; no existing key changes |
 | **Date** | 2026-09-24 |
 | **Area** | `ops` (`project new`, `prepare`, `sweep`), `ops-config` schema |
@@ -94,13 +94,62 @@ it.
 - `working_loop` and `ecosystem.yaml` updated; `check-components.py` passes; release guard and
   semantic review pass.
 
-## Open — to decide before implementing, not during
+## Decided 2026-09-24 — the four questions the draft left open
 
-1. **Subcommand shape:** `/ops project new` as a separate verb, or extend `/ops projects` (read-only
-   today). A read-only command that sometimes writes is the worse of the two.
-2. **Where `registry:` belongs** — the vault layer or the organisation layer. A vault with one
-   portfolio suggests the former; several organisations with their own indexes suggest the latter.
-3. **Which columns the skill may fill** versus which must always be left for a person.
-4. **Whether "pre-phase of a track" deserves a declared lifecycle** — exit criterion, then tombstone,
-   then handover — or stays a README convention. It is a real shape; the question is whether it recurs
-   often enough to earn a declaration.
+### 1. A separate verb: `/ops project new`
+
+`/ops projects` (CR-065) stays read-only. **A read-only command that sometimes writes is harder to
+trust than two commands**, and the read-only guarantee is the reason that one is safe to run without
+thinking.
+
+### 2. `registry:` is declared at both layers, merged by the config chain
+
+Not either/or. A vault can hold a **cross-venture portfolio** at its root and a **per-organisation
+index** inside each organisation, and both are registers a new project must appear in:
+
+```yaml
+# vault layer — the portfolio, declared once
+registry:
+  projects:
+    - path: <vault-root portfolio>
+      section: <table name>
+      mode: propose
+
+# organisation layer — that organisation's own index
+registry:
+  projects:
+    - path: _projects/README.md
+      section: "Active Projects"
+      mode: propose
+```
+
+The chain merges them, so a project in an organisation that declares an index gets **two** rows, and
+one in an organisation that declares none gets the portfolio row only. **An organisation without an
+index is not misconfigured** — it has one register, which is a legitimate shape and the common one
+early on.
+
+### 3. The skill fills what it knows; judgement columns are left marked
+
+A portfolio row typically carries: name, venture, type, **the owner's own role**, status, **sponsor or
+mode**, and where it runs.
+
+| The skill fills | Left for a person |
+|---|---|
+| Name, venture, type, status (`New <date>`) | **The owner's role**, sponsor/mode, where it runs |
+
+The division is not about effort, it is about what can be known. **A role column can legitimately
+contain a question** — an owner writing *"contributing?"* about their own involvement is recording an
+open question, and a skill that filled that cell would turn a question into an assertion.
+
+Marked, not blank: the proposed row shows the judgement columns as placeholders so an unfilled one is
+visible rather than merely empty.
+
+### 4. "Pre-phase of a track" stays a README convention
+
+`--pre-phase-of <project>/<track> --exit "<criterion>"` writes the README block and the note that open
+questions stay in the parent's register. **No declared lifecycle, no tombstone automation.**
+
+There is one instance of this shape. **A lifecycle declared on a single case is a guess** — the three
+parts (exit criterion, handover to a track, tombstone on close) are each real, but whether they recur
+together often enough to earn contract fields is not yet known. If a second pre-phase appears and
+wants the same three, that is its own CR with evidence behind it.
