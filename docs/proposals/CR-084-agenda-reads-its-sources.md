@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented 2026-09-24, v1.76.0** |
 | **Contract** | additive — new optional keys under `people[]` and `carry_forward`; `external_systems.jira` read, not redefined |
 | **Date** | 2026-09-24 |
 | **Area** | `ops` (`build_agenda.py`, `lint`), `ops-config` schema |
@@ -112,3 +112,20 @@ remembered.
 - A folder declaring a ticket board gets its status at the bottom; one that does not gets `NOT DECLARED`.
 - `/ops lint` reports a roster that does not match attendance, and a carried item with only a vault-local
   identifier.
+
+---
+
+## Outcome (2026-09-24, v1.76.0)
+
+All seven land. The sources block prints `STALE` and `NOT DECLARED` rather than omitting them;
+`from_jira()` reads the `.jirameta/` archive that CR-074 created and nothing had read since;
+`probably_closed()` separates carried items the sources say have moved — **never dropping one**,
+because a machine that closes items silently is worse than one that repeats them.
+
+The track column is filled from the previous note's round table first and the declared default
+second. **`areas` is no longer read for it at all** — that substitution was the defect, not a
+shortcut: an area is what somebody works on, a track is the axis the round runs along.
+
+Two lint checks added as reports, not fixes: a roster that does not match attendance, and a carried
+item whose only identifier is vault-local. Both are the project's to change; a skill editing who
+belongs in a room is not a lint fix.

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed — the four open questions decided 2026-09-24; ready to implement** |
+| **Status** | **Implemented 2026-09-24, v1.76.0** |
 | **Contract** | additive — a `registry:` config block; no existing key changes |
 | **Date** | 2026-09-24 |
 | **Area** | `ops` (`project new`, `prepare`, `sweep`), `ops-config` schema |

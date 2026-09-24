@@ -12,6 +12,14 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 29 (CR-084 + CR-086, 2026-09-24, v1.76.0): two additions to the
+#   ops-config schema. CR-084: people[].track — the axis the round runs along, read
+#   from the previous note first and this default second; `areas` is never read as a
+#   track, which is how that column came to hold the wrong thing. CR-086: registry: —
+#   where a new project must appear, declared at both the vault and organisation
+#   layers and merged by the config chain, with propose as the default for a
+#   hand-written register because such a register carries judgement a skill cannot know.
+#
 # contract_version 28 (CR-085, 2026-09-24, v1.75.0): the after-meeting step produces a
 #   raw source archive. /ops never archived its source although it is documented as a
 #   superset of /transcript, which has done so since Step 2.5 — the contract lived in one
@@ -190,8 +198,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 28
-core_skills_version: "1.75.0"
+contract_version: 29
+core_skills_version: "1.76.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

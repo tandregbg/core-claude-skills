@@ -115,7 +115,20 @@ people:
   - canonical: string           # Required: the one true spelling
     aliases: [string]           # Optional: known ASR variants and nicknames
     role: string                # Optional: disambiguation context
+    track: string               # Optional (CR-084): default track for the round
+    adjacent: bool              # Optional: belongs to the project, not to the round
+    areas: [string]             # Optional: what this person works on
 ```
+
+**`track` versus `areas`, because they were once confused.** A **track** is the axis the round runs
+along — one per person, stated first, the same handful of values across the team. An **area** is what
+somebody works on, and a person can have several. Filling a round's track column from `areas` puts the
+wrong thing in a column the project asks for first; the agenda reads the previous note for the track
+before falling back to this default, and never reads `areas` for it.
+
+**`adjacent: true`** keeps a name available for resolution while taking its row out of the round. A
+permanently empty row trains a room to skip rows, and the round is the one place that must be read in
+full.
 
 Example:
 
@@ -129,6 +142,32 @@ people:
 ```
 
 Recurring `edge_case` flags for the same unresolved name are the signal to add it here. Folder-local `_ops.yaml` may extend the org roster (merged, folder wins on conflict).
+
+### `registry:` -- where a new project must appear (CR-086)
+
+```yaml
+registry:
+  projects:
+    - path: string              # the register file, relative to this config's folder
+      section: string           # the table heading to write under
+      mode: propose | write     # propose (default for hand-written) | write (generated)
+  structure_docs: [string]      # files whose folder tree lists projects
+```
+
+**Declared at both layers and merged by the config chain.** A vault may hold a cross-venture
+portfolio at its root and a per-organisation index inside each organisation; a new project appears in
+every register the chain resolves. An organisation that declares none is not misconfigured -- it has
+one register, which is the common shape early on. **A vault that declares no register at all skips
+registration silently.**
+
+**`mode: propose`** shows the row and writes on confirmation. It is the default for a hand-written
+register because such a register carries judgement -- a role, a sponsor, a mode of engagement -- that
+a skill cannot know. The skill fills what it knows (name, venture, type, status) and leaves the
+judgement columns as marked placeholders. **`mode: write`** is for generated indexes, which carry no
+judgement.
+
+**Registration is idempotent.** If a row already exists, verify the link and do nothing else: two
+sessions creating the same project must be harmless, not merely unlikely.
 
 ### Name Resolution
 

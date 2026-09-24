@@ -375,6 +375,103 @@ def from_repo(cf: dict, after: datetime.date) -> list[str]:
     return out
 
 
+def from_jira(cf: dict, after: datetime.date) -> list[dict]:
+    """Tickets from `<venture>/.jirameta/` (CR-074), the sibling of `.githubmeta/`.
+
+    The archive has existed since CR-074 and nothing read it, so a project that
+    tracks its work in a ticket system had that half of its status missing from
+    every agenda -- silently, because an undeclared source and an empty one look
+    identical on the page. Same contract as `from_repo`: read what an archiver
+    wrote, honour the declared `reads:` scope, never reach the network.
+    """
+    boards = cf.get("ext", {}).get("jira") or []
+    if isinstance(boards, dict):
+        boards = [boards]
+    if not boards:
+        return []
+    venture = next((p for p in cf["_root"].parents if (p / ".jirameta").is_dir()), None)
+    if not venture:
+        return [{"note": "no .jirameta/ archive found above this project"}]
+
+    declared = {str(b.get("project") or b.get("key") or "").strip().upper()
+                for b in boards if isinstance(b, dict)} - {""}
+    out = []
+    for meta in sorted((venture / ".jirameta").glob("*/_project.json")):
+        try:
+            info = json.loads(meta.read_text(encoding="utf-8"))
+        except Exception as e:
+            out.append({"note": f"{meta.parent.name}: archive unreadable ({type(e).__name__})"})
+            continue
+        key_ = str(info.get("project") or meta.parent.name).upper()
+        if declared and key_ not in declared:
+            continue
+        reads = info.get("reads")
+        if reads is not None and "issues" not in reads:
+            out.append({"note": f"{key_}: issues not in declared reads — skipped"})
+            continue
+        snaps = sorted(meta.parent.glob(f"{meta.parent.name}-*.json"))
+        if not snaps:
+            out.append({"note": f"{key_}: no snapshot in the archive"})
+            continue
+        snap = json.loads(snaps[-1].read_text(encoding="utf-8"))
+        taken = snap.get("day", "")
+        if taken and datetime.date.fromisoformat(taken) < after:
+            out.append({"note": f"{key_}: newest snapshot is {taken}, older than the last note — not refreshed"})
+            continue
+        for t in snap.get("issues") or []:
+            upd = (t.get("updated") or t.get("updatedAt") or "")[:10]
+            if not upd or datetime.date.fromisoformat(upd) < after:
+                continue
+            out.append({"board": key_, "n": t.get("key") or t.get("id"),
+                        "title": t.get("summary") or t.get("title") or "",
+                        "state": str(t.get("status") or "").lower(),
+                        "who": t.get("assignee") or "",
+                        "track": t.get("track") or t.get("component") or ""})
+    return out
+
+
+# Words a team actually uses when something is finished. Deliberately short: a
+# long list matches more and means less, and every false positive here costs a
+# person the time to say "no, still open" in the room.
+DONE_WORDS = re.compile(r"\b(deployed|shipped|released|live|merged|fixed|resolved|done|closed|moved to)\b", re.I)
+
+
+def probably_closed(items, chat, repo, jira):
+    """Carried items the sources suggest are finished.
+
+    Carry-forward is never compared with anything, so an item that shipped
+    yesterday leads this morning's agenda and the room spends its first minutes
+    saying so. This looks for evidence and separates those items -- it NEVER drops
+    one. A human confirms in the room and the next note records the close: a
+    machine that closes items silently is worse than one that repeats them.
+    """
+    ev = []
+    for c in chat:
+        for line in (c.get("messages") or []):
+            txt = line[1] if isinstance(line, (tuple, list)) and len(line) > 1 else str(line)
+            if DONE_WORDS.search(txt or ""):
+                ev.append(("chat", c.get("name") or "chat", txt.strip()))
+    for r in repo:
+        if r.get("state") == "closed":
+            ev.append(("repo", f"{r.get('repo','')}#{r.get('n','')}", r.get("title", "")))
+    for t in jira:
+        if any(w in (t.get("state") or "") for w in ("done", "closed", "resolved")):
+            ev.append(("tickets", str(t.get("n") or ""), t.get("title", "")))
+    if not ev:
+        return [], items
+
+    def words(x):
+        return {w for w in re.findall(r"[a-zåäö0-9]{4,}", x.lower())}
+
+    closed, still = [], []
+    for label, rest in items:
+        want = words(label)
+        hit = next(((kind, ref, txt) for kind, ref, txt in ev
+                    if want and len(want & words(f"{ref} {txt}")) >= 2), None)
+        (closed.append((label, rest, hit)) if hit else still.append((label, rest)))
+    return closed, still
+
+
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
@@ -422,7 +519,8 @@ def main() -> None:
     def age(first: str | None) -> int:
         return 0 if not first else (today - datetime.datetime.strptime(first, "%y%m%d").date()).days
 
-    items = sorted(((l, r, n, g, age(f)) for l, r in carried(last)
+    raw_items = carried(last)
+    items = sorted(((l, r, n, g, age(f)) for l, r in raw_items
                     for n, g, f in [streak(key(l), hist)]),
                    key=lambda t: (-t[2], -t[4]))
     out = md / f"{target}-{cf['agenda_suffix']}.md"
@@ -431,9 +529,60 @@ def main() -> None:
 
     E = cf["escalate_after"]
     ED = cf.get("escalate_after_days")
+
+    # CR-084: read every declared source BEFORE the agenda is assembled, so the page
+    # can state what it was built from and the carried items can be checked against it.
+    after = since(last_date)
+    chat, repo, jira = from_chat(cf, after), from_repo(cf, after), from_jira(cf, after)
+
+    # CR-084: an item that shipped yesterday should not lead this morning's agenda.
+    # Separated, never dropped -- a human confirms in the room and the next note
+    # records the close. Silent closing is worse than repetition.
+    closed_hits, _still = probably_closed(raw_items, chat, repo, jira)
+    closed_keys = {key(l) for l, _r, _h in closed_hits}
+    items = [t for t in items if key(t[0]) not in closed_keys]
+
     L = [f"# {cf.get('title', md.parent.name)}",
          f"### {day.strftime('%A %-d %B')}" + (f" · {cf['time']}" if cf.get("time") else ""),
          "", "---", ""]
+
+    # ---- CR-084: the sources block, first ------------------------------------
+    # An agenda that looks complete and was built from stale or missing inputs is
+    # the failure this block exists to make impossible. STALE and NOT DECLARED are
+    # printed, never omitted: a missing source that announces itself is honest, a
+    # silent one is indistinguishable from an empty result.
+    built = datetime.datetime.now().strftime("%y%m%d %H:%M")
+    src = [f"## Sources — built {built} from", "", "```"]
+    src.append(f"  note      {last.name:44} read")
+
+    declared_chats = (cf.get("ext") or {}).get("chats") or []
+    if not declared_chats:
+        src.append(f"  chat      {'—':44} NOT DECLARED")
+    else:
+        for c in chat:
+            n = len(c.get("messages") or [])
+            if c.get("problem"):
+                src.append(f"  chat      {(c.get('name') or '?')[:44]:44} NOT READ — {c['problem']}")
+            else:
+                msgs = c.get("messages") or []
+                newest = max((m[0] for m in msgs), default="—")
+                src.append(f"  chat      {(c.get('name') or '?')[:44]:44} newest {newest} · {n} since the note")
+
+    for kind, rows, declared in (("repo", repo, (cf.get("ext") or {}).get("repos")),
+                                 ("tickets", jira, (cf.get("ext") or {}).get("jira"))):
+        if not declared:
+            src.append(f"  {kind:9} {'—':44} NOT DECLARED")
+            continue
+        notes = [r["note"] for r in rows if isinstance(r, dict) and r.get("note")]
+        if notes:
+            for n_ in notes:
+                # A snapshot older than the note is the one that reads as fresh and is not.
+                flag = "STALE" if "older than the last note" in n_ else "NOT READ"
+                src.append(f"  {kind:9} {n_[:44]:44} {flag}")
+        else:
+            src.append(f"  {kind:9} {'declared':44} read · {len([r for r in rows if not r.get('note')])} changed")
+    src += ["```", ""]
+    L += src
 
     if items:
         fresh = [i for i in items if i[2] <= 1]
@@ -479,8 +628,20 @@ def main() -> None:
               "*nothing carried* — and regenerate. Otherwise anything left open at the last session is",
               "now invisible to this one.", ""]
 
-    after = since(last_date)
-    chat, repo = from_chat(cf, after), from_repo(cf, after)
+    # CR-084: printed after the carried block, before anything else the room does.
+    if closed_hits:
+        L += ["## Probably closed — confirm", "",
+              "**The sources say these moved since the last note.** They are NOT dropped: a machine that",
+              "closes items silently is worse than one that repeats them. Confirm in the room, and the",
+              "next note records the close.", "",
+              "| Item | Owner | Evidence |", "|---|---|---|"]
+        for lab, rest, hit in closed_hits:
+            kind, ref, txt = hit
+            ev = f"{kind} · {ref}" + (f" — {txt[:70]}" if txt else "")
+            L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {ev} |")
+        L.append("")
+
+
     # The chat archive is deliberately NOT printed here. It is context for whoever
     # writes the agenda and the facilitator sheet -- raw message lines pasted into
     # a team-facing document are noise, and quoting a colleague's message back at
@@ -512,6 +673,21 @@ def main() -> None:
     # What each person is carrying INTO this session, routed to their own row.
     # The chain already knows it -- it was being printed once at the top and then
     # dropped, so the round asked everyone the same empty question.
+    # CR-084: what each person said their track was last session. The note's round
+    # table records it on every line; the agenda then asked again from blank, which
+    # is how a column the project asks for first came to be empty every morning.
+    prior_track: dict[str, str] = {}
+    try:
+        for line in last.read_text(encoding="utf-8").splitlines():
+            if not line.startswith("|"):
+                continue
+            cells = [c.strip().strip("*") for c in line.strip("|").split("|")]
+            if len(cells) >= 2 and cells[0] and cells[1] and not set(cells[0]) <= set("- "):
+                if cells[0].lower() not in ("", "owed into today") and "---" not in cells[1]:
+                    prior_track.setdefault(cells[0].lower(), re.sub(r"\s*\(carried\)\s*", "", cells[1]).strip())
+    except OSError:
+        pass  # best effort: an unreadable note must not stop the agenda
+
     owed: dict[str, list[tuple[str, int]]] = {}
     for lab, rest, n, _g, _d in items:
         who = owner_of(lab, rest)
@@ -546,7 +722,24 @@ def main() -> None:
         head = [""] + cols + ["Owed into today"]
         L += ["", "| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
         for p_ in people:
-            first = "" if tracks else (", ".join(p_.get("areas") or []) or p_.get("role", "") if cols else "")
+            # CR-084: the track is HANDED ON, not re-answered. Yesterday's note
+            # first, then the declared default. `areas` is never used for this --
+            # an area is what someone works on, a track is the axis the round runs
+            # along, and filling the column with areas is how it came to hold the
+            # wrong thing. Marked `(carried)` so the room confirms in a word
+            # instead of spending the first minutes restating what it already said.
+            if tracks:
+                first = ""
+            elif cols:
+                carried_track = prior_track.get(p_["name"].lower()) or next(
+                    (prior_track[k.lower()] for k in (p_.get("aliases") or [])
+                     if k.lower() in prior_track), None)
+                if carried_track:
+                    first = f"{carried_track} *(carried)*"
+                else:
+                    first = p_.get("track") or ""
+            else:
+                first = ""
             # Match aliases too: a note names whoever was spoken, which is not
             # always the roster's canonical spelling, and a silent miss here
             # empties the row rather than erroring.

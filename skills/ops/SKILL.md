@@ -241,6 +241,13 @@ In **dual** mode the facilitator file is still written here, as a layer **on top
 generated agenda: read the generated file, add only facilitator content. Never regenerate the
 agenda's own content into it.
 
+**Check for an existing preparation before writing (CR-086).** Glob the target folder and its
+siblings for a preparation, agenda or facilitator file matching this meeting's **date and
+participants**. If one exists, report it and offer: open it, regenerate it from current sources, or
+write anyway. `build_agenda.py` already refuses to overwrite an agenda; the hand-prepared path had no
+equivalent, and a second prep for the same meeting is indistinguishable from the first until someone
+opens both.
+
 **Announce the path before saving** — which route was taken (generated or template) and the
 exact filenames to be written. A hand-written agenda in a wired project then cannot happen
 silently; it is the one outcome the run states out loud.
@@ -613,6 +620,88 @@ restating it.
 
 ---
 
+### `project new <name>` -- create a project, then register it (CR-086)
+
+**Trigger:** `/ops project new <name> [--from-meeting <summary>] [--pre-phase-of <project>/<track> --exit "<criterion>"] [--graduates <plan>#<row>]`
+
+**`/ops projects` stays read-only.** A read-only command that sometimes writes is harder to trust
+than two commands, and that guarantee is why the existing one is safe to run without thinking.
+
+#### Step N1: Check before creating
+
+Refuse if the folder exists. **Glob for near-names and ask** — a project created under a second
+spelling is invisible to everything that looks for the first, and the two then accumulate material
+in parallel.
+
+#### Step N2: Scaffold five artefacts
+
+In the organisation's projects tree, resolved from config:
+
+| File | Content |
+|---|---|
+| `README.md` | Roles line, `STARTING` + creation date, cadence, language; a *Scope / Out of scope* table; a *Meetings* table |
+| `_ops.yaml` | Organisation, language, `people[]` **seeded from the organisation roster with its aliases — never re-typed**, workflows, optional `carry_forward` |
+| `_tasks.yaml` | v2 header, empty `tasks:` |
+| `CHANGELOG.md` | Header plus a "Project created" entry |
+| `meetings/` | Empty |
+
+A hand-copied roster is where a misspelling enters and then resolves to nobody.
+
+**`--from-meeting`**: the first CHANGELOG entry and the README's meetings row point at that summary.
+
+**`--pre-phase-of <project>/<track> --exit "<criterion>"`**: writes the pre-phase block into the
+README — what blocks the parent track today, the exit criterion, and that the flow hands over when it
+is met — plus a note in `_ops.yaml` naming the **parent's** register as the source of open questions.
+A pre-phase that keeps its own register is a second register for one body of work.
+
+> This is a README convention, not a declared lifecycle. There is one known instance of the shape, and
+> a lifecycle declared on a single case is a guess. If a second appears wanting the same three parts
+> (exit criterion, handover, tombstone), that earns its own CR.
+
+#### Step N3: Register it — declared, never hardcoded
+
+```yaml
+registry:
+  projects:
+    - path: <register file>        # vault-root portfolio, or an organisation index
+      section: <table heading>
+      mode: propose | write
+  structure_docs:
+    - <file whose folder tree lists projects>
+```
+
+**Declared at both layers and merged by the config chain.** A vault may hold a cross-venture
+portfolio at its root and a per-organisation index inside each organisation; both are registers a new
+project must appear in. A project in an organisation that declares an index gets two rows; one in an
+organisation that declares none gets the portfolio row only. **An organisation without an index is
+not misconfigured** — it has one register.
+
+**`mode: propose` is the default for a hand-written register.** Show the row, write on confirmation.
+
+| The skill fills | Left for a person, marked |
+|---|---|
+| Name, venture, type, status (`New <date>`) | The owner's role, sponsor/mode, where it runs |
+
+The division is about what can be **known**, not about effort. A role column can legitimately contain
+a question — an owner writing *"contributing?"* about their own involvement is recording an open
+question, and a skill filling that cell would turn a question into an assertion. Judgement columns are
+written as marked placeholders, so an unfilled one is visible rather than merely empty.
+
+**Idempotent.** If a row for this project already exists — another session got there — verify the link
+and do nothing else. This is what makes two sessions harmless rather than merely unlikely.
+
+**Unconfigured means skip, silently.**
+
+#### Step N4: Graduation (`--graduates <plan>#<row>`)
+
+Annotate the row **in place** — *moved to `<project>` on `<date>`; linked, not copied, the row stays as
+history* — in **every** plan that carries it, and seed the new README's background from the row.
+
+The golden rule made executable: one item, one owner, one document. A row copied rather than linked
+becomes two rows that disagree within a week.
+
+---
+
 ### `brief` -- where a recurring project stands, before work resumes (CR-061)
 
 **Trigger:** `/ops brief <folder>` · `python3 ~/.claude/skills/ops/project_brief.py --dir <folder>/meetings`
@@ -663,6 +752,19 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    Report it with the rename as the offered fix; **never rename implicitly**
    (`/ops normalize --filenames` stays the only route, and existing files are left alone).
 3. **Group findings by series and by first-deviating date** -- the output should read "this series forked at YYMMDD", not a flat per-file list:
+
+2c. **The roster matches who actually attends (CR-084).** Compare `people[]` with the participant
+   lines of the last N notes and report two mismatches: **present every time but not in the roster**
+   (they have no row in the round, so nothing they carry is ever routed to them), and **in the roster
+   but absent every time** (suggest `adjacent: true`, which keeps the name for resolution and takes
+   the row out of the round). **Report only** — the roster is the project's to change, and a skill
+   editing who belongs in a room is not a lint fix.
+
+2d. **Carried items name something the team can find (CR-084).** Flag a carried line whose only
+   identifier is vault-local — a register id that exists in coordination notes and nowhere the team
+   works. Such an item leads the agenda and is skipped every session, because the person who owns it
+   cannot resolve what it refers to. Every carried line should reference an issue, a ticket, a path in
+   the repo, a chat message or a session — or state the matter in plain words.
 
 ```
 /ops lint meetings/management
@@ -745,6 +847,8 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
 7. **Triage hygiene (CR-022)** -- if a triage doc is registered: INKORG items unsorted >7 days, `[x]` items not yet moved to the KLART archive, week anchor >7 days stale, plaintext-credential-looking lines (no-secrets rule; lines marked `<!-- secret-ok -->` are a recorded owner decision and are skipped). Offered fix: `/inbox triage refresh` (which handles all but the sorting -- that stays human).
 8. **Contract alignment & repo privacy (CR-023/CR-029)** -- if `workflows.sweep.alignment_check.command` and/or `workflows.sweep.privacy_scan.command` are configured (maintainer machines only; **absent → skip silently**): run each command (read-only by construction) and parse its `[OK]`/`[DRIFT]`/`[FINDING]`/`[SKIP]` verdict lines. The privacy scan watches the whole public-repo tree continuously — denylist identifiers, secret patterns, and name-like tokens missing from the invented-examples allowlist — so a leak that somehow lands is caught within a week, not at the next audit. Report each `[DRIFT]` component with expected-vs-actual version and a pointer to the update runbook (documented in the alignment script's header). **`[SKIP]` is reported as *unverified*, not clean** -- an unreachable component (e.g. a stale mount) is itself a finding, and has previously hidden six releases of drift. Never auto-applies fixes: cross-repo version references and live deploys are human-confirmed changes. The alignment command stays the single source of truth for the component list; the sweep is the scheduled reader that guarantees its output is actually seen.
 9. **Structure conformance (CR-025)** -- enforce the CR-010 single-inbox/outbox rule with a **fuzzy matcher**, because reality drifts through variants that exact-name checks miss: scan for directories matching `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*`, and localized forms (`inkorg*`/`utkorg*`), case-insensitive. Everything except the vault-root `_inbox/` + `_outbox/` pair is a finding -- **including empty scaffolds** (they re-seed the habit). Paths in `workflows.sweep.structure_exemptions` are skipped with a one-line `(exempt: <path> -- <reason>)` note: deliberate exceptions are recorded once and respected. Offered fixes (never auto-applied): merge pending items into the central folder *via the normal `/inbox`/`/outbox` flows* so manifests and indexes stay true; archive already-resolved material to its destination folder; delete empty scaffolds; or add a `structure_exemptions` entry if the exception is deliberate. Rationale worth repeating in the report: a second outbox means the central pending list lies.
+
+10. **Unregistered project (CR-086)** -- a folder carrying an `_ops.yaml` but **no row in any register declared under `registry:`** is a finding, with the proposed row as the offered fix. This is what catches a project created before `/ops project new` existed, or created by hand after it. Registers are resolved through the normal config chain, so both a vault-root portfolio and a per-organisation index count; **a vault that declares no register skips this check silently** rather than reporting every project. Never auto-applies: a hand-written register carries judgement columns (role, sponsor, mode) the sweep cannot fill, and a row proposed with those blank is the point -- it shows what is missing instead of inventing it.
 
 **Output:** one report grouped by class, each finding with its offered fix as a command or concrete action. End with a one-line scoreboard (`9 classes: 5 clean, 3 with findings (14 items), 1 skipped`) so repeat runs are comparable. Young folders are exempt via the age thresholds -- a fresh project reports nothing.
 
@@ -981,6 +1085,23 @@ Update files per `workflows.update_files` from config:
 | `meetings_index` | meetings/README.md | Add entry to meeting index |
 
 For `changelog`, follow the format in ops-base. Always reference the meeting summary file.
+
+### What the skill does, and what a project configures (CR-084)
+
+Printed by `/ops help` and `/ops brief` for the active project, so the split is visible rather than
+remembered. A second user of this skill needs to know which half is theirs.
+
+| The skill — the same for every project | The project — its config and templates |
+|---|---|
+| The sources block, the status block, and their order | Which chats, repositories and ticket boards are declared |
+| The carry-forward check against the sources | `people[]`, with `track` and `adjacent` |
+| Ordering by age; handing the track on | `round_columns` |
+| The lint checks (roster, vault-only ids, suffix) | Track names and the taxonomy behind them |
+| — | Recap and chat-post templates |
+
+**`people[].track`** is the person's default track — used only when the previous note does not
+already carry one. `areas` is a different thing and is never read as a track: an area is what
+somebody works on, a track is the axis the round runs along.
 
 ### Step 5.4: Archive the Raw Source (silent, always) (CR-085)
 

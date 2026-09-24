@@ -9,6 +9,61 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.76.0] - 2026-09-24
+
+### Added
+
+- **The agenda states its sources, checks what it carries, and hands the track on (CR-084).** One
+  morning, one series: **items already done led the agenda** — a fix deployed, a change live, offline
+  discussions moved into the tracker, each visible in the repo or the chat, and carried anyway
+  because carry-forward was never compared with anything. An item one session old sat above the
+  round. The track column was empty although the previous note recorded it on every line. The
+  ticket-system status was **absent entirely** — its archive exists (CR-074) and nothing read it. The
+  round had the wrong people. **And nothing on the page said what the agenda was built from.**
+  - **Sources block, first.** One line per declared input with its freshness. `STALE` and
+    `NOT DECLARED` are printed, never omitted: **a missing source that announces itself is honest; a
+    silent one looks like an empty result.**
+  - **`from_jira()`** reads the `.jirameta/` archive on the same contract as the repo reader —
+    archive-only, honours the declared scope, never reaches the network.
+  - **`probably_closed()`** separates carried items the sources say have moved, with the evidence and
+    where it came from, under *Probably closed — confirm*. **It never drops one.** A human confirms
+    in the room and the next note records the close; a machine that closes items silently is worse
+    than one that repeats them.
+  - **The track is handed on, not re-asked.** Filled from the previous note's round table first, then
+    `people[].track`, and marked *(carried)* so the room confirms in a word. **`areas` is no longer
+    read for it** — an area is what somebody works on, a track is the axis the round runs along, and
+    that substitution was the defect rather than a shortcut.
+  - Two lint reports, never fixes: a roster that does not match who actually attends, and a carried
+    item whose only identifier is vault-local — it leads the agenda and is skipped every session
+    because its owner cannot resolve what it refers to.
+  - `/ops help` and `/ops brief` print **what the skill does versus what a project configures**, so a
+    second user can tell which half is theirs.
+
+- **Creating a project, and registering it where it must be found (CR-086).** No skill created a
+  project, so folder shape was copied by eye and several registers updated by hand — and during the
+  session that prompted this, **a parallel session had already written one of the rows.** That is not
+  a discipline problem; it is what happens when a register has no code path.
+  - **`/ops project new`** scaffolds five artefacts, seeding the roster **from the organisation's
+    declared `people[]` rather than re-typing it** — a hand-copied roster is where a misspelling
+    enters and then resolves to nobody. Refuses on an existing folder and asks about near-names.
+  - **`registry:` is declared at both layers and merged by the config chain.** A vault may hold a
+    cross-venture portfolio and each organisation its own index; a project appears in every register
+    the chain resolves. **An organisation without an index is not misconfigured** — it has one.
+  - **The skill fills name, venture, type and status; the judgement columns are left marked.** The
+    division is about what can be *known*: a role column can legitimately hold a question, and a
+    skill filling that cell would turn a question into an assertion.
+  - **Registration is idempotent** — an existing row is verified, not rewritten. This is what makes
+    two sessions harmless rather than merely unlikely.
+  - **`/ops prepare` checks for an existing preparation** before writing. The agenda path already
+    refused to overwrite; the hand-prepared path had no equivalent, and a second prep is
+    indistinguishable from the first until someone opens both.
+  - **Sweep check 10:** a project folder with an ops config and no row in any declared register.
+  - Graduation of a plan row into its own project annotates it **in every plan that carries it** —
+    moved, linked not copied. A row copied rather than linked becomes two rows that disagree within a
+    week.
+  - **Pre-phase of a track stays a README convention.** One known instance; a lifecycle declared on a
+    single case is a guess.
+
 ## [1.75.0] - 2026-09-24
 
 ### Added
