@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Proposed — scope case sharpened 2026-09-24 |
 | **Contract** | no change (25) |
 | **Date** | 2026-09-23 |
 | **Area** | `teams-chat-cli`, `_inbox/.audio/`, the inbox schema |
@@ -196,6 +196,40 @@ it is the point of the vault — but it should be a **decision**, not the sum of
 steps. The private architecture map carries the same note, and the question neither
 answers: where is the line between *my working material* and *the organisation's material
 that happens to pass through me*?
+
+## What was learned after filing (2026-09-24)
+
+`Files.Read` was granted on 2026-09-23, and testing it changed what these scopes are actually for.
+
+**Recordings of meetings you ORGANISED are already reachable.** Teams saves a recording to the
+organiser's OneDrive, and `Files.Read` opens what that user can open: 32 recordings, 3.9 GB, all
+from 2026, sitting in `/me/drive/root:/Recordings`. No new scope is needed for any of them.
+
+**Recordings of meetings you only ATTENDED are not**, and the reason is not a missing permission.
+The file lives in the *organiser's* drive; attending a meeting does not give you the file, it gives
+you a link if their sharing settings allow one. No recording links appeared in any chat scanned, so
+they are not being posted either.
+
+This narrows the CR and makes it more honest:
+
+| | |
+|---|---|
+| Meetings you organised | already covered, no request needed |
+| Meetings you attended | the actual gap, and what the scopes buy |
+| Every meeting in the tenant | **not proposed**; that would be `Files.Read.All` |
+
+The original text argued that already-reachable recordings *weakened* the case. The opposite holds:
+what you can already reach is precisely what does **not** need a scope, so the request is now aimed
+at a smaller and clearly-stated gap rather than at the general capability.
+
+One correction to the evidence, recorded because it was stated wrongly first: an early probe
+reported another person's drive as unreachable. That was a guessed address format — an underscore
+where the tenant uses a dot — and Graph answered *user not found*, which was read as access
+denied. Their drive **is** reachable; the `/Recordings` folder simply is not shared. The
+conclusion stands, the first evidence for it did not.
+
+**The Devteam SharePoint site is not an alternative.** Its `Meeting-recordings` folder holds two
+files, both from 2023. Recordings do not go there.
 
 ## Why the answer might be no
 

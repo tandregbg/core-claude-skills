@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted 2026-09-22; built as marvin CR-013 |
 | **Contract** | no change (24) |
 | **Date** | 2026-09-22 |
 | **Area** | Marvin (dispatching surface), `.handoff/` |
@@ -71,3 +71,24 @@ If a browsable reader is genuinely wanted, the honest route is to amend CR-033 �
 block is too strong, say why, and declare what replaces it. That is a contract conversation about
 confidentiality, not a Marvin feature. It is not proposed here, and "least effort" is the wrong
 reason to reach for it.
+
+
+---
+
+## Outcome (2026-09-22)
+
+Accepted as argued: no `_outbox`-style surface, a name-only listing instead. Built in Marvin as
+**CR-013** — route `/handoff`, rows carrying date, subject and filename parsed from the filename,
+a path to copy, and `os.scandir` as the whole of the access.
+
+Two things the build added that this CR did not anticipate:
+
+- **A snapshot is sometimes a folder**, not one `.md` — a bundle carrying its own supporting
+  files, which is the self-contained shape CR-033 describes. The first version listed 39 of 40 and
+  hid a real one. Both forms list now, bundles marked with a file count.
+- **The no-read constraint is a test**, not a comment: it patches `open`/`read_text`/`read_bytes`
+  and fails if any fires. Verified by adding a preview and watching it fail. The realistic
+  regression is not someone deciding to undo the block — it is "just add a preview" looking small
+  in review.
+
+Nothing in the contract changed, as proposed.

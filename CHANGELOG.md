@@ -10,6 +10,21 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 ## [Unreleased]
 
 ### Added
+- **`/inbox` routes an `idea` to an `_ideas.md` instead of leaving an orphan.** The
+  classifier already recognised `idea`; the target column said *"None (already saved)"*,
+  so an idea captured through the skill became an inbox item nothing ever looked at again.
+  It now appends **one line, verbatim**, to the nearest `_ideas.md` — the project's if the
+  content names one, the organisation's if it has one, otherwise `_inbox/_ideas.md` as the
+  default. No inbox item, no frontmatter, no archive cycle.
+  - **Never creates an `_ideas.md` that does not exist** — falls back to the inbox default.
+    New surfaces are the owner's decision.
+  - **Never routes an idea into a task ledger, an issue tracker or a changelog.** These
+    files exist precisely because they have *no* automatic input into project work; an idea
+    becomes a task only when the owner writes it into `_capture.md` themselves.
+  - **Does not ask which file** when the content places itself — a confirmation prompt costs
+    more than the filing saves, and the whole value of the surface is that writing is free.
+  - No version bump: a routing rule inside an existing classification, no schema or
+    interface change.
 - **MIT LICENSE.** The repository has been public since it was created, and the README invites
   anyone to clone it and symlink a skill — but with no license file the default was
   all-rights-reserved, which said the opposite. MIT states what the repo already behaves like.

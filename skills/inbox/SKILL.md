@@ -55,7 +55,7 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    | Org team member names (from ops-config), meeting context | `ops` | `/ops` |
    | "TODO", "remind me", imperative sentences, action items | `task` | `/tasks add` |
    | Short observation, no action context | `note` | None (already saved) |
-   | Idea, brainstorm, "what if" | `idea` | None (already saved) |
+   | Idea, brainstorm, "what if" | `idea` | Appended to an `_ideas.md` -- see step 6 |
 
    Assign confidence: `high` (clear signals), `medium` (some signals), `low` (ambiguous).
 
@@ -88,7 +88,8 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    - `transcript` -> Run `/transcript` with the content, passing the target folder
    - `ops` -> Run `/ops` with the content, passing the org config
    - `task` -> Run `/tasks add [extracted description]`
-   - `note`/`idea` -> Already saved, no downstream skill needed
+   - `note` -> Already saved, no downstream skill needed
+   - `idea` -> **Append one line to an `_ideas.md`** (see "Ideas" below) instead of leaving an orphan item in `_inbox/`
    - **Do NOT just print instructions** -- actually invoke the skill and let it run
    - The downstream skill handles all its own processing (summary, changelog, task import, insights, history)
 
@@ -97,6 +98,33 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    - Move the .md file to `_inbox/.archive/<id>.md` and set `archived_to`
    - If paired audio exists, also move `_inbox/.audio/<id>.m4a` to `_inbox/.archive/.audio/<id>.m4a`
    - Rebuild `_inbox.yaml` to reflect the new state
+
+### Ideas
+
+An `idea` is the owner's own thinking, not someone else's input. It gets **one line appended
+to an `_ideas.md`** -- no inbox item, no frontmatter, no archive cycle, no task.
+
+**Which file:**
+
+| The idea names | Append to |
+|---|---|
+| A project with its own `_ideas.md` | that project's file |
+| An organisation with one at its root | that org's file (e.g. `<org>/_ideas.md`) |
+| Nothing placeable | **`_inbox/_ideas.md`** -- the default |
+
+**Rules:**
+- **Append verbatim, one line.** Do not reword, expand, classify or add a date unless the
+  owner wrote one. The value of the surface is that writing costs nothing.
+- **Never create an `_ideas.md` that does not exist** -- fall back to `_inbox/_ideas.md`.
+  New files are the owner's decision, not the skill's.
+- **Never route an idea into a project's task ledger, an issue tracker or a changelog.**
+  These files exist precisely because they have no automatic input into project work; an
+  idea becomes a task only when the owner writes it into `_capture.md` themselves.
+- **Do not ask which file** when the content places itself. One line, done -- a confirmation
+  prompt costs more than the filing saves.
+
+**When unsure, use the default.** `_inbox` is a door, not a home: an idea can be routed out
+later, and a wrong guess is worse than an unsorted one.
 
 ### `/inbox status` -- Show Inbox State
 
