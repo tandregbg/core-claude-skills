@@ -58,7 +58,7 @@ and not a calendar app.** It does not send, reply, file, flag, schedule, accept 
 reads an object that already exists somewhere else and writes what the vault should know about
 it. Every channel keeps its own behaviour; nothing here takes over any of them.
 
-## The five things that need deciding
+## The six things that need deciding
 
 These are the decisions the skill cannot make silently, and the reason this is a CR rather than
 a patch.
@@ -130,6 +130,33 @@ equivalent:
 These are the reason calendar is named in this CR but may reasonably ship after email: the email
 half is well understood, the calendar half has open questions that deserve their own pass.
 
+### 6. The raw form — open, and it must not be settled by the implementation
+
+CR-079 established the principle for bulk import: raw transcripts land in `.transcripts/`
+directly, **so the seal applies from the first minute** rather than being applied retroactively.
+
+An email has a raw form too, and it is exactly the kind of thing that seal exists for: full
+headers, `Message-ID`, the complete `References` chain, the original encoding — the audit trail
+behind the record. But it is not a transcript, and `.transcripts/` is declared for transcripts.
+
+This CR does not decide the question, and says so rather than letting the first implementation
+decide it silently. Two defensible answers:
+
+| Answer | What it costs |
+|---|---|
+| **The record carries the identity; the raw form is discarded.** Frontmatter keeps `message_id`, thread key and participant roles — enough to re-fetch or re-match — and the wire form is not kept | Nothing can be re-derived if the record is later found wrong. Re-fetching assumes the source still exists and is still reachable |
+| **The raw form is kept behind a seal.** Either `.transcripts/` widens to *raw source material* generally, or correspondence gets its own sealed surface | A new surface is a contract change, and widening `.transcripts/` changes what a name means — the exact failure CR-068 was written about |
+
+**This is a prerequisite, not a detail.** A raw email is materially more sensitive than a
+transcript of a meeting the user attended: it carries other people's words verbatim, addressed
+privately, with routing metadata attached — in an iCloud-synced vault. Deciding it by default,
+in code, is how the wrong answer gets made permanent.
+
+Related: this is the same question CR-075 raises about meeting recordings (*where is the line
+between my working material and the organisation's material that happens to pass through me?*),
+at lower cost per object and far higher volume. An email costs nothing to pull in; a recording
+costs a deliberate act. That asymmetry is the reason to answer it before building, not after.
+
 ## What this composes with
 
 - **`/outbox` is unchanged and is not replaced.** Outbox is *outgoing material the vault
@@ -155,3 +182,6 @@ half is well understood, the calendar half has open questions that deserve their
   `email` content type step 1 already detects has somewhere to go.
 - **Does not introduce a new vault surface.** Correspondence lands in the contact and project
   folders that already exist. A source type is not a place.
+- **Does not decide where the raw form goes** — named as open in decision 6, deliberately. A
+  sealed surface for raw correspondence, if one is wanted, is a contract change and belongs in its
+  own CR rather than being introduced as a side effect of this one.

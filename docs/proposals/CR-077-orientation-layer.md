@@ -6,7 +6,7 @@
 | **Contract** | additive (25 → 26) |
 | **Date** | 2026-09-23 |
 | **Area** | `ecosystem.yaml` (`vault_conventions`), landing page `/guide`, README, `/ops help` |
-| **Related CRs** | CR-034 (prefix conventions), CR-036 (placement classes), CR-010 (vault conventions), CR-062 (working_loop rendered from the contract), CR-026 (privacy boundary) |
+| **Related CRs** | **CR-078** (the ownership boundary this CR's scope section applies — see note below), CR-034 (prefix conventions), CR-036 (placement classes), CR-010 (vault conventions), CR-062 (working_loop rendered from the contract), CR-026 (privacy boundary) |
 
 ## What happened
 
@@ -105,7 +105,7 @@ hand has been failed by the documentation, not by the format.
 
 - **Nothing product-specific.** Recording, speaker assignment, reprocessing and cloud access belong
   to the product that does them, not to core-skills. This CR is only the vault substrate. (See
-  CR-077 for the boundary.)
+  CR-078 for the boundary, which this CR's scope section already assumes.)
 - **No README per folder.** A permanent explanatory file living inside `_inbox/` contradicts
   *"a door, not a home"* — the inbox would carry furniture that is never processed.
 - **No new page.** `/guide` exists; orientation goes at the top of it. A second page competes with
@@ -114,6 +114,17 @@ hand has been failed by the documentation, not by the format.
   rule `/ops help` already carries for `working_loop`. A renderer that paraphrases is a copy.
 - Does not change any declared surface, writer, reader or lifecycle. Additive: a rendering of
   facts already in the contract.
+
+## A note on order (added 2026-09-24)
+
+CR-078 is filed as depending on this CR. In implementation the dependency runs the **other way**:
+this CR's scope section already invokes CR-078's rule — *documentation belongs to the component
+that owns the behaviour* — to decide which of the eight orientation answers belong here at all.
+
+Write the eight answers before that boundary is settled and some of them will be written against
+a rule that later excludes them. **Settle CR-078's rule first** (it is prose in `components:` plus
+`RELEASING.md`), then write orientation against a decided boundary. The formal `depends_on` in
+CR-078 is about the *renderer* existing; this note is about the *content* being decidable.
 
 ## Privacy note (CR-026)
 
