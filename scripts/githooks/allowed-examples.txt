@@ -30,3 +30,6 @@ display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Li
 # Invented participant names for a filename example where participants vary
 # (CR-057 docs). Deliberately short and unlike any real name in this vault.
 -(Ann-Bo|Bo-Cai|Cai-Dee|Ann-Bo-Cai)
+# RFC 5322 mail header names, not people. The Name-Name matcher reads
+# `In-Reply-To` as a hyphenated pair; it is a protocol field (CR-080).
+-(Reply-To|Message-ID|In-Reply-To)
