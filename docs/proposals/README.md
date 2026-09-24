@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-076**
+Next available CR number: **CR-077**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-076**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-076 | `ops` (`build_agenda.py`) | **High** | **Proposed.** `external_systems` is anchored to the folder where `carry_forward` was found, then read from that folder only — so a series declaring its chats in its own `_ops.yaml`, under an org-level `carry_forward`, resolves to `{}`. Inverted relative to the documented nearest-wins chain. The miss is silent: `0 chat` is the declared-chat count, identical to a project that declares none, and `from_chat` returns early without a `problem` record. Empties the one agenda block that carries what the transcript cannot (CR-058) |
 | CR-072 | `ops` (`list_projects.py`) | Medium | **Implemented v1.72.0.** A folder declares itself a recurring **series** (`series: {name, cadence}`), bringing a wired loop that lives outside the project trees into `/ops projects` — and licensing a `carry_forward` walk up the config chain, which the declaration alone makes safe. Two defects found while fixing the asked-for one: a series' inherited loop read as *no loop*, and a folder holding dated notes directly read as *empty*. Additive (23→24) |
 | CR-069 | `ops-base` | Medium | **Implemented v1.70.0.** Add a generic **Status/Results Report** standard beside TWO-TIER — measurement-driven (data source + period) vs the summary format's event-driven (transcript). Scorecard-first trend, partial-period guard, reconciliation invariants, honest provenance + blind spots, a warn-not-fail freshness gate, owner-ranked actions. Business-agnostic; producing skills reference it. Additive (21→22). |
 | CR-042 | `ops-config` schema | Low | Four keys a coordination project needs and the schema does not define — cadence (as a timezone **pair**, since the anchored end matters across DST), tracks, phases (which may be inherited from the shadowed codebase), and systems of record. Undeclared keys make a config file look authoritative while being partly inert |
