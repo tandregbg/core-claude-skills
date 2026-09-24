@@ -472,6 +472,64 @@ def probably_closed(items, chat, repo, jira):
     return closed, still
 
 
+def recorded_since(cf: dict, after: datetime.date, told: str | None) -> list[dict]:
+    """Recordings of THIS series that are newer than the newest note (CR-087).
+
+    A session that was recorded and never written up is invisible to everything
+    the loop reads: notes, agendas, archives and the outbox all look healthy, and
+    the next agenda is then built from a note that predates the session — silently
+    skipping it, re-raising what it closed and carrying none of what it opened.
+
+    **This never fetches.** Two sources only:
+
+      1. `--recorded YYMMDD[,id...]`, passed by a caller that already looked
+      2. a declared `external_systems.transcripts.archive`, written by an external
+         archiver, read the way `.teamschats/` and `.githubmeta/` are read
+
+    A guard that sometimes reached the network would cost the property that makes
+    the offline path trustworthy: an agenda generates with no credential and no
+    connectivity. That is worth more than the convenience.
+    """
+    if told:
+        parts = [x.strip() for x in told.split(",") if x.strip()]
+        day = parts[0] if parts and re.fullmatch(r"\d{6}", parts[0]) else ""
+        if day and datetime.datetime.strptime(day, "%y%m%d").date() <= after:
+            return []                      # told about something older than the note
+        return [{"day": day or "?", "id": i} for i in (parts[1:] or ["(not identified)"])]
+
+    tr = (cf.get("ext") or {}).get("transcripts") or {}
+    arch = tr.get("archive")
+    if not arch:
+        return []
+    root = cf["_root"]
+    d = next((p / arch for p in (root, *root.parents) if (p / arch).is_dir()), None)
+    if not d:
+        return [{"note": f"declared transcript archive not found: {arch}"}]
+
+    want = [m.lower() for m in (tr.get("match") or []) if m]
+    out = []
+    for f in sorted(d.glob("*.json")):
+        try:
+            rec = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue                        # one unreadable entry must not lose the rest
+        for r in (rec if isinstance(rec, list) else [rec]):
+            day = str(r.get("day") or r.get("date") or "")[:10].replace("-", "")[2:]
+            if not re.fullmatch(r"\d{6}", day):
+                continue
+            if datetime.datetime.strptime(day, "%y%m%d").date() <= after:
+                continue
+            # `match` is what keeps this from becoming noise: a store holding every
+            # meeting someone records would otherwise report all of them.
+            hay = " ".join(str(r.get(k, "")) for k in ("title", "name", "series", "chat")).lower()
+            if want and not any(m in hay for m in want):
+                continue
+            out.append({"day": day, "id": r.get("id") or r.get("document_id") or "?",
+                        "title": r.get("title") or "", "duration": r.get("duration") or "",
+                        "variant": r.get("variant") or ""})
+    return out
+
+
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
@@ -496,6 +554,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".", help="the meetings folder")
     ap.add_argument("--date", help="YYMMDD; default is the next weekday after the last note")
+    ap.add_argument("--recorded", metavar="YYMMDD[,id...]",
+                    help="CR-087: a recording of this series the caller already found. "
+                         "The script never fetches; this is how a session that has looked tells it")
+    ap.add_argument("--skip-unprocessed", action="store_true",
+                    help="CR-087: build anyway, over a session that was recorded and never written "
+                         "up. Skipping is then a decision on the record, not an accident")
     a = ap.parse_args()
 
     md = Path(a.dir).resolve()
@@ -534,6 +598,26 @@ def main() -> None:
     # can state what it was built from and the carried items can be checked against it.
     after = since(last_date)
     chat, repo, jira = from_chat(cf, after), from_repo(cf, after), from_jira(cf, after)
+
+    # CR-087: a session that happened and left no note. Building over it produces an
+    # agenda that looks complete and silently skips a session — re-raising what that
+    # session closed and carrying none of what it opened. Stop, name the recording,
+    # and make skipping an explicit choice.
+    unprocessed = recorded_since(cf, after, a.recorded)
+    if unprocessed and not a.skip_unprocessed:
+        lines = ["", f"  A session appears to have been recorded after {last.name} and never written up:", ""]
+        for r in unprocessed:
+            if r.get("note"):
+                lines.append(f"    {r['note']}")
+            else:
+                bits = [r.get("id", "?"), r.get("title", ""), r.get("duration", ""), r.get("variant", "")]
+                lines.append(f"    {r['day']}  " + "  ".join(str(b) for b in bits if b))
+        lines += ["",
+                  "  Process it first — the next agenda is built from the newest note, so building now",
+                  "  drops that session entirely.",
+                  "",
+                  "  Or pass --skip-unprocessed to build over it deliberately.", ""]
+        sys.exit("\n".join(lines))
 
     # CR-084: an item that shipped yesterday should not lead this morning's agenda.
     # Separated, never dropped -- a human confirms in the room and the next note

@@ -9,6 +9,31 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.77.0] - 2026-09-24
+
+### Added
+
+- **A session that was recorded and never written up (CR-087).** Two series met one morning, both
+  were recorded, neither was processed — and `/ops brief` reported both loops as healthy: newest note
+  yesterday, chain intact, next agenda not generated. **Every line was true.** The one fact that
+  mattered was not on the page, because nothing the brief reads knows a meeting took place: it reads
+  notes, agendas, archives and the outbox, and a recording lives in none of them.
+  - **The cost is the next agenda**, not the missing note. Built from the newest note, it silently
+    skips a session, re-raises what that session closed, and carries none of what it opened.
+  - `external_systems.transcripts` declares the store, with **`match` deciding which recordings
+    belong to this series**. That filter is what keeps the check usable — a store holding every
+    meeting someone records would otherwise fire every morning and be ignored by the second week.
+  - `/ops brief` prints `recorded 260924 — 2 recording(s), NO NOTE` directly under the newest note,
+    and **lists every candidate without choosing between them**. Choosing among duplicate recordings
+    stays a human judgement.
+  - `build_agenda.py` stops before building over an unprocessed session, naming the recordings.
+    `--skip-unprocessed` builds anyway, so **skipping is a decision on the record, not an accident**.
+  - **Nothing fetches.** The script reads a declared archive or is told by its caller via
+    `--recorded`. A guard that sometimes reached the network would cost the property that makes the
+    offline path trustworthy: an agenda generates with no credential and no connectivity.
+  - The CR's own open question — *where does a script that calls nothing learn a recording exists* —
+    was written into it before implementing rather than discovered during.
+
 ## [1.76.0] - 2026-09-24
 
 ### Added

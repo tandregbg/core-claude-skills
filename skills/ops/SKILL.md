@@ -241,6 +241,12 @@ In **dual** mode the facilitator file is still written here, as a layer **on top
 generated agenda: read the generated file, add only facilitator content. Never regenerate the
 agenda's own content into it.
 
+**Stop if a session was recorded and never written up (CR-087).** Where the folder declares
+`external_systems.transcripts`, a recording newer than the newest note means a session happened and
+left no note. The next agenda is built from that note, so building now **drops the session
+entirely** — re-raising what it closed and carrying none of what it opened. Process it first, or pass
+`--skip-unprocessed` so that skipping is a decision on the record rather than an accident.
+
 **Check for an existing preparation before writing (CR-086).** Glob the target folder and its
 siblings for a preparation, agenda or facilitator file matching this meeting's **date and
 participants**. If one exists, report it and offer: open it, regenerate it from current sources, or
@@ -864,8 +870,8 @@ are deliberately not automated at all — those are the interesting ones.
 ### Before the meeting
 
 **0. `/ops brief` — where did this leave off?** One read-only pass: loop position, whether the next
-agenda exists, chain integrity, what is carrying and what is unowned, how stale the archives are, what
-is staged and unsent. Run it when picking a project up cold, before deciding what the session is for.
+agenda exists, chain integrity, **whether a session was recorded and never written up** (CR-087), what
+is carrying and what is unowned, how stale the archives are, what is staged and unsent. Run it when picking a project up cold, before deciding what the session is for.
 
 **1. Refresh the archives — external CLIs, not skills.**
 

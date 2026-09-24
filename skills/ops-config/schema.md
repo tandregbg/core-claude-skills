@@ -143,6 +143,31 @@ people:
 
 Recurring `edge_case` flags for the same unresolved name are the signal to add it here. Folder-local `_ops.yaml` may extend the org roster (merged, folder wins on conflict).
 
+### `external_systems.transcripts:` -- the store a session's recording lands in (CR-087)
+
+```yaml
+external_systems:
+  transcripts:
+    store: string               # the transcript store's name
+    match: [string]             # how a recording is recognised as belonging to THIS series
+    archive: string             # optional: folder an archiver writes, read by build_agenda.py
+```
+
+Optional. Where absent, the brief prints `transcripts: NOT DECLARED` and everything behaves as
+before -- the CR-084 rule that a missing source announces itself rather than reading as an empty one.
+
+**`match` is what makes this safe.** Not every recording is a session of this series; an unmatched
+recording is not reported at all. Without it, a store holding every meeting an operator records
+would make the check noise.
+
+**A recording counts when it is NEWER than the newest note.** That is the whole condition: a session
+happened and left no note, so the next agenda would be built from a note that predates it -- silently
+skipping a session, re-raising what it closed and carrying none of what it opened.
+
+**Nothing in this contract fetches.** A script reads a declared `archive:` or is told by its caller;
+it never reaches a store. The offline guarantee -- an agenda generates with no credential and no
+connectivity -- is the property that would be lost, and it is worth more than the convenience.
+
 ### `registry:` -- where a new project must appear (CR-086)
 
 ```yaml

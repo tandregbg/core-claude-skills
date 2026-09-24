@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 30 (CR-087, 2026-09-24, v1.77.0): external_systems.transcripts —
+#   the store a session's recording lands in, with `match` deciding which recordings
+#   belong to the series and an optional `archive` a script may read. A session that
+#   was recorded and never written up is invisible to every other signal: notes,
+#   agendas, archives and the outbox all read as healthy, and the next agenda then
+#   skips the session silently. Nothing here fetches; the offline guarantee holds.
+#
 # contract_version 29 (CR-084 + CR-086, 2026-09-24, v1.76.0): two additions to the
 #   ops-config schema. CR-084: people[].track — the axis the round runs along, read
 #   from the previous note first and this default second; `areas` is never read as a
@@ -198,8 +205,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 29
-core_skills_version: "1.76.0"
+contract_version: 30
+core_skills_version: "1.77.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

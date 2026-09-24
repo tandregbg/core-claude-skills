@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented 2026-09-24, v1.77.0** |
 | **Contract** | additive — one optional key, `external_systems.transcripts` |
 | **Date** | 2026-09-24 |
 | **Area** | `ops` (`brief`, THE DAILY LOOP step 5), `ops-config` schema |
@@ -73,9 +73,54 @@ A skipped session is then a decision on the record, not an accident.
 - Treat every recording as a session — `match` decides, and an unmatched recording is not reported.
 - Replace `/ops brief`'s other blocks.
 
+## Open at implementation: where the script learns a recording exists
+
+Section 2 names three possible sources for the listing — the session running the brief, the store's
+own read tool, or a store archive. **Two of them are unavailable to `build_agenda.py`**, which by
+construction calls nothing: it reads what an archiver wrote, generates with no credential and no
+connectivity, and that property is why an agenda can be built offline.
+
+So the CR is implementable for `/ops brief`, which runs inside a session that has tools, and
+under-specified for the script, which does not.
+
+**The options, stated so the choice is made rather than discovered:**
+
+| | How the script learns | Cost |
+|---|---|---|
+| **A. A store archive, like the others** | An external CLI writes `<venture>/.transcriptmeta/`, the script reads it — the shape `.teamschats/` and `.githubmeta/` already established | A third archiver to write and run. The script keeps its offline guarantee |
+| **B. Brief-only** | The check lives in `/ops brief`; the script does nothing | No new tool, but the guard is absent exactly where the damage happens — building the next agenda |
+| **C. The session passes it in** | `build_agenda.py --recorded <YYMMDD>[,<id>...]`, supplied by whatever ran the brief | No new archiver, no network in the script. But an unflagged run is unguarded, so it protects only the path that already knows |
+
+**Resolved: A and C, in that order.** The archive is the honest answer and matches the two archivers
+that already exist, so the guard works for anyone running the script directly. Until such an archiver
+exists, `--recorded` gives the session-driven path the same guard without pretending the script can
+see something it cannot.
+
+**What is NOT done:** the script never fetches, and never infers a recording from anything other than
+a declared archive or an explicit flag. A guard that sometimes reaches the network would lose the one
+property that makes the offline path trustworthy.
+
 ## Acceptance
 
 - With a matching recording newer than the newest note, `/ops brief` prints `recorded … NO NOTE`
   with every candidate recording listed and none chosen.
 - `build_agenda.py` in that state stops and names the recording unless `--skip-unprocessed` is given.
 - A folder with no `external_systems.transcripts` prints `NOT DECLARED` and behaves as today.
+
+---
+
+## Outcome (2026-09-24, v1.77.0)
+
+Implemented as **A and C**, the resolution above. `recorded_since()` reads a declared
+`external_systems.transcripts.archive` the way the chat and repo archives are read, and
+`--recorded YYMMDD[,id...]` lets a caller that already looked tell the script. **Neither path
+fetches**, so an agenda still generates with no credential and no connectivity.
+
+`/ops brief` prints the line under the newest note — the position that changes what to do next —
+and lists every candidate recording **without choosing between them**. `build_agenda.py` stops and
+names them unless `--skip-unprocessed` is passed.
+
+**`match` is what keeps it usable.** Verified against a store holding an unrelated one-to-one
+alongside two recordings of the series: the unrelated one is not reported at all. Without that
+filter, an operator who records everything would get a guard that fires every morning and is
+therefore ignored by the second week.

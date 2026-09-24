@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_agenda import (COMPANION, config, carried, has_section, key, owner_of,
-                          streak, next_session)                      # noqa: E402
+                          streak, next_session, recorded_since, since)   # noqa: E402
 
 SENT = ("skickad", "arkiverad")
 FIELD = re.compile(r"^\*\*(Status|Projekt):\*\*\s*(.+?)\s*$", re.M)
@@ -93,8 +93,35 @@ def main() -> None:
         nxt = next_session(last_date, cf.get("schedule_days"))
         agenda = md / f"{nxt}-{cf['agenda_suffix']}.md"
         out += ["  Loop",
-                f"    newest note     {last.name}  ({days(last_date, today)}d ago)",
-                f"    next session    {nxt}  — agenda {'exists' if agenda.exists() else 'NOT GENERATED'}"]
+                f"    newest note     {last.name}  ({days(last_date, today)}d ago)"]
+
+        # CR-087: a session that happened and left no note is invisible to every
+        # other line here — notes, agendas, archives and the outbox all read as
+        # healthy. It is the one fact that changes what to do next, so it goes
+        # directly under the newest note rather than in a block further down.
+        tr = (cf.get("ext") or {}).get("transcripts") or {}
+        if not tr:
+            out.append("    transcripts     NOT DECLARED")
+        else:
+            rec = recorded_since(cf, since(last_date), None)
+            if not rec:
+                out.append("    recorded        nothing newer than the note")
+            else:
+                notes_ = [r["note"] for r in rec if r.get("note")]
+                if notes_:
+                    for n_ in notes_:
+                        out.append(f"    recorded        NOT READ — {n_}")
+                else:
+                    day = max(r["day"] for r in rec)
+                    out.append(f"    recorded        {day} — {len(rec)} recording(s), NO NOTE"
+                               "        ← process before the next agenda")
+                    # Listed, never chosen between: picking among duplicate
+                    # recordings is a judgement the machine cannot make honestly.
+                    for r in rec:
+                        bits = [r.get("id", "?"), r.get("title", ""), r.get("duration", ""), r.get("variant", "")]
+                        out.append("                      " + "  ".join(str(b) for b in bits if b))
+
+        out.append(f"    next session    {nxt}  — agenda {'exists' if agenda.exists() else 'NOT GENERATED'}")
         if has_section(last):
             out.append("    chain           intact")
         else:
