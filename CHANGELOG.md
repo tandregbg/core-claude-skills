@@ -9,6 +9,8 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.78.0] - 2026-09-25
+
 ### Added
 
 - **An archive says when it was last fetched, and whether that worked (CR-088, contract 31).**

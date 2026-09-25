@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented (unreleased)** — contract 31; version assigned at release |
+| **Status** | **Implemented 2026-09-25, v1.78.0** — contract 31 |
 | **Contract** | additive (30 → 31) — one declared file per archive root, `_fetch.json` |
 | **Date** | 2026-09-25 |
 | **Area** | `vault_conventions` (archive paths), `ops` (`build_agenda.py` sources block, `/ops brief`), `components:` (messaging client, repo/ticket archivers) |
@@ -104,7 +104,7 @@ Sources — built 260925 07:12 from:
   line.
 - An agenda built from an archive with no `_fetch.json` prints `fetch not recorded`.
 
-## Outcome (2026-09-25, unreleased)
+## Outcome (2026-09-25, v1.78.0)
 
 - `ecosystem.yaml`: `contract_version` 31. `<venture>/.teamschats/_fetch.json`,
   `.githubmeta/_fetch.json` and `.jirameta/_fetch.json` declared, `readers: any tool`, each written by

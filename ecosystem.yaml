@@ -12,7 +12,7 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
-# contract_version 31 (CR-088, unreleased): each archive root carries a _fetch.json —
+# contract_version 31 (CR-088, 2026-09-25, v1.78.0): each archive root carries a _fetch.json —
 #   <venture>/.teamschats/, .githubmeta/ and .jirameta/ each gain one record of the last
 #   fetch: when it was attempted, when it last succeeded, and the result (ok, partial,
 #   auth_required, error, timeout; an unknown value reads as error). A snapshot older
@@ -216,7 +216,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 31
-core_skills_version: "1.77.0"
+core_skills_version: "1.78.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
