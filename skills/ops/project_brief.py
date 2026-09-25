@@ -15,7 +15,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_agenda import (COMPANION, config, carried, has_section, key, owner_of,
-                          streak, next_session, recorded_since, since)   # noqa: E402
+                          streak, next_session, recorded_since, since,
+                          fetch_record, fetch_status)   # noqa: E402
+
+# CR-088: which archive a declared external system is fetched into.
+ARCHIVES = (("chat", "chats", ".teamschats"), ("repo", "repos", ".githubmeta"),
+            ("tickets", "jira", ".jirameta"))
 
 SENT = ("skickad", "arkiverad")
 FIELD = re.compile(r"^\*\*(Status|Projekt):\*\*\s*(.+?)\s*$", re.M)
@@ -83,6 +88,21 @@ def main() -> None:
     # An org-level series lives in a folder whose config sits further up, so root.name
     # is the venture, not the series. The declared title is the only honest label.
     out = [f"Project brief — {cf.get('title') or root.name}", ""]
+
+    # CR-088: a source whose last fetch did not succeed goes first, once. An expired
+    # login is the usual way a scheduled archive goes stale, and it is the one thing
+    # here only a person can fix -- re-running the fetch does nothing.
+    ext0 = cf.get("ext") or {}
+    fetch = {}
+    for kind, declared, sub in ARCHIVES:
+        if ext0.get(declared):
+            fetch[kind] = fetch_record(venture(root, sub))
+    problems = [(k, r) for k, r in fetch.items() if r is not None and r.get("result") != "ok"]
+    if problems:
+        out.append("  Fetch problems")
+        for k, r in problems:
+            out.append(f"    ⚠ {k:9} {fetch_status(r)}")
+        out.append("")
 
     # 1-3. loop position, chain, what is carrying
     hist = notes(md, cf)
@@ -180,6 +200,10 @@ def main() -> None:
                       if (m := re.search(r"(\d{4}-\d{2}-\d{2})\.json$", f.name))), default=None) \
             if d and d.is_dir() else None
         lines.append(f"    repo  {slug[:30]:<30} {newest or 'no snapshot'}")
+    # CR-088: the fetch record per archive, beside the snapshot dates. The dates say
+    # how old the data is; the record says whether that is because nothing happened.
+    for kind, rec in fetch.items():
+        lines.append(f"    fetch {kind:<30} {fetch_status(rec)}")
     if lines:
         out += ["  Archives"] + lines
         if any("no snapshot" in l for l in lines):

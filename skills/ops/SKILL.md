@@ -718,7 +718,11 @@ becomes two rows that disagree within a week.
 reports one folder's **current state** — the question a session asks when it opens a project cold and
 would otherwise rebuild the answer from four files, losing whatever nobody wrote down.
 
-Six blocks, each reading files that already exist:
+Six blocks, each reading files that already exist — preceded, when there is one, by **Fetch problems**
+(CR-088): any declared source whose archive `_fetch.json` records a result other than `ok`, reported
+once, first. An expired login is the usual way a scheduled archive goes stale and the one thing in the
+brief only a person can fix; re-running the fetch does nothing.
+
 
 1. **Loop position** — newest note, next session, **whether that agenda exists yet.** The common failure
    is not a missing note but a missing next agenda, and nothing else surfaces it.
@@ -726,8 +730,10 @@ Six blocks, each reading files that already exist:
    loop that announces nothing: without it the next agenda carries zero items and looks correct.
 3. **What is carrying** — each item with sessions, age and owner. `UNOWNED` is counted and named,
    because an item nobody is named against is the one that falls through an agenda that lists it.
-4. **Archive freshness** — newest snapshot per declared chat and repository. **A stale archive is worse
-   than none:** retrieval still produces a block and it reads as current.
+4. **Archive freshness** — newest snapshot per declared chat and repository, and each archive's fetch
+   record (`fetched 07:00 ok`, `fetch failed 06:30: login required`, or `fetch not recorded`). **A stale
+   archive is worse than none:** retrieval still produces a block and it reads as current. The snapshot
+   says how old the data is; the fetch record says whether that is because nothing happened.
 5. **Staged, not sent** — `_outbox/` folders naming this project whose status is not sent, with age. A
    file in a meetings folder carries no status; this is the only place an unsent item shows.
 6. **Record movement** — the changelog's most recent entry. *When did anyone last write this project

@@ -12,6 +12,16 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 31 (CR-088, unreleased): each archive root carries a _fetch.json —
+#   <venture>/.teamschats/, .githubmeta/ and .jirameta/ each gain one record of the last
+#   fetch: when it was attempted, when it last succeeded, and the result (ok, partial,
+#   auth_required, error, timeout; an unknown value reads as error). A snapshot older
+#   than the note could not say whether nothing happened, the fetch never ran, or it
+#   failed on an expired login — and once fetching is scheduled the last is the usual
+#   case. Written by the fetcher, so a run started by hand records itself too. The one
+#   file in those dot-folders any tool may read: timestamps and a status, nothing from
+#   the source. Nothing here schedules or fetches; the offline guarantee holds.
+#
 # contract_version 30 (CR-087, 2026-09-24, v1.77.0): external_systems.transcripts —
 #   the store a session's recording lands in, with `match` deciding which recordings
 #   belong to the series and an optional `archive` a script may read. A session that
@@ -205,7 +215,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 30
+contract_version: 31
 core_skills_version: "1.77.0"
 
 # --- Schema versions ---
@@ -479,6 +489,15 @@ vault_conventions:
       readers: ["user", "any tool reading the rendered .md"]
       lifecycle: "append-only; re-fetching an overlapping range de-duplicates by message id. Placement is PER_BOUNDARY — it belongs to the venture whose tenant the chats came from, never to _private/"
 
+    - path: "<venture>/.teamschats/_fetch.json"
+      purpose: "The fetch record for the archive: when it was last fetched, and whether that worked. Tells a quiet source (fetched, nothing new) from a stale one (not fetched) and a broken one (the fetch failed, often on an expired login) — three states a snapshot date alone prints identically"
+      schema: null  # JSON object; fields listed in lifecycle
+      writers: ["the chat-archive tool"]
+      readers: ["any tool"]
+      lifecycle: "Written atomically by the fetcher, by a scheduled run and a run started by hand alike. Fields: source, last_attempt, last_success (kept across failures), result (ok | partial | auth_required | error | timeout — a reader treats an unknown value as error), detail (one line for a person; never a token, a signed URL or message content), host, tool (CR-088). Overwritten on every attempt"
+      placement: per_boundary
+      note: "Readable although its folder is not routinely read (CR-034): it holds timestamps and a status, nothing from the source. A reader opens this one file by name and nothing else in the folder. A missing record is reported as `fetch not recorded`, never omitted (CR-071)"
+
     - path: "_infrastructure/"
       purpose: "The INTERNAL architecture: machines, topology, connectivity, who operates what from where. Named in prefix_conventions since CR-034 but never declared in its own right until CR-051"
       schema: null
@@ -505,6 +524,15 @@ vault_conventions:
       placement: per_boundary
       note: "Sibling of <venture>/.teamschats/ and deliberately the same shape. A dot-folder, so the raw data is skipped by rule rather than by luck"
 
+    - path: "<venture>/.githubmeta/_fetch.json"
+      purpose: "The fetch record for the archive: when it was last fetched, and whether that worked. Tells a quiet source (fetched, nothing new) from a stale one (not fetched) and a broken one (the fetch failed, often on an expired login) — three states a snapshot date alone prints identically"
+      schema: null  # JSON object; fields listed in lifecycle
+      writers: ["the repo metadata archiver"]
+      readers: ["any tool"]
+      lifecycle: "Written atomically by the fetcher, by a scheduled run and a run started by hand alike. Fields: source, last_attempt, last_success (kept across failures), result (ok | partial | auth_required | error | timeout — a reader treats an unknown value as error), detail (one line for a person; never a token, a signed URL or message content), host, tool (CR-088). Overwritten on every attempt"
+      placement: per_boundary
+      note: "Readable although its folder is not routinely read (CR-034): it holds timestamps and a status, nothing from the source. A reader opens this one file by name and nothing else in the folder. A missing record is reported as `fetch not recorded`, never omitted (CR-071)"
+
     - path: "<venture>/.jirameta/"
       purpose: "Issue-tracker metadata archive: issues with their status, assignee and dates, plus released versions. One folder per board, a manifest saying what it is, a dated snapshot, a rendered .md, and a status.md holding current state. Metadata only — never descriptions or comment threads"
       schema: null
@@ -513,6 +541,15 @@ vault_conventions:
       lifecycle: "one snapshot per day per board; a second fetch that day replaces it, because issue state is a reading taken at a moment rather than an event. status.md is rewritten on every fetch; the dated files are the record"
       placement: per_boundary
       note: "Third archive in the shape CR-047 set and CR-055 followed: what was said (.teamschats/), what shipped (.githubmeta/), what is tracked (.jirameta/). A capped fetch declares itself partial rather than recording a truncated board as a complete one (CR-074)"
+
+    - path: "<venture>/.jirameta/_fetch.json"
+      purpose: "The fetch record for the archive: when it was last fetched, and whether that worked. Tells a quiet source (fetched, nothing new) from a stale one (not fetched) and a broken one (the fetch failed, often on an expired login) — three states a snapshot date alone prints identically"
+      schema: null  # JSON object; fields listed in lifecycle
+      writers: ["the jira metadata archiver"]
+      readers: ["any tool"]
+      lifecycle: "Written atomically by the fetcher, by a scheduled run and a run started by hand alike. Fields: source, last_attempt, last_success (kept across failures), result (ok | partial | auth_required | error | timeout — a reader treats an unknown value as error), detail (one line for a person; never a token, a signed URL or message content), host, tool (CR-088). Overwritten on every attempt"
+      placement: per_boundary
+      note: "Readable although its folder is not routinely read (CR-034): it holds timestamps and a status, nothing from the source. A reader opens this one file by name and nothing else in the folder. A missing record is reported as `fetch not recorded`, never omitted (CR-071)"
 
     - path: "_config/"
       purpose: "Vault-wide overrides for skill defaults (optional)"
@@ -715,7 +752,7 @@ outbound_dispatch:
       kind: "external library + CLI, outside this repo"
       role: "Messaging-platform client: delegated auth, chat messages, Markdown to the platform's markup"
       reads: ["chats the signed-in user belongs to"]
-      writes: ["<venture>/.teamschats/ — the archive", "chat messages"]
+      writes: ["<venture>/.teamschats/ — the archive", "<venture>/.teamschats/_fetch.json — the fetch record (CR-088)", "chat messages"]
       never: "Knows nothing about vaults or manifests. The dashboard imports it as the messaging channel; it is a dependency of vault-aware code, not an instance of it"
 
   channels:
@@ -789,7 +826,7 @@ components:
     documentation_owner: external   # CR-078: Provider-specific: auth and platform vocabulary change in its repo
     role: "Talks to a chat platform: delegated auth, read and send messages, Markdown to the platform's markup"
     reads: ["chats the signed-in user belongs to"]
-    writes: ["<venture>/.teamschats/ — the archive", "chat messages"]
+    writes: ["<venture>/.teamschats/ — the archive", "<venture>/.teamschats/_fetch.json — the fetch record (CR-088)", "chat messages"]
     depends_on: ["an auth library", "an HTTP library"]
     note: "Knows nothing about vaults or manifests. A dependency of vault-aware code, not an instance of it — which is why it is its own component rather than part of the dashboard"
 
@@ -811,20 +848,20 @@ components:
     depends_on: []
 
   - id: "repo metadata archiver"
-    kind: "local CLI, run on demand"
+    kind: "local CLI, run on demand or on a schedule"
     documentation_owner: external   # CR-078: Its own CLI and credentials; the contract owns the archive layout
     role: "Archives a declared repository's metadata - issues, releases, commit subjects - into the vault, so a meeting can ask what changed since it last met"
     reads: ["external_systems.repos in a folder's ops config", "a hosting platform's API, through its own CLI"]
-    writes: ["<venture>/.githubmeta/ — the archive"]
+    writes: ["<venture>/.githubmeta/ — the archive", "<venture>/.githubmeta/_fetch.json — the fetch record (CR-088)"]
     depends_on: ["the hosting platform's CLI, already authenticated"]
     note: "Metadata only, never the code: a vault holds the record of work, not the work. Carries no credential of its own - a second auth path for one account is a second thing to rotate"
 
   - id: "jira metadata archiver"
-    kind: "local CLI, run on demand"
+    kind: "local CLI, run on demand or on a schedule"
     documentation_owner: external   # CR-078: Same as its siblings: shape declared here, tool documents itself
     role: "Archives a declared issue board's metadata - issues with their status and assignee, released versions - into the vault, so a meeting can ask where work stands without opening the tracker"
     reads: ["external_systems.jira in a folder's ops config", "the issue tracker's REST API"]
-    writes: ["<venture>/.jirameta/ — the archive"]
+    writes: ["<venture>/.jirameta/ — the archive", "<venture>/.jirameta/_fetch.json — the fetch record (CR-088)"]
     depends_on: ["an API token held outside the vault"]
     note: "Metadata only - an issue's description and comments are the conversation itself and stay in the tracker. Read-only by construction: every call is a GET, so the archive can never become a participant in the work it records. UNLIKE its GitHub sibling it holds a credential, because the tracker has no already-authenticated CLI to borrow - the one place the pattern is less clean (CR-074). A fetch that hits its cap declares itself partial rather than recording a truncated board as a complete one"
 

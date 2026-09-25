@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented (unreleased)** — contract 31; version assigned at release |
 | **Contract** | additive (30 → 31) — one declared file per archive root, `_fetch.json` |
 | **Date** | 2026-09-25 |
 | **Area** | `vault_conventions` (archive paths), `ops` (`build_agenda.py` sources block, `/ops brief`), `components:` (messaging client, repo/ticket archivers) |
@@ -103,3 +103,18 @@ Sources — built 260925 07:12 from:
 - An agenda built while Jira's `_fetch.json` says `auth_required` prints the reason on the tickets
   line.
 - An agenda built from an archive with no `_fetch.json` prints `fetch not recorded`.
+
+## Outcome (2026-09-25, unreleased)
+
+- `ecosystem.yaml`: `contract_version` 31. `<venture>/.teamschats/_fetch.json`,
+  `.githubmeta/_fetch.json` and `.jirameta/_fetch.json` declared, `readers: any tool`, each written by
+  its archiver component; the three components and the outbound chat CLI list the record in `writes`.
+  The two metadata archivers' `kind` now reads "run on demand or on a schedule".
+- `build_agenda.py`: `fetch_record()`, `fetch_status()`, `fetched_since()`. Every archive-backed
+  sources line carries its fetch status; `STALE` carries the reason; a source fetched successfully
+  since the note is current with no newer snapshot; no record prints `fetch not recorded`. An
+  unreadable record is an error, not an absence — on a synced vault a listed file can fail on open.
+- `project_brief.py`: `Fetch problems` first, once, for any declared source whose result is not
+  `ok`; each archive's fetch status in the Archives block.
+- `tests/test_cr088_fetch_record.py`: 10 tests, including the three states end to end.
+- Not done here, by design: the fetchers writing the file (their own repositories) and the scheduler.

@@ -254,6 +254,85 @@ def since(yymmdd: str) -> datetime.date:
     return datetime.datetime.strptime(yymmdd, "%y%m%d").date()
 
 
+# ---- CR-088: the fetch record ------------------------------------------------
+# A snapshot older than the note says the data is old; it cannot say WHY. Nothing
+# may have happened, the fetch may not have run, or it may have failed on an
+# expired login -- three states needing three responses, all printing as STALE.
+# Each archive root carries a `_fetch.json` written by its fetcher. It is the one
+# file in a dot-folder any tool may read: timestamps and a status, nothing from
+# the source.
+FETCH_RESULTS = ("ok", "partial", "auth_required", "error", "timeout")
+FETCH_REASON = {"auth_required": "login required", "timeout": "timed out"}
+
+
+def archive_dir(cf: dict, sub: str) -> Path | None:
+    """`<venture>/<sub>` for the nearest venture above the project, as the readers resolve it."""
+    return next((p / sub for p in cf["_root"].parents if (p / sub).is_dir()), None)
+
+
+def fetch_record(archive: Path | None) -> dict | None:
+    """The archive's `_fetch.json`, or None when there is none.
+
+    An unreadable record is an error, not an absence: on a synced vault a file can
+    be listed and still fail on open, and reporting that as "not recorded" would
+    send a person looking for a fetch that did run. An unknown `result` reads as
+    `error` -- a value nobody declared is more likely a failure than a success.
+    """
+    if archive is None:
+        return None
+    try:
+        raw = (archive / "_fetch.json").read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        return {"result": "error", "detail": f"_fetch.json unreadable ({type(e).__name__})"}
+    try:
+        rec = json.loads(raw)
+    except ValueError:
+        return {"result": "error", "detail": "_fetch.json unreadable (not JSON)"}
+    if not isinstance(rec, dict):
+        return {"result": "error", "detail": "_fetch.json unreadable (not an object)"}
+    if rec.get("result") not in FETCH_RESULTS:
+        rec = {**rec, "detail": f"unknown result {rec.get('result')!r}", "result": "error"}
+    return rec
+
+
+def _when(iso) -> datetime.datetime | None:
+    try:
+        return datetime.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _stamp(dt: datetime.datetime | None, today: datetime.date) -> str:
+    if dt is None:
+        return "?"
+    return dt.strftime("%H:%M") if dt.date() == today else dt.strftime("%y%m%d %H:%M")
+
+
+def fetch_ok(rec: dict | None) -> bool:
+    return bool(rec) and rec.get("result") in ("ok", "partial")
+
+
+def fetched_since(rec: dict | None, after: datetime.date) -> bool:
+    """The last successful fetch is on or after the note's day: the archive is current
+    even if it holds nothing newer, because a fetch that found nothing is an answer."""
+    ok = _when((rec or {}).get("last_success"))
+    return ok is not None and ok.date() >= after
+
+
+def fetch_status(rec: dict | None, today: datetime.date | None = None) -> str:
+    """One phrase for a sources line. Never empty: a missing record says so (CR-071)."""
+    today = today or datetime.date.today()
+    if rec is None:
+        return "fetch not recorded"
+    if fetch_ok(rec):
+        when = _when(rec.get("last_success")) or _when(rec.get("last_attempt"))
+        return f"fetched {_stamp(when, today)} {rec['result']}"
+    reason = FETCH_REASON.get(rec.get("result")) or (rec.get("detail") or "error").splitlines()[0][:60]
+    return f"fetch failed {_stamp(_when(rec.get('last_attempt')), today)}: {reason}"
+
+
 def _chat_messages(d: Path, after: datetime.date) -> list[tuple[str, str]]:
     """(date, line) per message in one archived chat folder."""
     out: list[tuple[str, str]] = []
@@ -320,7 +399,7 @@ def from_chat(cf: dict, after: datetime.date) -> list[dict]:
     return out
 
 
-def from_repo(cf: dict, after: datetime.date) -> list[str]:
+def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[str]:
     """Issues that changed state since the last note, from the metadata archive.
 
     Reads `<venture>/.githubmeta/<slug>/` (CR-055) rather than calling a client:
@@ -357,6 +436,10 @@ def from_repo(cf: dict, after: datetime.date) -> list[str]:
         snap = json.loads(snaps[-1].read_text(encoding="utf-8"))
         taken = snap.get("day", "")
         if taken and datetime.date.fromisoformat(taken) < after:
+            # CR-088: fetched since the note and still no newer snapshot means
+            # nothing changed -- current, not stale.
+            if fetch_ok(rec) and fetched_since(rec, after):
+                continue
             out.append({"note": f"{info['repo']}: newest snapshot is {taken}, older than the last note — not refreshed"})
             continue
         for i in snap.get("issues") or []:
@@ -375,7 +458,7 @@ def from_repo(cf: dict, after: datetime.date) -> list[str]:
     return out
 
 
-def from_jira(cf: dict, after: datetime.date) -> list[dict]:
+def from_jira(cf: dict, after: datetime.date, rec: dict | None = None) -> list[dict]:
     """Tickets from `<venture>/.jirameta/` (CR-074), the sibling of `.githubmeta/`.
 
     The archive has existed since CR-074 and nothing read it, so a project that
@@ -416,6 +499,8 @@ def from_jira(cf: dict, after: datetime.date) -> list[dict]:
         snap = json.loads(snaps[-1].read_text(encoding="utf-8"))
         taken = snap.get("day", "")
         if taken and datetime.date.fromisoformat(taken) < after:
+            if fetch_ok(rec) and fetched_since(rec, after):   # CR-088, as in from_repo
+                continue
             out.append({"note": f"{key_}: newest snapshot is {taken}, older than the last note — not refreshed"})
             continue
         for t in snap.get("issues") or []:
@@ -597,7 +682,11 @@ def main() -> None:
     # CR-084: read every declared source BEFORE the agenda is assembled, so the page
     # can state what it was built from and the carried items can be checked against it.
     after = since(last_date)
-    chat, repo, jira = from_chat(cf, after), from_repo(cf, after), from_jira(cf, after)
+    recs = {sub: fetch_record(archive_dir(cf, sub))
+            for sub in (".teamschats", ".githubmeta", ".jirameta")}   # CR-088
+    chat = from_chat(cf, after)
+    repo = from_repo(cf, after, recs[".githubmeta"])
+    jira = from_jira(cf, after, recs[".jirameta"])
 
     # CR-087: a session that happened and left no note. Building over it produces an
     # agenda that looks complete and silently skips a session — re-raising what that
@@ -639,10 +728,18 @@ def main() -> None:
     src = [f"## Sources — built {built} from", "", "```"]
     src.append(f"  note      {last.name:44} read")
 
+    # CR-088: every archive-backed line carries its fetch status, and STALE carries
+    # the reason when the record gives one. A fetch that failed after the last good
+    # one is what scheduled fetching makes the usual way a source goes stale.
+    def stale_mark(rec) -> str:
+        return "" if fetch_ok(rec) or fetched_since(rec, after) or rec is None \
+            else f"STALE — {fetch_status(rec)}"
+
     declared_chats = (cf.get("ext") or {}).get("chats") or []
     if not declared_chats:
         src.append(f"  chat      {'—':44} NOT DECLARED")
     else:
+        crec = recs[".teamschats"]
         for c in chat:
             n = len(c.get("messages") or [])
             if c.get("problem"):
@@ -650,21 +747,24 @@ def main() -> None:
             else:
                 msgs = c.get("messages") or []
                 newest = max((m[0] for m in msgs), default="—")
-                src.append(f"  chat      {(c.get('name') or '?')[:44]:44} newest {newest} · {n} since the note")
+                tail = stale_mark(crec) or fetch_status(crec)
+                src.append(f"  chat      {(c.get('name') or '?')[:44]:44} newest {newest} · {n} since the note · {tail}")
 
-    for kind, rows, declared in (("repo", repo, (cf.get("ext") or {}).get("repos")),
-                                 ("tickets", jira, (cf.get("ext") or {}).get("jira"))):
+    for kind, rows, declared, rec in (("repo", repo, (cf.get("ext") or {}).get("repos"), recs[".githubmeta"]),
+                                      ("tickets", jira, (cf.get("ext") or {}).get("jira"), recs[".jirameta"])):
         if not declared:
             src.append(f"  {kind:9} {'—':44} NOT DECLARED")
             continue
+        status = fetch_status(rec)
         notes = [r["note"] for r in rows if isinstance(r, dict) and r.get("note")]
         if notes:
             for n_ in notes:
                 # A snapshot older than the note is the one that reads as fresh and is not.
-                flag = "STALE" if "older than the last note" in n_ else "NOT READ"
+                flag = f"STALE — {status}" if "older than the last note" in n_ else "NOT READ"
                 src.append(f"  {kind:9} {n_[:44]:44} {flag}")
         else:
-            src.append(f"  {kind:9} {'declared':44} read · {len([r for r in rows if not r.get('note')])} changed")
+            src.append(f"  {kind:9} {'declared':44} read · {len([r for r in rows if not r.get('note')])} changed"
+                       f" · {stale_mark(rec) or status}")
     src += ["```", ""]
     L += src
 

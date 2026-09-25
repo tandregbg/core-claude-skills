@@ -9,6 +9,27 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Added
+
+- **An archive says when it was last fetched, and whether that worked (CR-088, contract 31).**
+  `STALE — older than the note` could not tell three states apart: nothing happened, the fetch never
+  ran, or it failed on an expired login. Once fetching runs on a schedule the last is the usual way a
+  source goes stale — and the one re-running does not fix.
+  - Each archive root (`<venture>/.teamschats/`, `.githubmeta/`, `.jirameta/`) carries a
+    `_fetch.json`: last attempt, last success (kept across failures), result
+    (`ok`/`partial`/`auth_required`/`error`/`timeout`), a one-line detail, host and tool.
+    **Written by the fetcher**, so a run started by hand records itself exactly as a scheduled one.
+  - **Readable although its folder is not**: timestamps and a status, nothing from the source. A
+    reader opens this one file by name.
+  - `build_agenda.py`: every archive-backed sources line carries its fetch status; `STALE` carries the
+    reason (`STALE — fetch failed 06:30: login required`); a source fetched successfully since the
+    note is **current even with no newer snapshot**; a missing record prints `fetch not recorded`,
+    never omitted. An unknown `result` reads as `error`.
+  - `/ops brief` reports any source whose result is not `ok` once, first, under `Fetch problems`,
+    and lists each archive's fetch status beside its snapshot dates.
+  - `tests/test_cr088_fetch_record.py`: helpers, plus the three states run end to end through both
+    scripts.
+
 ## [1.77.0] - 2026-09-24
 
 ### Added
