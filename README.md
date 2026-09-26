@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.78.0
+**Version:** 1.79.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -43,8 +43,8 @@ graph TB
         declare["<b>declare</b><br/>the folder's config"]
     end
     subgraph p2["before the session"]
-        archive["<b>archive</b><br/>the archivers  ·  external"]
-        agenda["<b>agenda</b><br/>the agenda generator"]
+        fetch["<b>fetch</b><br/>the fetchers  ·  external"]
+        prepare["<b>prepare</b><br/>the agenda"]
         facilitate["<b>facilitate</b><br/>the facilitator sheet  ·  by hand"]
     end
     subgraph p3["the session"]
@@ -52,7 +52,7 @@ graph TB
     end
     subgraph p4["after, the same day"]
         process["<b>process</b><br/>one pass over the transcript"]
-        carry["<b>carry</b><br/>the note's carry-forward"]
+        carry["<b>carry</b><br/>the summary's carry-forward"]
         recap["<b>recap</b><br/>the recap  ·  by hand"]
         send["<b>send</b><br/>staging and sending"]
         deliver["<b>deliver</b><br/>the dispatching surface  ·  external"]
@@ -63,30 +63,30 @@ graph TB
         check["<b>check</b><br/>the shape checks"]
     end
 
-    process -->|the note| orient
+    process -->|the summary| orient
     send -->|_outbox/&lt;item&gt;/_manifest.md| orient
-    archive -->|&lt;venture&gt;/.teamschats/| orient
-    archive -->|&lt;venture&gt;/.githubmeta/| orient
-    declare -->|the ops config| archive
-    archive -->|&lt;venture&gt;/.teamschats/| agenda
-    archive -->|&lt;venture&gt;/.githubmeta/| agenda
-    carry -->|the note's carry-forward section| agenda
-    agenda -->|the agenda| facilitate
+    fetch -->|&lt;venture&gt;/.teamschats/| orient
+    fetch -->|&lt;venture&gt;/.githubmeta/| orient
+    declare -->|the config| fetch
+    fetch -->|&lt;venture&gt;/.teamschats/| prepare
+    fetch -->|&lt;venture&gt;/.githubmeta/| prepare
+    carry -->|the summary's carry-forward section| prepare
+    prepare -->|the agenda| facilitate
     meet -->|a transcript| process
-    declare -->|the ops config| process
-    process -->|the note| carry
-    process -->|the note| recap
+    declare -->|the config| process
+    process -->|the summary| carry
+    process -->|the summary| recap
     process -->|a staged recap| send
     send -->|_outbox/&lt;item&gt;/_manifest.md| deliver
     deliver -->|the message, delivered| record
-    process -->|the registers| compound
-    process -->|the note| check
-    process -->|the registers| check
+    process -->|the ledger and insights| compound
+    process -->|the summary| check
+    process -->|the ledger and insights| check
 ```
 
 **14 steps, 6 phases.** Generated from `working_loop` in `ecosystem.yaml` — the same declaration the landing page reads. Do not edit this block by hand; run `python3 scripts/render-loop.py --write`.
 
-**The loop closes at the note.** What did not land in one session becomes the top of the next agenda, carrying a session count and an age — so an item cannot quietly outlive the series it belongs to.
+**The loop closes at the summary.** What did not land in one session becomes the top of the next agenda, carrying a session count and an age — so an item cannot quietly outlive the series it belongs to.
 
 **3 steps are deliberately by hand**, marked above. Each is a place where generating the obvious answer would be confidently wrong in a way the reader could not check:
 
@@ -123,11 +123,11 @@ meeting, not after.
 
 ### 2. Structure — formats that can't silently fork
 
-Formats used to erode by *template forking*: one deviating file re-seeds its whole series, and every later file looks internally consistent. Now every save is checked against a **template contract** (CR-018: heading order, action-table columns, empty-decision marker), `/ops lint` locates where an existing series forked, and the **slug contract** (CR-021) keeps filenames sortable and machine-readable. Deliberate format changes are made by editing the contract — an accidental fork becomes an explicit, reviewable decision.
+Formats used to erode by *template forking*: one deviating file re-seeds its whole series, and every later file looks internally consistent. Now every save is checked against a **template contract** (CR-018: heading order, action-table columns, empty-decision marker), `/ops check` locates where an existing series forked, and the **slug contract** (CR-021) keeps filenames sortable and machine-readable. Deliberate format changes are made by editing the contract — an accidental fork becomes an explicit, reviewable decision.
 
 ### 3. Knowledge — insights that actually compound (loop closed in v1.31)
 
-Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights normalize` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent. v1.31 (CR-027) added the human-facing half: `/insights synthesize` renders the corpus into a **knowledge wiki** — crosslinked topic articles plus a master INDEX that sessions read first when answering knowledge questions, no RAG required.
+Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights migrate` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent. v1.31 (CR-027) added the human-facing half: `/insights synthesize` renders the corpus into a **knowledge wiki** — crosslinked topic articles plus a master INDEX that sessions read first when answering knowledge questions, no RAG required.
 
 ### 4. Closure — the loop most systems never build
 
@@ -139,11 +139,11 @@ months on a fortnightly one. Whichever threshold trips first, the agenda says so
 read from a defined position and anything else reads `UNOWNED`, which is the finding rather than a parse
 failure: an item nobody is named against is the one that falls through an agenda that lists it.
 
-`/ops lint` walks that chain, because it holds the one failure in the loop that announces nothing — a
-note missing its section produces a next agenda with zero carried items that **looks perfectly
+`/ops check` walks that chain, because it holds the one failure in the loop that announces nothing — a
+note missing its section produces a next agenda with zero carry-forward items that **looks perfectly
 correct**.
 
-Append-only systems also rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses, stray inbox/outbox folders quietly fork the pending list — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops sweep` (CR-019, extended by CR-023/CR-025) detects all nine closure-debt classes in one read-only pass and offers the fixes (`/outbox archive --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook, merge-or-exempt for structural strays); run it weekly and staleness stops accumulating.
+Append-only systems also rot quietly: indexes lag their folders, task ledgers freeze, sent material never gets archived, moved artifacts leave live-looking corpses, stray inbox/outbox folders quietly fork the pending list — and even the ecosystem's own components drift versions apart when their check has no scheduled reader. `/ops check` (CR-019, extended by CR-023/CR-025) detects all nine closure-debt classes in one read-only pass and offers the fixes (`/outbox close --all-sent`, tombstones per the retirement convention, `/inbox triage refresh`, the alignment runbook, merge-or-exempt for structural strays); run it weekly and staleness stops accumulating.
 
 ### A project using the full set
 
@@ -157,7 +157,7 @@ contract), and `workflows.task_ledger` — **`external` where the work already h
 which is how a project avoids growing a second ledger beside the real one.
 
 **Before each session.** Archivers refresh the chat and repository archives — external CLIs, run on
-demand, never by a skill. `build_agenda.py` then writes the agenda: carried items at the top with their
+demand, never by a skill. `build_agenda.py` then writes the agenda: carry-forward items at the top with their
 session count and age, then what the archives hold that the room has not heard. **The facilitator sheet
 is written by hand** — the agenda carries facts, and turning a fact into the right question is
 judgement, not generation.
@@ -166,7 +166,7 @@ judgement, not generation.
 per capturing tool, so **list them and let a person pick** rather than choosing on their behalf. Then
 `/ops` makes one pass — the summary, the registers, one changelog line — and Step 9 runs what the
 project declared: tasks imported or routed to the external register, the slim priorities artifact for
-the people doing the work, **the note's carry-forward section**, and **the recap offered rather than
+the people doing the work, **the summary's carry-forward section**, and **the recap offered rather than
 written**.
 
 **`/outbox` stages what goes out**, as a folder with a manifest. The manifest's status is the only
@@ -174,10 +174,11 @@ record that something was actually sent, and **a person advances it** — that c
 message gets read.
 
 **Weekly.** `/insights compile` promotes confirmed hypotheses to rules; `/insights synthesize` renders
-the wiki; `/ops lint` checks the shape contracts and the carry-forward chain; `/ops sweep` finds the
-closure debt. `/daily-dashboard` runs whenever you want the day's view.
+the wiki; `/ops check <folder>` checks the shape contracts and the carry-forward chain, and `/ops check`
+with no folder finds the closure debt across the vault. `/ops orient <folder>` says where a project
+stands whenever you pick it up.
 
-**When something belongs elsewhere.** `/outbox archive` files a resolved send into the recipient's
+**When something belongs elsewhere.** `/outbox close` files a resolved send into the recipient's
 folder. `/handoff` freezes a bounded subject for a different piece of work — self-contained, indexed
 nowhere, and moved only when a human opens it.
 
@@ -191,7 +192,7 @@ CR-022 formalizes what heavy real-world use converged on: a single markdown **tr
 
 ### The development loop around it all
 
-The suite is developed **on live production data**: real usage generates evidence, evidence becomes CRs, CRs become releases. That loop has its own guardrails (CR-026): [`docs/RELEASING.md`](docs/RELEASING.md) codifies the one-way membrane between the private operating vault and this public repo — generic-by-construction writing, a private CR archive, and a **fail-closed pre-push guard** that scans every outgoing line against secret patterns and a private identifier denylist. Ecosystem components (the visualiser, the landing page) are held on the same version by an alignment check that `/ops sweep` reads on schedule (CR-023).
+The suite is developed **on live production data**: real usage generates evidence, evidence becomes CRs, CRs become releases. That loop has its own guardrails (CR-026): [`docs/RELEASING.md`](docs/RELEASING.md) codifies the one-way membrane between the private operating vault and this public repo — generic-by-construction writing, a private CR archive, and a **fail-closed pre-push guard** that scans every outgoing line against secret patterns and a private identifier denylist. Ecosystem components (the visualiser, the landing page) are held on the same version by an alignment check that `/ops check` reads on schedule (CR-023).
 
 ---
 
@@ -199,20 +200,21 @@ The suite is developed **on live production data**: real usage generates evidenc
 
 | Skill | Description | User-invocable |
 |-------|-------------|----------------|
-| `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by other ops skills. | No |
-| `ops-config` | Configuration system -- schema definition and base defaults for organization-specific settings. | No |
-| `transcript` | Process and summarize transcriptions from calls, meetings, or voice recordings. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund). Three template variants by meeting length. Provides structured extraction for domain skills. Offers task import. Extracts durable insights to `_insights.yaml`. | Yes (`/transcript`) |
-| `ops` | Unified meeting and operations processing -- config-driven for any organization. Subcommands: `/ops status` shows available org configs, `/ops prepare` creates pre-meeting preparation, `/ops normalize` restores Swedish characters (`--names` applies the people roster, `--filenames` fixes slug drift), `/ops lint` detects template forks in a meeting series, `/ops sweep` audits closure debt (stale indexes, ledgers, outbox, duplicates), `/ops help` shows usage guide. Extracts durable insights to `_insights.yaml`. Replaces project-ops, bravo-ops, management-ops, marketing-ops. | Yes (`/ops`) |
-| `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. Standalone. | Yes (`/update-skills`) |
-| `daily-dashboard` | Daily meeting and task dashboard generator -- works generically from any vault or with org-specific config. Creates dashboard file and desktop symlinks. Integrates with task tracker. | Yes (`/daily-dashboard`) |
-| `preparation` | Create meeting preparation documents with a 60-second walk-in agenda card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]) instead of topic noun phrases. Mandatory cross-reference scan with explained relevance. Frozen at meeting time -- no mid-meeting edits. | Yes (`/preparation`) |
-| `tasks` | Personal task tracker with cross-project correlation. Central task index, source linking, automatic carry-forward, privacy model. | Yes (`/tasks`) |
-| `insights` | Knowledge extraction manager and skill evolution engine. Backfills `_insights.yaml`, compiles execution feedback into patterns (hypothesis → rule lifecycle with `last_compiled` freshness stamp), migrates drifted files to the current schema, **synthesizes the corpus into a knowledge wiki** (topic articles + read-first INDEX, CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `normalize`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
-| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024 — the source file moves with its output to the target's `.attachments/`) and routes to the appropriate downstream skill (`/transcript`, `/ops`, `/tasks`). Stores in `_inbox/` with web UI support. Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned daily triage doc (week anchor, done-archive, aging report) without ever reordering or rewording it. | Yes (`/inbox`) |
-| `md2pdf` | Convert markdown files to styled PDFs. Supports Mermaid diagrams (rendered as PNG), tables, professional A4 typography. Individual or combined output. `--outbox NAME` packages PDFs into `<vault>/_outbox/YYMMDD-NAME/` with auto-generated manifest and email stub. | Yes (`/md2pdf`) |
-| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Analyses file metadata (names, dates, paths), not contents. Outputs to `_analytics/` folder. Subcommands: `overview`, `skills`, `contacts`, `pipeline`, `backlog`, `help`. | Yes (`/analytics`) |
-| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending/resolution-ready items by reading each `_manifest.md`; archives resolved folders into the relevant `_contacts/<contact>/YYMMDD-<theme>/` while updating manifest, CHANGELOG, and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `archive <folder>`, `archive --all-sent` (batch), `help`. | Yes (`/outbox`) |
-| `handoff` | Frozen context snapshots in `<vault>/.handoff/`. Captures one bounded subject from a conversation as a self-contained document a different work session can pick up cold — no vault links, no index entry, no task generated. **Nothing in the suite picks it up: a human opens it and starts new work.** Carries an explicit confidentiality boundary when the source was confidential, so the constraint travels with the content. Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
+| `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024) and routes them to their skill (`/inbox route`). Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned triage doc without ever reordering or rewording it. | Yes (`/inbox`) |
+| `preparation` | The config-free form of `/ops prepare`: the agenda for a meeting with a contact, with a 60-second walk-in card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]). Frozen at meeting time. | Yes (`/preparation`) |
+| `transcript` | The config-free form of `/ops process`: a summary from a transcript of a call, meeting or voice recording. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund), three template variants by length, optional task import, insights to `_insights.yaml`. | Yes (`/transcript`) |
+| `ops` | The config layer over `prepare` and `process`, plus the loop steps it owns. Subcommands are the loop's verbs: `orient`, `prepare`, `process` (the default), `check <folder>` (template contracts, carry-forward chain) and `check` (vault closure debt); `status` shows each project's resolved config; `project list` / `project new`; `normalize` repairs Swedish characters, names and filenames. | Yes (`/ops`) |
+| `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending items by reading each `_manifest.md`; closes resolved folders into the relevant contact or project folder while updating manifest, CHANGELOG and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `close <folder>`, `close --all-sent`, `help`. | Yes (`/outbox`) |
+| `tasks` | Personal task tracker with cross-project correlation. Per-folder ledgers, source linking, automatic carry-forward, privacy model. Subcommands: `list`, `add`, `done`, `import`, `weekly`, `archive`, `help`. | Yes (`/tasks`) |
+| `handoff` | Frozen context documents in `<vault>/.handoff/`. One bounded subject from a conversation as a self-contained document a different work session can pick up cold. **Nothing in the suite picks it up: a human opens it.** Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
+| `insights` | Knowledge extraction manager and skill evolution engine. Compiles execution feedback into patterns (hypothesis → rule), migrates drifted files to the current schema, **synthesizes the corpus into a wiki** (CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `migrate`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
+| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Reads file metadata, not contents. Writes `_analytics/`. | Yes (`/analytics`) |
+| `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. | Yes (`/update-skills`) |
+| `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by the other skills. | No |
+| `ops-config` | Configuration system -- schema definition and base defaults. | No |
+
+**Two skills left in v1.79.0 (CR-089):** `daily-dashboard` was retired, and `md2pdf` moved to a
+personal skill repository — neither was part of the loop, and no other skill read either.
 
 ## Shared contract: `ecosystem.yaml`
 
@@ -223,18 +225,19 @@ It declares:
 - **Schema versions** -- `ops_config`, `contact_meta`, `tasks`, `insights`
 - **Insight type enums** -- content vs evolution
 - **Contact classification** -- levels, defaults, folder pattern defaults (CR-009)
-- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands
+- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands (declared in loop order, with one-release `aliases` for renamed subcommands)
+- **`terms:`** (CR-089, contract 32) -- one entry per concept: the English identifier, its localized form, the loop step that produces it, the filename role keyword for new files, the legacy keywords every reader still accepts, and phrases to avoid. The naming rule that follows: a skill is a noun, a subcommand is a verb, one verb means one thing everywhere, and **the loop's step ids are the command verbs**. Identifiers (including filename role keywords) are English; what a person reads is localized, but only from `terms:`. Nothing existing is renamed — the rule applies forward
 - **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `rules` (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
 - **Visualisation features** -- the page list Marvin renders
 
-The contract is versioned (`contract_version: 31`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`.
+The contract is versioned (`contract_version: 32`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
 
 ## Architecture
 
 Skills are **organization-agnostic**. They use a layered configuration system (rewritten in v1.16.0 -- CR-011):
 
 1. **Project-level** (`.claude/ops-config.yaml`) -- overrides for specific projects
-2. **Folder-local** (`<vault>/<org>/_ops.yaml`) -- per-org config, walked up from CWD until vault root
+2. **Folder-local** (`<vault>/<org>/_ops.yaml`) -- per-config, walked up from CWD until vault root
 3. **Vault-wide** (`<vault>/_config/base.yaml`, optional) -- overrides shared across all folders
 4. **Base defaults** (`~/.claude/skills/ops-config/base.yaml`) -- fallback values
 
@@ -244,14 +247,14 @@ The project's `CLAUDE.md` remains the single source of truth for vault-specific 
 
 ### Configuration
 
-Domain skills read from their org config for:
+Domain skills read from their config for:
 - `language`: Output language (english/swedish/input)
 - `team`: Participant recognition and attribution
 - `responsibility_matrix`: Owner assignments
 - `terminology`: Domain-specific terms
-- `workflows`: Which files to update, action propagation, post-processing (task import, dashboard refresh), knowledge extraction, verticals
+- `workflows`: Which files to update, action propagation, post-processing (task import, carry-forward, recap), knowledge extraction, verticals
 
-As of v1.16.0 (CR-011), org configs live in `<vault>/<org>/_ops.yaml` -- co-located with the content they describe. This repo provides `base.yaml` as fallback and `schema.md` as the schema definition.
+As of v1.16.0 (CR-011), configs live in `<vault>/<org>/_ops.yaml` -- co-located with the content they describe. This repo provides `base.yaml` as fallback and `schema.md` as the schema definition.
 
 ### Skill dependencies
 
@@ -262,21 +265,22 @@ core-skills (this repo)
     +-- ops (extends ops-base, config-driven, replaces all domain ops skills)
   transcript (extraction layer) --> offers task import, writes _insights.yaml
   preparation (standalone -- meeting preparation)
-  daily-dashboard (standalone -- generic + org mode) <-- reads _tasks.yaml
   tasks (standalone -- personal task tracker) <-- writes _tasks.yaml
   update-skills (standalone -- repo management)
   insights (standalone -- extraction manager + evolution engine) --> reads transcripts + CLAUDE.md, writes _insights.yaml, compiles patterns, proposes SKILL.md changes
   analytics (standalone -- vault metrics) --> reads file metadata (names, dates, paths), writes _analytics/
   inbox (standalone -- universal capture) --> classifies + routes to transcript/ops/tasks
+  outbox (standalone -- staging and closing sends) <-- reads _outbox/<item>/_manifest.md
+  handoff (standalone -- frozen documents in .handoff/, read by nothing)
 ```
 
-`/ops` is config-driven: behaviour changes based on org config (`bravo-ops-config`, `acme-ops-config`, etc.) and project-level overrides. Organization configs live in separate repos.
+`/ops` is config-driven: behaviour changes based on config (`bravo-ops-config`, `acme-ops-config`, etc.) and project-level overrides. Organization configs live in separate repos.
 
 ---
 
 ## Skill comparison
 
-Fourteen skills ship; nine of them are ones you invoke directly, and the choice
+Twelve skills ship; ten of them are ones you invoke directly, and the choice
 between those is not always obvious.
 **[`docs/SKILLS-COMPARISON.md`](docs/SKILLS-COMPARISON.md)** holds the detail:
 what each one updates, how they hand off, which to reach for after a meeting,

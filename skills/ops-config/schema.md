@@ -309,18 +309,16 @@ workflows:
     task_import:
       enabled: boolean           # Offer to import action items to _tasks.yaml
       task_file: string          # Path to _tasks.yaml (default: vault parent)
-    dashboard_refresh:
-      enabled: boolean           # Run /daily-dashboard after all updates
-      org: string                # Org name for dashboard (e.g. "acme")
+    dashboard_refresh:           # RETIRED v1.79.0 (CR-089): read for one release, prints a removal notice, then ignored
 ```
 
 #### Task Import
 
 When `task_import.enabled` is true, action items from the meeting summary are extracted and matched against the task file. New items are offered for import; existing tasks mentioned in the meeting are updated.
 
-#### Dashboard Refresh
+#### Dashboard Refresh (retired)
 
-When `dashboard_refresh.enabled` is true, the org dashboard is regenerated after all file updates and task imports are complete. The `org` field determines which dashboard to update.
+`/daily-dashboard` left the suite in v1.79.0 (CR-089). A config that still sets `dashboard_refresh` gets a one-line notice naming the file to remove it from; the key is ignored from the release after.
 
 ### Task Ledger (CR-040)
 
@@ -415,7 +413,7 @@ Articles are topic-named living documents with `sources:`/`updated:`/`related:` 
 
 ### Sweep (CR-023)
 
-Optional. Configuration for `/ops sweep` extras beyond its built-in checks.
+Optional. Configuration for `/ops check` extras beyond its built-in checks.
 
 ```yaml
 workflows:
@@ -547,9 +545,6 @@ workflows:
   post_processing:
     task_import:
       enabled: true
-    dashboard_refresh:
-      enabled: true
-      org: acme
 ```
 
 ---
@@ -766,14 +761,6 @@ strings:                              # Optional: UI string overrides
     post_meeting_note: string         # "insikter från genomfört möte" / "post-meeting insights"
   transcript:
     next_steps: string                # "Nästa steg" / "Next Steps"
-  dashboard:
-    preparations_today: string        # "Förberedelser idag" / "Preparations today"
-    meetings_today: string            # "Dagens samtal och sammanfattningar" / "Meetings today"
-    standup_section: string           # "Standup/Projekt" / "Standup/Projects"
-    preparations_tomorrow: string     # "Morgondagens förberedelser" / "Tomorrow's preparations"
-    no_meetings: string               # "Utan träffar idag" / "No meetings today"
-    topics_label: string              # "Samtalsämnen" / "Topics"
-    file_label: string                # "Fil" / "File"
   changelog:
     preparation_label: string         # "Förberedelse" / "Preparation"
     transcript_label: string          # "Samtal" / "Call"
@@ -781,24 +768,25 @@ strings:                              # Optional: UI string overrides
     call: string                      # "Samtal" / "Call"
     meeting: string                   # "Möte" / "Meeting"
   filename_keywords:
-    preparation: string               # "förberedelse" / "preparation"
-    call: string                      # "samtal" / "call"
-    summary: string                   # "sammanfattning" / "summary"
-    standup: string                   # "standup" / "standup"
+    # CR-089: English in every language (role keywords are identifiers); legacy values stay readable
+    preparation: string               # "agenda"  (legacy: "förberedelse" / "preparation")
+    call: string                      # "summary" (legacy: "samtal" / "call")
+    summary: string                   # "summary" (legacy: "sammanfattning")
+    standup: string                   # "standup"
 ```
 
 ### String Resolution Order
 
 Skills resolve strings in this order (first match wins):
 
-1. **Org config `strings`** -- if the loaded org config defines a string, use it
+1. **Config `strings`** -- if the loaded config defines a string, use it
 2. **Language-matched defaults** from `base.yaml`:
    - `language: swedish` -> `strings_sv` block
    - `language: english` -> `strings` block
    - `language: input` -> match detected transcript/content language
 3. **Hardcoded fallback** -- strings already in skill templates
 
-This means org configs can override individual strings without providing the full table.
+This means configs can override individual strings without providing the full table.
 
 ---
 

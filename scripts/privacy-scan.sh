@@ -13,7 +13,7 @@
 # Modes:
 #   --stdin   scan lines from stdin (used by the pre-push hook on added lines)
 #   --tree    scan all tracked text files in the working tree (scheduled/manual;
-#             wire into /ops sweep via workflows.sweep.privacy_scan.command)
+#             wire into /ops check (vault) via workflows.sweep.privacy_scan.command)
 #
 # Exit 0 = clean, 1 = findings (verdict lines: [OK]/[FINDING]).
 

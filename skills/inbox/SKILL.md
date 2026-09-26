@@ -33,6 +33,8 @@ is one of several producers.
 
 ## Subcommands
 
+**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/inbox process is now /inbox route — the old name goes in the next release.`
+
 ### `/inbox [content]` -- Default: Capture + Classify
 
 Accept raw content (pasted text, file path, or inline text), classify it, store in `_inbox/`, and suggest the downstream skill.
@@ -62,7 +64,7 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
 3. **Determine routing** -- consult CLAUDE.md MEETING ROUTING for folder suggestions:
    - Match participant names using the name resolution algorithm:
      - Check `_contacts/*/_meta.yaml` for `display_name` or `aliases` match
-     - Check org config `team[]` for internal team members
+     - Check config `team[]` for internal team members
      - Matching is case-insensitive with Swedish character folding
    - Identify org context from ops-config team lists
    - Suggest target folder (e.g., `_contacts/david-ekberg/`, `acme/meetings/management/`)
@@ -86,7 +88,7 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
 
 6. **Execute the downstream skill automatically:**
    - `transcript` -> Run `/transcript` with the content, passing the target folder
-   - `ops` -> Run `/ops` with the content, passing the org config
+   - `ops` -> Run `/ops` with the content, passing the config
    - `task` -> Run `/tasks add [extracted description]`
    - `note` -> Already saved, no downstream skill needed
    - `idea` -> **Append one line to an `_ideas.md`** (see "Ideas" below) instead of leaving an orphan item in `_inbox/`
@@ -146,11 +148,11 @@ audio waiting in `.audio/` for a matching transcript, and flag orphan
 **file drops** in `.files/` with no paired stub (offer to register them,
 CR-024).
 
-### `/inbox process [id|all]` -- Process Stored Items
+### `/inbox route [id|all]` -- Route stored items to their skill (was `process`)
 
 Process one item by ID, or all unprocessed items (status `new` or `classified`) with `all`.
 
-**Single item (`/inbox process <id>`):**
+**Single item (`/inbox route <id>`):**
 
 1. Read the item's frontmatter and body from `_inbox/<id>.md`
 2. If `classification` is missing or `confidence: low`, run classification (Step 2 from default flow); update frontmatter
@@ -163,7 +165,7 @@ Process one item by ID, or all unprocessed items (status `new` or `classified`) 
    - **File drops (CR-024):** the source file in `.files/` moves WITH the output -- to the target folder's `.attachments/` when it should accompany the content (ask if unclear), else to `_inbox/.archive/.files/<id>.<ext>`. Record the final path in the stub before archiving it.
 8. Rebuild `_inbox.yaml` from current frontmatter
 
-**All items (`/inbox process all`):**
+**All items (`/inbox route all`):**
 
 1. Glob `_inbox/*.md`, read each frontmatter, filter to `status: pending` or `processing`. **Skip working documents** (registered `type: working_doc` / tag `do-not-process` per the [schema](../../docs/schemas/inbox.md) CR-022 section) -- they are surfaces, not captures
 2. If no items to process, report "Inbox is empty" and stop
@@ -185,9 +187,9 @@ Process one item by ID, or all unprocessed items (status `new` or `classified`) 
 5. Rebuild `_inbox.yaml` once at the end
 6. Print final summary: "Processed N items, M archived, K orphan audio still pending"
 
-**Key principle:** `/inbox process` is an automation pipeline, not a suggestion engine. It actually runs the downstream skills. Human-in-the-loop is limited to:
+**Key principle:** `/inbox route` is an automation pipeline, not a suggestion engine. It actually runs the downstream skills. Human-in-the-loop is limited to:
 - Confirming the classification table before execution begins
-- Any validation questions the downstream skill itself needs (e.g., `/transcript` may ask about participants, `/ops` may ask about org config) -- pass these through to the user as they come up
+- Any validation questions the downstream skill itself needs (e.g., `/transcript` may ask about participants, `/ops` may ask about config) -- pass these through to the user as they come up
 
 ### `/inbox triage [refresh|status]` -- Triage working-surface upkeep (CR-022)
 
@@ -254,7 +256,7 @@ Print this usage guide:
 ```
 /inbox [content]        Capture, classify, and route content
 /inbox status           Show inbox counts by status
-/inbox process [id|all] Process one or all stored items
+/inbox route [id|all] Process one or all stored items
 /inbox triage [refresh|status]  Triage working-surface upkeep (CR-022)
 /inbox help             This help text
 

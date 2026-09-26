@@ -2,20 +2,19 @@
 # check-ecosystem-alignment.sh — Verify all ecosystem components are aligned
 # Run after bumping core-skills version to detect drift.
 #
-# Wired into `/ops sweep` check 8 (CR-023) via workflows.sweep.alignment_check
+# Wired into `/ops check` (vault) check 8 (CR-023) via workflows.sweep.alignment_check
 # in ops-config — the sweep parses the [OK]/[DRIFT]/[SKIP] lines below.
 # A [SKIP] (e.g. unreachable mount) means UNVERIFIED, not clean.
 #
 # Update runbook when [DRIFT] is reported (verified 2026-07-08):
 # - Marvin: update the core-skills version reference + any schema notes in
 #   its CLAUDE.md, commit.
-# - Landing page: patch whats_new in static/i18n/en.json AND sv.json (the
-#   title carries the version this script greps), update the footer version
-#   in templates/{en,sv}/base.html, bump BUILD_VERSION in app.py, then
-#   restart EXACTLY the landing app in pm2 (the app caches i18n at startup;
-#   a bare `pm2 restart all` restarts every app on that host). Commit on the
-#   host repo. Host access per the private VM inventory; if the SSHFS mount
-#   is stale, unmount/remount or go straight over SSH.
+# - Landing page (2.0, CR-089): the site reads ecosystem.yaml at BUILD time, so a
+#   release needs a rebuild and deploy on the landing host (its scripts/deploy.sh),
+#   after pulling core-skills there. This script reads what the live site says it
+#   was built from: <LANDING_URL>/version.json. The Flask files it used to read
+#   (app.py, static/i18n/en.json) no longer exist on the live site, and reading a
+#   mount of them reported [OK] against a build nobody was served.
 # - Never auto-apply from tooling: cross-repo version refs and live deploys
 #   are human-confirmed changes.
 
@@ -95,40 +94,24 @@ else
     echo "[SKIP] visualiser not found at $VIS_DIR"
 fi
 
-# Check landing page (via mount or SSH)
-LANDING_MOUNT="${LANDING_MOUNT:-$HOME/workspace/remotes/tomas/core-skills-landingpage}"
-if [ -f "$LANDING_MOUNT/app.py" ]; then
-    LANDING_BUILD=$(grep 'BUILD_VERSION' "$LANDING_MOUNT/app.py" | head -1 | grep -o "'[^']*'" | tr -d "'")
-    # Landing page tracks its own build version, but should reference core_skills_version in i18n
-    # The title may carry the literal version, or the {v} placeholder the page
-    # substitutes at render time with the version it fetches from the contract.
-    # A placeholder is correct by construction -- it cannot drift -- so treat it
-    # as aligned rather than reporting an unparseable version forever.
-    LANDING_REF=$(python3 -c "
-import json
-try:
-    d = json.load(open('$LANDING_MOUNT/static/i18n/en.json'))
-    wn = d.get('whats_new', {}).get('title', '')
-    import re
-    if '{v}' in wn:
-        print('parameterised')
-    else:
-        m = re.search(r'v([0-9.]+)', wn)
-        print(m.group(1) if m else 'unknown')
-except: print('unreadable')
-" 2>/dev/null)
-    if [ "$LANDING_REF" = "parameterised" ]; then
-        echo "[OK] landing page i18n: version is parameterised, resolved from the contract at render time (build $LANDING_BUILD)"
-        ALIGNED=$((ALIGNED + 1))
-    elif [ "$LANDING_REF" = "$CONTRACT_VERSION" ]; then
-        echo "[OK] landing page i18n: v$LANDING_REF (build $LANDING_BUILD)"
+# Check landing page: what the live site says it was built from (CR-089)
+LANDING_URL="${LANDING_URL:-https://core-skills.doable.services}"
+CONTRACT_NUM=$(python3 -c "import yaml; print(yaml.safe_load(open('$REPO_DIR/ecosystem.yaml'))['contract_version'])")
+LANDING_JSON=$(curl -fsS -m 10 "$LANDING_URL/version.json" 2>/dev/null || true)
+if [ -n "$LANDING_JSON" ]; then
+    read -r L_SKILLS L_CONTRACT L_BUILD < <(python3 -c "
+import json,sys
+d=json.loads(sys.argv[1]); print(d.get('core_skills_version','?'), d.get('contract_version','?'), d.get('build','?'))
+" "$LANDING_JSON")
+    if [ "$L_SKILLS" = "$CONTRACT_VERSION" ] && [ "$L_CONTRACT" = "$CONTRACT_NUM" ]; then
+        echo "[OK] landing page: built from v$L_SKILLS, contract $L_CONTRACT (build $L_BUILD)"
         ALIGNED=$((ALIGNED + 1))
     else
-        echo "[DRIFT] landing page i18n: v${LANDING_REF:-missing} (expected v$CONTRACT_VERSION, build $LANDING_BUILD)"
+        echo "[DRIFT] landing page: built from v$L_SKILLS / contract $L_CONTRACT (expected v$CONTRACT_VERSION / contract $CONTRACT_NUM, build $L_BUILD) -- rebuild and deploy it"
         DRIFTED=$((DRIFTED + 1))
     fi
 else
-    echo "[SKIP] landing page mount not available at $LANDING_MOUNT"
+    echo "[SKIP] landing page not reachable at $LANDING_URL/version.json"
 fi
 
 # Check skill count
@@ -141,6 +124,23 @@ README_SKILLS=$(sed -n '/## Skills included/,/## Architecture/p' "$REPO_DIR/READ
 echo ""
 echo "Skill count in ecosystem.yaml: $SKILL_COUNT"
 echo "Skill rows in README table: $README_SKILLS"
+if [ "$README_SKILLS" -eq "$SKILL_COUNT" ]; then
+    echo "[OK] README skills table: $README_SKILLS rows"
+    ALIGNED=$((ALIGNED+1))
+else
+    echo "[DRIFT] README skills table: $README_SKILLS rows, contract declares $SKILL_COUNT"
+    DRIFTED=$((DRIFTED+1))
+fi
+
+# CR-089: each SKILL.md's subcommands against the contract, and the avoid: phrases.
+if python3 "$(dirname "$0")/check-terms.py" >/dev/null 2>&1; then
+    echo "[OK] subcommands and terms (check-terms.py)"
+    ALIGNED=$((ALIGNED+1))
+else
+    echo "[DRIFT] subcommands and terms:"
+    python3 "$(dirname "$0")/check-terms.py" 2>&1 | grep -E '^\[DRIFT\]|^        ' | sed 's/^/        /' || true
+    DRIFTED=$((DRIFTED+1))
+fi
 
 # The components graph and vault_conventions can disagree without any version
 # number changing, which is how two undeclared paths survived until the graph

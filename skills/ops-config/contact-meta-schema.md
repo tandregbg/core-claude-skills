@@ -87,7 +87,7 @@ Preferred language for documents related to this contact:
 | `english` | Output in English |
 | `input` | Match input language |
 
-When not set, follows org config or project settings.
+When not set, follows config or project settings.
 
 ### classification (optional, CR-009)
 
@@ -104,7 +104,7 @@ When not set, defaults to `professional`.
 
 ### private (optional, CR-009)
 
-Convenience boolean derived from `classification`. Primarily for backward compatibility with the `_tasks.yaml` `private` field and `/daily-dashboard` filtering.
+Convenience boolean derived from `classification`. Primarily for backward compatibility with the `_tasks.yaml` `private` field and shared-view filtering.
 
 | Value | Equivalent classification | Effect |
 |-------|--------------------------|--------|
@@ -154,7 +154,7 @@ When resolving a participant name (from transcript or user input):
 
 **Priority order:**
 1. Contact folder `_meta.yaml` display_name/aliases
-2. Org config `team[]` with aliases
+2. Config `team[]` with aliases
 3. Folder name fallback (title-case, hyphen -> space)
 
 **Matching logic:**
@@ -285,7 +285,7 @@ When preparing for a meeting:
 
 When processing meeting content:
 1. Match participant names against:
-   - Org config `team[]` (internal team)
+   - Config `team[]` (internal team)
    - `_contacts/*/_meta.yaml` (external contacts)
 2. Use canonical names in attribution
 
@@ -297,9 +297,9 @@ When generating contact engagement reports:
 3. Exclude `family` and `personal` contacts from `/analytics contacts` output
 4. Include all contacts in aggregate counts (overview, skills) without attribution
 
-### /daily-dashboard (CR-009)
+### Shared views (CR-009)
 
-When filtering tasks and contact content:
+Any tool that renders tasks or contact content for more than one reader:
 1. Resolve contact `classification` via `_meta.yaml` or folder name pattern
 2. In org mode / shared views: exclude `family`, `personal`, and `confidential` contacts
 3. In personal mode: show all classifications

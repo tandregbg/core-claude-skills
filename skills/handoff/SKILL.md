@@ -51,7 +51,7 @@ Six rules. They are the skill.
 5. **Read on explicit request only.** Opened because the user asked for it by name — never as part of a scan.
 6. **Not archived.** Already frozen; archiving is a no-op.
 
-**For all other skills, `.handoff/` does not exist.** `/ops`, `/ops sweep`, `/ops lint`, `/ops normalize`, `/insights`, `/analytics` and `/daily-dashboard` must skip it the way they skip `.archive/` — regardless of urgency, sensitivity, or what the file says.
+**For all other skills, `.handoff/` does not exist.** `/ops` (including `/ops check`), `/insights` and `/analytics` must skip it the way they skip `.archive/` — regardless of urgency, sensitivity, or what the file says.
 
 ---
 
@@ -171,7 +171,7 @@ Show subcommands and the six contract rules.
 
 ## String Resolution
 
-Template strings marked `{strings.handoff.*}` resolve per the standard order: org config `strings` -> language-matched defaults -> hardcoded fallback.
+Template strings marked `{strings.handoff.*}` resolve per the standard order: config `strings` -> language-matched defaults -> hardcoded fallback.
 
 | Key | English | Swedish |
 |---|---|---|

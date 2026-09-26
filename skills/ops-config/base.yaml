@@ -106,8 +106,6 @@ workflows:
   post_processing:
     task_import:
       enabled: false
-    dashboard_refresh:
-      enabled: false
     # CR-057: the next agenda is generated from the last note's "## Carried forward"
     carry_forward:
       enabled: false
@@ -186,14 +184,6 @@ strings:
     blockers: "Blockers"
     no_decisions_marker: "*(No formal decisions -- discussion was orientational.)*"
     action_table_headers: ["#", "Action", "Owner", "Priority", "Deadline"]
-  dashboard:
-    preparations_today: "Preparations today"
-    meetings_today: "Today's meetings and summaries"
-    standup_section: "Standup/Projects"
-    preparations_tomorrow: "Tomorrow's preparations"
-    no_meetings: "No meetings today"
-    topics_label: "Topics"
-    file_label: "File"
   changelog:
     preparation_label: "Preparation"
     transcript_label: "Call"
@@ -201,8 +191,12 @@ strings:
     call: "Call"
     meeting: "Meeting"
   filename_keywords:
-    preparation: "preparation"
-    call: "call"
+    # CR-089: role keywords are identifiers - English in every language, from `terms:`
+    # in ecosystem.yaml. Keys are unchanged. Forward only: files written with the old
+    # keywords (preparation, förberedelse, samtal, sammanfattning, möte) are never renamed
+    # and every reader still accepts them (terms[].legacy_file).
+    preparation: "agenda"
+    call: "summary"
     summary: "summary"
     standup: "standup"
   insights:
@@ -250,14 +244,6 @@ strings_sv:
     blockers: "Blockers"
     no_decisions_marker: "*(Inga formella beslut -- diskussionen var orienterande.)*"
     action_table_headers: ["#", "Åtgärd", "Ägare", "Prio", "Deadline"]
-  dashboard:
-    preparations_today: "Förberedelser idag"
-    meetings_today: "Dagens samtal och sammanfattningar"
-    standup_section: "Standup/Projekt"
-    preparations_tomorrow: "Morgondagens förberedelser"
-    no_meetings: "Utan träffar idag"
-    topics_label: "Samtalsämnen"
-    file_label: "Fil"
   changelog:
     preparation_label: "Förberedelse"
     transcript_label: "Samtal"
@@ -265,9 +251,13 @@ strings_sv:
     call: "Samtal"
     meeting: "Möte"
   filename_keywords:
-    preparation: "förberedelse"
-    call: "samtal"
-    summary: "sammanfattning"
+    # CR-089: role keywords are identifiers - English in every language, from `terms:`
+    # in ecosystem.yaml. Keys are unchanged. Forward only: files written with the old
+    # keywords (preparation, förberedelse, samtal, sammanfattning, möte) are never renamed
+    # and every reader still accepts them (terms[].legacy_file).
+    preparation: "agenda"
+    call: "summary"
+    summary: "summary"
     standup: "standup"
   insights:
     section_label: "Nyckelinsikter"

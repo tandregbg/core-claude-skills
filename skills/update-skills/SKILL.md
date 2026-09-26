@@ -2,7 +2,7 @@
 name: update-skills
 description: Manage skill repo updates, symlink health, and installation. Fetches from multiple remotes with version safety, creates symlinks for new skills, audits symlink state.
 user-invocable: true
-argument-hint: [update|status|check|install <repo>]
+argument-hint: [update|status|check|install <repo>|help]
 ---
 
 # /update-skills -- Skill Repository Management
@@ -74,7 +74,7 @@ git -C <repo-path> merge-base --is-ancestor HEAD <remote>/<branch>
 
 ---
 
-## Operations
+## Subcommands
 
 ### 1. `update` (default) -- Fetch and pull all repos
 
@@ -261,6 +261,12 @@ git -C <repo-path> merge-base --is-ancestor HEAD <remote>/<branch>
    ```
 
 ---
+
+### 5. `help` -- Usage
+
+**Trigger**: `/update-skills help`
+
+Print the four subcommands above, one line each, and the repos found by Repo Discovery.
 
 ## Safety Rules (always enforced)
 

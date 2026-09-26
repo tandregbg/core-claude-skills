@@ -132,18 +132,20 @@ If no `_tasks.yaml` exists in the current folder and a task is being added:
 
 ## Commands
 
-### `/tasks` or `/tasks show`
+**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/tasks show is now /tasks list — the old name goes in the next release.`
+
+### `/tasks list` (the default; was `show`)
 
 Show current active tasks from the local `_tasks.yaml`.
 
 **Default:** Current folder's `_tasks.yaml` (or nearest ancestor).
 
 ```
-/tasks show              # Local file
-/tasks show --all        # Aggregate all _tasks.yaml files
-/tasks show P1           # Filter by priority
-/tasks show #board       # Filter by tag
-/tasks show due:this-week  # Filter by due date
+/tasks list              # Local file
+/tasks list --all        # Aggregate all _tasks.yaml files
+/tasks list P1           # Filter by priority
+/tasks list #board       # Filter by tag
+/tasks list due:this-week  # Filter by due date
 ```
 
 **Output format:**
@@ -272,6 +274,10 @@ Generate weekly review. **Aggregates all `_tasks.yaml` files.**
 
 Archive completed tasks older than 30 days from history.
 
+### `/tasks help`
+
+Print the commands above, one line each, and where the ledger for the current folder resolves to (`workflows.task_ledger`).
+
 ---
 
 ## Integration with Other Skills
@@ -279,10 +285,6 @@ Archive completed tasks older than 30 days from history.
 ### /transcript (Step 4: task import)
 
 When `/transcript` finds action items, import to the **local `_tasks.yaml`** in the contact/project folder where the transcript lives (not vault root).
-
-### /daily-dashboard (task display)
-
-Dashboard scans all `_tasks.yaml` files in vault, groups by context, filters by privacy.
 
 ### /ops (Step 7 + Step 9)
 
@@ -305,8 +307,8 @@ Dashboard scans all `_tasks.yaml` files in vault, groups by context, filters by 
 
 | File | Signals | Used by |
 |------|---------|---------|
-| `_tasks.yaml` | Folder with tracked tasks | `/tasks`, `/ops`, `/daily-dashboard`, visualisation |
-| `_tasks-history.md` | Completed tasks log | `/tasks done`, `/daily-dashboard` |
+| `_tasks.yaml` | Folder with tracked tasks | `/tasks`, `/ops`, visualisation |
+| `_tasks-history.md` | Completed tasks log | `/tasks done` |
 
 ---
 
@@ -376,7 +378,7 @@ properties:
 ### Dependencies
 
 - None (standalone skill)
-- Optional integration with: transcript, daily-dashboard, ops
+- Optional integration with: transcript, ops
 
 ### Language
 

@@ -25,7 +25,7 @@ Domain skills use a layered configuration system for organization-specific setti
 
 First match wins. Later layers provide fallback values.
 
-**Deprecated (v1.16.0, removed v1.17.0):** the previous step "Org config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`" is deprecated. If still present, it acts as a fallback between steps 3 and 4 with a one-time deprecation warning. Migrate by copying the YAML into the matching `<vault>/<org>/_ops.yaml`.
+**Deprecated (v1.16.0, removed v1.17.0):** the previous step "Config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`" is deprecated. If still present, it acts as a fallback between steps 3 and 4 with a one-time deprecation warning. Migrate by copying the YAML into the matching `<vault>/<org>/_ops.yaml`.
 
 ### Config Usage
 
@@ -186,7 +186,7 @@ Tasks are tracked in distributed `_tasks.yaml` files (v2 schema) at each folder 
 
 | File | Signals | Used by |
 |------|---------|---------|
-| `_tasks.yaml` | Folder with tracked tasks | `/tasks`, `/ops`, `/daily-dashboard`, visualisation |
+| `_tasks.yaml` | Folder with tracked tasks | `/tasks`, `/ops`, visualisation |
 
 #### Task-ledger resolution (CR-040)
 
@@ -234,7 +234,7 @@ Consult the project CLAUDE.md for:
 - All filenames use `YYMMDD-` prefix -- **always this format, never ISO** (`2026-03-12-`). A folder may only deviate if its own CLAUDE.md explicitly declares another format.
 - Use hyphens between words
 - **Diacritics: keep å/ä/ö in filenames.** Never transliterate (`mote`), never digit-substitute (`m0te`), never mix policies within one filename (`förberedelse-...-utlosen`). CR-007 covered file *content*; this extends it to the filename -- run the same driftword check against the slug before saving.
-- **Role keyword is mandatory:** the resolved `{strings.filename_keywords}` word (`samtal`/`förberedelse`/`sammanfattning`/`standup`, or English equivalents) must appear in the slug so the file's role is machine-readable. A preparation must never be named like a summary -- `/daily-dashboard` and `/outbox` route by these keywords.
+- **Role keyword is mandatory:** the resolved `{strings.filename_keywords}` word (`summary`/`agenda`/`standup` — English in every language since CR-089; legacy `samtal`/`förberedelse`/`sammanfattning` files are never renamed and are still read) must appear in the slug so the file's role is machine-readable. An agenda must never be named like a summary -- `/ops`, `/outbox` and the agenda generator select files by these keywords.
 - Proper names are capitalized (e.g., `Alex-Bob`); all other slug tokens are lowercase
 - Only CHANGELOG.md and README.md are uppercase; all other files use lowercase
 - See CLAUDE.md's MEETING FILENAME FORMAT for specific patterns per meeting type
@@ -372,7 +372,7 @@ Consult the project CLAUDE.md for archive policy. General rules:
 `<vault>/.ephemeral/` is the one place exempt from never-delete: **disposable working material with no vault destiny** -- session scratch, repo snapshots, intermediate artifacts of one-off analyses. Rules:
 
 - Nothing in `.ephemeral/` is ever input to vault content, and no vault file may reference a path inside it.
-- `/ops sweep` (check 6) flags content older than 14 days; deletion is the expected outcome, not archiving.
+- `/ops check` (check 6) flags content older than 14 days; deletion is the expected outcome, not archiving.
 - If something in `.ephemeral/` turns out to have a vault destiny after all, it exits through `_inbox/.files/` (see `docs/schemas/inbox.md`, CR-024) like any other input file.
 - **Taking anything out of `.ephemeral/` is a MOVE, never a copy, and it is renamed on the way.** The moment a file is read, cited, attached or acted on, it has a destination and stops being ephemeral -- so it leaves in the same action, renamed to the slug contract (`YYMMDD-` + a role keyword, å/ä/ö kept). Reading a file and leaving it where it was is the failure: `.ephemeral/` is swept at 14 days, so a copy means the original is on a deletion clock while the reference points at the survivor, and two files now disagree about which is real. A file that was worth opening was never ephemeral; the drop-time decision was simply wrong, and moving it is how that gets corrected. State the old and new path when it happens, so the move is in the record rather than silent.
 - The routing rule at drop time: **vault destiny → `_inbox/.files/`; no destiny → `.ephemeral/`.** Made consciously, once, instead of by gravity.
@@ -392,7 +392,7 @@ Skills handle "create new home" well and "retire old home" never -- every reloca
 2. **Log the move** in the affected folder's CHANGELOG.
 3. **Update or remove stale pointers** the skill itself created (root symlinks, dashboard links).
 
-This applies to skills moving their own output (e.g. `/daily-dashboard` changing output location must tombstone the old dashboard, not leave two live-looking copies) and to user-driven moves processed through a skill (e.g. a 1-on-1 series moving to a new folder gets a forward-pointer README in the old one). `/ops sweep` detects violations after the fact; this convention prevents them at move time.
+This applies to skills moving their own output (e.g. a skill changing its output location must tombstone the old file, not leave two live-looking copies) and to user-driven moves processed through a skill (e.g. a 1-on-1 series moving to a new folder gets a forward-pointer README in the old one). `/ops check` detects violations after the fact; this convention prevents them at move time.
 
 ---
 

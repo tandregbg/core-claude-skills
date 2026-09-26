@@ -2,12 +2,12 @@
 name: ops
 description: Process meeting content into structured documentation -- summaries, decision tracking, action propagation, file updates. Config-driven for any organization. Replaces project-ops, bravo-ops, management-ops, marketing-ops.
 user-invocable: true
-argument-hint: [status | help | prepare [type] | normalize <path> | lint <folder> | sweep | meeting content, transcript, or standup notes]
+argument-hint: [process <content> | prepare [type] | orient <folder> | check [<folder>] | status | project list | project new <name> | normalize <path> | help | meeting content, transcript, or standup notes]
 ---
 
 # Operations Framework
 
-Unified meeting and operations processing. Behaviour is driven by org config -- the same skill handles Bravo veckosynk, Acme management meetings, marketing standups, and project dev standups.
+Unified meeting and operations processing. Behaviour is driven by config -- the same skill handles Bravo veckosynk, Acme management meetings, marketing standups, and project dev standups.
 
 **Base framework:** Extends `ops-base` -- read `~/.claude/skills/ops-base/SKILL.md` for shared standards (meeting formats, task management, workflows, archive policy).
 
@@ -17,6 +17,28 @@ Unified meeting and operations processing. Behaviour is driven by org config -- 
 
 ## SUBCOMMANDS
 
+**The subcommands are the loop's verbs (CR-089).** `/ops` is the config layer over two of them
+(`prepare`, `process` — `/preparation` and `/transcript` are their config-free forms) and owns three
+more (`orient`, `check`, and `declare` through `project new` and `status`). `normalize` and `help`
+sit outside the loop and are named for what they repair or explain.
+
+**Renamed in v1.79.0; the old names work for one release.** When one is used, run the new
+subcommand and print one line first: `/ops brief is now /ops orient — the old name goes in the next release.`
+
+| Old | New |
+|---|---|
+| `/ops brief <folder>` | `/ops orient <folder>` |
+| `/ops lint <folder>` | `/ops check <folder>` |
+| `/ops sweep [scope]` | `/ops check` (vault) · `/ops check --vault <scope>` |
+| `/ops projects` | `/ops project list` |
+
+### `process` -- the default: turn meeting content into the summary
+
+**Trigger:** `/ops process <content>`, or `/ops <content>` — content with no subcommand is processed.
+
+Runs the PROCESSING FLOW below (Steps 0.5–9). This is the loop's `process` step; `/transcript` is
+the same step for a folder with no config.
+
 ### `status` -- Show available configurations
 
 **Trigger:** `/ops status`
@@ -25,7 +47,7 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
 
 **Steps:**
 
-1. **Scan for org configs:**
+1. **Scan for configs:**
    - Find vault root (walk up from CWD until `_inbox/`, `_outbox/`, or `.obsidian/`; or `VAULT_ROOT` env)
    - Glob `<vault>/*/_ops.yaml` for org-folder configs
    - Check `<vault>/_config/base.yaml` for vault-wide override
@@ -38,7 +60,7 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
    - Determine org from CLAUDE.md `organization` field or folder name pattern
    - Report which config would be loaded for the current directory
 
-3. **Present report** for each org config:
+3. **Present report** for each config:
    - Organization name, language, swedish_chars
    - Team members (name + role, abbreviated if >4 members)
    - Workflows: update_files list, action_propagation status, agenda_management status, post_processing status
@@ -50,8 +72,17 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
 
 4. **Show base defaults** from `~/.claude/skills/ops-config/base.yaml`
 
+4b. **Resolved config per project (CR-089).** For every folder that carries an `_ops.yaml` or a
+   `.claude/ops-config.yaml`, print the config as it actually resolves — **each key with the layer it
+   came from** (project, folder, vault-wide, base default) — and validate it against
+   `ops-config/schema.md`. Report as findings: keys the schema does not know (usually a typo, which
+   otherwise silently falls back to the default); `carry_forward` enabled with no `external_systems`;
+   `task_ledger.mode: external` with no `system` or `pointer`; a deprecated key still set
+   (`dashboard_refresh`, retired in v1.79.0). **This is the one place a person can see what every
+   project is configured to do**, and compare two projects that should behave alike.
+
 5. **Vault health check** (CR-010 `rules.single_inbox_outbox`, `rules.yaml_naming`):
-   - From the detected vault root, scan for stray inbox/outbox directories using the **CR-025 fuzzy matcher** (same as `/ops sweep` check 9): `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*` directory, and localized forms (`inkorg*`/`utkorg*`), case-insensitive, skipping `.archive/`/`.transcripts/`/`.handoff/`/`clones/`/`node_modules/`. Anything other than `<vault>/_inbox` and `<vault>/_outbox` is a stray; flag each unless listed in `workflows.sweep.structure_exemptions` (exempt paths get a one-line note with their reason). Exact-name matching is not enough -- real-world strays have appeared as `.inbox` and `_outbox-archive`.
+   - From the detected vault root, scan for stray inbox/outbox directories using the **CR-025 fuzzy matcher** (same as `/ops check` check 9): `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*` directory, and localized forms (`inkorg*`/`utkorg*`), case-insensitive, skipping `.archive/`/`.transcripts/`/`.handoff/`/`clones/`/`node_modules/`. Anything other than `<vault>/_inbox` and `<vault>/_outbox` is a stray; flag each unless listed in `workflows.sweep.structure_exemptions` (exempt paths get a one-line note with their reason). Exact-name matching is not enough -- real-world strays have appeared as `.inbox` and `_outbox-archive`.
    - For every `<vault>/<folder>/_ops.yaml` found in step 1, the folder is treated as ops-aligned. Confirm each parses as YAML; flag any that don't.
    - List ops-aligned folders that are *missing* an `_ops.yaml` only when CLAUDE.md or `_meta.yaml` in that folder declares `organization` -- otherwise the folder is intentionally not ops-aligned and should be silent.
    - If `~/.claude/skills/acme-ops-config/`, `~/.claude/skills/bravo-ops-config/`, or `~/.claude/skills/delta-ops-config/` still exists, emit the deprecation warning from step 1 here as a vault-health item too (one-line each, with the `unlink`/`mv` command to fix).
@@ -76,7 +107,7 @@ Workflows:
   update_files: summary, changelog, readme, task_matrix, meetings_index
   action_propagation: disabled
   agenda_management: disabled
-  post_processing: task_import (enabled), dashboard_refresh (enabled, org: acme)
+  post_processing: task_import (enabled), carry_forward (enabled)
 Domain additions: 8 sections configured
 Summary sections: default (TWO-TIER)
 Strings: default (per language)
@@ -95,7 +126,7 @@ Templates: meeting_reflection
 
 ### Base Defaults
 Language: input
-Team: (none -- must be defined in org config)
+Team: (none -- must be defined in config)
 Workflows: summary only
 
 ### Vault Health
@@ -134,8 +165,9 @@ orientation rather than commands. Then the loop.
 
 0. The orientation entries, in declared order
 1. One-line description of what /ops does
-2. Available commands: `/ops [content]`, `/ops prepare [type]`, `/ops brief <folder>`, `/ops status`,
-   `/ops lint <folder>`, `/ops sweep`, `/ops normalize <path>`, `/ops help`
+2. Available commands, in loop order: `/ops orient <folder>`, `/ops prepare [type]`, `/ops process <content>`
+   (the default), `/ops check <folder>`, `/ops check`, `/ops status`, `/ops project list`,
+   `/ops project new <name>`, `/ops normalize <path>`, `/ops help` — plus the one-release aliases
 3. **The working loop, grouped by `phase` in declared order.** Per step:
    - the `label` and what it `does`
    - **`command`** where the step has one — the thing a person actually types
@@ -186,7 +218,7 @@ The skill supports two preparation modes, configured per meeting type in `_ops.y
 
 **Dual mode -- two-layer model:**
 
-The agenda file is the team-facing prep document. It looks like the prior-day prep file in that folder -- same shape, same sections, same level of detail. The facilitator file is a *separate* private layer that contains only the additional content the facilitator needs and the team should not see.
+The agenda file is the team-facing prep document. It looks like the prior-day prep file in that folder -- same shape, same sections, same level of detail. The facilitator sheet is a *separate* private layer that contains only the additional content the facilitator needs and the team should not see.
 
 **Agenda file** (visible to all attendees) -- mirror the prior-day single-mode prep in the same folder:
 - Status overview (per-person yesterday/done/today)
@@ -197,7 +229,7 @@ The agenda file is the team-facing prep document. It looks like the prior-day pr
 - Reference links, build status, metrics
 - Anything participants need to come prepared
 
-**Facilitator file** (private, NOT shared with the team) -- contains only the additional layer:
+**Facilitator sheet** (private, NOT shared with the team) -- contains only the additional layer:
 - Facilitator's role clarification (e.g., "Alex runs the meeting only -- not driving test or fix work")
 - The lead's expectations from prior handover or 1-on-1s
 - Time-box discipline cues ("standup has run 25 min recently, target 30, hard stop 35")
@@ -207,9 +239,9 @@ The agenda file is the team-facing prep document. It looks like the prior-day pr
 - Post-standup follow-ups the facilitator drives
 - Pre-meeting backstory from 1-on-1s or lunches with subset of attendees
 
-**Critical rule:** the agenda file does NOT mention or hint at the facilitator file. The visible document must not advertise that a private one exists. Cross-references go from facilitator → agenda only, not the other direction.
+**Critical rule:** the agenda file does NOT mention or hint at the facilitator sheet. The visible document must not advertise that a private one exists. Cross-references go from facilitator → agenda only, not the other direction.
 
-**Critical rule:** if the same content fits both files, it goes in the agenda file. The facilitator file should only contain content that would change behaviour or expose sensitive context if shared with the team.
+**Critical rule:** if the same content fits both files, it goes in the agenda file. The facilitator sheet should only contain content that would change behaviour or expose sensitive context if shared with the team.
 
 ---
 
@@ -237,7 +269,7 @@ the carried-forward block with session counts, the round from the declared roste
 silently drops all three** — the agenda looks complete and is missing the half that comes from
 outside the room.
 
-In **dual** mode the facilitator file is still written here, as a layer **on top of** the
+In **dual** mode the facilitator sheet is still written here, as a layer **on top of** the
 generated agenda: read the generated file, add only facilitator content. Never regenerate the
 agenda's own content into it.
 
@@ -248,7 +280,7 @@ entirely** — re-raising what it closed and carrying none of what it opened. Pr
 `--skip-unprocessed` so that skipping is a decision on the record rather than an accident.
 
 **Check for an existing preparation before writing (CR-086).** Glob the target folder and its
-siblings for a preparation, agenda or facilitator file matching this meeting's **date and
+siblings for a preparation, agenda or facilitator sheet matching this meeting's **date and
 participants**. If one exists, report it and offer: open it, regenerate it from current sources, or
 write anyway. `build_agenda.py` already refuses to overwrite an agenda; the hand-prepared path had no
 equivalent, and a second prep for the same meeting is indistinguishable from the first until someone
@@ -262,7 +294,7 @@ silently; it is the one outcome the run states out loud.
 
 #### Step P1: Gather Context
 
-1. **Load org config** (same as normal /ops flow)
+1. **Load config** (same as normal /ops flow)
 2. **Read recent meetings:**
    - Find last 1-3 meeting summaries in the target folder
    - Extract action items assigned to each team member
@@ -283,7 +315,7 @@ silently; it is the one outcome the run states out loud.
 If the user provides pre-submitted team updates:
 
 1. **Identify team members** using the name resolution algorithm:
-   - Match against org config `team[]` (name, aliases)
+   - Match against config `team[]` (name, aliases)
    - Match against `_contacts/*/_meta.yaml` (display_name, aliases) for external contacts
    - Matching is case-insensitive with Swedish character folding
    - See [Contact Metadata Schema](../ops-config/contact-meta-schema.md)
@@ -401,41 +433,41 @@ Create the file using the **Standup Preparation Template**:
 **For weekly/planning:**
 - Add "Sprint Goals" or "Week Priorities" section
 - Include metrics summary
-- Add "Carry-over Items" from previous week
+- Add "Carry-forward Items" from previous week
 
 ---
 
 #### Step P5: Save and Report
 
 1. **Resolve preparation mode:**
-   - Look up `meeting_types[<type>].preparation_mode` in the merged org config
+   - Look up `meeting_types[<type>].preparation_mode` in the merged config
    - If absent, default to `single`
 
 2. **Determine filename(s):**
 
    **Single mode** -- one file:
-   - Format: `YYMMDD-preparation-[org/project]-[type].md` (English) or `YYMMDD-förberedelse-[org/project]-[type].md` (Swedish)
+   - Format: `YYMMDD-agenda-[org/project]-[type].md` in every language — the role keyword is an identifier (CR-089). Files written before v1.79.0 as `preparation`/`förberedelse` are left as they are and still read
    - Include the organization or project name to distinguish preparations created the same day for different orgs/projects
-   - Examples: `260311-preparation-acme-mobile-daily-standup.md`, `260311-förberedelse-delta-veckosynk.md`
+   - Examples: `260311-agenda-acme-mobile-daily-standup.md`, `260311-agenda-delta-veckosynk.md`
 
-   **Dual mode** -- two files (always English -- dual mode is not yet localized for Swedish):
+   **Dual mode** -- two files (English role keywords in every language, CR-089):
    - Agenda file (team-facing): `YYMMDD-agenda-[org/project]-[type].md`
-   - Facilitator file (private add-on layer): `YYMMDD-facilitator-[org/project]-[type].md`
+   - Facilitator sheet (private add-on layer): `YYMMDD-facilitator-[org/project]-[type].md`
    - Examples: `260505-agenda-coreteam-weekly-w19.md` + `260505-facilitator-coreteam-weekly-w19.md`
 
-   **Order of generation:** write the agenda file first using the same template the same folder's prior-day single-mode prep used (status overview, blockers, action items, agenda, references). Then derive the facilitator file as a slim private layer on top -- only the content from the "Facilitator file" list above. If a section is present in both, keep it in the agenda and remove it from the facilitator file.
+   **Order of generation:** write the agenda file first using the same template the same folder's prior-day single-mode prep used (status overview, blockers, action items, agenda, references). Then derive the facilitator sheet as a slim private layer on top -- only the content from the "Facilitator sheet" list above. If a section is present in both, keep it in the agenda and remove it from the facilitator sheet.
 
 3. **Save to meetings folder** (per CLAUDE.md MEETING ROUTING). For dual mode, both files go in the same folder.
 
 4. **For dual mode, ensure the cross-references are one-directional:**
-   - The facilitator file MUST link to the agenda file at the top with a notice such as: `> **Private facilitator file.** The team-facing version is [YYMMDD-agenda-...md](YYMMDD-agenda-...md). Do not share this file with the team.`
-   - The agenda file MUST NOT mention or link to the facilitator file. The visible document must not advertise that a private one exists.
+   - The facilitator sheet MUST link to the agenda file at the top with a notice such as: `> **Private facilitator sheet.** The team-facing version is [YYMMDD-agenda-...md](YYMMDD-agenda-...md). Do not share this file with the team.`
+   - The agenda file MUST NOT mention or link to the facilitator sheet. The visible document must not advertise that a private one exists.
 
 5. **Report what was created:**
 
    **Single mode:**
    ```
-   Created: meetings/260311-preparation-acme-mobile-daily-standup.md
+   Created: meetings/260311-agenda-acme-mobile-daily-standup.md
 
    Status Overview:
    - Dev1: 1 done, 4 in progress
@@ -460,7 +492,7 @@ Create the file using the **Standup Preparation Template**:
 #### Step P6: Lifecycle
 
 After the meeting, when `/ops [transcript]` is run:
-- Single mode: the `preparation`/`förberedelse` file is automatically marked as superseded (per Step 9 of normal flow)
+- Single mode: the `agenda` file (or a legacy `preparation`/`förberedelse` file) is automatically marked as superseded (per Step 9 of normal flow)
 - Dual mode: BOTH the `facilitator` and `agenda` files are marked as superseded
 - No manual action needed
 
@@ -566,9 +598,9 @@ Backup: none (use git to revert if needed)
 
 ---
 
-### `projects` -- which folders are pipelines, and which are just material (CR-065)
+### `project list` -- which folders are pipelines, and which are just material (CR-065; was `projects`)
 
-**Trigger:** `/ops projects` · `python3 ~/.claude/skills/ops/list_projects.py [--root <vault>]`
+**Trigger:** `/ops project list` · `python3 ~/.claude/skills/ops/list_projects.py [--root <vault>]`
 
 **Read-only.** A folder under a projects tree may be a running loop or a pile of transcripts, and from
 the outside they are indistinguishable — same depth, same naming, several with a CHANGELOG and a
@@ -579,7 +611,7 @@ Grouped by how far each is wired, because **the grouping is the answer**:
 
 | Group | Means |
 |---|---|
-| **Loop wired** | `carry_forward` declared — `/ops brief` and `build_agenda.py` work here |
+| **Loop wired** | `carry_forward` declared — `/ops orient` and `build_agenda.py` work here |
 | **Configured, no loop** | `/ops` processes meetings; agenda and carry-forward do not apply |
 | **Material only** | No config. Notes, transcripts, documents — **not a pipeline, and often correctly so** |
 | **Empty or dormant** | No config, no dated notes, no changelog |
@@ -602,7 +634,7 @@ series:
   cadence: weekly          # shown in the listing
 ```
 
-**Declared, never inferred** — every folder carrying an org config would otherwise read as a series,
+**Declared, never inferred** — every folder carrying a config would otherwise read as a series,
 including the org root. The declaration does two things: it brings the folder into the scan, and it
 **licenses resolving `carry_forward` up the config chain**, because a series inherits its loop from an
 ancestor config and reading only its own file reports a running loop as *no loop*.
@@ -622,7 +654,7 @@ wired"* are different questions, and answering the first from the second would d
 effort and discussion topic that correctly runs nowhere. This command links to the registry rather than
 restating it.
 
-**Pairs with `/ops brief`:** projects is wide and shallow, brief is one project deep.
+**Pairs with `/ops orient`:** projects is wide and shallow, brief is one project deep.
 
 ---
 
@@ -630,7 +662,7 @@ restating it.
 
 **Trigger:** `/ops project new <name> [--from-meeting <summary>] [--pre-phase-of <project>/<track> --exit "<criterion>"] [--graduates <plan>#<row>]`
 
-**`/ops projects` stays read-only.** A read-only command that sometimes writes is harder to trust
+**`/ops project list` stays read-only.** A read-only command that sometimes writes is harder to trust
 than two commands, and that guarantee is why the existing one is safe to run without thinking.
 
 #### Step N1: Check before creating
@@ -708,13 +740,13 @@ becomes two rows that disagree within a week.
 
 ---
 
-### `brief` -- where a recurring project stands, before work resumes (CR-061)
+### `orient <folder>` -- where a recurring project stands, before work resumes (CR-061; was `brief`)
 
-**Trigger:** `/ops brief <folder>` · `python3 ~/.claude/skills/ops/project_brief.py --dir <folder>/meetings`
+**Trigger:** `/ops orient <folder>` · `python3 ~/.claude/skills/ops/project_brief.py --dir <folder>/meetings`
 
 **Read-only. Writes nothing, fetches nothing, judges nothing.**
 
-`/ops status` reports which *config* applies. `/ops sweep` audits closure debt across a vault. This
+`/ops status` reports which *config* applies. `/ops check` audits closure debt across a vault. This
 reports one folder's **current state** — the question a session asks when it opens a project cold and
 would otherwise rebuild the answer from four files, losing whatever nobody wrote down.
 
@@ -747,9 +779,9 @@ A folder with no `post_processing` block still gets blocks 1, 5 and 6.
 
 ---
 
-### `lint` -- Check existing files against template contracts (CR-018)
+### `check <folder>` -- Check a folder's files against template contracts and the carry-forward chain (CR-018; was `lint`)
 
-**Trigger:** `/ops lint <folder>`
+**Trigger:** `/ops check <folder>`
 
 Read-only version of the CR-018 pre-save template-contract check, run across a folder's existing files. Use it to detect **template forking in a recurring series** -- the drift class where each file is internally consistent but the series silently changed shape at some point.
 
@@ -772,14 +804,14 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    the row out of the round). **Report only** — the roster is the project's to change, and a skill
    editing who belongs in a room is not a lint fix.
 
-2d. **Carried items name something the team can find (CR-084).** Flag a carried line whose only
+2d. **Carry-forward items name something the team can find (CR-084).** Flag a carried line whose only
    identifier is vault-local — a register id that exists in coordination notes and nowhere the team
    works. Such an item leads the agenda and is skipped every session, because the person who owns it
    cannot resolve what it refers to. Every carried line should reference an issue, a ticket, a path in
    the repo, a chat message or a session — or state the matter in plain words.
 
 ```
-/ops lint meetings/management
+/ops check meetings/management
 
 weekly-management (14 files checked):
   OK through 260519. Forked at 260526:
@@ -795,16 +827,16 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
 
 5. **Carry-forward chain check** -- only where `workflows.post_processing.carry_forward.enabled`.
 
-   For each `YYMMDD-<note_suffix>.md` in the folder, check the note ends with a `## Carried forward`
+   For each `YYMMDD-<note_suffix>.md` in the folder, check the summary ends with a `## Carried forward`
    section. **This is the one failure in the meeting loop that is silent.** A note missing the section
-   does not error, does not warn, and produces a next agenda with zero carried items that looks
+   does not error, does not warn, and produces a next agenda with zero carry-forward items that looks
    perfectly correct — the chain ends and the output stays plausible. Every other defect in the loop
    announces itself.
 
    Report the **break**, not the file count — the chain is what matters:
 
    ```
-   /ops lint <project>/meetings
+   /ops check <project>/meetings
 
    carry-forward chain (5 notes checked):
      Chain intact 260916 -> 260919. BROKEN at 260921:
@@ -836,11 +868,11 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
 
 ---
 
-### `sweep` -- Closure/staleness audit (CR-019)
+### `check` -- Vault-wide closure/staleness audit (CR-019; was `sweep`)
 
-**Trigger:** `/ops sweep [scope]` (default scope: vault root; depth 6; skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`, `node_modules/`, `.ephemeral/`)
+**Trigger:** `/ops check` with no folder, or `/ops check --vault <scope>` for a subtree (default scope: vault root; depth 6; skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`, `node_modules/`, `.ephemeral/`)
 
-Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations leave live-looking corpses, sent outbox items never get archived. Bookkeeping follows attention, not structure -- so nothing catches the abandoned lane until a human stumbles on it. `/ops sweep` is the missing sweeper: one read-only pass that detects the closure-debt classes and **offers** fixes (report-only by default; every fix is confirmed, never automatic).
+Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations leave live-looking corpses, sent outbox items never get archived. Bookkeeping follows attention, not structure -- so nothing catches the abandoned lane until a human stumbles on it. `/ops check` is the missing sweeper: one read-only pass that detects the closure-debt classes and **offers** fixes (report-only by default; every fix is confirmed, never automatic).
 
 **The nine checks:**
 
@@ -853,7 +885,7 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
    `_insights.yaml` staleness is checked in **every** mode -- the knowledge layer is local regardless of where the work is tracked.
    Rationale worth keeping in the report: a *declared* absence is deliberate, an *undeclared* one is indistinguishable from neglect. Reporting a correctly-configured folder as broken every week is worse than not checking it -- the first time the sweep is right and nobody believes it, the check has stopped working.
 3. **Migration corpses** -- artifacts that look live but were superseded by a move: root symlinks/files whose same-purpose counterpart elsewhere is fresher (dashboards, `_TODAY-*`); folders inactive >60 days whose participant/topic stream demonstrably continues in a sibling folder. Offered fix: a **tombstone** (see ops-base Retirement Convention).
-4. **Outbox aging** -- run the `/outbox list` logic: sent-but-unarchived items, manifest-less items, **manifests missing `Kanonisk källa` (CR-032)**, and items pending >30 days. Offered fix: `/outbox archive --all-sent`. The `Kanonisk källa` finding matters because without it nobody can tell whether a folder is a disposable rendering or the only copy of the material -- which is what made a bulk clean-up unsafe in the 260828 audit (86 items, 3 of 71 manifests named a source).
+4. **Outbox aging** -- run the `/outbox list` logic: sent-but-unarchived items, manifest-less items, **manifests missing `Kanonisk källa` (CR-032)**, and items pending >30 days. Offered fix: `/outbox close --all-sent`. The `Kanonisk källa` finding matters because without it nobody can tell whether a folder is a disposable rendering or the only copy of the material -- which is what made a bulk clean-up unsafe in the 260828 audit (86 items, 3 of 71 manifests named a source).
 5. **Sync duplicates** -- `* 2.*` / `* 3.*` files whose base file exists. Report size+mtime comparison side by side; **never auto-delete** (the larger "duplicate" is sometimes the newer content).
 6. **Unrouted residue** -- `unsorted/` folders with files >30 days old; `.ephemeral/` content >14 days old; root-level files matching paste conventions (`__*`, `xxx -*`, `Namnlös*`, untitled).
 7. **Triage hygiene (CR-022)** -- if a triage doc is registered: INKORG items unsorted >7 days, `[x]` items not yet moved to the KLART archive, week anchor >7 days stale, plaintext-credential-looking lines (no-secrets rule; lines marked `<!-- secret-ok -->` are a recorded owner decision and are skipped). Offered fix: `/inbox triage refresh` (which handles all but the sorting -- that stays human).
@@ -875,7 +907,7 @@ are deliberately not automated at all — those are the interesting ones.
 
 ### Before the meeting
 
-**0. `/ops brief` — where did this leave off?** One read-only pass: loop position, whether the next
+**0. `/ops orient` — where did this leave off?** One read-only pass: loop position, whether the next
 agenda exists, chain integrity, **whether a session was recorded and never written up** (CR-087), what
 is carrying and what is unowned, how stale the archives are, what is staged and unsent. Run it when picking a project up cold, before deciding what the session is for.
 
@@ -919,14 +951,14 @@ comes from a person having disagreed with it.
 
 Two recordings of one meeting is the normal case, not the exception — one per capturing tool, differing
 in length and speaker resolution. Present `document_id`, title, duration and transcript variant with a
-recommendation; **do not choose.** Record the chosen id in the note, so the record says which recording
+recommendation; **do not choose.** Record the chosen id in the summary, so the record says which recording
 it came from.
 
-**5. `/ops` — one pass produces the note, the registers and one CHANGELOG line.**
+**5. `/ops` — one pass produces the summary, the registers and one CHANGELOG line.**
 
-Step 9 then runs post-processing as configured. **The note ends with `## Carried forward`** — that
+Step 9 then runs post-processing as configured. **The summary ends with `## Carried forward`** — that
 section is what tomorrow's agenda is built from, so a note without it silently ends the chain.
-`/ops lint` checks that chain; it is the only defect in this loop that does not announce itself.
+`/ops check` checks that chain; it is the only defect in this loop that does not announce itself.
 
 **6. The recap is offered, not written** — see Step 9, *Generate Post-Meeting Recap*. Say what it would
 carry and wait to be asked. It is the one artifact that leaves the building; assembled automatically
@@ -960,17 +992,28 @@ about people — drafted by `prepare` (CR-082) but never finished by it;
 choosing between duplicate transcripts is a judgement the machine cannot make honestly;
 and the recap is asked for rather than produced. None of the three is an unbuilt feature.
 
-## WHEN TO USE /OPS vs /OPS PREPARE vs /TRANSCRIPT
+## WHEN TO USE /OPS vs /PREPARATION vs /TRANSCRIPT
 
-- **`/ops prepare`**: Use **before** a team meeting to create a structured preparation with status tracking. Pulls context from recent meetings and tasks. Optionally incorporates pre-submitted async updates from team members. Outputs one file (`preparation`/`förberedelse`) by default, or two files (`facilitator` + `agenda`) when the meeting type is configured `preparation_mode: dual`.
-- **`/ops`**: Use **after** a meeting to process content into structured documentation (summary, changelog, README, task matrix, meetings index, task import, dashboard). Recommended default for all org meetings. Automatically marks any preparation file as superseded.
-- **`/transcript`**: Use for ad-hoc recordings, personal calls, or contexts without an ops config. Produces summary + changelog + optional task import only.
+Two loop steps have two doors each. The door depends on whether the folder has a config:
+
+| Loop step | Without a config (a contact) | With a config (a project) |
+|---|---|---|
+| prepare | `/preparation` | `/ops prepare` |
+| process | `/transcript` | `/ops process` (the default) |
+
+- **`/ops prepare`**: **before** a team meeting. Writes the agenda — generated by `build_agenda.py`
+  where the loop is wired (Step P0), from the template otherwise — plus the facilitator sheet when the
+  meeting type is `preparation_mode: dual`.
+- **`/ops process`**: **after** a meeting. The summary, changelog, README, ledger, meetings index and
+  task import, as the folder declares. Marks the agenda (and any legacy preparation file) superseded.
+- **`/transcript`**: ad-hoc recordings, personal calls, folders with no config. Summary + changelog +
+  optional task import only.
 
 **Flow:**
 ```
-/ops prepare standup     → creates preparation (before meeting)
+/ops prepare standup     → the agenda (before the meeting)
 [meeting happens]
-/ops [transcript]        → creates summary, marks prep as superseded (after meeting)
+/ops process <content>   → the summary; the agenda is marked superseded (after the meeting)
 ```
 
 When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `/transcript` functionality.
@@ -1010,7 +1053,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
 | `workflows.meeting_templates` | Per-meeting-type shape contracts + lint mode (`warn`/`strict`) -- see ops-base Template Contracts (CR-018) |
-| `workflows.post_processing` | Task import, dashboard refresh, optional priorities artifact (`priorities_artifact.enabled`), **recap on request** (`recap_artifact.enabled`), and **carry-forward -> next agenda** (`carry_forward.enabled`, see `build_agenda.py`) after meeting |
+| `workflows.post_processing` | Task import, optional priorities artifact (`priorities_artifact.enabled`), **recap on request** (`recap_artifact.enabled`), and **carry-forward -> next agenda** (`carry_forward.enabled`, see `build_agenda.py`) after meeting |
 | `workflows.rolling_plans` | Participant-triggered per-axis living planning docs (update after a matching 1-on-1) |
 | `domain_additions` | Extra sections to add to summaries |
 | `templates` | Custom template paths |
@@ -1041,8 +1084,8 @@ Before parsing the input, load any promoted **rules** from the `_insights.yaml` 
 
 Extract from the input (transcript, notes, standup content):
 - Participants and their roles -- use name resolution algorithm:
-  - Match against org config `people[]` roster (canonical, aliases) for recurring non-contact persons (CR-017)
-  - Match against org config `team[]` (name, aliases) for internal team
+  - Match against config `people[]` roster (canonical, aliases) for recurring non-contact persons (CR-017)
+  - Match against config `team[]` (name, aliases) for internal team
   - Match against `_contacts/*/_meta.yaml` (display_name, aliases) for external contacts
   - Use resolved canonical names in output (correct spelling, Swedish characters)
   - **Committed-spelling consistency (CR-017):** before saving the summary AND before writing CHANGELOG/README entries, run the folder-precedent near-miss check from `/transcript` ("Committed-spelling consistency" section) -- compare draft names and anomalous proper nouns against the target folder's recent files and CHANGELOG; use the established spelling when it resolves, flag both forms when it doesn't, never silently introduce a spelling variant. CHANGELOGs are how misspellings propagate; this check gates them too.
@@ -1100,7 +1143,7 @@ For `changelog`, follow the format in ops-base. Always reference the meeting sum
 
 ### What the skill does, and what a project configures (CR-084)
 
-Printed by `/ops help` and `/ops brief` for the active project, so the split is visible rather than
+Printed by `/ops help` and `/ops orient` for the active project, so the split is visible rather than
 remembered. A second user of this skill needs to know which half is theirs.
 
 | The skill — the same for every project | The project — its config and templates |
@@ -1271,7 +1314,7 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
 
 1. **The daily note ends with `## Carried forward`** -- one line per item that did not land. This is a
    contract, not a habit: the section is what the next agenda is built from, so a note without it
-   silently ends the chain. **`/ops lint` verifies it** (lint step 5) -- write the section even on a day
+   silently ends the chain. **`/ops check` verifies it** (lint step 5) -- write the section even on a day
    when nothing carried, because an empty section and an absent one mean different things.
 
    **Where nothing carried, say so in the section.** An omitted section is indistinguishable from a note
@@ -1346,18 +1389,18 @@ matches the `-appendix` file, `bi-weekly-*` matches the `-preparation`. Treating
 would read next week's intentions as last week's record. The round table is built from the `people` roster, so the
 mechanism is identical across series and only the labels differ.
 
-#### Dashboard Refresh (if `dashboard_refresh.enabled`)
-1. After all file updates and task imports are complete
-2. Regenerate the org dashboard using the same logic as `/daily-dashboard {org}`
-3. Update symlinks
+#### Dashboard Refresh -- retired (v1.79.0, CR-089)
+
+`/daily-dashboard` has left the suite. If `dashboard_refresh.enabled` is still set, print one line —
+`dashboard_refresh is retired; remove it from <config file>` — and continue. The key is read for one
+release so no config fails, then ignored.
 
 #### Mark Preparation as Superseded + Bidirectional Link (CR-005, always)
 
 After the meeting summary is created, check if a preparation file exists for this meeting:
 
 1. **Search** the same folder as the meeting summary for files matching any of these patterns where `YYMMDD` matches the meeting date:
-   - `YYMMDD-förberedelse-*` (single mode, Swedish)
-   - `YYMMDD-preparation-*` (single mode, English)
+   - `YYMMDD-förberedelse-*` and `YYMMDD-preparation-*` (single mode, legacy keywords — still read)
    - `YYMMDD-facilitator-*` (dual mode, private)
    - `YYMMDD-agenda-*` (dual mode, visible)
 2. **If found** (one or more files match), insert a blockquote at the very top of EACH matching file (before the H1 heading):
@@ -1370,13 +1413,13 @@ After the meeting summary is created, check if a preparation file exists for thi
 3. **Also write a back-link in the meeting summary** (CR-005): add a line in the metadata footer of the summary file pointing to the preparation file(s). For dual mode, link both files:
 
 ```markdown
-*Preparation: [YYMMDD-förberedelse-filename.md](YYMMDD-förberedelse-filename.md)*
+*Preparation: [YYMMDD-agenda-filename.md](YYMMDD-agenda-filename.md)*
 ```
 
 or for dual mode:
 
 ```markdown
-*Preparation: [agenda](YYMMDD-agenda-filename.md) | [facilitator notes](YYMMDD-facilitator-filename.md)*
+*Preparation: [agenda](YYMMDD-agenda-filename.md) | [facilitator sheet](YYMMDD-facilitator-filename.md)*
 ```
 
 This creates **bidirectional traceability** -- prep -> transcript and transcript -> prep -- so a reader landing on either file can navigate to its counterpart.
@@ -1601,14 +1644,14 @@ When `issue_id_format` is configured, assign IDs to discovered issues following 
 - Follow project CLAUDE.md conventions for all file paths and names
 - Only CHANGELOG.md and README.md are uppercase; all other files use lowercase
 - Use hyphens between words in filenames
-- Default meeting filename: `YYMMDD-participants-description.md`
-- **Slug contract (CR-021):** keep å/ä/ö in filenames (never transliterate or digit-substitute), always `YYMMDD-` prefix, always include the role keyword (`samtal`/`förberedelse`/`agenda`/`facilitator`/...), run the Swedish driftword check against the slug before saving. Full contract in ops-base General Naming Rules; retroactive cleanup via `/ops normalize --filenames`.
+- Default meeting filename: `YYMMDD-summary-<participants>-<description>.md` — unless the series declares a `note_suffix`, which always wins
+- **Slug contract (CR-021):** keep å/ä/ö in filenames (never transliterate or digit-substitute), always `YYMMDD-` prefix, always include the role keyword — English, from `terms:` (`summary`/`agenda`/`facilitator`/`recap`/`priorities`/`handoff`, CR-089; files written earlier with `samtal`/`förberedelse`/`preparation`/`sammanfattning`/`möte` are never renamed and are still read), run the Swedish driftword check against the slug before saving. Full contract in ops-base General Naming Rules; retroactive cleanup via `/ops normalize --filenames`.
 
 ---
 
 ## FALLBACK BEHAVIOUR
 
-When no org config is found:
+When no config is found:
 - Use base.yaml defaults
 - Create meeting summary only (`update_files: [summary]`)
 - Use TWO-TIER format from CLAUDE.md (or sensible default if no CLAUDE.md)
@@ -1670,7 +1713,7 @@ In meeting summaries, add a "Related:" section after the preview/context links:
 ```markdown
 **Related:**
 - [Presentation Title (PDF)](../.attachments/YYMMDD-filename.pdf)
-- [Preparation](YYMMDD-preparation-org-type.md)
+- [Agenda](YYMMDD-agenda-org-type.md)
 ```
 
 ### Workflow

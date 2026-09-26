@@ -193,6 +193,15 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 32 (CR-089, 2026-09-26): one term per concept. NOT additive:
+#   `terms:` declares every concept once (English identifier, localized attribute,
+#   loop verb, filename keyword, legacy filename keywords, phrases to avoid);
+#   working_loop steps `archive` -> `fetch` and `agenda` -> `prepare`, every step's
+#   command names a command; subcommands renamed to the loop verbs with the old
+#   names declared as `aliases` for one release; daily-dashboard retired and md2pdf
+#   moved out of the suite (registry 12 -> 10 invocable); registry in loop order;
+#   `filename_role_keyword` rule. Clients on 31 see two fewer skills and two
+#   renamed step ids; nothing in a vault is renamed.
 # contract_version 9 (CR-047, 2026-09-21): outbound_dispatch block — declares the
 #   tools that deliver staged material, the channels they use, and what each
 #   may write. Also declares <venture>/.teamschats/
@@ -215,8 +224,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 31
-core_skills_version: "1.78.0"
+contract_version: 32
+core_skills_version: "1.79.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -281,55 +290,105 @@ contact_classification:
 
 # --- Skills registry ---
 skills:
+  # Declared in LOOP ORDER (CR-089): the landing page renders this order, so this is
+  # the one place it is set. Subcommands are the loop's verbs; `aliases` maps an old
+  # name to its new one for one release and is removed in the release after.
   user_invocable:
-    - name: ops
-      description: "Unified meeting and operations processing — config-driven for any organization."
-      badge: Primary
-      subcommands: [status, prepare, normalize, lint, sweep, help]
-    - name: transcript
-      description: "Process and summarize transcriptions from calls, meetings, or voice recordings."
-      badge: Lightweight
+    - name: inbox
+      description: "Universal entry point for unstructured content — classifies and routes. Maintains the triage working surface (CR-022)."
+      badge: Capture
+      subcommands: [status, route, triage, help]
+      aliases: {process: route}
     - name: preparation
-      description: "Create structured meeting preparation documents with walk-in agenda card."
+      description: "The config-free form of /ops prepare: an agenda for a meeting with a contact, with a walk-in card on top."
       badge: Context
+      subcommands: [help]
+    - name: transcript
+      description: "The config-free form of /ops process: a summary from a transcript of a call, meeting or voice recording."
+      badge: Lightweight
+      subcommands: [help]
+    - name: ops
+      description: "The config layer over prepare and process, plus orient, check and project set-up — config-driven for any organization."
+      badge: Primary
+      subcommands: [process, prepare, orient, check, status, project list, project new, normalize, help]
+      aliases: {brief: orient, lint: check, sweep: check, projects: project list}
+    - name: outbox
+      description: "Lifecycle management for `_outbox/` items — list pending, close resolved ones into their contact or project folder."
+      badge: Utility
+      subcommands: [list, status, close, close --all-sent, help]
+      aliases: {archive: close}
     - name: tasks
       description: "Personal task tracker with cross-project correlation."
       badge: Tracking
-      subcommands: [show, add, done, import, weekly, archive, migrate]
-    - name: daily-dashboard
-      description: "Daily meeting and task dashboard with quick-access symlinks."
-      badge: Overview
+      subcommands: [list, add, done, import, weekly, archive, help]
+      aliases: {show: list}
+    - name: handoff
+      description: "Frozen, self-contained context documents in `.handoff/` — bounded subjects a different work session can pick up cold. Human-actioned only; no skill reads them."
+      badge: Utility
+      subcommands: [list, read, help]
     - name: insights
       description: "Knowledge extraction manager and skill evolution engine."
       badge: Knowledge
-      subcommands: [reprocess, scan-claude-md, compile, normalize, synthesize, propose, status, help]
+      subcommands: [reprocess, scan-claude-md, compile, migrate, synthesize, propose, status, help]
+      aliases: {normalize: migrate}
     - name: analytics
       description: "Vault-level content analytics — trends, skill adoption, contact engagement, backlog."
       badge: Knowledge
       subcommands: [overview, skills, contacts, pipeline, backlog, help]
-    - name: inbox
-      description: "Universal entry point for unstructured content — classifies and routes. Maintains the triage working surface (CR-022)."
-      badge: Capture
-      subcommands: [status, process, triage, help]
-    - name: md2pdf
-      description: "Convert markdown to styled PDFs. Supports Mermaid, tables, outbox packaging."
-      badge: Utility
     - name: update-skills
       description: "Skill repo management — fetch, pull, symlink, health audit."
       badge: Utility
-    - name: outbox
-      description: "Lifecycle management for `_outbox/` items — list pending, archive resolved into contact/project folders."
-      badge: Utility
-      subcommands: [list, status, archive, archive --all-sent, help]
-    - name: handoff
-      description: "Frozen, self-contained context snapshots in `.handoff/` — bounded subjects a different work session can pick up cold. Human-actioned only; no skill reads them."
-      badge: Utility
-      subcommands: [list, read, help]
+      subcommands: [update, check, status, install, help]
   non_invocable:
     - name: ops-base
       description: "Shared operational framework (meeting formats, task management, workflows)."
     - name: ops-config
       description: "Configuration system — schema definition and base defaults."
+
+# --- Terms (CR-089) ---
+# One entry per concept. `en` is the identifier and is always English; `sv` (and any
+# other language column) is the only permitted localized form of it. `verb` is the loop
+# step that produces the thing. `file` is the filename role keyword for new files;
+# `legacy_file` lists older keywords every reader still accepts (forward only: nothing is
+# renamed). `avoid` holds phrases scripts/check-terms.py rejects in skill prose - kept to
+# phrases that can be replaced mechanically; a word with a legitimate second meaning is
+# explained in `note` instead of being banned.
+terms:
+  # places
+  - {id: vault, en: vault, sv: valv}
+  - {id: venture, en: venture, sv: verksamhet, note: "a top-level business folder; the config key `organization` keeps its name"}
+  - {id: project, en: project, sv: projekt, note: "a folder whose config runs the loop"}
+  - {id: contact, en: contact, sv: kontakt, note: "a folder under _contacts/, with no config"}
+  - {id: config, en: config, sv: konfiguration, note: "the resolved chain: project, _ops.yaml, _config/base.yaml, defaults", avoid: ["org config", "org configs", "ops config", "ops configs"]}
+  # meetings
+  - {id: meeting, en: meeting, sv: möte, note: "one occurrence: a meeting, a call or a recording"}
+  - {id: series, en: series, sv: serie}
+  - {id: session, en: session, sv: session, note: "a Claude Code session; in older text also a meeting of a series"}
+  - {id: transcript, en: transcript, sv: transkript, note: "the input; the raw copy lives in .transcripts/", avoid: ["raw transcript"]}
+  - {id: summary, en: summary, sv: sammanfattning, verb: process, file: summary, legacy_file: [samtal, sammanfattning, möte], note: "the config keys note_suffix keep their name", avoid: ["the note", "the notes"]}
+  - {id: agenda, en: agenda, sv: agenda, verb: prepare, file: agenda, legacy_file: [förberedelse, preparation]}
+  - {id: facilitator-sheet, en: facilitator sheet, sv: facilitatorsblad, verb: facilitate, file: facilitator, avoid: ["facilitator notes", "facilitator file", "facilitator files"]}
+  - {id: carry-forward, en: carry-forward, sv: överföring, verb: carry, avoid: ["carried items", "carry-over"]}
+  - {id: recap, en: recap, sv: recap, verb: recap, file: recap}
+  - {id: priorities, en: priorities, sv: prioriteringar, file: priorities}
+  # work and knowledge
+  - {id: task, en: task, sv: uppgift, note: "the action-table column (Action / Åtgärd) is a template-contract heading (CR-018) and keeps its label"}
+  - {id: ledger, en: ledger, sv: uppgiftsregister, note: "where tasks live; matches workflows.task_ledger"}
+  - {id: index, en: index, sv: index, note: "the generated _INDEX-* files; a project REGISTRY (CR-086) is a different, hand-written thing"}
+  - {id: insight, en: insight, sv: insikt}
+  - {id: rule, en: rule, sv: regel, note: "an insight confirmed often enough to be loaded as a standing instruction (CR-013)"}
+  - {id: convention, en: convention, sv: konvention, note: "the contract's rules for the vault (vault_conventions)"}
+  - {id: wiki, en: wiki, sv: wiki, verb: compound, avoid: ["knowledge base"]}
+  - {id: handoff, en: handoff, sv: överlämning, file: handoff}
+  # movement and retirement
+  - {id: fetch, en: fetch, sv: hämta, verb: fetch, note: "an external system into a local archive; component ids keep 'archiver'"}
+  - {id: archive, en: archive, sv: arkiv, note: "the fetched local copy only"}
+  - {id: snapshot, en: snapshot, sv: ögonblicksbild, note: "a dated file inside an archive"}
+  - {id: retire, en: retire, sv: pensionera, note: "to .archive/ or a tombstone; the folder keeps its name"}
+  - {id: close, en: close, sv: stänga, note: "a resolved outbox item, filed with its recipient"}
+  # command names kept as names
+  - {id: ops, en: ops, kind: command_name, note: "the config layer; the suite's major part"}
+  - {id: preparation, en: preparation, kind: command_name, note: "the config-free form of /ops prepare"}
 
 # --- Output artifacts ---
 # (Legacy flat list kept for back-compat with contract_version 1 clients.
@@ -344,7 +403,6 @@ output_artifacts:
     - "_analytics/"
     - "_inbox/"
     - "_outbox/"
-    - "_Dashboard.md"
     - "_tasks.yaml"
     - "_tasks-history.md"
 
@@ -470,9 +528,9 @@ vault_conventions:
     - path: "_outbox/"
       purpose: "Staging for outgoing material (CR-047). One folder per send event, or a loose .md for a single message. Each folder carries a _manifest.md declaring status, channel, contact and canonical source — that manifest is the contract any dispatcher reads. Those are the FIELD NAMES; the label each is written under follows the vault language (a Swedish vault writes Status, Kanal, Kontakt, Kanonisk källa) and belongs in a dispatcher's vocabulary file, not in its code"
       schema: null  # filesystem layout, not YAML
-      writers: ["/ops", "/md2pdf", "user (manual)"]
+      writers: ["/ops", "user (manual)", "any tool that writes a manifest per this contract"]
       readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "vaultpulse/trillian", "the local mail client", "user"]
-      lifecycle: "staged -> sent -> archived by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `archive --all-sent` — see outbound_dispatch.known_gaps"
+      lifecycle: "staged -> sent -> closed by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `close --all-sent` — see outbound_dispatch.known_gaps"
 
     - path: "_outbox/<item>/_manifest.md"
       purpose: "The per-item contract every dispatcher reads: status, channel, contact, classification, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
@@ -570,7 +628,7 @@ vault_conventions:
       purpose: "Vault-root task aggregation (legacy from v1 schema)"
       schema: "tasks v2"
       writers: ["/tasks"]
-      readers: ["/tasks", "/daily-dashboard", "marvin"]
+      readers: ["/tasks", "marvin"]
       lifecycle: "deprecated in favour of per-folder _tasks.yaml; kept for back-compat"
 
     - path: "_INDEX-*.md"
@@ -581,13 +639,6 @@ vault_conventions:
       lifecycle: "regenerated in full on each sweep — a hand edit is lost silently, which is why write_ownership names it GENERATED"
       placement: singleton
 
-    - path: "_Dashboard.md"
-      purpose: "Daily dashboard composition"
-      schema: null  # markdown; structure documented in /daily-dashboard SKILL.md
-      writers: ["/daily-dashboard"]
-      readers: ["user", "marvin"]
-      lifecycle: "regenerated daily"
-
   # Files that may appear in any folder in the vault.
   per_folder:
     - path: "<folder>/_ops.yaml"
@@ -595,7 +646,7 @@ vault_conventions:
       schema: "skills/ops-config/schema.md"
       writers: ["user (manual)", "a dispatching surface may add an external_systems.chats entry, on explicit confirmation and nothing else"]
       note: "The file is hand-written and /ops owns its schema. The one exception is narrow and deliberate: a dispatcher knows first-hand which chat an item was actually sent to, and a chat picked from a live listing of seventy is where a wrong guess costs most. It may offer to record that ONE fact, showing the exact lines first, and may never write on send or infer anything else"
-      readers: ["/ops", "/insights", "/tasks", "/analytics", "/daily-dashboard"]
+      readers: ["/ops", "/insights", "/tasks", "/analytics"]
       lifecycle: "stable; rarely changes"
       # Canonical location as of v1.16.0 (CR-011). Pre-v1.16.0 configs lived in ~/.claude/skills/{org}-ops-config/; that fallback is removed in v1.17.0.
 
@@ -603,7 +654,7 @@ vault_conventions:
       purpose: "Per-folder open tasks (v2 distributed)"
       schema: "tasks v2"
       writers: ["/tasks", "/transcript", "/ops"]
-      readers: ["/tasks", "/daily-dashboard", "marvin"]
+      readers: ["/tasks", "marvin"]
       lifecycle: "live; tasks added/completed/archived in place. MAY BE ABSENT BY DECLARATION (CR-040): see workflows.task_ledger — absence is then deliberate, and the work is tracked in the declared external system"
 
     - path: "<folder>/_insights.yaml"
@@ -617,7 +668,7 @@ vault_conventions:
       purpose: "Folder metadata (esp. _contacts/<name>/ classification)"
       schema: "contact-meta v1.1"
       writers: ["user (manual)", "/ops"]
-      readers: ["/ops", "/insights", "/analytics", "/daily-dashboard"]
+      readers: ["/ops", "/insights", "/analytics"]
       lifecycle: "stable"
 
     - path: "<folder>/_summary.yaml"
@@ -638,7 +689,7 @@ vault_conventions:
       purpose: "Living per-axis planning doc for a recurring 1-on-1 (CR-014); registered in _ops.yaml workflows.rolling_plans"
       schema: "skills/ops-config/schema.md (Rolling Plans); template skills/ops-config/templates/rolling-plan.md"
       writers: ["/ops", "user"]
-      readers: ["/ops", "/daily-dashboard", "user"]
+      readers: ["/ops", "user"]
       lifecycle: "live; participant-triggered update after a matching 1-on-1; completed rows move into the meeting summary"
 
   # Cross-cutting rules that govern multiple files.
@@ -691,7 +742,7 @@ vault_conventions:
     - id: "prefix_conventions"
       level: rule
       exceptions: [".knowledge/", ".handoff/_archive"]
-      rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*, _PLAN-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
+      rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
       test: "is this surface read in everyday work? yes -> underscore, no -> dot"
       not_a_prefix_criterion: "WHO WRITES the surface is a separate property, declared per path, and never a reason for a prefix. _insights.yaml settles this: it is machine-written by /insights yet carries an underscore, because several skills READ it automatically. Generated does not imply dot."
 
@@ -714,6 +765,14 @@ vault_conventions:
     - id: "identifier_language"
       level: rule
       rule: "Identifiers are ENGLISH; the words a person reads may be in any language, and are data rather than literals in code. This covers schema field names, enum values, status keys, config keys, dictionary keys and variable names — everything a second tool must agree with in order to interoperate. Display text (a manifest's Status wording, an external board's column name, a generated view's headings) stays in the vault's working language and lives in a settings or vocabulary file, so changing it is a settings change rather than a code change. Where an identifier and its label were historically the same string, the LABEL keeps the existing spelling: renaming a key costs nothing, while renaming a label changes what an external system or a person sees. A reader meeting a value it does not recognise should tolerate it rather than silently treat it as the default — see task_statuses, where recognising only the canonical set made finished tasks count as outstanding. THIS DECLARATION FOLLOWS ITS OWN RULE: where a field is named here, it is named by its identifier, not by the label a vault happens to write it under. Five entries described a manifest's fields as Status/Kanal/Kontakt until 2026-09-21, which reads as Swedish identifiers in a public contract and invites a tool to hardcode the label."
+
+    - id: "filename_role_keyword"
+      level: rule
+      rule: "A filename is YYMMDD-<role>-<description>.md (CR-089). The ROLE keyword is an identifier — scripts and skills select files by it — so it is ENGLISH and comes from `terms:` (`file:`). The description stays in the working language and keeps å/ä/ö (CR-021). FORWARD ONLY: existing files are never renamed; every reader also accepts the term's `legacy_file:` keywords, and a check flags only files dated on or after the release. A series' declared note_suffix / agenda_suffix always wins over the default keyword, because a series that changed shape mid-history reads as a broken carry-forward chain."
+
+    - id: "one_term_per_concept"
+      level: rule
+      rule: "Every concept has one term, declared once in `terms:` (CR-089). Skill names are nouns (the place or object owned) unless declared `kind: command_name`; subcommands are verbs, or `<object> <verb>`; a verb means the same thing in every skill; the loop's step ids ARE the command verbs; anything outside the loop is named for what it repairs or explains. A localized word not declared in a term's language column is drift. `avoid:` phrases are checked by scripts/check-terms.py."
 
     - id: "write_ownership"
       level: rule
@@ -767,7 +826,7 @@ outbound_dispatch:
 
   known_gaps:
     - id: "archive-of-unsent-items"
-      what: "/outbox archive requires a sent status, so an item decided against — marked as superseded, replaced or withdrawn — can never be archived and stays in _outbox indefinitely"
+      what: "/outbox close requires a sent status, so an item decided against — marked as superseded, replaced or withdrawn — can never be archived and stays in _outbox indefinitely"
       seen: "a steady residue of stop-marked items that nothing files"
       proposal: "Treat a stop-marked manifest as archivable when its outcome section states why. That section already exists (written `## Utfall` in a Swedish vault), and 'not sent, because X' is an outcome"
       owner: "/outbox skill — the dispatcher must not invent a status the skill does not recognise"
@@ -851,7 +910,7 @@ components:
     kind: "local CLI, run on demand or on a schedule"
     documentation_owner: external   # CR-078: Its own CLI and credentials; the contract owns the archive layout
     role: "Archives a declared repository's metadata - issues, releases, commit subjects - into the vault, so a meeting can ask what changed since it last met"
-    reads: ["external_systems.repos in a folder's ops config", "a hosting platform's API, through its own CLI"]
+    reads: ["external_systems.repos in a folder's config", "a hosting platform's API, through its own CLI"]
     writes: ["<venture>/.githubmeta/ — the archive", "<venture>/.githubmeta/_fetch.json — the fetch record (CR-088)"]
     depends_on: ["the hosting platform's CLI, already authenticated"]
     note: "Metadata only, never the code: a vault holds the record of work, not the work. Carries no credential of its own - a second auth path for one account is a second thing to rotate"
@@ -860,7 +919,7 @@ components:
     kind: "local CLI, run on demand or on a schedule"
     documentation_owner: external   # CR-078: Same as its siblings: shape declared here, tool documents itself
     role: "Archives a declared issue board's metadata - issues with their status and assignee, released versions - into the vault, so a meeting can ask where work stands without opening the tracker"
-    reads: ["external_systems.jira in a folder's ops config", "the issue tracker's REST API"]
+    reads: ["external_systems.jira in a folder's config", "the issue tracker's REST API"]
     writes: ["<venture>/.jirameta/ — the archive", "<venture>/.jirameta/_fetch.json — the fetch record (CR-088)"]
     depends_on: ["an API token held outside the vault"]
     note: "Metadata only - an issue's description and comments are the conversation itself and stay in the tracker. Read-only by construction: every call is a GET, so the archive can never become a participant in the work it records. UNLIKE its GitHub sibling it holds a credential, because the tracker has no already-authenticated CLI to borrow - the one place the pattern is less clean (CR-074). A fetch that hits its cap declares itself partial rather than recording a truncated board as a complete one"
@@ -868,7 +927,7 @@ components:
   - id: "inventory scanner"
     kind: "local script, run on demand"
     documentation_owner: external   # CR-078: A local script; the contract owns the vault files it produces
-    role: "Sweeps the machines a vault describes and regenerates the registers that say what runs where"
+    role: "Sweeps the machines a vault describes and regenerates the index files that say what runs where"
     reads: ["its own machine list — the source of truth for which machines exist"]
     writes: ["_INDEX-*.md — the generated machine and mapping registers"]
     depends_on: []
@@ -995,9 +1054,9 @@ working_loop:
   - id: "orient"
     phase: "when picking it up"
     label: "where it left off"
-    command: "python3 ~/.claude/skills/ops/project_brief.py --dir <project>/meetings"
+    command: "/ops orient <folder>"
     does: "Reads one folder's current state before any work resumes: loop position and whether the next agenda exists, whether the carry-forward chain is intact, what is carrying and how much of it is unowned, how stale the archives are, what is staged and unsent, and when the record last moved. Read-only - it writes nothing, fetches nothing and caches nothing, because an orientation file that persists can itself go stale and then lie"
-    consumes: ["the note", "_outbox/<item>/_manifest.md", "<venture>/.teamschats/", "<venture>/.githubmeta/"]
+    consumes: ["the summary", "_outbox/<item>/_manifest.md", "<venture>/.teamschats/", "<venture>/.githubmeta/"]
     produces: ["a reading of the current state"]
 
   - id: "declare"
@@ -1005,22 +1064,22 @@ working_loop:
     label: "the folder's config"
     command: "edit <project>/.claude/ops-config.yaml, or the folder's _ops.yaml"
     does: "Declares which chat and repositories the work concerns, which post-meeting artifacts the series wants, and where its task ledger lives"
-    produces: ["the ops config"]
+    produces: ["the config"]
 
-  - id: "archive"
+  - id: "fetch"
     phase: "before the session"
-    label: "the archivers"
+    label: "the fetchers"
     external: true
-    does: "Refresh the chat and repository archives. External CLIs, run on demand - never by a skill"
-    consumes: ["the ops config"]
+    does: "Fetch the chat and repository archives. External CLIs, run on demand or on a schedule - never by a skill"
+    consumes: ["the config"]
     produces: ["<venture>/.teamschats/", "<venture>/.githubmeta/"]
 
-  - id: "agenda"
+  - id: "prepare"
     phase: "before the session"
-    label: "the agenda generator"
-    command: "python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings"
+    label: "the agenda"
+    command: "/ops prepare (runs build_agenda.py where the loop is wired); /preparation without a config"
     does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard"
-    consumes: ["<venture>/.teamschats/", "<venture>/.githubmeta/", "the note's carry-forward section"]
+    consumes: ["<venture>/.teamschats/", "<venture>/.githubmeta/", "the summary's carry-forward section"]
     produces: ["the agenda"]
 
   - id: "facilitate"
@@ -1041,34 +1100,34 @@ working_loop:
   - id: "process"
     phase: "after, the same day"
     label: "one pass over the transcript"
-    command: "/ops <transcript>"
-    does: "The summary, the registers, one changelog line, the raw source archived to .transcripts/ (CR-085), and whatever the folder declared"
-    consumes: ["a transcript", "the ops config"]
+    command: "/ops process <transcript> (the default); /transcript without a config"
+    does: "The summary, the changelog line, the ledger and insights, the raw source archived to .transcripts/ (CR-085), and whatever the folder declared"
+    consumes: ["a transcript", "the config"]
     # CR-085: the raw archive is written unasked and read back only on explicit
     # request. A summary without its source has no arbiter, and the absence
     # cannot announce itself — the summary looks complete either way.
-    produces: ["the note", "the registers", ".transcripts/<stem>-raw.md", "a staged recap"]
+    produces: ["the summary", "the ledger and insights", ".transcripts/<stem>-raw.md", "a staged recap"]
 
   - id: "carry"
     phase: "after, the same day"
-    label: "the note's carry-forward"
-    command: "written into the note by /ops; verified by /ops lint <folder>"
+    label: "the summary's carry-forward"
+    command: "written into the summary by /ops process; verified by /ops check <folder>"
     does: "What did not land becomes the top of the next agenda. This is where the loop closes"
-    consumes: ["the note"]
-    produces: ["the note's carry-forward section"]
+    consumes: ["the summary"]
+    produces: ["the summary's carry-forward section"]
 
   - id: "recap"
     phase: "after, the same day"
     label: "the recap"
     does: "Offered rather than written: assembled from the narrowest of three inputs it would be confidently incomplete, and invisibly so to a reader with no transcript to check it against"
-    consumes: ["the note"]
+    consumes: ["the summary"]
     manual: true
     why_manual: "Whether a session warrants a recap is a judgement about the audience, not about the material"
 
   - id: "send"
     phase: "after, the same day"
     label: "staging and sending"
-    command: "/outbox list, then /outbox archive <folder> once resolved"
+    command: "/outbox list, then /outbox close <folder> once resolved"
     does: "Staged as a folder with a manifest; a dispatching surface delivers it and records what it did"
     consumes: ["a staged recap"]
     produces: ["_outbox/<item>/_manifest.md"]
@@ -1094,14 +1153,14 @@ working_loop:
     label: "the knowledge loop"
     command: "/insights compile, then /insights synthesize"
     does: "Confirmed hypotheses become standing rules; the corpus renders to a wiki"
-    consumes: ["the registers"]
+    consumes: ["the ledger and insights"]
 
   - id: "check"
     phase: "weekly"
     label: "the shape checks"
-    command: "/ops lint <folder>, then /ops sweep"
-    does: "Lint finds a broken carry-forward chain; sweep finds closure debt. Both catch the failures that announce nothing"
-    consumes: ["the note", "the registers"]
+    command: "/ops check <folder>, then /ops check"
+    does: "On a folder it finds a broken carry-forward chain and template forks; on the vault it finds closure debt. Both catch the failures that announce nothing"
+    consumes: ["the summary", "the ledger and insights"]
 
 visualisation_features:
   - id: dashboard

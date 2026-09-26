@@ -598,7 +598,6 @@ Data flow:
 Related skills:
   /insights          Extract knowledge FROM file contents
   /insights status   Count _insights.yaml coverage
-  /daily-dashboard   Daily view (today's meetings + tasks)
   /analytics         Longitudinal view (trends over time)
 ```
 

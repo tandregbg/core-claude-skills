@@ -15,9 +15,9 @@ Configs are resolved in priority order (first match wins):
 3. **Vault-wide** (CR-011, optional): `<vault-root>/_config/base.yaml` if present
 4. **Skill defaults**: `~/.claude/skills/ops-config/base.yaml`
 
-### Deprecated: skill-based org configs
+### Deprecated: skill-based configs
 
-The previous chain step "Org config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`" is **deprecated as of v1.16.0**. If a `*-ops-config` skill is still present (`~/.claude/skills/acme-ops-config/`, `bravo-ops-config/`, `delta-ops-config/`), it remains a fallback between step 3 and step 4 with a one-time deprecation warning per session. The fallback is removed entirely in v1.17.0.
+The previous chain step "Config skill: `~/.claude/skills/{org}-ops-config/{org}.yaml`" is **deprecated as of v1.16.0**. If a `*-ops-config` skill is still present (`~/.claude/skills/acme-ops-config/`, `bravo-ops-config/`, `delta-ops-config/`), it remains a fallback between step 3 and step 4 with a one-time deprecation warning per session. The fallback is removed entirely in v1.17.0.
 
 Migration: copy `<skill>/{org}.yaml` -> `<vault>/<org>/_ops.yaml`. See CHANGELOG `[1.16.0]` `### Migration` for the exact steps.
 
@@ -38,7 +38,7 @@ The `/ops` skill reads config to:
 - Apply organization-specific terminology
 - Execute configured workflows (file updates, action propagation, agenda management, post-processing)
 
-### Creating New Org Configs (CR-011)
+### Creating a New Config (CR-011)
 
 Drop a `_ops.yaml` in the org's vault folder:
 

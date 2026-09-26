@@ -11,9 +11,20 @@ Generate a structured preparation document for an upcoming meeting or call. Pull
 
 **Standalone skill** -- works with any vault that uses a `_contacts/` directory containing contact folders (e.g. `_contacts/firstname-lastname/`).
 
-**Integration:** Output files follow the `YYMMDD-{strings.filename_keywords.preparation}-*.md` naming convention (`förberedelse` in Swedish, `preparation` in English), which `/daily-dashboard` picks up automatically.
+**Integration:** Output files follow the `YYMMDD-{strings.filename_keywords.preparation}-*.md` naming convention — `agenda` in every language since CR-089 (older `förberedelse`/`preparation` files are still read).
 
 ---
+
+
+## Subcommands
+
+### `/preparation <input>` (the default)
+
+Write the agenda for a meeting with a contact — the config-free form of `/ops prepare`. The argument parsing below is that one action.
+
+### `/preparation help`
+
+Print usage: the input this skill takes, the file it writes (`YYMMDD-agenda-<description>.md`), and when to use `/ops` instead — a folder with a config.
 
 ## Argument Parsing
 
@@ -272,7 +283,7 @@ Every agenda item in the walk-in card must start with one of these five tags. Th
 | `[QUESTION]` | Information you need from them | `[QUESTION] Vad blockerar API-migreringen?` |
 | `[FYI]` | Briefing only, no action expected | `[FYI] USA-konvertering siffror` |
 
-**Resolved labels** come from `strings.agenda_tags` in the org config (English defaults: DECISION/DEMO/STATUS/QUESTION/FYI; Swedish: BESLUT/DEMO/STATUS/FRÅGA/FYI).
+**Resolved labels** come from `strings.agenda_tags` in the config (English defaults: DECISION/DEMO/STATUS/QUESTION/FYI; Swedish: BESLUT/DEMO/STATUS/FRÅGA/FYI).
 
 **Format rules:**
 - One tag per item, written in square brackets at the start
@@ -411,9 +422,10 @@ Do **not** infer intent from behavioural signals (when the counterpart booked, f
 
 Format: `YYMMDD-{strings.filename_keywords.preparation}-[context].md`
 
-The filename keyword is resolved from the string table based on the determined language:
-- **Swedish:** `förberedelse` -> `260219-förberedelse-samtal-Alex-David-Ekberg.md`
-- **English:** `preparation` -> `260219-preparation-daily-standup.md`
+The keyword is `agenda` in every language (CR-089): a role keyword is an identifier that scripts
+select files by, so it comes from `terms:` in English, while the rest of the filename stays in the
+working language. Files written earlier as `förberedelse`/`preparation` are never renamed and are
+still found by every reader.
 
 **Contact name in filename:**
 - If `_meta.yaml` exists, use `display_name` (e.g., "David Ekberg" -> `David-Ekberg`)
@@ -422,14 +434,13 @@ The filename keyword is resolved from the string table based on the determined l
 
 The `[context]` part should be descriptive but concise. Examples:
 
-Swedish:
-- `260219-förberedelse-samtal-Alex-David-Ekberg.md`
-- `260220-förberedelse-samtal-Alex-Bob-Lindgren.md`
-- `260219-förberedelse-möte-erik-sandberg-antigravity-doable.md`
+Swedish-language folder:
+- `260219-agenda-Alex-David-Ekberg.md`
+- `260219-agenda-erik-sandberg-antigravity-doable.md`
 
-English:
-- `260303-preparation-daily-standup.md`
-- `260219-preparation-meeting-erik-sandberg.md`
+English-language folder:
+- `260303-agenda-daily-standup.md`
+- `260219-agenda-erik-sandberg.md`
 
 Use lowercase with hyphens. Include participants and optionally the main topic if there is a clear focus.
 
@@ -479,7 +490,7 @@ Template strings marked as `{strings.section.key}` are resolved at runtime.
 
 **Resolution order:**
 
-1. **Org config `strings` section** (if loaded via `/ops`, `/daily-dashboard orgname`, or project config)
+1. **Config `strings` section** (if loaded via `/ops` or project config)
 2. **Language-matched defaults from `base.yaml`:**
    - `swedish` -> `strings_sv`
    - `english` -> `strings`
@@ -497,15 +508,15 @@ When no config is loaded (standalone use in a personal vault), the hardcoded Swe
 
 Determine the output language **before** generating any content. Check these rules top-to-bottom, use the first match:
 
-1. **Org config `language: per_claude_md`** -- Look up the **target file path** in the project CLAUDE.md LANGUAGE POLICY table. The table maps file locations to languages. For example, if CLAUDE.md says `projects/acme-mobile-v3/meetings/` -> English, then a preparation file saved there MUST be in English. This is the most common source of language errors -- always check the target path, not just the vault default.
+1. **Config `language: per_claude_md`** -- Look up the **target file path** in the project CLAUDE.md LANGUAGE POLICY table. The table maps file locations to languages. For example, if CLAUDE.md says `projects/acme-mobile-v3/meetings/` -> English, then a preparation file saved there MUST be in English. This is the most common source of language errors -- always check the target path, not just the vault default.
 
-2. **Org config `language: english` or `language: swedish`** -- Use the explicitly configured language.
+2. **Config `language: english` or `language: swedish`** -- Use the explicitly configured language.
 
-3. **Org config `language: input`** -- Match the detected language of existing files in the target folder.
+3. **Config `language: input`** -- Match the detected language of existing files in the target folder.
 
-4. **No org config, target folder has existing files** -- Match the language of existing files in the folder (check the most recent 2-3 files).
+4. **No config, target folder has existing files** -- Match the language of existing files in the folder (check the most recent 2-3 files).
 
-5. **No org config, no existing files** -- Default to **Swedish** (personal vault convention).
+5. **No config, no existing files** -- Default to **Swedish** (personal vault convention).
 
 ### Rules
 
@@ -538,9 +549,8 @@ The same skill must produce the correct language for each context. When in doubt
 ## Notes
 
 - The skill works with the `_contacts/contact-name/` folder structure -- no special setup needed
-- Also works within org vaults (e.g., `acme/projects/*/meetings/`) when invoked via `/ops` -- language is determined by the org config and CLAUDE.md policy
+- Also works within org vaults (e.g., `acme/projects/*/meetings/`) when invoked via `/ops` -- language is determined by the config and CLAUDE.md policy
 - Previous preparations provide continuity: the skill checks what was prepared last time and what actually happened
-- The `/daily-dashboard` skill automatically discovers files with `förberedelse` or `preparation` in the filename (scans for both keywords)
-- Preparations can be created days in advance -- they will show up in the dashboard on the target date
+- Agendas can be created days in advance
 - The numbered topic sections are the most valuable part -- they structure the conversation and prevent important items from being missed
 - Full meeting lifecycle: `/preparation` (before) -> meet -> `/ops` or `/transcript` (after) -> preparation auto-marked as superseded

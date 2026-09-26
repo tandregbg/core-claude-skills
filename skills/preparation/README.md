@@ -25,9 +25,8 @@ Create structured meeting preparation documents from contact history.
 
 ## Output
 
-- File: `YYMMDD-förberedelse-[context].md` saved in the contact folder
+- File: `YYMMDD-agenda-[context].md` saved in the contact folder (older files: `förberedelse`/`preparation`)
 - Optional: CHANGELOG.md entry in the contact folder
-- Automatically discovered by `/daily-dashboard` on the target date
 
 ## Document Structure
 
@@ -44,7 +43,6 @@ After the meeting, the preparation can be updated with `[UTFALL]` annotations, n
 ## Integration
 
 - Works with any vault using `_contacts/` folder conventions
-- Files picked up by `/daily-dashboard` via filename pattern matching
 - Complements `/transcript` for the full meeting lifecycle: prepare -> meet -> transcribe
 
 ## See Also

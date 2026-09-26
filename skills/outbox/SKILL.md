@@ -1,8 +1,8 @@
 ---
 name: outbox
-description: Lifecycle management for outgoing material in `_outbox/`. List pending items, archive completed ones into the relevant contact/project folder, and keep manifest, CHANGELOG, and tasks in sync. Use when an outbox item has been sent, replied to, or otherwise resolved -- and the central `_outbox/` should be cleaned up.
+description: Lifecycle management for outgoing material in `_outbox/`. List pending items, close resolved ones into the relevant contact/project folder, and keep manifest, CHANGELOG, and tasks in sync. Use when an outbox item has been sent, replied to, or otherwise resolved -- and the central `_outbox/` should be cleaned up.
 user-invocable: true
-argument-hint: [list | status | archive <folder-name> | help]
+argument-hint: [list | status | close <folder-name> | close --all-sent | help]
 ---
 
 # Outbox Skill
@@ -121,7 +121,7 @@ the end is an item whose sentences were composed for the wrong reader.
 ### `Statusnot` — what happened, in words
 
 `Status` is parsed; `Statusnot` is read by people. The status line answers *which
-state is this in*, and a tool matches it with a pattern. The note answers *what
+state is this in*, and a tool matches it with a pattern. The summary answers *what
 actually happened* and takes whatever detail makes the event reconstructable
 later: the channel and time, a published URL, which of several recipients it
 reached, or why a send was partial.
@@ -165,6 +165,8 @@ the author knows the answer, instead of to clean-up time, where nobody does.
 
 ## SUBCOMMANDS
 
+**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/outbox archive is now /outbox close — the old name goes in the next release.`
+
 ### `list` (default if no args)
 
 **Trigger:** `/outbox` or `/outbox list`
@@ -191,7 +193,7 @@ MISSING KANONISK KÄLLA (fill in — copy or original?)
   260503-someone_topic            skickad 260503      saknar Kanonisk källa
 ```
 
-For each resolution-ready item, suggest: `/outbox archive <folder-name>`.
+For each resolution-ready item, suggest: `/outbox close <folder-name>`.
 
 If a folder has no `_manifest.md`, flag for manual review -- don't auto-classify.
 
@@ -199,9 +201,9 @@ If a folder has no `_manifest.md`, flag for manual review -- don't auto-classify
 
 Alias for `list`.
 
-### `archive <folder-name>`
+### `close <folder-name>` (was `archive`)
 
-**Trigger:** `/outbox archive 260427-bob-lindgren_acme`
+**Trigger:** `/outbox close 260427-bob-lindgren_acme`
 
 **Steps:**
 
@@ -254,15 +256,15 @@ Alias for `list`.
      - _contacts/bob-lindgren/<samtal>.md (1 reference)
    ```
 
-### `archive --all-sent` (CR-019)
+### `close --all-sent` (CR-019; was `archive --all-sent`)
 
-**Trigger:** `/outbox archive --all-sent`
+**Trigger:** `/outbox close --all-sent`
 
-Batch mode over the single-folder `archive` flow, so a backlog of sent items can be closed in one sitting instead of item by item ( `/ops sweep` offers this command when it finds sent-but-unarchived items).
+Batch mode over the single-folder `close` flow, so a backlog of sent items can be closed in one sitting instead of item by item ( `/ops check` offers this command when it finds sent-but-unarchived items).
 
 1. Run the `list` logic and collect every folder whose manifest `Status:` is `skickad ...`.
 2. Present the candidate list up front (folder, destination guess, proposed new name) and let the user confirm all / select / abort.
-3. For each confirmed folder, run the standard `archive <folder-name>` steps 1-9. Per-folder judgement calls (destination for multi-contact items, folder rename) are still asked individually -- batch mode batches the *selection*, not the decisions.
+3. For each confirmed folder, run the standard `close <folder-name>` steps 1-9. Per-folder judgement calls (destination for multi-contact items, folder rename) are still asked individually -- batch mode batches the *selection*, not the decisions.
 4. Final report: one summary table (archived → destination), plus the items skipped and why (unchecked "Svar förväntas på", empty Utfall, missing manifest).
 
 ### `help`
@@ -327,7 +329,7 @@ The skill suggests a default but always asks before renaming. For ambassadörs-s
 ## Integration with other skills
 
 - **`/ops`** -- when ops-skill creates outbox material (preparation, mejl), it stages to `_outbox/`. This skill handles the back end of that flow.
-- **`/transcript`** -- transcripts of follow-up calls/replies that resolve an outbox item should reference the resolution doc, which `/outbox archive` then links to in the manifest's `Utfall` section.
+- **`/transcript`** -- transcripts of follow-up calls/replies that resolve an outbox item should reference the resolution doc, which `/outbox close` then links to in the manifest's `Utfall` section.
 - **`/inbox`** -- mirror skill for incoming material. Same lifecycle pattern.
 - **`/tasks`** -- tasks generated from an outbox item live in the contact's `_tasks.yaml` and survive archiving (paths rewritten).
 

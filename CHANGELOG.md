@@ -9,6 +9,58 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.79.0] - 2026-09-26
+
+### Changed
+
+- **One term per concept, and the loop's verbs are the commands (CR-089, contract 32 — not
+  additive).** The loop page, the commands and the artifacts used three vocabularies for one
+  sequence, two verbs meant two things each, and nothing compared a SKILL.md to the contract — which
+  listed six `/ops` subcommands while the skill documented nine, and the landing page published the
+  six.
+  - **`terms:`** in `ecosystem.yaml`: one entry per concept — English identifier, localized form,
+    the loop step that produces it, the filename role keyword, the legacy keywords still read, and
+    phrases to avoid. A localized word not declared there is drift.
+  - **Loop steps renamed** `archive` → `fetch`, `agenda` → `prepare`; every step's `command:` names
+    a command, never a script path.
+  - **Subcommands renamed to the loop verbs.** `/ops brief` → `orient`, `/ops lint` → `check
+    <folder>`, `/ops sweep` → `check` (`--vault <scope>` for a subtree), `/ops projects` →
+    `project list`, the default is also `/ops process`. Freed verbs: `/insights normalize` →
+    `migrate`, `/inbox process` → `route`, `/outbox archive` → `close`, `/tasks show` → `list`.
+    **Every old name works for one release**, printing one line naming the new one. `help` on every
+    invocable skill.
+  - **`/ops status` shows each project's resolved config**, key by key with the layer it came from,
+    validated against `schema.md` — the one place to see what every project is configured to do.
+  - **Filename role keywords are English in every language, forward only.** New files are
+    `YYMMDD-summary-…` and `YYMMDD-agenda-…`; the description keeps the working language and å/ä/ö.
+    **No existing file is renamed**: `samtal`, `förberedelse`, `preparation`, `sammanfattning` and
+    `möte` stay readable to every reader. A declared `note_suffix` / `agenda_suffix` always wins.
+  - **`rule` stays with the insight lifecycle**; the contract's rules are conventions.
+  - **Registry in loop order**: inbox, preparation, transcript, ops, outbox, tasks, handoff,
+    insights, analytics, update-skills. `/ops`, `/transcript` and `/preparation` keep their names,
+    declared as command names.
+
+### Removed
+
+- **`daily-dashboard` retired.** No recent output on the vault measured, yet seven skills referenced
+  its refresh step. `workflows.post_processing.dashboard_refresh` is read for one release with a
+  removal notice, then ignored. Existing dashboard files are left for the operator to retire.
+- **`md2pdf` moved out of the suite**, to a personal skill repository: no loop step, and no other
+  skill read it. `--outbox` still writes a manifest per the contract.
+- **`/tasks migrate` removed from the contract.** Declared since the first contract, documented
+  nowhere in the skill — the new subcommand check found it.
+- `_PLAN-*` dropped from the prefix convention's examples: root shortcuts are not structure files.
+
+### Added
+
+- **`scripts/check-terms.py`**, run by `check-ecosystem-alignment.sh`: every SKILL.md subcommand
+  heading against the contract (and back), and no `avoid:` phrase in skill prose, the README or the
+  skills comparison. `tests/test_cr089_terms.py`.
+- The alignment check reads the **live landing page's `/version.json`**. It used to read a mount of
+  the retired Flask build and reported `[OK]` against a site nobody was served; the first run of the
+  new check found the live site two releases behind.
+- The README skills table is now compared with the contract's count, not just printed.
+
 ## [1.78.0] - 2026-09-25
 
 ### Added

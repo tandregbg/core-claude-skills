@@ -83,7 +83,7 @@ def series_chain(d: Path, root: Path) -> dict | None:
 def find_series(root: Path) -> list[Path]:
     """Folders that declare themselves a recurring series (CR-072).
 
-    Opt-in, never inferred. `/ops projects` answers *what is wired*, and a
+    Opt-in, never inferred. `/ops project list` answers *what is wired*, and a
     series that lives outside the project trees -- an org-level weekly in a
     meetings folder -- is invisible to it however completely its loop runs.
     Inferring instead of declaring would classify every folder carrying an org
@@ -191,7 +191,7 @@ def main() -> None:
     today = datetime.date.today()
     print(f"Projects — {scanned} folders scanned under {root.name}/\n")
     headings = {
-        "wired": ("LOOP WIRED", "/ops brief and build_agenda.py work here."),
+        "wired": ("LOOP WIRED", "/ops orient and build_agenda.py work here."),
         "configured": ("CONFIGURED, NO LOOP", "/ops processes meetings; the agenda and carry-forward steps do not apply."),
         "material": ("MATERIAL ONLY", "No config. Notes, transcripts, documents — not a pipeline, and often correctly so."),
         "dormant": ("EMPTY OR DORMANT", "No config, no dated notes, no changelog."),

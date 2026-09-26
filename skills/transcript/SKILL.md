@@ -11,13 +11,24 @@ Process the provided transcription following these steps:
 
 > **Råmaterial-spärr (raw-transcript lock):** Step 2.5 sparar alltid det inmatade råmaterialet tyst i en central `.transcripts/`-mapp i vault-roten. Filer i `.transcripts/` är ett **tyst arkiv**: de får ALDRIG läsas tillbaka, citeras, summeras om, eller matas in i `_insights.yaml`/sammanfattningar — om inte användaren EXPLICIT ber om råmaterialet (t.ex. "visa råtexten", "vad sa han ordagrant", "öppna råfilen"). Alla steg som vandrar mappar (Step 0.5 rules-walk, Step 3.5 insights) ska hoppa över `.transcripts/` precis som de hoppar över `.archive/`.
 
+
+## Subcommands
+
+### `/transcript <input>` (the default)
+
+Process a transcript into the summary — the config-free form of `/ops process`. Everything below this section is that one action.
+
+### `/transcript help`
+
+Print usage: the input this skill takes, the file it writes (`YYMMDD-summary-<description>.md`), and when to use `/ops` instead — a folder with a config.
+
 ## String Resolution
 
 Template strings marked as `{strings.section.key}` are resolved at runtime.
 
 **Resolution order:**
 
-1. Org config `strings` section (if loaded)
+1. Config `strings` section (if loaded)
 2. Language-matched defaults from `base.yaml`:
    - `swedish` -> `strings_sv`
    - `english` -> `strings`
@@ -77,7 +88,7 @@ A reader scanning a meeting summary at 08:30 the next morning needs to find what
 | Background | `Bakgrund` | `Background` |
 | Blockers | `Blockers` | `Blockers` |
 
-Pick **one Swedish + one English term per concept** and use it consistently. The following variants are **banished** -- do not produce them in new files: `Sammanfattning`, `Executive Summary`, `Summary`, `Action Items`, `Åtgärdspunkter`, `Huvudpunkter`, `Key Discussion Points`, `Decisions Made`. (Existing files keep their headings -- the daily-dashboard recognises old variants for read-only purposes.)
+Pick **one Swedish + one English term per concept** and use it consistently. The following variants are **banished** -- do not produce them in new files: `Sammanfattning`, `Executive Summary`, `Summary`, `Action Items`, `Åtgärdspunkter`, `Huvudpunkter`, `Key Discussion Points`, `Decisions Made`. (Existing files keep their headings; readers recognise the old variants for read-only purposes.)
 
 **Action Item Table format (CR-006):**
 
@@ -92,7 +103,7 @@ The Nästa steg / Next Steps section MUST use this 5-column table format:
 | 2 | Skicka kravspec till designbyrån | Erik | P2 | 260415 |
 ```
 
-If owner or deadline is unknown, write `?` rather than omitting the column. The visualisation app and `/daily-dashboard` parse this table -- variants break them silently.
+If owner or deadline is unknown, write `?` rather than omitting the column. The visualisation app and `/tasks` parse this table -- variants break them silently.
 
 **Owner attribution on undiarized input (CR-015):** an owner cell may hold a bare name **only** when an identifiable speaker explicitly takes the action. When the transcript has no speaker labels (see *Speaker attribution* below), a first-person cue alone ("jag skickar…", "då gör vi…") does **not** identify who - write `?` (or `Name?` for a likely-but-unconfirmed owner) rather than committing to a confident guess. Failing safe with `?` is correct; a confident wrong owner is not.
 
@@ -132,9 +143,9 @@ The skill picks a variant by estimating meeting duration from transcript metadat
 **Never trust transcript spellings.** Transcription services often misspell names (e.g., "Andre" instead of "André", "Asa" instead of "Åsa"). Always resolve names before writing the summary:
 
 1. Check the filename for correct spelling
-2. Check org config `people[]` roster for `canonical` + `aliases` (CR-017 -- covers non-contact persons: colleagues-of-counterparts, remote team members, recurring third parties)
+2. Check config `people[]` roster for `canonical` + `aliases` (CR-017 -- covers non-contact persons: colleagues-of-counterparts, remote team members, recurring third parties)
 3. Check `_contacts/*/_meta.yaml` for `display_name` and `aliases`
-4. Check org config `team[]` for canonical names
+4. Check config `team[]` for canonical names
 5. Use the resolved canonical name throughout the summary
 
 This applies to ALL occurrences of the name -- not just filenames, but every mention in the summary content.
@@ -164,10 +175,10 @@ Name Resolution above corrects the *spelling* of names it can **match**. It does
 **Why this matters more than it looks (failure-mode principle).** The dangerous ASR errors are not the obvious garble -- those you catch on sight. They are the *plausible* substitutions that read cleanly and match nothing. A confident wrong name is worse than an honest `Name?`: it propagates downstream into every summary, extraction and deliverable built on this transcript. Spend scrutiny on proper nouns and semantic swaps, not on obvious noise.
 
 **Build the known-entity set** from the sources the skill already uses:
-- org config `people[]` roster -- `canonical` + `aliases` (CR-017)
-- org config `team[]` -- `name` + `aliases`
+- config `people[]` roster -- `canonical` + `aliases` (CR-017)
+- config `team[]` -- `name` + `aliases`
 - `_contacts/*/_meta.yaml` -- `display_name`, `aliases`, `company`
-- org config `terminology[].term`
+- config `terminology[].term`
 - the filename
 
 **For each person or company name in the summary:**
@@ -209,16 +220,16 @@ End the summary with:
 
 ### Output Filename
 Default format: `YYMMDD-participant-topic-description.md`
-Example: `250721-samtal-Alex-Bob-strategisk-genomgang.md`
+Example: `250721-summary-Alex-Bob-strategisk-genomgång.md` (files written before v1.79.0 as `samtal` are never renamed and are still read)
 
 **Participant name resolution:**
 1. Match transcript speaker names against `_contacts/*/_meta.yaml` (display_name, aliases)
-2. Match against org config `team[]` (name, aliases) if loaded
+2. Match against config `team[]` (name, aliases) if loaded
 3. Fallback: title-case the name from transcript
 
 Use the resolved canonical name (with correct Swedish characters) in the filename. For example, if the transcript says "dave" but `_contacts/david-ekberg/_meta.yaml` has `display_name: "David Ekberg"`, the filename should use `David-Ekberg`.
 
-**Slug contract (CR-021):** the filename follows the same Swedish-character rule as the content -- keep å/ä/ö in every slug token (`möte`, not `mote`/`m0te`; `utlösen`, not `utlosen`), run the driftword check against the slug before saving, always use the `YYMMDD-` prefix, and always include the role keyword (`samtal`/`förberedelse`/... ) so the file's role is machine-readable. See ops-base General Naming Rules.
+**Slug contract (CR-021):** the filename follows the same Swedish-character rule as the content -- keep å/ä/ö in every slug token (`möte`, not `mote`/`m0te`; `utlösen`, not `utlosen`), run the driftword check against the slug before saving, always use the `YYMMDD-` prefix, and always include the English role keyword from `terms:` (`summary`, `agenda`, ... — CR-089) so the file's role is machine-readable. See ops-base General Naming Rules.
 
 If the project has a CLAUDE.md that defines specific filename patterns (MEETING FILENAME FORMAT section), follow those conventions instead. For example, management 1-on-1s, weekly meetings, board meetings, and marketing meetings may each have their own naming pattern.
 
@@ -254,7 +265,7 @@ Before presenting options, resolve participant names from the transcript:
 1. Extract speaker names from transcript (speaker labels, names mentioned)
 2. For each name, run the resolution algorithm:
    - Check `_contacts/*/_meta.yaml` for `display_name` or `aliases` match
-   - Check org config `team[]` for `name` or `aliases` match
+   - Check config `team[]` for `name` or `aliases` match
    - Matching is case-insensitive with Swedish character folding ("Andre" matches "André")
 3. Use resolved canonical names in:
    - Filename generation
@@ -291,7 +302,7 @@ If NO `CHANGELOG.md` exists in the target location, create one automatically. Th
 
 ---
 
-## Step 2.5: Archive Raw Transcript (silent, always)
+## Step 2.5: Archive the Transcript (silent, always)
 
 **Run the RAW SOURCE ARCHIVE contract in `ops-base` (CR-085).** It is the single definition —
 location, filename, frontmatter, back-link, the one confirmation line, the read-back lock, the skip
@@ -404,9 +415,9 @@ This separation allows:
 
 ### Language Determination
 
-When an org config is loaded with `language: per_claude_md`, the output language is determined by the **target file path** -- not the transcript language. Look up the target path in the project CLAUDE.md LANGUAGE POLICY table. For example, a Swedish transcript from a mobile standup saved to `projects/acme-mobile-v3/meetings/` must produce an English summary if the LANGUAGE POLICY says that path is English.
+When a config is loaded with `language: per_claude_md`, the output language is determined by the **target file path** -- not the transcript language. Look up the target path in the project CLAUDE.md LANGUAGE POLICY table. For example, a Swedish transcript from a mobile standup saved to `projects/acme-mobile-v3/meetings/` must produce an English summary if the LANGUAGE POLICY says that path is English.
 
-When no org config exists, or when `language: input`, maintain the same language as the original transcription.
+When no config exists, or when `language: input`, maintain the same language as the original transcription.
 
 ### Swedish Character Enforcement
 
@@ -514,7 +525,7 @@ insights:
     summary: "One sentence"
     rationale: "One sentence why/context"
     source:
-      file: "YYMMDD-samtal-*.md"
+      file: "YYMMDD-summary-*.md"
       section: "Section name"
     tags: [max, five, keywords]
     status: active        # active | superseded | archived
@@ -636,7 +647,6 @@ Do NOT offer task import if:
 This step integrates with the `/tasks` skill:
 - Same `_tasks.yaml` format
 - Same source linking convention
-- Tasks appear in `/daily-dashboard` automatically
 
 See `~/.claude/skills/tasks/SKILL.md` for the complete task schema.
 
@@ -644,7 +654,7 @@ See `~/.claude/skills/tasks/SKILL.md` for the complete task schema.
 
 ## Step 4.5: Execution Feedback (silent)
 
-If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml` or org config), silently log noteworthy execution events to `_insights.yaml` in the target folder. This step produces no visible output.
+If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml` or config), silently log noteworthy execution events to `_insights.yaml` in the target folder. This step produces no visible output.
 
 **What to capture:**
 
@@ -663,7 +673,7 @@ If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml`
   summary: "One sentence describing what happened"
   detail: "How it was resolved"
   source:
-    file: "YYMMDD-samtal-*.md"
+    file: "YYMMDD-summary-*.md"
     skill: transcript
     step: "step number where it occurred"
   tags: [max, five, keywords]
@@ -677,36 +687,30 @@ Follow the same `_insights.yaml` format, dedup rules, vocabulary guard, and reus
 ## Related: Task Tracking
 
 Action items extracted from transcripts can be tracked in the central task system (`_tasks.yaml`). The `/tasks` skill provides:
-- Task viewing and filtering (`/tasks show`)
+- Task viewing and filtering (`/tasks list`)
 - Manual task addition (`/tasks add`)
 - Completion tracking (`/tasks done`)
 - Weekly reviews (`/tasks weekly`)
-
-The `/daily-dashboard` skill pulls active tasks from `_tasks.yaml` for display in the "Teamfokus" section.
 
 ---
 
 ## Related: Preparation Documents
 
-Meeting preparation documents follow the naming convention `YYMMDD-förberedelse-*.md` (or `YYMMDD-preparation-*.md` in English). Use `/preparation <contact>` to create them, or create them conversationally. They are saved to the relevant contact folder inside `_contacts/`.
-
-The `/daily-dashboard` skill automatically discovers preparation files by scanning for this filename pattern, so no special action is needed beyond following the naming convention.
+Meeting agendas follow the naming convention `YYMMDD-agenda-*.md` in every language (CR-089; older files named `förberedelse`/`preparation` are still found). Use `/preparation <contact>` to create them, or create them conversationally. They are saved to the relevant contact folder inside `_contacts/`.
 
 ### Meeting lifecycle
 
 ```
-/preparation david    -> YYMMDD-förberedelse-*.md
+/preparation david    -> YYMMDD-agenda-*.md
        |
     [meeting happens]
        |
-/transcript            -> YYMMDD-samtal-*.md (links back to preparation)
+/transcript            -> YYMMDD-summary-*.md (links back to the agenda)
        |                   |
-       |                   +-> offers task import -> _tasks.yaml
-       |
-/daily-dashboard       -> shows transcript (preparation suppressed if both exist)
-                          pulls tasks from _tasks.yaml
+                           |
+                           +-> offers task import -> _tasks.yaml
 ```
 
-When a transcript is saved to the same folder as a preparation for the same date+contact, Step 1.5 adds a wikilink cross-reference. The `/daily-dashboard` then shows the transcript in the meetings section and suppresses the preparation to avoid duplication.
+When a transcript is saved to the same folder as an agenda for the same date+contact, Step 1.5 adds a wikilink cross-reference.
 
-Action items extracted during transcript processing can be imported to `_tasks.yaml`, where they're automatically picked up by `/daily-dashboard` for display in the task sections.
+Action items extracted during transcript processing can be imported to `_tasks.yaml`, where `/tasks list` shows them.

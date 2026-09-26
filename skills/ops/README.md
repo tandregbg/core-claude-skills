@@ -15,7 +15,7 @@ Unified meeting and operations processing, driven by organization config. Replac
 
 ## How it works
 
-`/ops` reads org config to determine behaviour. The same skill handles different organizations and meeting types:
+`/ops` reads config to determine behaviour. The same skill handles different organizations and meeting types:
 
 | Context | Config source | Key behaviours |
 |---------|---------------|----------------|

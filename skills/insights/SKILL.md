@@ -59,7 +59,7 @@ Template strings marked as `{strings.section.key}` are resolved at runtime.
 
 **Resolution order:**
 
-1. Org config `strings` section (if loaded)
+1. Config `strings` section (if loaded)
 2. Language-matched defaults from `base.yaml`:
    - `swedish` -> `strings_sv`
    - `english` -> `strings`
@@ -70,7 +70,7 @@ Template strings marked as `{strings.section.key}` are resolved at runtime.
 
 ## Configuration
 
-Reads `workflows.knowledge_extraction` from `base.yaml` (or org config override):
+Reads `workflows.knowledge_extraction` from `base.yaml` (or config override):
 
 | Key | Default | Description |
 |-----|---------|-------------|
@@ -370,13 +370,15 @@ Pass 3 (rule → hypothesis demotion):
 
 #### Compile freshness stamp (CR-020)
 
-After all three passes, write `last_compiled: YYMMDD` as a top-level field in every `_insights.yaml` the run scanned (additive; v1/v2 readers ignore it). This makes compile-staleness detectable: `/insights status` and `/ops sweep` flag when the newest entry in a file is >30 days newer than its `last_compiled` (or when the field is absent entirely -- i.e. compile has never run). Insights are write-heavy by design; the stamp is what keeps the synthesis half of the loop honest.
+After all three passes, write `last_compiled: YYMMDD` as a top-level field in every `_insights.yaml` the run scanned (additive; v1/v2 readers ignore it). This makes compile-staleness detectable: `/insights status` and `/ops check` flag when the newest entry in a file is >30 days newer than its `last_compiled` (or when the field is absent entirely -- i.e. compile has never run). Insights are write-heavy by design; the stamp is what keeps the synthesis half of the loop honest.
 
 ---
 
-### `normalize` -- One-shot schema migration for drifted _insights.yaml files (CR-020)
+### `migrate` -- One-shot schema migration for drifted _insights.yaml files (CR-020; was `normalize`)
 
-**Trigger:** `/insights normalize [path] [--dry-run]` (no path = whole vault; `--dry-run` is the DEFAULT — writing requires explicit `--apply`)
+**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/insights normalize is now /insights migrate — the old name goes in the next release.`
+
+**Trigger:** `/insights migrate [path] [--dry-run]` (no path = whole vault; `--dry-run` is the DEFAULT — writing requires explicit `--apply`)
 
 Brings legacy and drifted `_insights.yaml` files up to the current schema. Complements `/ops normalize` (which fixes Swedish characters); this fixes structure and vocabulary.
 
@@ -558,7 +560,7 @@ Usage:
   /insights scan-claude-md               Extract from CLAUDE.md files
   /insights compile                      Compile execution feedback into patterns
   /insights compile since 260301         Compile only recent feedback
-  /insights normalize [path] [--apply]   Migrate drifted files to current schema (dry-run default)
+  /insights migrate [path] [--apply]   Migrate drifted files to current schema (dry-run default)
   /insights synthesize [topic|all]       Render insight clusters into wiki articles + INDEX (CR-027)
   /insights propose                      Generate SKILL.md improvement proposals
   /insights propose apply [file|all]     Apply a proposal to SKILL.md

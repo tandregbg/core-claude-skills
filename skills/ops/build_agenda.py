@@ -44,7 +44,7 @@ SECTION = re.compile(r"^## Carried forward\s*$(.*?)(?=^## |\Z)", re.M | re.S)
 # Companion artifacts that sit in the same folder as the note and must never be
 # mistaken for one. A wildcard note_suffix matches greedily -- "coreteam-weekly-w*"
 # otherwise swallows "...-w38-appendix-dashboard-db-modifications", and
-# "bi-weekly-*" swallows "bi-weekly-preparation-...". /ops lint skips the same set.
+# "bi-weekly-*" swallows "bi-weekly-preparation-...". /ops check skips the same set.
 COMPANION = ("-agenda", "agenda-", "-preparation", "preparation-", "-förberedelse",
              "förberedelse-", "-priorities", "priorities-", "-facilitator",
              "facilitator-", "-appendix", "-recap", "-mejl", "-teams")

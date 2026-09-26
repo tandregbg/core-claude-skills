@@ -58,7 +58,7 @@ def render(loop: list) -> str:
           "`ecosystem.yaml` — the same declaration the landing page reads. Do not edit this block by "
           "hand; run `python3 scripts/render-loop.py --write`.",
           "",
-          "**The loop closes at the note.** What did not land in one session becomes the top of the "
+          "**The loop closes at the summary.** What did not land in one session becomes the top of the "
           "next agenda, carrying a session count and an age — so an item cannot quietly outlive the "
           "series it belongs to.",
           ""]

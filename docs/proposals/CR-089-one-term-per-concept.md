@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** 2026-09-26 |
+| **Status** | **Implemented 2026-09-26, v1.79.0** — contract 32 |
 | **Contract** | **not additive** (31 → 32) — two skills leave the registry, two loop steps are renamed, subcommands are renamed. Every rename keeps its old name as an alias for one release |
 | **Date** | 2026-09-26 |
 | **Area** | `ecosystem.yaml` (new `terms:`, `skills`, `working_loop`, `vault_conventions`), every user-invocable skill's subcommands, `ops-config` strings and filename keywords, `scripts/check-ecosystem-alignment.sh`, README, `docs/SKILLS-COMPARISON.md`. Outside this repo: the landing page (2.0), and every component that invokes a renamed command |
@@ -243,3 +243,30 @@ structure-bearing files that recur per folder; a vault that wants them declares 
   the contract, and when `the note` is added to a SKILL.md.
 - The landing page shows 12 skills in loop order with no hard-coded count.
 - **Proposed release: minor (1.79.0)** — to be confirmed by the maintainer.
+
+## Outcome (2026-09-26, v1.79.0)
+
+Implemented as proposed, with four deviations found while doing it:
+
+- **`avoid:` holds only phrases that can be replaced mechanically.** `org`, `pipeline`, `register`,
+  `snapshot`, `prep`, `todo` and `minutes` each have a legitimate second meaning in the skills (the
+  config key `organization`, the project `registry:`, an archive snapshot), so they are explained in
+  the term's `note:` instead of being banned. **`action item` and `åtgärd` are not banned either:
+  `Action` / `Åtgärd` is the action-table column in the template contract (CR-018)**, and renaming a
+  contract heading would report every existing series as forked at the release date.
+- **`/ops check` takes one optional argument.** A folder runs the folder checks (was `lint`); no
+  argument runs the vault checks (was `sweep`); `--vault <scope>` runs the vault checks on a subtree.
+  Otherwise `check <path>` could not tell a lint folder from a sweep scope.
+- **`/tasks migrate` was removed from the contract, not documented.** It was declared from the
+  first contract and never existed in the skill.
+- **The landing page check reads the live site's `/version.json`.** The mount it read held the
+  retired Flask build and reported `[OK]`. Its first run: live site built from v1.77.0 / contract 30.
+
+Done in this repo: `terms:`, the two rules (`filename_role_keyword`, `one_term_per_concept`), loop and
+registry, every SKILL.md, `base.yaml` / `schema.md` (filename keywords English; dashboard keys and
+strings retired), README, `docs/SKILLS-COMPARISON.md`, `scripts/check-terms.py` with tests, the
+alignment check. `md2pdf` committed to the personal skill repository.
+
+**Not done here** — each is a separate commit in its own place: rebuilding and deploying the landing
+page (and the hard-coded count text and `/the-contract/rules` route there); the components that
+invoke renamed commands (the aliases cover them for this release); the vault's own `CLAUDE.md` files.
