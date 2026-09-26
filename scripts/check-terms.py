@@ -145,9 +145,35 @@ def check_terms(doc):
     return 0
 
 
+# Commands removed in 1.81.0 (CR-089). Unlike the avoid: phrases these are wrong in code blocks,
+# comments and config too -- a removed command in an example is still an instruction. Lines that
+# say the name changed ("was", "removed", "renamed", "is now") are history and allowed.
+RETIRED = ["/ops brief", "/ops lint", "/ops sweep", "/ops projects", "/outbox archive",
+           "/inbox process", "/insights normalize", "/tasks show", "/daily-dashboard"]
+HISTORY = re.compile(r"\b(was|removed|renamed|is now|retired|left the suite)\b", re.I)
+
+
+def check_retired():
+    files = [p for p in sorted((ROOT / "skills").rglob("*"))
+             if p.suffix in (".md", ".yaml", ".py") and p.is_file()] + [p for p in PROSE if p.exists()]
+    hits = []
+    for f in files:
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            for cmd in RETIRED:
+                if re.search(rf"{re.escape(cmd)}(?![\w-])", line) and not HISTORY.search(line):
+                    hits.append(f"{f.relative_to(ROOT)}:{n}: '{cmd}'")
+    if hits:
+        print(f"[DRIFT] retired commands: {len(hits)} use(s) outside a rename note")
+        for h in hits[:40]:
+            print(f"        {h}")
+        return 1
+    print(f"[OK] retired commands: none of {len(RETIRED)} in {len(files)} files")
+    return 0
+
+
 def main():
     doc = contract()
-    drift = check_subcommands(doc) + check_terms(doc)
+    drift = check_subcommands(doc) + check_terms(doc) + check_retired()
     return 1 if drift else 0
 
 

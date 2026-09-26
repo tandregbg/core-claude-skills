@@ -9,6 +9,39 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.84.0] - 2026-09-26
+
+### Fixed
+
+- **Rule promotion checks the claim, not more tag arithmetic (CR-098).** Inspecting the first
+  candidates CR-094 made possible, only one of the ten largest groups was a rule. The rest failed in
+  three ways no tag or date rule separates: a topic tag (`seo`, `payments`) grouped different claims;
+  a decision and its later **reversal** grouped tightly, and the earliest — the revoked one — would
+  have become the rule; and one session's entries counted as independent confirmations. Measured
+  first: requiring two shared tags always, or two distinct dates, removed a genuine cluster and kept
+  both bad groups. Pass 2 now ignores topic-only tags, splits mixed groups before the threshold,
+  runs a **contradiction check** before promoting (supersede the older entry, or report
+  `needs review`), skips a one-date group as `single session`, counts confirmations by **distinct
+  dates**, and reports every skipped group with its reason. Expect single-digit promotions per run.
+- **`/analytics backlog` stops counting correct structure as debt (CR-099).** On one vault the
+  orphaned-folder check was wrong nine times in ten (241 flags, 19 real): 170 were subfolders of a
+  project whose CHANGELOG sits at its root, 67 carried a `_manifest.md`. The `.txt` check was worse,
+  ~97 % false: extension plus date cannot tell a queued transcript from raw material kept after
+  processing. Detection now excludes an ancestor CHANGELOG (4 levels), a `_manifest.md`, a dot path,
+  a sibling summary with the same date, an archive-named folder and a dormant directory; the insight
+  gap check applies the ancestor and manifest rules and needs 2+ transcripts. The report prints
+  **flags raised and flags after exclusions side by side**, with the counts by cause.
+- Two uses of removed commands the terms check could not see, because they sat in a code block and a
+  YAML comment. `check-terms.py` now also looks for the commands removed in 1.81.0 in every skill file
+  — code and comments included — allowing only lines that say the name changed.
+
+### Changed
+
+- **One messaging role, several implementations (CR-081).** The messaging client component states
+  its archive as a pattern, `<venture>/.<provider>chats/`, with `.teamschats/` the one instance; a new
+  channel names its provider in its folder; `external_systems.chats` stays generic. Left open on
+  purpose: whether a personal channel sits per venture or per person. Documentation only.
+
 ## [1.83.0] - 2026-09-26
 
 ### Changed

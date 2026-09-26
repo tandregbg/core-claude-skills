@@ -234,7 +234,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 34
-core_skills_version: "1.83.0"
+core_skills_version: "1.84.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -890,9 +890,9 @@ components:
     documentation_owner: external   # CR-078: Provider-specific: auth and platform vocabulary change in its repo
     role: "Talks to a chat platform: delegated auth, read and send messages, Markdown to the platform's markup"
     reads: ["chats the signed-in user belongs to"]
-    writes: ["<venture>/.teamschats/ — the archive", "<venture>/.teamschats/_fetch.json — the fetch record (CR-088)", "chat messages"]
+    writes: ["<venture>/.teamschats/ — the archive, the one implementation today", "<venture>/.teamschats/_fetch.json — the fetch record (CR-088)", "chat messages"]
     depends_on: ["an auth library", "an HTTP library"]
-    note: "Knows nothing about vaults or manifests. A dependency of vault-aware code, not an instance of it — which is why it is its own component rather than part of the dashboard"
+    note: "Knows nothing about vaults or manifests. A dependency of vault-aware code, not an instance of it — which is why it is its own component rather than part of the dashboard. ONE ROLE, SEVERAL IMPLEMENTATIONS (CR-081): the archive is a pattern, <venture>/.<provider>chats/, and .teamschats/ is one instance of it that does not move. A new channel names its provider in its folder (CR-068's rule, applied forward) instead of inventing a generic name. external_systems.chats stays generic: the config key names a class of system, the path names a writer. OPEN, deliberately: whether a personal channel (SMS, iMessage) sits per venture or per person — to be settled by a real case, not in advance"
 
   - id: "task pipeline"
     kind: "local scripts, run on demand"

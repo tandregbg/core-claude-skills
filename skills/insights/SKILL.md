@@ -343,6 +343,13 @@ For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and pr
      is the norm, not the exception -- the corpus is model-written, and each entry is phrased freshly
      even when the observation recurs.
    - **Token overlap is not a gate.** It may break a tie when an entry could join more than one group.
+   - **A shared tag that names a topic is not evidence of a shared claim (CR-098).** When the tags
+     two entries share are subject areas (`seo`, `payments`, `architecture`, a supplier name) rather
+     than properties of the claim, the tag overlap carries no weight -- decide on the summaries
+     alone. A group that survives only on topic tags is not a group.
+   - **Split before promoting (CR-098).** When a candidate group turns out to hold two or more
+     distinct claims, split it and apply the threshold to each part. A six-entry group that is really
+     four-plus-two yields one promotion, not one rule with two claims in it.
    - Conservative bias is kept through the tag requirement and the threshold: prefer false negatives
      over false promotions. A promoted rule becomes a standing instruction in every later run, so a
      wrong promotion costs more than a missed one.
@@ -352,14 +359,33 @@ For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and pr
    overlap anywhere was 0.50, so the gate could not fire and the rule layer held 5 entries -- the
    rules-walk in `/ops` and `/transcript` loaded an almost empty preamble every run. **Baseline for
    comparison: 5 rules before the change.**
-3. **Apply threshold:** groups with size ≥ `compile_threshold` (default 3, from `workflows.knowledge_extraction.evolution.compile_threshold`) qualify.
+3. **Apply threshold:** groups with size ≥ `compile_threshold` (default 3, from `workflows.knowledge_extraction.evolution.compile_threshold`) qualify. A group whose entries all share **one date** is skipped as `single session`: it is one observation, however many entries it produced (CR-098).
+3b. **Contradiction check (CR-098).** Before promoting, read the group for entries that reverse or
+    negate each other -- a decision and its later reversal, a pattern and an entry saying it no
+    longer holds. Such a group must **not** be promoted on the earliest entry, because the earliest
+    is the superseded one. Either:
+    - mark the superseded entry `status: superseded`, `superseded_by: <later id>` and re-apply the
+      threshold to what remains, or
+    - skip the group and report it as `needs review: contradiction`.
+
+    A reversal shares more vocabulary with what it reverses than two paraphrases of one principle
+    share with each other, so no similarity measure catches this -- not token overlap, not tags. It
+    has to be read.
 4. **For each qualifying group:**
    - Pick the **earliest** entry by `date` as canonical.
    - Set `canonical.confidence: rule`.
-   - Set `canonical.confirmation_count` to group size.
+   - Set `canonical.confirmation_count` to the number of **distinct dates** in the group, not the
+     number of entries (CR-098). Entries written from one session are one observation however many
+     were extracted. Every entry still goes into `confirmations[]` -- the provenance is kept, only the
+     count is honest.
    - Append each non-canonical entry's `source` to `canonical.confirmations[]`.
    - Mark each non-canonical entry `status: superseded`, `superseded_by: <canonical-id>`.
-5. **Dedup:** if the canonical entry already has `confidence: rule`, only append new (not-already-listed) confirmations and update `confirmation_count`.
+5. **Dedup:** if the canonical entry already has `confidence: rule`, only append new (not-already-listed) confirmations and update `confirmation_count` (distinct dates).
+6. **Report every skipped group with its reason (CR-098)** -- `topic-only tags`, `contradiction`,
+   `split: below threshold`, `single session` -- not just the promotions. A promotion pass that
+   reports only its successes cannot be audited. Measured when CR-098 was written: of the ten largest
+   candidate groups on one vault, **one** was promotable as-is, so single-digit promotions per run is
+   the expected order of magnitude, not a sign the pass is broken.
 
 #### Pass 3: rule → hypothesis demotion (CR-013)
 
@@ -399,6 +425,11 @@ Pass 2 (hypothesis → rule promotion):
     - meetings/board/_insights.yaml#5 [decision] "Board updates use English for India team" (3 confirmations)
     - meetings/marketing/ppc/_insights.yaml#12 [learning] "PMax campaigns underperform below $500/day budget" (3 confirmations)
   Marked 8 superseded entries (canonical's mergees).
+  Skipped 6 groups:                                                        (CR-098)
+    - meetings/marketing/_insights.yaml [learning] "seo" (6)        topic-only tags
+    - projects/app/_insights.yaml [decision] "architecture" (4)     contradiction -- needs review
+    - projects/app/_insights.yaml [pattern] "estimation" (5)        single session (1 date)
+    - ...
 
 Pass 3 (rule → hypothesis demotion):
   Scanned 18 active rules.

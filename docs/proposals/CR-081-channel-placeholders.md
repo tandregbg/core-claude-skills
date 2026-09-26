@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed — deliberately thin, reserves a shape rather than specifying a build |
+| **Status** | **Implemented 2026-09-26, v1.84.0** |
 | **Contract** | additive, `components:` note only — no new component, no new key |
 | **Date** | 2026-09-24 |
 | **Area** | `components: messaging client`, archive naming |
@@ -70,3 +70,11 @@ anything work that did not work before.
 - **Moves nothing.** `.teamschats/` keeps its path, its writer and its readers.
 - **Adds no component and no config key.** The role exists; this widens how it is described.
 - **Does not decide the per-venture / per-person question.** Named above as open, deliberately.
+
+## Outcome (2026-09-26, v1.84.0)
+
+Implemented as a `components:` note, as proposed. **`writes:` keeps the concrete path** rather than
+the pattern: `check-components.py` requires every path in `writes:` to be a declared vault path, and
+declaring a pattern path would be the new key this CR said it would not add. The pattern, the
+naming rule, the generic config key and the open per-venture/per-person question are in the
+component's `note:`; `.teamschats/` is described as the one implementation today.

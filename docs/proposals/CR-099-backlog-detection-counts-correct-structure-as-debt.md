@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-26** |
+| **Status** | **Implemented 2026-09-26, v1.84.0** |
 | **Contract** | none. Changes detection filters and adds one convention (`_manifest.md` as a processed marker) |
 | **Date** | 2026-09-26 |
 | **Area** | `skills/analytics/SKILL.md` `backlog` steps 2, 3 and 5 |
@@ -131,3 +131,12 @@ also correct structure, the filters need one more case before the number can be 
 
 One mature vault, 4 002 dated files, 241 step-3 flags of which 19 survive the proposed filters.
 Directory names withheld; the causes and counts are the finding.
+
+## Outcome (2026-09-26, v1.84.0)
+
+Implemented as proposed in `backlog` steps 2, 3, 5 and the summary: every exclusion is counted by
+cause, and the table prints flags raised beside flags after exclusions. Step 5's ancestor rule looks
+for an ancestor **`_insights.yaml`** (insights accumulate per folder, so a parent's file covers its
+subfolders), not an ancestor CHANGELOG. The summary table's `/inbox process` — removed in 1.81.0 —
+is corrected to `/inbox route`. Verification (rerun: ~19 folders expected) needs an `/analytics
+backlog` run on the vault.

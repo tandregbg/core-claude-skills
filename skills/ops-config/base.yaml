@@ -86,7 +86,7 @@ workflows:
   # contracts with `match` globs. mode: warn | strict
   meeting_templates:
     mode: warn
-  # CR-023: /ops sweep check 8 — ecosystem contract alignment. Maintainer
+  # CR-023: /ops check (vault) check 8 — ecosystem contract alignment. Maintainer
   # machines only; when `command` is absent the check is skipped silently.
   # sweep runs the command read-only and parses [OK]/[DRIFT]/[SKIP] lines.
   # CR-025: structure_exemptions — deliberate exceptions to the CR-010

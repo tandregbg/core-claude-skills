@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-26** |
+| **Status** | **Implemented 2026-09-26, v1.84.0** |
 | **Contract** | none. Adds two checks to `insights` Pass 2; no schema change |
 | **Date** | 2026-09-26 |
 | **Area** | `skills/insights/SKILL.md` Pass 2, steps 2–4 |
@@ -137,3 +137,13 @@ right order of magnitude for four months of accumulation: most observations are 
 One mature vault, 2 585 entries. 55 candidate groups under CR-094; ten largest inspected by hand;
 one promotable as-is. Both proposed arithmetic tightenings measured across all 55 and shown to
 remove a genuine cluster while keeping a contradiction. Folder and person names withheld.
+
+## Outcome (2026-09-26, v1.84.0)
+
+Implemented as proposed: the topic-tag and split bullets in step 2, step 3b (contradiction check),
+`confirmation_count` by distinct dates in step 4 (and in the dedup step), and step 6 reporting every
+skipped group with its reason. **One gap in the proposal made explicit:** the reason `single session`
+had no rule behind it — counting distinct dates alone would still promote a five-entry, one-date
+group with a count of 1. Step 3 now skips a group whose entries share one date. The documented
+output shows a skipped-groups block. Verification (re-inspect the ten largest groups) needs a
+compile run on the vault.

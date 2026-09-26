@@ -57,6 +57,12 @@ class Phrases(unittest.TestCase):
         self.assertIn("the note", lines[2])
 
 
+class Retired(unittest.TestCase):
+    def test_history_line_is_allowed_and_live_use_is_not(self):
+        self.assertTrue(ct.HISTORY.search("`/ops brief` was renamed `/ops orient`"))
+        self.assertFalse(ct.HISTORY.search("Run `/ops brief <folder>` first"))
+
+
 class Repo(unittest.TestCase):
     def test_repository_is_clean(self):
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "check-terms.py")],

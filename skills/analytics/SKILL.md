@@ -498,14 +498,29 @@ Identifies content that may benefit from processing through existing skills.
 **Steps:**
 
 1. Run file discovery
-2. **Detect unprocessed transcriptions:**
+2. **Detect unprocessed transcriptions (CR-099):**
    - Find `.txt` files with YYMMDD prefix (classified as `raw-text`)
-   - These are likely raw transcriptions that haven't been processed through `/transcript`
-   - Group by directory, sorted by count descending, show count and date range
-3. **Detect orphaned content:**
-   - Find directories containing YYMMDD-prefixed files but no `CHANGELOG.md`
-   - Only include directories with 2+ files (single files are likely intentional one-offs)
-   - Show top 15 by file count, with `*(+ N more)*` if truncated
+   - **Exclude** a file when any of these holds, and count each cause:
+     - its directory contains a `_manifest.md` -- the folder's intent is declared
+     - a sibling `.md` file shares its date prefix -- the summary exists
+     - its directory name marks it as archived (`arkiv`, `archive`, `raw`, `källmaterial`)
+     - the newest file in its directory is older than 12 months -- dormant, not queued
+   - The survivors are the queue: group by directory, sorted by count descending, with count and
+     date range. **Extension plus date alone cannot tell a transcript awaiting `/transcript` from
+     raw material kept deliberately after processing** -- on one vault a single archive of 124 old
+     `.txt` files was 36 % of the unfiltered total
+3. **Detect orphaned content (CR-099):**
+   - Find directories with 2+ YYMMDD-prefixed files and no `CHANGELOG.md`
+   - **Exclude** a directory, counting each cause, when:
+     - an ancestor up to 4 levels holds a `CHANGELOG.md` -- a project indexes at its root, not per
+       subdirectory (`meetings/`, `audits/`)
+     - it holds a `_manifest.md`
+     - any path component is dot-prefixed -- raw-material surfaces by convention
+   - Show the survivors, top 15 by file count, with `*(+ N more)*` if truncated. Unfiltered, this step
+     was wrong nine times in ten on one vault: 241 flags, 19 real
+   - **The ancestor rule is a heuristic:** it assumes the ancestor's CHANGELOG covers the
+     subdirectory, which it usually does. Verifying that would mean parsing the CHANGELOG for links to
+     every file -- a separate concern. The tradeoff is a few misses for removing most false positives
 4. **Detect stale inbox items:**
    - Read `_inbox/_inbox.yaml` if it exists
    - Count items with `status: pending`
@@ -513,9 +528,11 @@ Identifies content that may benefit from processing through existing skills.
 5. **Detect insight gaps:**
    - Find folders with `CHANGELOG.md` but no `_insights.yaml`
    - Count YYMMDD-prefixed files in each (potential insight yield)
-   - Only include folders with 1+ transcript files
+   - **Exclude** a folder whose ancestor up to 4 levels holds an `_insights.yaml`, or that holds a
+     `_manifest.md` (CR-099)
+   - Only include folders with **2+** transcript files (CR-099; was 1+)
    - Show top 15 by transcript count, with `*(+ N more)*` if truncated
-6. Write summary table at top with all four categories and suggested actions
+6. Write summary table at top with all four categories and suggested actions. **Print flags raised and flags after exclusions side by side, and the exclusion counts by cause** (CR-099) -- a single number that has been silently filtered misleads as much as an unfiltered one
 7. Write to `.analytics/YYMMDD-backlog-report.md`
 
 **Output format:**
@@ -528,12 +545,15 @@ Generated: YYYY-MM-DD
 
 ## Summary
 
-| Category | Items | Potential action |
-|----------|------:|-----------------|
-| Raw text files (.txt) | N | `/transcript` or `/inbox` |
-| Folders without CHANGELOG | N dirs, N files | Manual triage |
-| Pending inbox items | N | `/inbox` process |
-| Folders missing _insights.yaml | N dirs, ~N transcripts | `/insights reprocess` |
+| Category | Flags raised | After exclusions | Potential action |
+|----------|-------------:|-----------------:|-----------------|
+| Raw text files (.txt) | N | N | `/transcript` or `/inbox` |
+| Folders without CHANGELOG | N dirs | N dirs, N files | Manual triage |
+| Pending inbox items | N | N | `/inbox route` |
+| Folders missing _insights.yaml | N dirs | N dirs, ~N transcripts | `/insights reprocess` |
+
+Excluded by cause: ancestor CHANGELOG N · `_manifest.md` N · dot path N · summary exists N ·
+archive folder N · dormant > 12 months N
 
 ---
 
