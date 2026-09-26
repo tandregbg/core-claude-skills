@@ -132,7 +132,7 @@ If `enabled: false`, all subcommands exit immediately with a message.
      - `superseded_by`: `null`
 
 7. **Write/append to `_insights.yaml`** in the same folder as the CHANGELOG.md:
-   - If file exists: append new entries, update `next_id` and `last_updated`
+   - If file exists: add new entries inside `insights:`, **before** the top-level `next_id` key, then update `next_id` and `last_updated`; re-read and confirm they landed in the list (CR-096)
    - If file does not exist: create with `version: 2`, `context` set from folder name or CHANGELOG context
 
 **Progress output:**
@@ -394,7 +394,8 @@ Brings legacy and drifted `_insights.yaml` files up to the current schema. Compl
 | Non-canonical confidence (`medium`, `low`) | → `hypothesis` (count unchanged) |
 | Legacy fields (`added:` → `date`, string `source:` → `source.file`) | → rename/restructure |
 | `superseded_by` set but `status: active` | → `status: superseded` |
-| Missing top-level `version`/`next_id`/`last_updated` | → add (`version: 2`, `next_id: max(id)+1`, `last_updated` from newest entry) |
+| Entries below the top-level `next_id` key -- **orphans** (CR-096) | → re-indent into `insights`, renumber from `max(id)+1` to avoid collisions, splice before `next_id`, then bump it. **Report the recovery with its count** -- an orphan means some writer appended at end-of-file. Detect by reading the raw text, not the parsed file: an orphan either breaks the parse or is invisible to it |
+| Missing top-level `version`/`next_id`/`last_updated` | → add (`version: 2`, `next_id: max(id)+1`, `last_updated` from newest entry). **Recover orphans first** -- `max(id)` over the parsed list ignores them, and repairing `next_id` around invisible entries collides with their ids |
 | Tags > 5 | → truncate from the tail |
 
 **Process:**

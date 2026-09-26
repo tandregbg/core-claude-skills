@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-26** |
+| **Status** | **Implemented 2026-09-26, v1.82.0** |
 | **Contract** | none. Strengthens the existing write-time guard; no schema change |
 | **Date** | 2026-09-26 |
 | **Area** | `skills/transcript/SKILL.md` Step 3.5 write-time vocabulary guard; `skills/insights/SKILL.md` (same guard, referenced) |
@@ -112,3 +112,18 @@ than silently renumbering around them.
 Three occurrences in one session across unrelated folders; one had persisted 24 hours undetected
 holding two real insights from a customer meeting. Folder names withheld; the shape is the
 finding.
+
+## Outcome (2026-09-26, v1.82.0)
+
+Implemented as proposed. `transcript/SKILL.md` Step 3.5: the process step says *inside the list,
+before `next_id`*, and the guard gains the two bullets (append inside the list; re-read and assert
+the list grew). `insights/SKILL.md`: the write step says the same, and `migrate` gains the orphan
+row — detected from the raw text, recovered **before** any `next_id` repair, and reported with a
+count.
+
+**Vault scan at implementation:** 112 `_insights.yaml` files, **0** with orphans or parse failures
+(the three occurrences in the CR had already been repaired by hand).
+
+**Follow-up, not in scope:** `_tasks.yaml` has the same shape in some folders — of 88 ledgers, some
+put `next_id` after `tasks:`. None was affected at the scan, but the same end-of-file append would
+hide a task the same way. Worth the same guard in `/tasks`, as its own CR.

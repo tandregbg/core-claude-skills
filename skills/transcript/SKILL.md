@@ -505,7 +505,7 @@ rationale: "Tim, reflecting on his role in the partner discussion"
 
 1. Scan the summary for decisions with rationale, stated preferences, learnings, opportunities, and patterns
 2. For each qualifying insight, create an entry following the `_insights.yaml` format (see below)
-3. If `_insights.yaml` already exists in the target folder, append to it and increment `next_id`
+3. If `_insights.yaml` already exists in the target folder, add the entries **inside the `insights:` list, before the top-level `next_id` key** (never at the end of the file -- see the guard below), and increment `next_id`
 4. If it does not exist, create it with `version: 1` and `context` set to the contact/project name
 5. **Dedup:** Check existing entries by `source.file` -- if insights from this transcript file already exist, skip to avoid duplicates
 
@@ -549,6 +549,14 @@ Before writing any entry to `_insights.yaml`, verify:
 - `confidence` (when present) is `hypothesis` or `rule` -- never `high`/`medium`/`confirmed`/`supported`. A re-confirmed insight keeps `confidence: hypothesis` and bumps `confirmation_count`; it does not rename its confidence.
 - `date` is `YYMMDD` (never ISO `YYYY-MM-DD`), `id` is an integer, and `next_id` equals `max(id)+1` after the write.
 - `tags` has at most 5 entries.
+- **Append inside the list, never at the end of the file (CR-096).** `next_id` is a top-level key that
+  follows `insights:`. New entries belong **before** it, at the list's indentation. Written at
+  end-of-file they land outside the list -- which either breaks the parse, or worse, parses cleanly
+  while every reader skips them.
+- **Re-read after writing (CR-096).** Parse the file back and assert that the entries just written are
+  in `insights` and that `len(insights)` grew by the number written. It is the only check that
+  catches a positional error, and it costs one load per write. On failure, repair before moving on
+  and say so -- never leave a file that parses with entries outside the list.
 
 Fix silently when unambiguous (e.g. ISO date → YYMMDD); ask the user when not. This guard applies wherever insights are written: `/transcript` Step 3.5/4.5, `/ops` Step 5.5, and all `/insights` subcommands.
 
