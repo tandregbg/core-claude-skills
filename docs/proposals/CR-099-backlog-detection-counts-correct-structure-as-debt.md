@@ -1,4 +1,4 @@
-# CR-097 — Backlog detection counts correct structure as debt
+# CR-099 — Backlog detection counts correct structure as debt
 
 | | |
 |---|---|
@@ -6,6 +6,7 @@
 | **Contract** | none. Changes detection filters and adds one convention (`_manifest.md` as a processed marker) |
 | **Date** | 2026-09-26 |
 | **Area** | `skills/analytics/SKILL.md` `backlog` steps 2, 3 and 5 |
+| **Note** | Written as CR-097 and renumbered to 099: CR-097 was taken the same evening by *analytics snapshots live in `.analytics/`*, written in a parallel session |
 
 ## What was measured
 
