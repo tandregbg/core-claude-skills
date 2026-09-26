@@ -307,6 +307,26 @@ Reads execution feedback entries (`edge_case`, `correction`) across `_insights.y
      status: active
    ```
 6. **Dedup** -- if a `skill_pattern` entry already covers the same cluster (by matching `source.entries`), update it instead of creating a duplicate
+7. **Name-candidate roll-up (CR-095) -- a report, never a write.** While clustering, collect the
+   entries in the proper-noun family (the `edge_case` entries `/transcript` and `/ops` log for an
+   unresolved or near-miss name -- CR-016, CR-017). Identify them by tag, in either language:
+   `proper-noun`, `egennamn`, `namnverifiering`, `namnupplösning`, `asr-variant`, `stavning`, `cr-016`
+   -- the family is logged in the vault's working language, and an English-only match finds a fraction. Extract the flagged name from each
+   `summary`/`detail`, and count occurrences **across folders**. Skip the flag marker itself (`Namn att verifiera`, `Name to verify`) -- it is quoted in the entries and is not a name. Drop any name that already resolves:
+   a `people[].canonical` or alias in any `_ops.yaml` / `.claude/ops-config.yaml`, a `team[]` name or
+   alias, or a contact's `display_name`/`aliases` in `_contacts/*/_meta.yaml`. Report every remaining
+   name flagged **twice or more**, with a one-line guess at what it is (recurring person without a
+   contact folder / ASR variant of a domain term / mishearing of a company name).
+
+   **It never edits a config.** A roster entry is a claim about who someone is, and that claim needs
+   a person: an automated identity claim would propagate a wrong spelling into every later summary --
+   the failure CR-016 exists to prevent. The report is printed in the run's output only, because the
+   names come from vault data; it is never written to a file in this repo.
+
+   **Why here and not in `/transcript`:** one transcript run sees one occurrence, and one occurrence
+   is not evidence of a recurring person. The recurrence is only visible in aggregate, which is where
+   compile already operates. Before CR-095 the flags had no reader at all -- one measured vault held 98
+   proper-noun flags over 40 folders and four months, against an empty `people[]` roster.
 
 #### Pass 2: hypothesis → rule promotion (CR-013)
 
@@ -351,6 +371,12 @@ Pass 1 (skill_pattern compilation):
   Scanned 14 _insights.yaml files, found 23 execution feedback entries.
   Compiled 3 patterns.
   Skipped 8 entries below compile threshold (3).
+
+  Roster candidates (flagged 2+ times, in no people[] roster, team[] or contact):   (CR-095)
+    "Ravee"     4 flags   3 folders   → recurring person, no contact folder
+    "Kubernetis" 3 flags   2 folders   → likely ASR variant of a domain term
+    "Acmee"     2 flags   1 folder    → likely mishearing of a company name
+  Add the ones that are people to people[] in the org config; the flags stop for them.
 
 Pass 2 (hypothesis → rule promotion):
   Scanned 142 active hypotheses across 14 folders.

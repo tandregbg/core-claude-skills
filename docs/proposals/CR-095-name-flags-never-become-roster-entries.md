@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-26** |
+| **Status** | **Implemented 2026-09-26, v1.82.0** |
 | **Contract** | none. Adds an output step; `people[]` schema is CR-017's and unchanged |
 | **Date** | 2026-09-26 |
 | **Area** | `skills/transcript/SKILL.md` (proper-noun verification, committed-spelling consistency), `skills/insights/SKILL.md` (compile output) |
@@ -112,3 +112,18 @@ known-entity lookup, not in the reporting — and that is a different CR.
 Observed in one mature vault: 98 proper-noun `edge_case` entries across 40 folders over four
 months, with an empty `people[]` roster in the org config those folders resolve against. Names
 withheld; the counts are the finding.
+
+## Outcome (2026-09-26, v1.82.0)
+
+Implemented as proposed: compile Pass 1 step 7 (the roll-up, report only, printed never written) with
+an example in the documented output; the closing sentence in `transcript/SKILL.md` replaced.
+
+**One addition found by running it against the measured vault:** the proper-noun family is logged in
+the vault's working language. Its tags were mostly Swedish (`egennamn`, `namnverifiering`,
+`namnupplösning`, `stavning`, `asr-variant`, `cr-016`), with `proper-noun` on only a handful. The
+skill now names the tags in both languages; an English-only match would have found a fraction.
+
+**Dry run at implementation:** 94 entries in the family; extracting quoted names gave 15 flagged twice
+or more, in no roster. Names withheld here; the list was shown to the maintainer. It includes one
+string that is the flag marker itself rather than a name, which the roll-up must skip, and at least
+one known mis-transcription of the maintainer's own name — exactly the case the roster exists for.
