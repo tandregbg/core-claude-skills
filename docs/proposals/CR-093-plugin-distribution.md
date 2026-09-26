@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Phase 1 done 2026-09-26** (pilot observed, test install removed) — phase 2 **Proposed**, awaiting decision |
+| **Status** | **Phase 1 done 2026-09-26.** Phase 2 **deferred** by the maintainer (2026-09-26): the suite stays on symlinks for now |
 | **Contract** | none in phase 1. Phase 2 would change every command name (plugin prefix) and is a separate decision |
 | **Date** | 2026-09-26 |
 | **Area** | installation and updates (`update-skills`, README install section, landing page install page), every hard-coded `~/.claude/skills/<skill>/…` path |
@@ -118,3 +118,10 @@ the cache; they were removed by hand. User settings were left clean by `marketpl
 
 The pilot repository keeps its manifests, and its README documents the plugin route and the
 never-both rule. Its active installation is still the symlinks.
+
+## Decision (2026-09-26)
+
+**Phase 2 deferred.** The suite stays on symlinks and `/update-skills` for now. The commands are
+typed many times a day and the prefix is permanent, while the gap plugins close — machines brought
+in line by hand — is small today. The pilot repository keeps its manifests, so revisiting this
+starts from observed facts rather than from the documentation.

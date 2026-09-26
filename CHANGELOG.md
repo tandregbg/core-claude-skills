@@ -9,6 +9,41 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.81.0] - 2026-09-26
+
+### Added
+
+- **The round shows each person's last track, and the balance across tracks (CR-090).** CR-084
+  handed each person's track on from the previous note, but only when a project did **not** declare
+  `tracks:` — the projects that care most about the axis got a blank column every morning.
+  - With `tracks:` declared, the *Track* column stays blank (it is stated in the room) and a
+    separate **Last track** column shows what the previous note recorded, marked *(carried)*. Only a
+    value matching a declared track is carried; an area or free text is dropped, keeping CR-084's
+    fix intact.
+  - One **balance line** above the round counts the last session by declared track, **zeros
+    included**, and asks about an empty one: *"website and offboarding had no one. Intended, or
+    unbalanced?"* A question, never a verdict.
+  - `carry_forward.balance_window: N` counts the last N notes instead of one. Default 1.
+  - A note with no round table gives neither, and the sources block prints `round … not recorded`
+    rather than an empty column that looks like a quiet day.
+  - `tests/test_cr090_track_balance.py` — the five verification cases, end to end.
+
+### Fixed
+
+- **A carried track kept in a note was never handed on again.** The agenda writes `web app
+  *(carried)*`; a note that kept the prefill carried it verbatim, and reading it back stripped the
+  mark but left a stray `*`, so the value matched nothing. The mark is now stripped with its italics.
+  Affected CR-084's hand-on as well as CR-090.
+
+### Removed
+
+- **CR-089's one-release command aliases.** `/ops brief`, `/ops lint`, `/ops sweep`, `/ops projects`,
+  `/outbox archive`, `/inbox process`, `/insights normalize` and `/tasks show` are no longer
+  recognised; each skill names the new subcommand instead of running the old one. The components and
+  the vault that invoked them moved in 1.79.0–1.80.0.
+- The `dashboard_refresh` removal notice: the key is now simply ignored, and `/ops status` reports it
+  as unknown.
+
 ## [1.80.0] - 2026-09-26
 
 ### Changed

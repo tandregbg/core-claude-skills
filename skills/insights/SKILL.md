@@ -376,7 +376,7 @@ After all three passes, write `last_compiled: YYMMDD` as a top-level field in ev
 
 ### `migrate` -- One-shot schema migration for drifted _insights.yaml files (CR-020; was `normalize`)
 
-**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/insights normalize is now /insights migrate — the old name goes in the next release.`
+**Renamed in v1.79.0 (CR-089); `/insights normalize` was removed in v1.81.0.** An old name is not recognised: say that it is now `/insights migrate`, and do not run it.
 
 **Trigger:** `/insights migrate [path] [--dry-run]` (no path = whole vault; `--dry-run` is the DEFAULT — writing requires explicit `--apply`)
 

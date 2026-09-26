@@ -309,7 +309,6 @@ workflows:
     task_import:
       enabled: boolean           # Offer to import action items to _tasks.yaml
       task_file: string          # Path to _tasks.yaml (default: vault parent)
-    dashboard_refresh:           # RETIRED v1.79.0 (CR-089): read for one release, prints a removal notice, then ignored
 ```
 
 #### Task Import
@@ -318,7 +317,7 @@ When `task_import.enabled` is true, action items from the meeting summary are ex
 
 #### Dashboard Refresh (retired)
 
-`/daily-dashboard` left the suite in v1.79.0 (CR-089). A config that still sets `dashboard_refresh` gets a one-line notice naming the file to remove it from; the key is ignored from the release after.
+`/daily-dashboard` left the suite in v1.79.0 (CR-089). Since v1.81.0 the key `dashboard_refresh` is ignored; `/ops status` reports it as an unknown key.
 
 ### Task Ledger (CR-040)
 

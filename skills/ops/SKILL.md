@@ -22,15 +22,9 @@ Unified meeting and operations processing. Behaviour is driven by config -- the 
 more (`orient`, `check`, and `declare` through `project new` and `status`). `normalize` and `help`
 sit outside the loop and are named for what they repair or explain.
 
-**Renamed in v1.79.0; the old names work for one release.** When one is used, run the new
-subcommand and print one line first: `/ops brief is now /ops orient — the old name goes in the next release.`
-
-| Old | New |
-|---|---|
-| `/ops brief <folder>` | `/ops orient <folder>` |
-| `/ops lint <folder>` | `/ops check <folder>` |
-| `/ops sweep [scope]` | `/ops check` (vault) · `/ops check --vault <scope>` |
-| `/ops projects` | `/ops project list` |
+**Renamed in v1.79.0 (CR-089), old names removed in v1.81.0.** `brief` is `orient`, `lint` is
+`check <folder>`, `sweep` is `check` (vault), `projects` is `project list`. An old name is not
+recognised: say which subcommand it became, and do not run it.
 
 ### `process` -- the default: turn meeting content into the summary
 
@@ -77,8 +71,8 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
    came from** (project, folder, vault-wide, base default) — and validate it against
    `ops-config/schema.md`. Report as findings: keys the schema does not know (usually a typo, which
    otherwise silently falls back to the default); `carry_forward` enabled with no `external_systems`;
-   `task_ledger.mode: external` with no `system` or `pointer`; a deprecated key still set
-   (`dashboard_refresh`, retired in v1.79.0). **This is the one place a person can see what every
+   `task_ledger.mode: external` with no `system` or `pointer`; a retired key still set
+   (`dashboard_refresh`, ignored since v1.81.0). **This is the one place a person can see what every
    project is configured to do**, and compare two projects that should behave alike.
 
 5. **Vault health check** (CR-010 `conventions.single_inbox_outbox`, `conventions.prefix_conventions`):
@@ -167,7 +161,7 @@ orientation rather than commands. Then the loop.
 1. One-line description of what /ops does
 2. Available commands, in loop order: `/ops orient <folder>`, `/ops prepare [type]`, `/ops process <content>`
    (the default), `/ops check <folder>`, `/ops check`, `/ops status`, `/ops project list`,
-   `/ops project new <name>`, `/ops normalize <path>`, `/ops help` — plus the one-release aliases
+   `/ops project new <name>`, `/ops normalize <path>`, `/ops help`
 3. **The working loop, grouped by `phase` in declared order.** Per step:
    - the `label` and what it `does`
    - **`command`** where the step has one — the thing a person actually types
@@ -1151,12 +1145,21 @@ remembered. A second user of this skill needs to know which half is theirs.
 | The sources block, the status block, and their order | Which chats, repositories and ticket boards are declared |
 | The carry-forward check against the sources | `people[]`, with `track` and `adjacent` |
 | Ordering by age; handing the track on | `round_columns` |
+| With `tracks:` declared: the *Last track* column and the balance line (CR-090) | `tracks:`, `carry_forward.balance_window` |
 | The lint checks (roster, vault-only ids, suffix) | Track names and the taxonomy behind them |
 | — | Recap and chat-post templates |
 
 **`people[].track`** is the person's default track — used only when the previous note does not
 already carry one. `areas` is a different thing and is never read as a track: an area is what
 somebody works on, a track is the axis the round runs along.
+
+**With `tracks:` declared (CR-090)**, the *Track* column stays blank — it is stated in the room — and
+a separate **Last track** column shows what the previous note recorded, marked *(carried)*. Only a
+value that matches a declared track is carried. Above the table, one **balance line** counts the last
+session by declared track, zeros included, and asks about any empty one: *"website and offboarding
+had no one. Intended, or unbalanced?"* — a question, never a verdict. `carry_forward.balance_window: N`
+counts the last N notes instead of one. A note with no round table gives neither, and the sources
+block says `round … not recorded`.
 
 ### Step 5.4: Archive the Raw Source (silent, always) (CR-085)
 
@@ -1391,9 +1394,8 @@ mechanism is identical across series and only the labels differ.
 
 #### Dashboard Refresh -- retired (v1.79.0, CR-089)
 
-`/daily-dashboard` has left the suite. If `dashboard_refresh.enabled` is still set, print one line —
-`dashboard_refresh is retired; remove it from <config file>` — and continue. The key is read for one
-release so no config fails, then ignored.
+`/daily-dashboard` has left the suite, and since v1.81.0 `dashboard_refresh` is ignored. `/ops status`
+reports it among unknown keys.
 
 #### Mark Preparation as Superseded + Bidirectional Link (CR-005, always)
 

@@ -230,7 +230,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 33
-core_skills_version: "1.80.0"
+core_skills_version: "1.81.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -296,14 +296,13 @@ contact_classification:
 # --- Skills registry ---
 skills:
   # Declared in LOOP ORDER (CR-089): the landing page renders this order, so this is
-  # the one place it is set. Subcommands are the loop's verbs; `aliases` maps an old
-  # name to its new one for one release and is removed in the release after.
+  # the one place it is set. Subcommands are the loop's verbs. CR-089's one-release
+  # aliases were removed in 1.81.0.
   user_invocable:
     - name: inbox
       description: "Universal entry point for unstructured content — classifies and routes. Maintains the triage working surface (CR-022)."
       badge: Capture
       subcommands: [status, route, triage, help]
-      aliases: {process: route}
     - name: preparation
       description: "The config-free form of /ops prepare: an agenda for a meeting with a contact, with a walk-in card on top."
       badge: Context
@@ -316,17 +315,14 @@ skills:
       description: "The config layer over prepare and process, plus orient, check and project set-up — config-driven for any organization."
       badge: Primary
       subcommands: [process, prepare, orient, check, status, project list, project new, normalize, help]
-      aliases: {brief: orient, lint: check, sweep: check, projects: project list}
     - name: outbox
       description: "Lifecycle management for `_outbox/` items — list pending, close resolved ones into their contact or project folder."
       badge: Utility
       subcommands: [list, status, close, close --all-sent, help]
-      aliases: {archive: close}
     - name: tasks
       description: "Personal task tracker with cross-project correlation."
       badge: Tracking
       subcommands: [list, add, done, import, weekly, archive, help]
-      aliases: {show: list}
     - name: handoff
       description: "Frozen, self-contained context documents in `.handoff/` — bounded subjects a different work session can pick up cold. Human-actioned only; no skill reads them."
       badge: Utility
@@ -335,7 +331,6 @@ skills:
       description: "Knowledge extraction manager and skill evolution engine."
       badge: Knowledge
       subcommands: [reprocess, scan-claude-md, compile, migrate, synthesize, propose, status, help]
-      aliases: {normalize: migrate}
     - name: analytics
       description: "Vault-level content analytics — trends, skill adoption, contact engagement, backlog."
       badge: Knowledge

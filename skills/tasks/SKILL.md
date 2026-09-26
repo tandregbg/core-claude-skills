@@ -132,7 +132,7 @@ If no `_tasks.yaml` exists in the current folder and a task is being added:
 
 ## Commands
 
-**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/tasks show is now /tasks list — the old name goes in the next release.`
+**Renamed in v1.79.0 (CR-089); `/tasks show` was removed in v1.81.0.** An old name is not recognised: say that it is now `/tasks list`, and do not run it.
 
 ### `/tasks list` (the default; was `show`)
 

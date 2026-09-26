@@ -165,7 +165,7 @@ the author knows the answer, instead of to clean-up time, where nobody does.
 
 ## SUBCOMMANDS
 
-**Renamed in v1.79.0 (CR-089); the old name works for one release.** When it is used, run the new subcommand and print one line first: `/outbox archive is now /outbox close — the old name goes in the next release.`
+**Renamed in v1.79.0 (CR-089); `/outbox archive` was removed in v1.81.0.** An old name is not recognised: say that it is now `/outbox close`, and do not run it.
 
 ### `list` (default if no args)
 

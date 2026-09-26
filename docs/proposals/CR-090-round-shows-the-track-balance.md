@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-25** |
+| **Status** | **Implemented 2026-09-26, v1.81.0** |
 | **Contract** | none — `build_agenda.py` behaviour and one optional config key, no schema break |
 | **Date** | 2026-09-25 |
 | **Area** | `ops` (`build_agenda.py`), `ops-config` (`carry_forward`) |
@@ -93,3 +93,15 @@ column that looks like a quiet day.
 4. A previous note with no round table: no Last-track column, and the sources block says
    `round: not recorded`.
 5. A project without `tracks:`: behaviour unchanged from CR-084.
+
+## Outcome (2026-09-26, v1.81.0)
+
+Implemented as proposed, in `build_agenda.py`: `round_table()` and `declared_track()` helpers, the
+*Last track* column, the balance line, `balance_window`, and a `round` line in the sources block when
+`tracks:` is declared. The balance counts **roster names only**, so the second column of some other
+table in the note is never read as a track. All five verification cases are tests
+(`tests/test_cr090_track_balance.py`), plus one for the window.
+
+**Found while testing:** the italic `*(carried)*` mark the agenda writes survived a round trip through
+a note as a stray `*`, so a kept prefill was never carried again. Fixed in the same release; it
+affected CR-084's hand-on too.

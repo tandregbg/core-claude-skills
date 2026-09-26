@@ -24,6 +24,7 @@ Config, from the project's `.claude/ops-config.yaml`:
           time: "10:30 CET / 14:00 IST · 40 min"
           escalate_after: 3
           round_columns: [Track]            # extra blank columns in the round table
+          balance_window: 1                 # CR-090: sessions counted in the track balance line
     people:
       - name: Name                        # the round table, in order
       - name: Other
@@ -618,6 +619,37 @@ def recorded_since(cf: dict, after: datetime.date, told: str | None) -> list[dic
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
+def round_table(path: Path) -> dict[str, str]:
+    """A note's round table as {name (lower): track}, first row per name wins.
+
+    The CR-084 shape `| <person> | <track> | ... |`. A `(carried)` mark is stripped --
+    including the italic `*(carried)*` the agenda writes, which a note that kept the
+    prefill carries verbatim and which used to survive as a stray `*` -- so
+    a note that kept the agenda's prefill reads as the value it confirmed. Best effort:
+    an unreadable note is an empty table, never a stopped agenda."""
+    out: dict[str, str] = {}
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.startswith("|"):
+                continue
+            cells = [c.strip().strip("*") for c in line.strip("|").split("|")]
+            if len(cells) >= 2 and cells[0] and cells[1] and not set(cells[0]) <= set("- "):
+                if cells[0].lower() not in ("", "owed into today") and "---" not in cells[1]:
+                    out.setdefault(cells[0].lower(), re.sub(r"\s*\*?\(carried\)\*?\s*", "", cells[1]).strip())
+    except OSError:
+        pass
+    return out
+
+
+def declared_track(value: str, tracks: list[str]) -> str | None:
+    """The declared track a round cell names, in its declared spelling -- or None.
+
+    CR-090: only a declared track is carried or counted. An area or free text in the
+    cell is dropped, which keeps CR-084's fix (areas never under a Track heading)."""
+    v = (value or "").strip().lower()
+    return next((t for t in tracks if t.lower() == v), None)
+
+
 def next_session(yymmdd: str, days: list[str] | None) -> str:
     """The next day this series actually meets.
 
@@ -724,9 +756,37 @@ def main() -> None:
     # the failure this block exists to make impossible. STALE and NOT DECLARED are
     # printed, never omitted: a missing source that announces itself is honest, a
     # silent one is indistinguishable from an empty result.
+    # CR-090: with `tracks:` declared, what the last session(s) said per person, and
+    # the spread across the declared tracks -- counted over the roster only, so a
+    # second column of some other table in the note is never read as a track.
+    tracks = cf.get("tracks") or []
+    roster = {k.lower(): p_["name"] for p_ in cf["people"]
+              for k in [p_["name"]] + list(p_.get("aliases") or [])}
+    last_round = round_table(last)
+    round_recorded = any(k in roster for k in last_round)
+    try:
+        window = max(1, int(cf.get("balance_window") or 1))
+    except (TypeError, ValueError):
+        window = 1
+    balance: dict[str, int] = {t: 0 for t in tracks}
+    counted = 0
+    for _d, note in hist[-window:]:
+        rt = round_table(note)
+        rows = {roster[k]: v for k, v in rt.items() if k in roster}
+        if rows:
+            counted += 1
+        for v in rows.values():
+            if (t := declared_track(v, tracks)):
+                balance[t] += 1
+
     built = datetime.datetime.now().strftime("%y%m%d %H:%M")
     src = [f"## Sources — built {built} from", "", "```"]
     src.append(f"  note      {last.name:44} read")
+    if tracks:
+        # A missing round table is said, not shown as an empty column that looks
+        # like a quiet day.
+        src.append(f"  round     {last.name:44} "
+                   + ("read" if round_recorded else "not recorded — no Last-track column, no balance line"))
 
     # CR-088: every archive-backed line carries its fetch status, and STALE carries
     # the reason when the record gives one. A fetch that failed after the last good
@@ -860,17 +920,7 @@ def main() -> None:
     # CR-084: what each person said their track was last session. The note's round
     # table records it on every line; the agenda then asked again from blank, which
     # is how a column the project asks for first came to be empty every morning.
-    prior_track: dict[str, str] = {}
-    try:
-        for line in last.read_text(encoding="utf-8").splitlines():
-            if not line.startswith("|"):
-                continue
-            cells = [c.strip().strip("*") for c in line.strip("|").split("|")]
-            if len(cells) >= 2 and cells[0] and cells[1] and not set(cells[0]) <= set("- "):
-                if cells[0].lower() not in ("", "owed into today") and "---" not in cells[1]:
-                    prior_track.setdefault(cells[0].lower(), re.sub(r"\s*\(carried\)\s*", "", cells[1]).strip())
-    except OSError:
-        pass  # best effort: an unreadable note must not stop the agenda
+    prior_track = round_table(last)
 
     owed: dict[str, list[tuple[str, int]]] = {}
     for lab, rest, n, _g, _d in items:
@@ -888,7 +938,6 @@ def main() -> None:
     # Prefilling it from `areas` put non-track values under a "Track" header and
     # contradicted the instruction above the table -- worse than blank, because a
     # wrong prefilled answer teaches the wrong vocabulary.
-    tracks = cf.get("tracks") or []
     cols, people = cf.get("round_columns") or [], cf["people"]
     L += ["---", "", "## Round", ""]
     # The legend below says this better when there is one; printing both repeats
@@ -899,11 +948,25 @@ def main() -> None:
         L.append("**Track before anything else.** "
                  + " · ".join(t[:1].upper() + t[1:] for t in tracks) + ". One per item, never two.\n")
     L.append("**What moved · what you are blocked on and who owns the other end · what you need a decision on.**")
+    # CR-090: the spread, as a question. Zeros included -- an empty track is the
+    # thing a person-by-person round never shows.
+    if tracks and counted:
+        span = "Last session" if window == 1 or counted == 1 else f"Last {counted} sessions"
+        L.append("")
+        L.append(f"{span} by track: " + " · ".join(f"{t} {balance[t]}" for t in tracks))
+        empty = [t for t in tracks if balance[t] == 0]
+        if empty:
+            names = empty[0] if len(empty) == 1 else ", ".join(empty[:-1]) + " and " + empty[-1]
+            L.append(f"- {names} had no one. Intended, or unbalanced?")
     if people:
         # A table is only worth its space when it has rows to hold.
         # The header must carry the same cell count as the separator and the rows:
         # one for the name, one per configured column, one for the free text.
-        head = [""] + cols + ["Owed into today"]
+        # CR-090: with `tracks:` declared, yesterday's answer gets its own column.
+        # Today's stays blank and is stated in the room; merging the two is how a
+        # carried value comes to read as a confirmed one.
+        last_col = bool(tracks and round_recorded)
+        head = [""] + cols + (["Last track"] if last_col else []) + ["Owed into today"]
         L += ["", "| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
         for p_ in people:
             # CR-084: the track is HANDED ON, not re-answered. Yesterday's note
@@ -934,7 +997,14 @@ def main() -> None:
                 if t not in seen:
                     seen.add(t); uniq.append((t, n))
             due = " · ".join(t if n <= 1 else f"{t} (**{n}×**)" for t, n in uniq)
-            cells = [f"**{p_['name']}**"] + ([first] + [""] * (len(cols) - 1) if cols else []) + [due]
+            lt = []
+            if last_col:
+                prev = next((last_round[k.lower()] for k in [p_["name"]] + list(p_.get("aliases") or [])
+                             if k.lower() in last_round), "")
+                t_ = declared_track(prev, tracks)
+                lt = [f"{t_} *(carried)*" if t_ else ""]
+            cells = ([f"**{p_['name']}**"] + ([first] + [""] * (len(cols) - 1) if cols else [])
+                     + lt + [due])
             L.append("| " + " | ".join(cells) + " |")
         if (un := [item_of(l, r) for l, r, *_ in items if owner_of(l, r) == "UNOWNED"]):
             L += ["", f"**Nobody owes these: {', '.join(un)}.** They are on no row above, which is"

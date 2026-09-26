@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.80.0
+**Version:** 1.81.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -225,7 +225,7 @@ It declares:
 - **Schema versions** -- `ops_config`, `contact_meta`, `tasks`, `insights`
 - **Insight type enums** -- content vs evolution
 - **Contact classification** -- levels, defaults, folder pattern defaults (CR-009)
-- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands (declared in loop order, with one-release `aliases` for renamed subcommands)
+- **Skills registry** -- user-invocable + non-invocable, with badges and subcommands (declared in loop order)
 - **`terms:`** (CR-089, contract 32) -- one entry per concept: the English identifier, its localized form, the loop step that produces it, the filename role keyword for new files, the legacy keywords every reader still accepts, and phrases to avoid. The naming rule that follows: a skill is a noun, a subcommand is a verb, one verb means one thing everywhere, and **the loop's step ids are the command verbs**. Identifiers (including filename role keywords) are English; what a person reads is localized, but only from `terms:`. Nothing existing is renamed — the rule applies forward
 - **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `conventions` (key renamed from `rules` by CR-092; each declares a level — invariant, standard or guideline) (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
 - **Visualisation features** -- the page list Marvin renders
