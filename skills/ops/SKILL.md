@@ -81,7 +81,7 @@ Parse the user's input. If the first word is `status`, execute this subcommand i
    (`dashboard_refresh`, retired in v1.79.0). **This is the one place a person can see what every
    project is configured to do**, and compare two projects that should behave alike.
 
-5. **Vault health check** (CR-010 `rules.single_inbox_outbox`, `rules.yaml_naming`):
+5. **Vault health check** (CR-010 `conventions.single_inbox_outbox`, `conventions.prefix_conventions`):
    - From the detected vault root, scan for stray inbox/outbox directories using the **CR-025 fuzzy matcher** (same as `/ops check` check 9): `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*` directory, and localized forms (`inkorg*`/`utkorg*`), case-insensitive, skipping `.archive/`/`.transcripts/`/`.handoff/`/`clones/`/`node_modules/`. Anything other than `<vault>/_inbox` and `<vault>/_outbox` is a stray; flag each unless listed in `workflows.sweep.structure_exemptions` (exempt paths get a one-line note with their reason). Exact-name matching is not enough -- real-world strays have appeared as `.inbox` and `_outbox-archive`.
    - For every `<vault>/<folder>/_ops.yaml` found in step 1, the folder is treated as ops-aligned. Confirm each parses as YAML; flag any that don't.
    - List ops-aligned folders that are *missing* an `_ops.yaml` only when CLAUDE.md or `_meta.yaml` in that folder declares `organization` -- otherwise the folder is intentionally not ops-aligned and should be silent.

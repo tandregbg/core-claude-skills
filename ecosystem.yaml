@@ -193,6 +193,11 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 33 (CR-092, 2026-09-26): NOT additive. `rule` belongs to the insight
+#   lifecycle (CR-089), so the contract's own uses are renamed: the block key
+#   vault_conventions.rules -> vault_conventions.conventions, and the middle level
+#   `rule` -> `standard` (invariant > standard > guideline). Readers accept the old
+#   key and value for one release; ids and meanings are unchanged.
 # contract_version 32 (CR-089, 2026-09-26): one term per concept. NOT additive:
 #   `terms:` declares every concept once (English identifier, localized attribute,
 #   loop verb, filename keyword, legacy filename keywords, phrases to avoid);
@@ -224,8 +229,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 32
-core_skills_version: "1.79.0"
+contract_version: 33
+core_skills_version: "1.80.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -377,7 +382,8 @@ terms:
   - {id: index, en: index, sv: index, note: "the generated _INDEX-* files; a project REGISTRY (CR-086) is a different, hand-written thing"}
   - {id: insight, en: insight, sv: insikt}
   - {id: rule, en: rule, sv: regel, note: "an insight confirmed often enough to be loaded as a standing instruction (CR-013)"}
-  - {id: convention, en: convention, sv: konvention, note: "the contract's rules for the vault (vault_conventions)"}
+  - {id: convention, en: convention, sv: konvention, note: "the contract's rules for the vault (vault_conventions.conventions, CR-092)"}
+  - {id: standard, en: standard, sv: standard, note: "a convention's middle level: holds generally, exceptions named (CR-037, CR-092)"}
   - {id: wiki, en: wiki, sv: wiki, verb: compound, avoid: ["knowledge base"]}
   - {id: handoff, en: handoff, sv: överlämning, file: handoff}
   # movement and retirement
@@ -692,20 +698,20 @@ vault_conventions:
       readers: ["/ops", "user"]
       lifecycle: "live; participant-triggered update after a matching 1-on-1; completed rows move into the meeting summary"
 
-  # Cross-cutting rules that govern multiple files.
-  rules:
-    # --- Rule hierarchy (CR-037) ---
-    # Every rule below declares level:. A rule without one is a CONTRACT DEFECT,
+  # Cross-cutting conventions that govern multiple files (CR-092: key was `rules`).
+  conventions:
+    # --- Level hierarchy (CR-037; middle level renamed rule -> standard by CR-092) ---
+    # Every convention below declares level:. One without it is a CONTRACT DEFECT,
     # not a guideline by default — the absence must be loud.
     #
     #   invariant  never broken; no exception possible          -> sweep: finding
-    #   rule       holds generally; exceptions must be NAMED
+    #   standard   holds generally; exceptions must be NAMED
     #              in exceptions: and justified                 -> sweep: finding
     #                                                              unless exempted
     #   guideline  intended shape; judgement may override       -> sweep: warning
     #
     # Conflict resolution, in order:
-    #   1. Higher level wins: invariant > rule > guideline.
+    #   1. Higher level wins: invariant > standard > guideline.
     #   2. Within a level, the more specific wins (a rule naming a path beats
     #      one naming a class).
     #   3. A declared exception beats the rule it exempts — only for the named
@@ -719,7 +725,7 @@ vault_conventions:
       rule: "All paths above are vault-relative. The vault root is determined by walking up from CWD until _inbox/, _outbox/, or .obsidian/ is found, or by VAULT_ROOT env var, or by a tool-specific override."
 
     - id: "placement_classes"
-      level: rule
+      level: standard
       rule: "Every declared path belongs to exactly one placement class (CR-036). SINGLETON — exactly one, at vault root; a second instance is a finding: INDEX.md, _inbox/, _outbox/, _config/, .handoff/, .knowledge/. PER_FOLDER — appears in every folder of its kind: _meta.yaml, _insights.yaml, _tasks.yaml, _manifest.md, .archive/. PER_FOLDER presence can be CONDITIONAL (CR-040): a folder declaring workflows.task_ledger.mode external or none legitimately has no _tasks.yaml, and that absence is a declaration, not missing data — readers must not treat it as an empty or stalled folder. PER_BOUNDARY — appears where the boundary it describes actually applies: CLAUDE.md, _ops.yaml, CHANGELOG.md, README.md."
 
     - id: "singleton_surfaces"
@@ -740,14 +746,14 @@ vault_conventions:
       rule: "/ops resolves config in this order: project-level .claude/ops-config.yaml > nearest <folder>/_ops.yaml walking up from CWD > <vault>/_config/base.yaml > skill base.yaml. First match wins. Implemented in v1.16.0 (CR-011). The pre-v1.16.0 chain (~/.claude/skills/{org}-ops-config/{org}.yaml) is deprecated and removed in v1.17.0; until then it acts as a fallback between vault-wide and skill defaults with a one-time per-session deprecation warning."
 
     - id: "prefix_conventions"
-      level: rule
+      level: standard
       exceptions: [".knowledge/", ".handoff/_archive"]
       rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
       test: "is this surface read in everyday work? yes -> underscore, no -> dot"
       not_a_prefix_criterion: "WHO WRITES the surface is a separate property, declared per path, and never a reason for a prefix. _insights.yaml settles this: it is machine-written by /insights yet carries an underscore, because several skills READ it automatically. Generated does not imply dot."
 
     - id: "prefix_known_exception"
-      level: rule
+      level: standard
       rule: ".knowledge/ is READ frequently — INDEX.md is the documented first stop for any knowledge question — so by the rule above it would take an underscore. It keeps the dot for compatibility: the name is established in CR-027, INDEX.md, vault CLAUDE.md and every [[wiki]] link, and renaming costs more than the consistency gains. Declared here as a KNOWN EXCEPTION rather than hidden behind a rule it breaks. Do not cite .knowledge/ as precedent for dot-prefixing a new read surface. SECOND DECLARED EXCEPTION: .handoff/_archive keeps its underscore against the archive-is-always-.archive rule, because .handoff/ carries a TOTAL BLOCK (CR-033) — the surface is not touched by any skill, including to rename it. Exception by necessity, not by preference."
 
     - id: "dot_surface_levels"
@@ -755,35 +761,35 @@ vault_conventions:
       rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/): present, rarely read, safe to read on demand. BLOCKED — read access itself is constrained: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize, never indexed, read only when named (CR-033). A new blocked surface must inherit the behaviour without patching each skill. NOTE: .knowledge/wiki/ is NOT blocked — it is read freely and often. Its constraint is WRITE-side (generated, hand-editing forbidden, owned by /insights synthesize, CR-027), which is a different axis; see prefix_known_exception."
 
     - id: "generated_view_isolation"
-      level: rule
+      level: standard
       rule: "A generated READ view that lives among its own source material must be isolated STRUCTURALLY, not by a skip flag. Put it in a hidden subfolder (<folder>/.status/current.md) rather than beside the sources as <folder>/_status.md. Reason: CR-033 found four skills reaching .handoff/ files despite an explicit skip-list, because they globbed on the YYMMDD- filename prefix rather than consulting the list. A per-folder markdown file among meeting documents is easier to hit by accident than one in a dot-folder. The dot here does not mean rarely read — the user opens it deliberately; it means unreachable by scanners, which is the .knowledge/wiki/ pattern applied at folder scope."
 
     - id: "system_file_language"
-      level: rule
+      level: standard
       rule: "System and structure files carry ENGLISH names regardless of the language of their content: _config/priority.md, _config/naming-prefix.md, _inbox/_frame.md, .status/current.md. Content stays in the vault's working language. Applies going FORWARD — the derived registers with Swedish names (_INDEX-agare.md, _INDEX-koppling.md, _INDEX-maskiner.md, _INDEX-objektmodell.md, _INDEX-verksamheter.md) are read by scripts and renaming them costs more than the consistency gains; the generated wiki articles under .knowledge/wiki/ likewise keep the language of the corpus they summarise."
 
     - id: "identifier_language"
-      level: rule
+      level: standard
       rule: "Identifiers are ENGLISH; the words a person reads may be in any language, and are data rather than literals in code. This covers schema field names, enum values, status keys, config keys, dictionary keys and variable names — everything a second tool must agree with in order to interoperate. Display text (a manifest's Status wording, an external board's column name, a generated view's headings) stays in the vault's working language and lives in a settings or vocabulary file, so changing it is a settings change rather than a code change. Where an identifier and its label were historically the same string, the LABEL keeps the existing spelling: renaming a key costs nothing, while renaming a label changes what an external system or a person sees. A reader meeting a value it does not recognise should tolerate it rather than silently treat it as the default — see task_statuses, where recognising only the canonical set made finished tasks count as outstanding. THIS DECLARATION FOLLOWS ITS OWN RULE: where a field is named here, it is named by its identifier, not by the label a vault happens to write it under. Five entries described a manifest's fields as Status/Kanal/Kontakt until 2026-09-21, which reads as Swedish identifiers in a public contract and invites a tool to hardcode the label."
 
     - id: "filename_role_keyword"
-      level: rule
+      level: standard
       rule: "A filename is YYMMDD-<role>-<description>.md (CR-089). The ROLE keyword is an identifier — scripts and skills select files by it — so it is ENGLISH and comes from `terms:` (`file:`). The description stays in the working language and keeps å/ä/ö (CR-021). FORWARD ONLY: existing files are never renamed; every reader also accepts the term's `legacy_file:` keywords, and a check flags only files dated on or after the release. A series' declared note_suffix / agenda_suffix always wins over the default keyword, because a series that changed shape mid-history reads as a broken carry-forward chain."
 
     - id: "one_term_per_concept"
-      level: rule
+      level: standard
       rule: "Every concept has one term, declared once in `terms:` (CR-089). Skill names are nouns (the place or object owned) unless declared `kind: command_name`; subcommands are verbs, or `<object> <verb>`; a verb means the same thing in every skill; the loop's step ids ARE the command verbs; anything outside the loop is named for what it repairs or explains. A localized word not declared in a term's language column is drift. `avoid:` phrases are checked by scripts/check-terms.py."
 
     - id: "write_ownership"
-      level: rule
+      level: standard
       rule: "Independent of the prefix, every surface declares who may write it. HUMAN: _inbox/_capture.md, _inbox/_frame.md, _meta.yaml, .handoff/ (once, then frozen). GENERATED — hand-editing forbidden: .knowledge/wiki/ (/insights synthesize, CR-027), _INDEX-maskiner.md and _INDEX-koppling.md (scan.py), the personal working-document view (CR-035). MIXED: _tasks.yaml, _insights.yaml. A generated surface that is edited by hand loses its next regeneration silently — which is why the property is declared rather than inferred from the prefix."
 
     - id: "audit_lifecycle"
-      level: rule
+      level: standard
       rule: "An audit or review document lives in _inbox/ only WHILE IN USE. Once its decisions are made and executed it moves to _inbox/.archive/. An audit left in place after execution becomes a competing source of truth against the working document (observed 260907). _inbox/ normally holds at most three CONTENT files: the working document, one active audit, one active review. Declared system files do not count against the ceiling (_capture.md, _frame.md, _inbox.yaml, _tasks.yaml) — they are infrastructure of the surface, not material passing through it. More than three content files means something has taken up residence, which CR-025 forbids in principle but does not measure."
 
     - id: "stale_vs_junk"
-      level: rule
+      level: standard
       rule: "Stale is not junk. A document that WAS current and is now outdated is archived to .archive/ (never deleted). Material with no vault destination goes to .ephemeral/ and may die (swept after 14 days, CR-024). Conflating the two loses history or retains rubbish."
 
     - id: "audio_transcript_pairing"
@@ -984,7 +990,7 @@ orientation:
       vault searches everything beside it too, and answers then mix material from places
       that have nothing to do with each other. The vault root is the folder holding _inbox/
       and _outbox/.
-    sources: [vault_conventions.rules.vault_relative]
+    sources: [vault_conventions.conventions.vault_relative]
 
   - id: inbox_outbox
     question: "What are inbox and outbox?"
@@ -993,7 +999,7 @@ orientation:
       home, so it normally holds very few files. _outbox/ is where outgoing material is
       staged before it is sent, and it keeps the record of what was sent when. One of each,
       both at the vault root; per-folder copies are not part of the contract.
-    sources: [vault_conventions.vault_root, vault_conventions.rules.single_inbox_outbox]
+    sources: [vault_conventions.vault_root, vault_conventions.conventions.single_inbox_outbox]
 
   - id: dot_vs_underscore
     question: "Why do some folders start with a dot and others with an underscore?"
@@ -1002,7 +1008,7 @@ orientation:
       and sorts it to the top. Dot means rarely, on demand, or never. Who WRITES a file is
       a separate thing and never a reason for a prefix — _insights.yaml is machine-written
       and still carries an underscore, because skills read it automatically.
-    sources: [vault_conventions.rules.prefix_conventions]
+    sources: [vault_conventions.conventions.prefix_conventions]
 
   - id: sealed_surfaces
     question: "What is .transcripts/, and how do I get the raw text when I need it?"
@@ -1039,7 +1045,7 @@ orientation:
       material in; the structure is proposed from what is actually there and changes as
       more arrives. A folder tree invented before the content exists describes work nobody
       has done yet.
-    sources: [vault_conventions.rules.placement_classes]
+    sources: [vault_conventions.conventions.placement_classes]
 
   - id: correcting_data
     question: "Something is wrong in a file — do I edit it?"

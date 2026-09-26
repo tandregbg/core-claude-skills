@@ -9,6 +9,27 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.80.0] - 2026-09-26
+
+### Changed
+
+- **A convention's middle level is `standard`, and the block is `conventions` (CR-092, contract
+  33 — not additive).** CR-089 gave *rule* to the insight lifecycle (hypothesis → rule) and called
+  the contract's rules for the vault conventions, but two uses survived inside the contract: the
+  block key `vault_conventions.rules` and the middle level `rule`, carried by 11 of the 18
+  conventions. A reader of the conventions page and a reader of `_insights.yaml` met the same word
+  meaning two things, and `terms:` could declare only one of them.
+  - `vault_conventions.rules` → **`vault_conventions.conventions`**; orientation `sources:` paths
+    follow. Convention ids are unchanged.
+  - Level `rule` → **`standard`**: *holds generally; exceptions must be named and justified*.
+    `invariant > standard > guideline`; nothing else in CR-037 changes.
+  - `standard` added to `terms:`.
+  - **Readers of an older contract accept the old key and value for one release.** This repo's own
+    contract may not: `check-components.py` fails on the key `rules` or on any level outside
+    invariant / standard / guideline. `tests/test_cr092_conventions.py`.
+- CR-089's one-release command aliases are **still in place** in this release: removing them waits
+  on the components and machines that have not moved to the new names yet.
+
 ## [1.79.0] - 2026-09-26
 
 ### Changed

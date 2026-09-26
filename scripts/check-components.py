@@ -199,6 +199,20 @@ def main():
     except Exception as e:                      # never block the main check on this
         problems.append(f"README loop block: could not verify ({type(e).__name__})")
 
+    # CR-092: the conventions block and its levels. `rule` is the insight state (CR-089),
+    # so the contract itself may not use it as a level again; readers of an older
+    # contract accept it for one release, this repo's contract does not.
+    vc = doc.get('vault_conventions') or {}
+    if 'rules' in vc:
+        problems.append("vault_conventions: key `rules` - renamed `conventions` by CR-092")
+    conventions = vc.get('conventions') or []
+    if not conventions:
+        problems.append("vault_conventions: no `conventions:` block")
+    for cv in conventions:
+        if cv.get('level') not in ('invariant', 'standard', 'guideline'):
+            problems.append(f"convention {cv.get('id', '?')}: level `{cv.get('level')}` - "
+                            f"must be invariant, standard or guideline (CR-037, CR-092)")
+
     print(f"components: {len(comps)}  declared vault paths: {len(paths)}  "
           f"loop steps: {len(loop)}")
     for cid, deps in edges.items():

@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.79.0
+**Version:** 1.80.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -227,10 +227,10 @@ It declares:
 - **Contact classification** -- levels, defaults, folder pattern defaults (CR-009)
 - **Skills registry** -- user-invocable + non-invocable, with badges and subcommands (declared in loop order, with one-release `aliases` for renamed subcommands)
 - **`terms:`** (CR-089, contract 32) -- one entry per concept: the English identifier, its localized form, the loop step that produces it, the filename role keyword for new files, the legacy keywords every reader still accepts, and phrases to avoid. The naming rule that follows: a skill is a noun, a subcommand is a verb, one verb means one thing everywhere, and **the loop's step ids are the command verbs**. Identifiers (including filename role keywords) are English; what a person reads is localized, but only from `terms:`. Nothing existing is renamed — the rule applies forward
-- **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `rules` (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
+- **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `conventions` (key renamed from `rules` by CR-092; each declares a level — invariant, standard or guideline) (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
 - **Visualisation features** -- the page list Marvin renders
 
-The contract is versioned (`contract_version: 32`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
+The contract is versioned (`contract_version: 33`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
 
 ## Architecture
 

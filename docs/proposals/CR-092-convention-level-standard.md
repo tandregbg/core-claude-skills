@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** 2026-09-26 |
+| **Status** | **Implemented 2026-09-26, v1.80.0** — contract 33 |
 | **Contract** | **not additive** (32 → 33) — one enum value and one block key renamed; readers accept the old spelling for one release |
 | **Date** | 2026-09-26 |
 | **Area** | `ecosystem.yaml` (`vault_conventions.rules`, every entry's `level`, the CR-037 hierarchy comment, `terms:`), `/ops check` (vault) severity mapping. Outside this repo: the landing page's conventions page (`Rules.astro`) |
@@ -76,3 +76,15 @@ check above.
 - A contract with `level: rule` still renders during the alias release.
 - **Proposed release: minor (1.80.0)**, which can also remove CR-089's one-release aliases — to be
   confirmed by the maintainer.
+
+## Outcome (2026-09-26, v1.80.0)
+
+Implemented as proposed. `ecosystem.yaml`: key `conventions`, 11 levels `standard`, the CR-037
+comment, orientation `sources:` paths, `standard` in `terms:`, contract 33. `/ops status` now names
+`conventions.single_inbox_outbox` and `conventions.prefix_conventions` (it still said `yaml_naming`,
+a key replaced by contract 3). `check-components.py` refuses the old key and level in this repo's
+contract; `tests/test_cr092_conventions.py`. Landing page: reads `conventions`, falling back to
+`rules`, and maps a `rule` level to `standard`; rebuilt and deployed.
+
+**Decided at implementation:** released as 1.80.0 **without** removing CR-089's aliases. Removing
+them is only safe once the components and machines still on the old names have moved.
