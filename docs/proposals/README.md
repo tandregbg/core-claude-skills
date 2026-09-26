@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-094**
+Next available CR number: **CR-098**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-094**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-097 | `vault_conventions`, `/analytics`, the dashboard | Medium | **Implemented v1.83.0, contract 34.** `_analytics/` → `.analytics/`. By CR-034 the prefix answers read frequency; the snapshots are read on demand and by no skill, and the folder predates the rule. A dot also keeps their `YYMMDD-*.md` names out of every folder walk by rule. Readers fall back to the old path for one release; `/analytics` offers the move |
 | CR-097 | `analytics` backlog steps 2, 3, 5 | **High** | **Proposed 2026-09-26.** Backlog detection flags correct structure as debt: 241 directories reported for lacking `CHANGELOG.md`, of which **19 are genuine** — 170 have one in an ancestor (a project indexes at its root, not per subdirectory), 67 carry a `_manifest.md`, 9 are dot-prefixed raw-material surfaces. Step 2 is worse: 342 `.txt` flags, ~7-13 real, because extension + date prefix cannot tell a queue from processed material kept deliberately. Adds ancestor, manifest and dormancy exclusions, and requires the summary to print flags-raised beside after-exclusions so suppression stays auditable |
 | CR-096 | `transcript` Step 3.5 write-time guard, `insights` normalize | **High** | **Implemented v1.82.0.** An append that lands after the top-level `next_id` key either breaks the parse or — worse — parses cleanly while every reader skips the entries. Three occurrences in one session across unrelated folders; one had hidden two real insights for 24 hours. The existing guard validates `next_id`'s *value*, not the *position* of the append. Adds: append before `next_id`, and re-read after writing to assert the entries are present |
 | CR-095 | `insights` compile output, `transcript` proper-noun sections | **High** | **Implemented v1.82.0.** 98 proper-noun `edge_case` entries over 40 folders and four months, against an **empty** `people[]` roster. The skill names the durable fix ("add it to the roster") but produces no artefact anyone acts on, so every run re-flags the same names. Adds a name-candidate roll-up to compile — a report, never a write, because a roster entry is an identity claim |

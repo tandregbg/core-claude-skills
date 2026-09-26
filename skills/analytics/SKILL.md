@@ -1,6 +1,6 @@
 ---
 name: analytics
-description: Vault-level content analytics — file creation trends, skill adoption, contact engagement, content distribution, pipeline outcome metrics (insights/tasks/changelog per meeting), and unprocessed backlog detection. Outputs to _analytics/ folder.
+description: Vault-level content analytics — file creation trends, skill adoption, contact engagement, content distribution, pipeline outcome metrics (insights/tasks/changelog per meeting), and unprocessed backlog detection. Outputs to .analytics/ folder.
 user-invocable: true
 argument-hint: [overview|skills|contacts|pipeline|backlog|help]
 ---
@@ -18,7 +18,7 @@ Analyse the vault as a dataset — file metadata (names, dates, paths, counts), 
 ## Design Principles
 
 - **Metadata and structured fields only.** Read filenames, paths, dates, and file sizes. Never read prose content — the only in-file reads allowed are lightweight classification (H1 heading, first line) and **structured-field scans** for the pipeline subcommand: regex-matching `date:`/`type:` lines in `_insights.yaml`, `created:` lines in `_tasks.yaml`, and `- **YYMMDD:` bullets in `CHANGELOG.md`. Field values only; summaries, rationale, and notes are never read.
-- **Non-destructive.** Only writes to `_analytics/` — never modifies existing files.
+- **Non-destructive.** Only writes to `.analytics/` — never modifies existing files.
 - **Snapshot-based.** Each run produces a dated snapshot. Historical snapshots enable trend comparison.
 - **Privacy-aware.** Contact names appear in analytics (they are folder names, not extracted content). Mark private contacts with `private: true` in `_meta.yaml` to exclude them from output.
 
@@ -26,10 +26,17 @@ Analyse the vault as a dataset — file metadata (names, dates, paths, counts), 
 
 ## Output Location
 
-All output goes to `{vault_root}/_analytics/`:
+All output goes to `{vault_root}/.analytics/` (CR-097). A dot surface: read on demand, never by a
+folder walk -- the snapshots are named `YYMMDD-*.md`, the pattern skills use to find notes, and a dot
+prefix keeps them out of every walk by rule rather than by exception.
+
+**Before 1.83.0 this was `_analytics/`.** If `{vault_root}/_analytics/` exists and `.analytics/` does
+not, offer to move it (the whole folder, its `.archive/` included) before writing, and write nothing
+until the user answers. Never write to both. Readers fall back to `_analytics/` for one release.
+
 
 ```
-_analytics/
+.analytics/
 ├── YYMMDD-vault-overview.md       <- /analytics overview
 ├── YYMMDD-skill-adoption.md       <- /analytics skills
 ├── YYMMDD-contact-engagement.md   <- /analytics contacts
@@ -89,7 +96,7 @@ Classify each file by **path first, keywords second**:
 | Path contains | Classification |
 |---------------|---------------|
 | `_inbox/` | `inbox` |
-| `_analytics/` | `analytics` (skip — don't count own output) |
+| `.analytics/` (or legacy `_analytics/`) | skipped -- a dot surface is outside every walk; the legacy path is skipped explicitly until moved |
 | `_outbox/` | `outbox` |
 
 **Step 2 — Keyword-based classification** (filename, case-insensitive):
@@ -160,7 +167,7 @@ Before including a contact in named output:
    - **By file extension** — count per extension
    - **By day of week** — weekday vs weekend pattern with bar chart
 9. Compute **top 5 busiest dates** — date, day of week, count
-10. Write to `_analytics/YYMMDD-vault-overview.md`
+10. Write to `.analytics/YYMMDD-vault-overview.md`
 
 **Output format:**
 
@@ -289,7 +296,7 @@ Generated: YYYY-MM-DD
    - **Current share** — percentage in the most recent full quarter, with ↑/↓/→ arrow vs previous quarter
    - **Peak quarter** — quarter with most files from this skill
 5. Compute **structured vs unstructured ratio** by quarter. Structured = transcript + ops/meeting + preparation + ops. Unstructured = everything else. Show absolute counts, and a trend line from first to last full quarter.
-6. Write to `_analytics/YYMMDD-skill-adoption.md`
+6. Write to `.analytics/YYMMDD-skill-adoption.md`
 
 **Output format:**
 
@@ -358,7 +365,7 @@ Trend: Structured content share grew from **N%** (YYYY-QN) to **N%** (YYYY-QN).
    - **Active contacts per quarter** — contacts with at least 1 file in the quarter
 5. Sort contacts by total file count descending
 6. Generate **activity timelines** — a monospace block showing quarterly engagement density for top 20 contacts using heat notation: `·` = 0, `░` = 1-2, `▒` = 3-5, `▓` = 6-10, `█` = 11+
-7. Write to `_analytics/YYMMDD-contact-engagement.md`
+7. Write to `.analytics/YYMMDD-contact-engagement.md`
 
 **Output format:**
 
@@ -431,7 +438,7 @@ The document counts alone are not the full picture — a meeting's *outcomes* li
 4. Compute **derived ratios** for quarters where the systems are fully active: insights per meeting+transcript, tasks per meeting+transcript, CHANGELOG entries per meeting+transcript.
    **Exclude folders whose task ledger is not `local` (CR-041)** from the tasks-per-meeting ratio, and name them under the table as *external ledger: work tracked in `<system>`*. Their zero is a correct pipeline, not a gap -- counting it drags the ratio down and reports a healthy project as failing. This skill does **not** read the external system: counting items in a repo registry or an issue tracker is a different and much larger job, and the ratio simply excludes what it cannot see.
 5. Compute **per-day averages by quarter:** active days / calendar days, files/day, meetings+transcripts/day, insights/day, tasks/day, files per active day (partial quarters use elapsed days)
-6. Write to `_analytics/YYMMDD-pipeline-report.md`
+6. Write to `.analytics/YYMMDD-pipeline-report.md`
 
 **Report structure — two parts, mandatory:**
 
@@ -509,7 +516,7 @@ Identifies content that may benefit from processing through existing skills.
    - Only include folders with 1+ transcript files
    - Show top 15 by transcript count, with `*(+ N more)*` if truncated
 6. Write summary table at top with all four categories and suggested actions
-7. Write to `_analytics/YYMMDD-backlog-report.md`
+7. Write to `.analytics/YYMMDD-backlog-report.md`
 
 **Output format:**
 
@@ -588,10 +595,10 @@ Usage:
   /analytics backlog              Unprocessed content detection
   /analytics help                 This guide
 
-Output: _analytics/ folder in vault root (one snapshot per run).
+Output: .analytics/ folder in vault root (one snapshot per run).
 
 Data flow:
-  YYMMDD-*.* files  ──>  /analytics  ──>  _analytics/YYMMDD-*.md
+  YYMMDD-*.* files  ──>  /analytics  ──>  .analytics/YYMMDD-*.md
   (read filenames,        (classify,       (markdown snapshots,
    paths, dates)           aggregate)       one per subcommand)
 
@@ -615,8 +622,8 @@ Output language follows the same resolution as other standalone skills:
 
 ## Notes
 
-- The `_analytics/` folder is created automatically on first run
-- Old snapshots are archived to `_analytics/.archive/` — never deleted
+- The `.analytics/` folder is created automatically on first run (after offering to move a legacy `_analytics/`)
+- Old snapshots are archived to `.analytics/.archive/` — never deleted
 - This skill reads `_insights.yaml`/`_tasks.yaml`/`CHANGELOG.md` at **field level only** (dates and type enums for the pipeline subcommand) — entry contents (summaries, rationale, notes) remain the visualisation app's domain
 - This skill does NOT read file prose (except optional H1 heading for display)
 - Contact privacy is respected via `_meta.yaml` `private: true`

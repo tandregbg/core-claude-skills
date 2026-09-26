@@ -34,7 +34,7 @@ The suite is ten user-invocable skills and two shared modules (`ops-base`,
 | `tasks` | Any | Input language | 2 (_tasks.yaml + history) | Personal task tracking |
 | `handoff` | Any | Input language | .handoff/ (frozen snapshots) | Context for a different work session |
 | `insights` | Any | Input language | _insights.yaml (per folder) | Retroactive knowledge extraction |
-| `analytics` | Any | Swedish/input | _analytics/ (snapshots) | Vault-level content metrics |
+| `analytics` | Any | Swedish/input | .analytics/ (snapshots) | Vault-level content metrics |
 | `update-skills` | Any | English | 0 (manages symlinks/repos) | Skill repo management |
 
 Rows follow the registry order in `ecosystem.yaml`, which is the order of the working loop.
@@ -111,7 +111,7 @@ All domain skills inherit from `ops-base`:
 ### analytics (standalone)
 
 - **Purpose:** Vault-level content analytics — longitudinal trends, not daily snapshots
-- **Output:** `_analytics/YYMMDD-*.md` snapshot files (overview, skill-adoption, contact-engagement, backlog-report)
+- **Output:** `.analytics/YYMMDD-*.md` snapshot files (overview, skill-adoption, contact-engagement, backlog-report)
 - **Operations:** `overview` (default), `skills`, `contacts`, `pipeline`, `backlog`, `help`
 - **Special:** Reads file metadata only (names, dates, paths) — never file contents. Path-first classification avoids keyword miscount. Privacy-aware via `_meta.yaml`. Historical snapshots archived automatically.
 - **Use when:** Understanding vault growth trends, tracking skill adoption, analysing contact engagement patterns, finding unprocessed content
@@ -355,7 +355,7 @@ A typical workday using the skill ecosystem. All steps are optional -- use what 
                                            │ dates, paths)   │
                                            │                 │
                                            │ writes:         │
-                                           │ _analytics/*.md │
+                                           │ .analytics/*.md │
                                            └─────────────────┘
 
 Data Flow:
@@ -447,7 +447,7 @@ Vault Parent Directory (e.g., ~/Documents/User/)
 │
 ├── _tasks.yaml                <- /tasks, /ops (import), /transcript (import)
 ├── _tasks-history.md          <- /tasks done
-├── _analytics/                <- /analytics (snapshots)
+├── .analytics/                <- /analytics (snapshots)
 │   ├── YYMMDD-vault-overview.md
 │   ├── YYMMDD-skill-adoption.md
 │   ├── YYMMDD-contact-engagement.md

@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.82.0
+**Version:** 1.83.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -208,7 +208,7 @@ The suite is developed **on live production data**: real usage generates evidenc
 | `tasks` | Personal task tracker with cross-project correlation. Per-folder ledgers, source linking, automatic carry-forward, privacy model. Subcommands: `list`, `add`, `done`, `import`, `weekly`, `archive`, `help`. | Yes (`/tasks`) |
 | `handoff` | Frozen context documents in `<vault>/.handoff/`. One bounded subject from a conversation as a self-contained document a different work session can pick up cold. **Nothing in the suite picks it up: a human opens it.** Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
 | `insights` | Knowledge extraction manager and skill evolution engine. Compiles execution feedback into patterns (hypothesis → rule), migrates drifted files to the current schema, **synthesizes the corpus into a wiki** (CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `migrate`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
-| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Reads file metadata, not contents. Writes `_analytics/`. | Yes (`/analytics`) |
+| `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Reads file metadata, not contents. Writes `.analytics/`. | Yes (`/analytics`) |
 | `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. | Yes (`/update-skills`) |
 | `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by the other skills. | No |
 | `ops-config` | Configuration system -- schema definition and base defaults. | No |
@@ -268,7 +268,7 @@ core-skills (this repo)
   tasks (standalone -- personal task tracker) <-- writes _tasks.yaml
   update-skills (standalone -- repo management)
   insights (standalone -- extraction manager + evolution engine) --> reads transcripts + CLAUDE.md, writes _insights.yaml, compiles patterns, proposes SKILL.md changes
-  analytics (standalone -- vault metrics) --> reads file metadata (names, dates, paths), writes _analytics/
+  analytics (standalone -- vault metrics) --> reads file metadata (names, dates, paths), writes .analytics/
   inbox (standalone -- universal capture) --> classifies + routes to transcript/ops/tasks
   outbox (standalone -- staging and closing sends) <-- reads _outbox/<item>/_manifest.md
   handoff (standalone -- frozen documents in .handoff/, read by nothing)

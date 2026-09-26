@@ -193,6 +193,10 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 34 (CR-097, 2026-09-26): NOT additive. _analytics/ -> .analytics/.
+#   The snapshots are read on demand, never routinely, so by CR-034 they take a dot; a
+#   dot also keeps their YYMMDD-*.md names out of every folder walk. Readers fall back
+#   to _analytics/ for one release.
 # contract_version 33 (CR-092, 2026-09-26): NOT additive. `rule` belongs to the insight
 #   lifecycle (CR-089), so the contract's own uses are renamed: the block key
 #   vault_conventions.rules -> vault_conventions.conventions, and the middle level
@@ -229,8 +233,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 33
-core_skills_version: "1.82.0"
+contract_version: 34
+core_skills_version: "1.83.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -401,7 +405,7 @@ output_artifacts:
     - "_tasks.yaml"
     - "CHANGELOG.md"
   vault_root:
-    - "_analytics/"
+    - ".analytics/"
     - "_inbox/"
     - "_outbox/"
     - "_tasks.yaml"
@@ -618,12 +622,12 @@ vault_conventions:
       lifecycle: "stable; rarely changes"
       # Load-bearing as of v1.16.0 (CR-011): vault-wide override layer between folder-local _ops.yaml and skill base.yaml.
 
-    - path: "_analytics/"
-      purpose: "Dated snapshots of vault-level analytics"
+    - path: ".analytics/"
+      purpose: "Dated snapshots of vault-level analytics. A DORMANT dot surface (CR-097): read on demand by name, never by a folder walk. Was _analytics/ before 1.83.0; readers fall back to it for one release"
       schema: null  # markdown reports + YAML data files
       writers: ["/analytics"]
       readers: ["marvin", "user"]
-      lifecycle: "append; older snapshots auto-archived"
+      lifecycle: "append; older snapshots moved to .analytics/.archive/"
 
     - path: "_tasks.yaml"
       purpose: "Vault-root task aggregation (legacy from v1 schema)"
@@ -743,7 +747,7 @@ vault_conventions:
     - id: "prefix_conventions"
       level: standard
       exceptions: [".knowledge/", ".handoff/_archive"]
-      rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/, _analytics/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
+      rule: "The prefix answers ONE question: is this surface READ in everyday work? (CR-034). Underscore = read routinely, sorts first: folders (_inbox/, _outbox/, _contacts/, _config/, _private/, _products/, _infrastructure/) and structure-bearing files that recur in every folder of a kind (_tasks.yaml, _insights.yaml, _meta.yaml, _manifest.md, _ops.yaml, _INDEX-*). Dot = read rarely, on demand, or never. Archive is ALWAYS .archive, never _archive. A dated post never takes underscore — it takes YYMMDD-."
       test: "is this surface read in everyday work? yes -> underscore, no -> dot"
       not_a_prefix_criterion: "WHO WRITES the surface is a separate property, declared per path, and never a reason for a prefix. _insights.yaml settles this: it is machine-written by /insights yet carries an underscore, because several skills READ it automatically. Generated does not imply dot."
 
@@ -753,7 +757,7 @@ vault_conventions:
 
     - id: "dot_surface_levels"
       level: invariant
-      rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/): present, rarely read, safe to read on demand. BLOCKED — read access itself is constrained: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize, never indexed, read only when named (CR-033). A new blocked surface must inherit the behaviour without patching each skill. NOTE: .knowledge/wiki/ is NOT blocked — it is read freely and often. Its constraint is WRITE-side (generated, hand-editing forbidden, owned by /insights synthesize, CR-027), which is a different axis; see prefix_known_exception."
+      rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/, .analytics/): present, rarely read, safe to read on demand. BLOCKED — read access itself is constrained: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize, never indexed, read only when named (CR-033). A new blocked surface must inherit the behaviour without patching each skill. NOTE: .knowledge/wiki/ is NOT blocked — it is read freely and often. Its constraint is WRITE-side (generated, hand-editing forbidden, owned by /insights synthesize, CR-027), which is a different axis; see prefix_known_exception."
 
     - id: "generated_view_isolation"
       level: standard

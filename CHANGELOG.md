@@ -9,6 +9,22 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.83.0] - 2026-09-26
+
+### Changed
+
+- **Analytics snapshots live in `.analytics/`, not `_analytics/` (CR-097, contract 34 — not
+  additive).** By CR-034 an underscore means *read in everyday work*; the snapshots are read on
+  demand by the dashboard and the user, and no skill reads them. The folder predates the rule and
+  was listed among its underscore examples without being tested against it. A dot also keeps the
+  snapshots' `YYMMDD-*.md` names out of every folder walk by rule, where `/analytics` needed an
+  explicit exception not to count its own output.
+  - `/analytics` writes to `.analytics/` (archive `.analytics/.archive/`), and on its first run
+    offers to move an existing `_analytics/` — never writing to both.
+  - `vault_conventions` declares `.analytics/` as a DORMANT dot surface; `output_artifacts` and the
+    prefix convention's underscore examples no longer name `_analytics/`.
+  - Readers fall back to `_analytics/` for one release.
+
 ## [1.82.0] - 2026-09-26
 
 ### Fixed
