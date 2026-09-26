@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-093**
+Next available CR number: **CR-094**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-093**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-093 | installation and updates (`update-skills`, install docs), hard-coded skill paths | Medium | **Phase 1 done, phase 2 proposed.** Distribute skills as plugins through a marketplace instead of symlinks + `/update-skills`. Piloted on a small private repo: one repo as marketplace and plugin validates, skills are discovered, a private GitHub source installs, updates track commits. **Costs for this suite:** every command becomes `/<plugin>:<skill>` (reverses a CR-089 decision), ~20 hard-coded `~/.claude/skills/…` paths become `${CLAUDE_PLUGIN_ROOT}/…`, and a machine with both symlinks and the plugin gets every skill twice, silently. Phase 2 is a separate decision |
 | CR-092 | `ecosystem.yaml` (`vault_conventions`), landing page | Medium | **Implemented v1.80.0, contract 33.** CR-089 gave `rule` to the insight lifecycle and called the contract's rules conventions, but two uses survive in the contract: the block key `vault_conventions.rules`, and the middle level `rule` (11 of 18 conventions). Renames the level to `standard` (invariant > standard > guideline, CR-037 otherwise unchanged) and the key to `conventions`, readers accepting both for one release. Not additive (32→33) |
 | CR-089 | `ecosystem.yaml` (`terms:`, `working_loop`, registry), all invocable skills, alignment check | **High** | **Implemented v1.79.0, contract 32.** One term per concept, and the loop's verbs are the commands. The loop page, the commands and the artifacts used three vocabularies (`orient`/`brief`, `agenda`/`preparation`/`förberedelse`, summary/the note), `normalize` and `process` meant two things each, and nothing compared a SKILL.md to the contract. Adds `terms:` (English identifiers, localized attributes, `avoid:` words), renames loop steps `archive`→`fetch` and `agenda`→`prepare`, renames subcommands to the loop verbs with one-release aliases, makes filename role keywords English **forward only** (`legacy_file:` keeps existing files readable), retires `daily-dashboard`, moves `md2pdf` out, orders the registry by the loop, and extends the alignment check to subcommands, terms and the 2.0 landing page. Not additive (31→32) |
 | CR-088 | `vault_conventions` (archives), `ops` (`build_agenda.py`, `brief`) | **High** | **Implemented v1.78.0, contract 31.** Each archive root (`.teamschats/`, `.githubmeta/`, `.jirameta/`) carries a `_fetch.json`: last attempt, last success, result (`ok`/`partial`/`auth_required`/`error`/`timeout`). Written by the fetcher, readable by any tool though its folder is not. CR-084's `STALE` cannot tell "nothing happened" from "not fetched" from "login expired"; once fetching is scheduled (vault-tools CR-001) the last is the usual case. The sources block prints the reason, and a missing record prints `fetch not recorded`. Additive (30→31) |
