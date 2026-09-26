@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-26** |
+| **Status** | **Implemented 2026-09-26, v1.82.0** — verification step 2 (inspect the first promotions) open |
 | **Contract** | none. `_insights.yaml` schema is unchanged; only the clustering criterion in `insights/SKILL.md` Pass 2 changes |
 | **Date** | 2026-09-26 |
 | **Area** | `skills/insights/SKILL.md` Pass 2 (hypothesis → rule promotion), line ~319 |
@@ -121,3 +121,20 @@ If (2) shows loose grouping, tighten the tag requirement before loosening anythi
 Observed in one mature vault, 112 `_insights.yaml` files. The measurement is reproducible from
 the corpus: cluster active promotable hypotheses by `type` + shared tag, compute token overlap
 per pair, and read off the distribution maximum.
+
+## Outcome (2026-09-26, v1.82.0)
+
+Implemented as proposed in Pass 2 step 2: same `type`; two shared tags, or a shared primary tag;
+semantic agreement on the claim, judged; token overlap a tie-breaker only. The measured baseline is
+stated in the skill, the documented `status` example is marked illustrative, and the synthesize
+section no longer calls Pass 2 mechanical. `/insights promote` (the manual supplement under
+*Alternatives*) was **not** added — it was not part of the proposed change.
+
+**Structural gate, measured at implementation** (the same vault, which had grown to 2 696 entries,
+2 014 promotable hypotheses and 8 rules): grouping by type plus the new tag rule yields **58 groups
+of three or more** as candidates for the semantic check — against **0** under the old overlap gate.
+That is an upper bound: tag-connected groups can chain loosely, and the semantic judgement is what
+splits them.
+
+**Open:** verification step 2 needs a real compile run on the vault, with each promotion inspected
+once. If the grouping proves loose, tighten the tag requirement before loosening anything else.

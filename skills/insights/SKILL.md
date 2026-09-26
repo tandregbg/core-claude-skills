@@ -248,7 +248,7 @@ Reprocessing opportunities:
 
 Confidence Lifecycle (CR-013)
 ─────────────────────────────
-  Hypotheses:  142
+  Hypotheses:  142          (illustrative figures -- see CR-094 for a measured baseline)
   Rules:       18 (most recent promotion: 260505)
   Recent demotions: 2 (last 30 days)
 
@@ -334,11 +334,24 @@ For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and pr
 
 1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `metric`, `edge_case`, `correction`, `skill_pattern`).
    **`metric` is never promotable (CR-046):** the same measurement recurring three times is a time series, not a standing instruction. Trend questions belong in `/analytics`.
-2. **Group by similarity within the folder:**
+2. **Group by similarity within the folder (CR-094):**
    - Same `type`
-   - Fuzzy summary match (case-insensitive, ignore stop words; require ≥60% token overlap)
-   - At least one shared tag
-   - All three conditions required (conservative; prefer false negatives over false promotions)
+   - **At least two shared tags**, or one shared tag when it is the primary tag (first in `tags[]`)
+     of both entries
+   - **Semantic agreement on the claim, judged rather than counted:** two summaries group when they
+     assert the same thing about the same kind of subject, even with no shared vocabulary. Paraphrase
+     is the norm, not the exception -- the corpus is model-written, and each entry is phrased freshly
+     even when the observation recurs.
+   - **Token overlap is not a gate.** It may break a tie when an entry could join more than one group.
+   - Conservative bias is kept through the tag requirement and the threshold: prefer false negatives
+     over false promotions. A promoted rule becomes a standing instruction in every later run, so a
+     wrong promotion costs more than a missed one.
+
+   **Why not a word-overlap threshold:** before CR-094 this step required ≥60 % token overlap. On one
+   mature vault (2 585 entries, 1 892 promotable hypotheses, 1 404 candidate pairs) the highest
+   overlap anywhere was 0.50, so the gate could not fire and the rule layer held 5 entries -- the
+   rules-walk in `/ops` and `/transcript` loaded an almost empty preamble every run. **Baseline for
+   comparison: 5 rules before the change.**
 3. **Apply threshold:** groups with size ≥ `compile_threshold` (default 3, from `workflows.knowledge_extraction.evolution.compile_threshold`) qualify.
 4. **For each qualifying group:**
    - Pick the **earliest** entry by `date` as canonical.
@@ -436,7 +449,7 @@ Brings legacy and drifted `_insights.yaml` files up to the current schema. Compl
 
 **Trigger:** `/insights synthesize [topic|all]` (no argument = all clusters above threshold)
 
-Turns the accumulated `_insights.yaml` corpus into a **curated wiki**: readable, crosslinked topic articles plus a master index. This is the synthesis layer the atomic entries feed — compile promotes *rules* (machine-facing context), synthesize produces *articles* (human- and session-facing knowledge). Clustering here is **semantic and vault-wide** (cross-folder, by topic), deliberately unlike compile Pass 2 (mechanical, per-folder): prose summaries rarely repeat verbatim, so token-overlap cannot build this layer.
+Turns the accumulated `_insights.yaml` corpus into a **curated wiki**: readable, crosslinked topic articles plus a master index. This is the synthesis layer the atomic entries feed — compile promotes *rules* (machine-facing context), synthesize produces *articles* (human- and session-facing knowledge). Clustering here is **semantic and vault-wide** (cross-folder, by topic), deliberately unlike compile Pass 2 (per-folder, gated by type and shared tags): prose summaries rarely repeat verbatim, so neither token overlap nor a single folder can build this layer. Pass 2 judges agreement semantically too since CR-094, but only inside one folder.
 
 **Config** (`workflows.knowledge_synthesis` in base.yaml or org/vault config):
 

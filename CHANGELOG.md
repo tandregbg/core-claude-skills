@@ -9,6 +9,31 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.82.0] - 2026-09-26
+
+### Fixed
+
+- **Insights could land outside the list and vanish (CR-096).** `next_id` is a top-level key that
+  follows `insights:`, so an entry appended at end-of-file lands after it — either breaking the
+  parse, or parsing cleanly while every reader skips it. One such entry went unseen for a day. Writers
+  now add entries inside the list, before `next_id`, and **re-read the file to assert the list grew**;
+  `/insights migrate` recovers orphans from the raw text, before any `next_id` repair, and reports
+  them. A vault scan at release found 0 orphans in 112 files.
+- **The rule layer could never fill (CR-094).** Promotion required ≥60 % word overlap between
+  summaries; in a 2 585-entry corpus the highest overlap anywhere was 0.50, so 5 rules existed and the
+  rules-walk in `/ops` and `/transcript` loaded an almost empty preamble. Grouping is now same type,
+  two shared tags (or a shared primary tag), and **semantic agreement on the claim, judged** — the
+  summaries are model-written and paraphrase by nature. Measured on the same vault: 58 candidate
+  groups under the new gate, against 0 under the old one.
+
+### Added
+
+- **Roster candidates from recurring name flags (CR-095).** `/insights compile` Pass 1 reports every
+  name flagged twice or more across folders that no `people[]`, `team[]` or contact resolves — a
+  printed report, never a config write, since a roster entry is an identity claim a person must make.
+  The flag family is matched by tags in both languages; the measured vault logged it mostly in
+  Swedish. Before this, 98 flags over four months had no reader and the roster stayed empty.
+
 ## [1.81.0] - 2026-09-26
 
 ### Added
