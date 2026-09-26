@@ -193,6 +193,15 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 35 (CR-100, 2026-09-27, unreleased): a person's promotion review —
+#   an optional `promotion_review` block on an _insights.yaml entry (decision, date,
+#   by, group, group_key, split_from, reason) that a dashboard's review surface may
+#   write, FIELD-SCOPED: never confidence, confirmation_count, confirmations, status,
+#   superseded_by, summaries or tags. Compile Pass 2 honours it while its group key
+#   still matches, and still runs the contradiction check on an approved group. The
+#   gates' arithmetic moves into skills/insights/promotion_candidates.py so compile
+#   and a review surface see the same candidates. Two optional evolution keys:
+#   promotion_review (optional|required) and insight_topic_tags. Additive.
 # contract_version 34 (CR-097, 2026-09-26): NOT additive. _analytics/ -> .analytics/.
 #   The snapshots are read on demand, never routinely, so by CR-034 they take a dot; a
 #   dot also keeps their YYMMDD-*.md names out of every folder walk. Readers fall back
@@ -233,13 +242,15 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 34
+contract_version: 35
 core_skills_version: "1.84.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
 # `confirmation_count`, `confirmations[]`, and `contradicted_by[]` fields per
 # entry. Bump is additive — v1 readers ignore unknown fields.
+# CR-100 adds the optional `promotion_review` block within schema 2 (additive;
+# declared in skills/insights/SKILL.md). Readers that ignore it behave as before.
 schemas:
   ops_config: "1.4"
   contact_meta: "1.1"
@@ -665,7 +676,11 @@ vault_conventions:
     - path: "<folder>/_insights.yaml"
       purpose: "Extracted decisions, learnings, patterns, evolution feedback"
       schema: "insights v1"
-      writers: ["/insights", "/ops", "/transcript"]
+      writers: ["/insights", "/ops", "/transcript", "a dashboard — the promotion_review block only (CR-100)"]
+      field_scoped_writers:
+        - writer: "dashboard"
+          may_write: "promotion_review on a candidate group's canonical entry: a person's approval or rejection, on explicit action, never auto-saved"
+          never: "confidence, confirmation_count, confirmations, status, superseded_by, summaries or tags. Approving a group is an observation (this person judged these entries, on this date); turning them into a standing instruction is a judgement, and /insights compile stays its only writer so the contradiction check sits in the path of every promotion"
       readers: ["/insights", "/analytics", "marvin"]
       lifecycle: "append-mostly; auto-applied edits via /insights propose"
 
@@ -881,6 +896,7 @@ components:
       - "_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only"
       - "<folder>/_summary.yaml — its own derived cache"
       - "<folder>/_ops.yaml — one external_systems.chats entry, on explicit confirmation (CR-064)"
+      - "<folder>/_insights.yaml — the promotion_review block only, on explicit action (CR-100)"
     depends_on: ["messaging client (as a library, for the chat channel)"]
     binds: "localhost only — it can send as the user"
     note: "Not read-only, and has not been since it gained the outbox. What it may write is deliberately narrower than what it may read"

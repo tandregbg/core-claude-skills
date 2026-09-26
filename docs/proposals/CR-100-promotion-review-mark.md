@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented (unreleased)** — contract 35; version assigned at release |
 | **Contract** | additive (34 → 35) — one optional field on `_insights.yaml` entries, one new writer, one optional config key |
 | **Date** | 2026-09-27 |
 | **Area** | `_insights.yaml` schema, `vault_conventions` (writers), `insights` compile Pass 2, new `skills/insights/promotion_candidates.py` |
@@ -141,3 +141,30 @@ promotion as the record of who approved it.
 - With `promotion_review: required`, an unreviewed qualifying group is reported `awaiting review`
   and not promoted.
 - `check-components.py` passes with the field-scoped writer declared; contract_version 35.
+
+## Outcome (2026-09-27, unreleased)
+
+Implemented as proposed, with one addition and one decision made explicit.
+
+- **`split_from` added to the block.** The proposal said both *a member added since the review makes
+  it stale* and *a split subset is a group of its own*. From the recorded ids alone the two are
+  indistinguishable: both leave a review over a subset of the current group. Treating the subset as
+  still valid would let an entry added after the review -- possibly the very reversal step 3b exists
+  for -- sit outside an approval that then promotes without it. So a subset review is valid only
+  with `split_from` equal to the current group's key; otherwise it, and the group, are `stale`.
+- **Grouping is connected components of the tag gate**, not greedy seeding. Tag overlap is not
+  transitive; a seed keeps whichever pair it met first, so results would depend on file order and a
+  pair could vanish unseen. Components err toward the superset and leave the split to the reader,
+  which Pass 2 already requires. On the measured vault the largest component was 9 entries.
+- **Topic marking only when configured.** With `insight_topic_tags` empty the script marks nothing;
+  whether a tag names a topic stays a judgement.
+- **Legacy confidence values** (`high`/`medium`/`low` from early extractions) read as hypotheses, as
+  the dashboard already does. Unquoted ISO dates, which YAML parses as date objects, are normalised
+  to YYMMDD -- found on the first real run.
+- Measured on one mature vault, read-only: 111 folders scanned, 56 candidate groups, 6 of them
+  single-session, largest 9, all unreviewed. The count sits next to CR-094's 55; the difference is
+  the judgement compile applied then, which is the point.
+- Tests: `tests/test_cr100_promotion_candidates.py`, 21 cases (gates, threshold, single session,
+  topic marking, key stability and change, all review states, split and stale split, dot-folders,
+  non-transitive overlap, ISO dates).
+

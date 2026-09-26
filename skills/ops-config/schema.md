@@ -358,6 +358,8 @@ workflows:
       compile_threshold: integer       # Minimum occurrences before pattern is compiled (default: 3)
       propose_threshold: integer       # Minimum occurrences before proposal is generated (default: 5)
       demote_on_contradiction: boolean # CR-013: rule -> hypothesis on `correction` (default: true)
+      promotion_review: string         # CR-100: optional | required (default: optional)
+      insight_topic_tags: [string]     # CR-100: tags that name subject areas (default: [])
 ```
 
 | Field | Default | Description |
@@ -367,6 +369,8 @@ workflows:
 | `compile_threshold` | `3` | (1) An edge case must appear this many times before `/insights compile` creates a `skill_pattern`. (2) CR-013: also the threshold for promoting a `hypothesis` to a `rule`. |
 | `propose_threshold` | `5` | A pattern must appear this many times before `/insights propose` generates a SKILL.md diff |
 | `demote_on_contradiction` | `true` | CR-013: when true, `/insights compile` demotes a `rule` back to `hypothesis` when a newer `correction` entry contradicts it |
+| `promotion_review` | `optional` | CR-100: `optional` -- compile judges groups itself and honours any recorded review (`promotion_review` on an entry). `required` -- only groups a person approved are promoted; the rest are reported `awaiting review`. For vaults where the rule layer should change only by a person's decision |
+| `insight_topic_tags` | `[]` | CR-100: tags known to name subject areas rather than properties of a claim (`seo`, `payments`). `promotion_candidates.py` marks them in each group's shared tags. Empty means no marking: whether a tag is a topic stays a judgement |
 
 #### Execution feedback types
 

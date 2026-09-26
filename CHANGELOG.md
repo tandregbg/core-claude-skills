@@ -9,6 +9,27 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Added
+
+- **A person's promotion review, recorded and honoured by compile (CR-100, contract 35).** CR-098
+  showed promotion is a reading task (gates 55 -> 39 groups, reading 39 -> 11), and the reading left
+  no trace. `_insights.yaml` entries gain an optional `promotion_review` block (decision, date, by,
+  group, group key, split_from, reason) that a dashboard's review surface may write -- **that block
+  only**; compile stays the only writer of `confidence`.
+  - **`skills/insights/promotion_candidates.py`** computes Pass 2's arithmetic once (candidate
+    filter, type, tag gate, threshold, distinct dates, single-session) and prints candidate groups
+    with a stable `group_key` and a `review_state` (`unreviewed | approved | rejected | stale`). It
+    never judges, splits or writes. Groups are connected components of the tag gate, so a candidate
+    is never lost to file order; splitting stays the judged step it already was.
+  - **Compile Pass 2 step 3a** honours a review while its key matches, and **still runs the
+    contradiction check on an approved group**. A changed or added member makes the review stale; a
+    split is valid only against the group it was split from (`split_from`), so a newcomer that
+    reverses the claim cannot be approved by an older review.
+  - Two optional keys: `promotion_review: optional | required` and `insight_topic_tags`.
+  - Measured on one mature vault: 111 folders, 56 candidate groups (6 single-session), largest 9.
+  - Also corrected the lifecycle summary, which still said `confirmation_count` is the group size;
+    it has been distinct dates since CR-098.
+
 ## [1.84.0] - 2026-09-26
 
 ### Fixed

@@ -29,7 +29,7 @@ Each insight has an optional `confidence` field:
 
 Two lifecycle transitions, both performed by `/insights compile`:
 
-- **Promotion:** when ≥ `compile_threshold` (default 3) semantically similar `hypothesis` entries exist in one folder, the canonical (earliest) entry is promoted to `confidence: rule`. Non-canonical entries are marked `status: superseded`, `superseded_by: <canonical-id>`. The canonical entry's `confirmation_count` is set to the group size and `confirmations[]` is populated with each merged entry's `source`.
+- **Promotion:** when ≥ `compile_threshold` (default 3) semantically similar `hypothesis` entries exist in one folder, the canonical (earliest) entry is promoted to `confidence: rule`. Non-canonical entries are marked `status: superseded`, `superseded_by: <canonical-id>`. The canonical entry's `confirmation_count` is set to the number of **distinct dates** in the group (CR-098) and `confirmations[]` is populated with each merged entry's `source`. A person's review recorded in `promotion_review` (CR-100) is honoured, but never replaces the contradiction check.
 - **Demotion:** when a `correction` entry contradicts a `rule` (same primary tag, opposing summary keyword), the rule's `confidence` flips back to `hypothesis`, the correction's `source` is appended to `contradicted_by[]`, and `confirmation_count` is reduced by 1 (floor 1).
 
 `confidence` and `status` are **orthogonal**:
@@ -50,6 +50,27 @@ contradicted_by:                     # list, populated on demotion
   - source: <relative-path>
     date: YYMMDD
 ```
+
+**`promotion_review` (CR-100, optional, additive).** A person's judgement of a candidate group,
+recorded on the group's canonical (earliest) entry by a review surface. It is an observation --
+*this group was judged, on this date* -- not a lifecycle transition: only `compile` writes
+`confidence`.
+
+```yaml
+promotion_review:
+  decision: approved          # approved | rejected
+  date: YYMMDD
+  by: dashboard               # which surface recorded it
+  group: [12, 47, 83]         # the entry ids judged together, canonical first
+  group_key: <sha256>         # from promotion_candidates.py at review time
+  split_from: <sha256>        # only when `group` is a subset: the key of the group it was split from
+  reason: null                # required when rejected: topic-only tags | contradiction |
+                              #   not a standing instruction | split | other: <text>
+```
+
+The group key is computed by `skills/insights/promotion_candidates.py` (recipe in its docstring).
+Any change to a judged entry, or a member added to the group, changes the key and makes the review
+`stale`. The block stays on the canonical after promotion as the record of who approved it.
 
 ---
 
@@ -332,6 +353,15 @@ Reads execution feedback entries (`edge_case`, `correction`) across `_insights.y
 
 For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and promote the canonical entry to a rule.
 
+**The arithmetic is a script (CR-100).** Steps 1-3's deterministic gates -- candidate filter, type,
+the tag gate, threshold, distinct dates, single-session -- are computed by
+`skills/insights/promotion_candidates.py <folder>`, which prints the candidate groups as JSON with
+a `group_key` and a `review_state` each. Use its output rather than re-deriving the gates; a review
+surface uses the same script, so both see the same candidates. The script never judges: semantic
+agreement, topic tags (unless `insight_topic_tags` is configured), splitting and the contradiction
+check below stay judged. Its groups are connected components of the tag gate, so a group may hold
+more than one claim -- that is what *split before promoting* is for.
+
 1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `metric`, `edge_case`, `correction`, `skill_pattern`).
    **`metric` is never promotable (CR-046):** the same measurement recurring three times is a time series, not a standing instruction. Trend questions belong in `/analytics`.
 2. **Group by similarity within the folder (CR-094):**
@@ -360,6 +390,22 @@ For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and pr
    rules-walk in `/ops` and `/transcript` loaded an almost empty preamble every run. **Baseline for
    comparison: 5 rules before the change.**
 3. **Apply threshold:** groups with size ≥ `compile_threshold` (default 3, from `workflows.knowledge_extraction.evolution.compile_threshold`) qualify. A group whose entries all share **one date** is skipped as `single session`: it is one observation, however many entries it produced (CR-098).
+3a. **Honour recorded reviews (CR-100).** Read each group's `review_state` from the script:
+    - `approved` (the key still matches): promote this group as judged -- **but step 3b still
+      runs.** An approval does not bypass the contradiction check; a reversal is exactly what a
+      reviewer can miss. A group that fails 3b is reported `needs review: contradiction (approved
+      <date>)` and not promoted.
+    - `stale` (a judged entry changed, a member was added or superseded since): the old approval or
+      rejection no longer describes the group. Do not act on it; report `review stale` and treat the
+      group as unreviewed.
+    - `rejected` (the key still matches): skip; report it with the recorded `reason`. It is not
+      re-offered until the group changes, which makes the review stale.
+    - A valid subset review under `subset_reviews` (a split, `split_from` equal to the current key):
+      that subset is a group of its own, with its own canonical; the remainder is re-evaluated
+      against the threshold.
+    - `unreviewed`: with `workflows.knowledge_extraction.evolution.promotion_review: optional` (the
+      default), judge the group as below. With `required`, do not promote it; report it as
+      `awaiting review`.
 3b. **Contradiction check (CR-098).** Before promoting, read the group for entries that reverse or
     negate each other -- a decision and its later reversal, a pattern and an entry saying it no
     longer holds. Such a group must **not** be promoted on the earliest entry, because the earliest
@@ -382,7 +428,9 @@ For each folder's `_insights.yaml`, find clusters of confirmed hypotheses and pr
    - Mark each non-canonical entry `status: superseded`, `superseded_by: <canonical-id>`.
 5. **Dedup:** if the canonical entry already has `confidence: rule`, only append new (not-already-listed) confirmations and update `confirmation_count` (distinct dates).
 6. **Report every skipped group with its reason (CR-098)** -- `topic-only tags`, `contradiction`,
-   `split: below threshold`, `single session` -- not just the promotions. A promotion pass that
+   `split: below threshold`, `single session`, and the review states from 3a (`rejected: <reason>`,
+   `review stale`, `awaiting review`, `needs review: contradiction (approved <date>)`) -- not just
+   the promotions. Keep `promotion_review` on a promoted canonical: it records who approved it. A promotion pass that
    reports only its successes cannot be audited. Measured when CR-098 was written: of the ten largest
    candidate groups on one vault, **one** was promotable as-is, so single-digit promotions per run is
    the expected order of magnitude, not a sign the pass is broken.
