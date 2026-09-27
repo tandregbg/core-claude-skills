@@ -30,6 +30,14 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   - Also corrected the lifecycle summary, which still said `confirmation_count` is the group size;
     it has been distinct dates since CR-098.
 
+### Fixed
+
+- **Backlog detection: a summary in a sibling folder counts (CR-099 correction).** Step 2 excluded
+  a dated `.txt` only when a `.md` with the same date prefix sat in the **same** directory. A project
+  that keeps raw material in `transcripts/` and summaries in a sibling folder had every processed file
+  flagged -- 38 on one vault. The exclusion now looks in sibling directories too. Found by CR-099's
+  own verification step (inspect flagged files by hand).
+
 ## [1.84.0] - 2026-09-26
 
 ### Fixed

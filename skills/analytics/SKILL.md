@@ -502,7 +502,12 @@ Identifies content that may benefit from processing through existing skills.
    - Find `.txt` files with YYMMDD prefix (classified as `raw-text`)
    - **Exclude** a file when any of these holds, and count each cause:
      - its directory contains a `_manifest.md` -- the folder's intent is declared
-     - a sibling `.md` file shares its date prefix -- the summary exists
+     - an `.md` file sharing its date prefix sits in the same directory **or in a sibling
+       directory** (same parent) -- the summary exists. A project keeps raw material and summaries
+       in separate folders (`transcripts/` beside `meetings/`), so looking only in the same
+       directory flags every processed file there. Like step 3's ancestor rule this is a heuristic:
+       an `.md` of the same date in a sibling folder may belong to another meeting that day, which
+       costs a missed flag, not a false one
      - its directory name marks it as archived (`arkiv`, `archive`, `raw`, `källmaterial`)
      - the newest file in its directory is older than 12 months -- dormant, not queued
    - The survivors are the queue: group by directory, sorted by count descending, with count and

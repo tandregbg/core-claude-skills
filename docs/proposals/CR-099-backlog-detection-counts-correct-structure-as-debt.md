@@ -140,3 +140,11 @@ for an ancestor **`_insights.yaml`** (insights accumulate per folder, so a paren
 subfolders), not an ancestor CHANGELOG. The summary table's `/inbox process` — removed in 1.81.0 —
 is corrected to `/inbox route`. Verification (rerun: ~19 folders expected) needs an `/analytics
 backlog` run on the vault.
+
+**Correction (2026-09-27), found by this CR's own verification step.** The hand inspection that step
+asks for turned up one more structure the filters missed: raw `.txt` in a `transcripts/` folder with
+their summaries in a **sibling** folder beside it. On one vault that was 54 `.txt` against 36 dated
+`.md` in the sibling folder, and none of the four exclusions matched, so 38 processed files were
+still flagged. The date-prefix exclusion now looks in sibling directories (same parent) as well as
+the same directory -- the reasoning step 3 already applies upwards: a project organises its material
+across folders, not one per folder. Shipped with the next release.
