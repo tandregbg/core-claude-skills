@@ -193,7 +193,7 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
-# contract_version 35 (CR-100, 2026-09-27, unreleased): a person's promotion review —
+# contract_version 35 (CR-100, 2026-09-27, v1.85.0): a person's promotion review —
 #   an optional `promotion_review` block on an _insights.yaml entry (decision, date,
 #   by, group, group_key, split_from, reason) that a dashboard's review surface may
 #   write, FIELD-SCOPED: never confidence, confirmation_count, confirmations, status,
@@ -243,7 +243,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 35
-core_skills_version: "1.84.0"
+core_skills_version: "1.85.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented (unreleased)** — contract 35; version assigned at release |
+| **Status** | **Implemented 2026-09-27, v1.85.0** — contract 35 |
 | **Contract** | additive (34 → 35) — one optional field on `_insights.yaml` entries, one new writer, one optional config key |
 | **Date** | 2026-09-27 |
 | **Area** | `_insights.yaml` schema, `vault_conventions` (writers), `insights` compile Pass 2, new `skills/insights/promotion_candidates.py` |
@@ -142,7 +142,7 @@ promotion as the record of who approved it.
   and not promoted.
 - `check-components.py` passes with the field-scoped writer declared; contract_version 35.
 
-## Outcome (2026-09-27, unreleased)
+## Outcome (2026-09-27, v1.85.0)
 
 Implemented as proposed, with one addition and one decision made explicit.
 

@@ -147,4 +147,4 @@ their summaries in a **sibling** folder beside it. On one vault that was 54 `.tx
 `.md` in the sibling folder, and none of the four exclusions matched, so 38 processed files were
 still flagged. The date-prefix exclusion now looks in sibling directories (same parent) as well as
 the same directory -- the reasoning step 3 already applies upwards: a project organises its material
-across folders, not one per folder. Shipped with the next release.
+across folders, not one per folder. Shipped in v1.85.0.

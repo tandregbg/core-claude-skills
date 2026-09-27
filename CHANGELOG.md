@@ -9,6 +9,8 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.85.0] - 2026-09-27
+
 ### Added
 
 - **A person's promotion review, recorded and honoured by compile (CR-100, contract 35).** CR-098
