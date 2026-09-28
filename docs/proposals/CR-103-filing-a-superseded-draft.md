@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented (unreleased)** — contract 37 |
 | **Contract** | additive — one parseable note form for `avskriven`, one filing destination; no new field |
 | **Date** | 2026-09-28 |
 | **Area** | `outbox` (`close`, `list`, manifest schema), `ops` staging (status vocabulary) |
@@ -72,3 +72,25 @@ view and the resolved view say the same thing the dispatching surface shows.
   written, and appends the `Tidslinje` line to the second without touching its field block.
 - An `avskriven` item without the `ersatt av` form is closed as today, into the contact folder.
 - `/ops sweep` reports a manifest with `Status: redo att skicka` and names `klar-att-skicka`.
+
+## Outcome (2026-09-28, unreleased)
+
+Implemented as proposed, contract 36 -> 37 (the status vocabulary and the superseded form are now
+declared in `ecosystem.yaml` on `_outbox/<item>/_manifest.md`: `status_forms`, `status_forms_rule`,
+`superseded_note`). Shipped in the same pending release as CR-101 and CR-102.
+
+- **The deterministic part is code:** `skills/outbox/resolved.py` lists withdrawn items, parses the
+  `ersatt av` form, finds the replacing item (in `_outbox/`, else among closed items by folder name or
+  by the `_outbox/<name>` origin line), and prints the plan -- archive sub-path, outcome line, timeline
+  line -- plus undeclared status words with the closest declared one. It never moves, writes or
+  deletes; the skill shows the plan and moves after confirmation.
+- **Decided during implementation:** `close` now writes the item's origin into its timeline
+  (``stängd från `_outbox/<name>` ``). A closed item is usually renamed, so without that line a draft
+  closed after its replacement could not find it and would be misfiled as an ordinary withdrawal.
+- **Closest declared form** uses a short synonym table first ("redo"/"klar" -> `klar-att-skicka`)
+  and a strict fuzzy match second; a word with no likely meaning (a blocking marker, say) gets no
+  guess rather than a wrong one.
+- **Command name:** the sweep is `/ops check` since v1.79.0; the proposal's "/ops sweep" means that.
+- **Verified read-only on one vault:** the helper found the one real superseded draft, its replacing
+  item (already sent, still in `_outbox/`), and planned `.archive/<date>-<subject>-superseded/`; it
+  also listed the undeclared status words in use. Nothing was moved.

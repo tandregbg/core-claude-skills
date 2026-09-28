@@ -11,6 +11,25 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Added
 
+- **What was never sent gets filed too; a replaced draft goes to `.archive/` (CR-103, contract 37).**
+  A draft rewritten and restaged stayed in `_outbox/` marked ready beside the version that was sent,
+  and withdrawn items (`avskriven`) could only be closed one by one.
+  - **`/outbox close --all-resolved`** (and `close --all` = both batches) closes every withdrawn item
+    in one pass. The plan comes from a new stdlib helper, `skills/outbox/resolved.py`, which prints
+    it as JSON or `--text` and **moves nothing**; the skill moves after confirmation.
+  - **A superseded draft** -- a withdrawn item whose status note starts with the declared form
+    `ersatt av <item-name>` (logical `superseded_by`) -- is filed to the contact or project folder's
+    `.archive/<YYMMDD>-<subject>-superseded/`, not beside the correspondence, with `Utfall`
+    *Ersatt av <item> (<its status>)*, and one timeline line appended to the replacing item (an
+    append CR-102 permits). A replacing item that cannot be found is reported, and the draft is
+    closed as an ordinary withdrawn item. Nothing is deleted.
+  - **`close` records where an item came from** (``stängd från `_outbox/<name>` ``), so a draft
+    closed later still finds a replacing item that was closed and renamed first.
+  - **Declared status words only.** The manifest's status vocabulary is now in the contract
+    (`status_forms`); staging writes `draft` or `klar-att-skicka` and nothing else, and `/ops check`
+    reports undeclared words ("redo att skicka") with the closest declared one, never rewriting them.
+  - `tests/test_cr103_resolved.py`: 13 tests.
+
 - **A manifest that already exists is edited, never regenerated (CR-102, contract 36).** A skill
   session rewrote a staged `_outbox/` manifest from its template seconds after the item was sent, and
   the dispatcher's `Status` was gone. `/ops` said *never write* `status`; nothing said *keep* it.

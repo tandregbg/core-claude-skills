@@ -110,6 +110,35 @@ A dispatching surface may set this status (contract `writers` on
 was sent is an observation. It must not write the `Utfall` -- what the outcome
 *means* is the judgement this skill owns.
 
+#### Superseded drafts -- `ersatt av <item>` (CR-103)
+
+The commonest reason an item is not sent is that a later version replaced it: a draft rewritten
+after a decision changed, staged as a new item (CR-102), and sent. The withdrawn item's status note
+then says which item replaced it, in one declared form:
+
+```markdown
+**Status:** avskriven 2026-09-28
+**Statusnot:** ersatt av 260928-contact_offer-revised; first draft, never sent
+```
+
+- The status note **starts with** `ersatt av <item-name>` -- the replacing item's outbox folder name,
+  optionally in backticks -- optionally followed by `; ` and free text. The logical form is
+  `superseded_by <item>`; `ersatt av` is its written label in this vault (`identifier_language`).
+- A dispatching surface writes it from its vocabulary file when a person picks the replacing item;
+  a person may type it. Anything else in the status note is an ordinary withdrawn reason.
+- A superseded draft is **filed differently** from other withdrawn items: to the contact's or
+  project's `.archive/`, not beside the correspondence (see `close --all-resolved`). Filed beside
+  what was actually sent, a replaced draft reads later as a second message that went out.
+
+### Status words are declared, not invented (CR-103)
+
+When staging (here or in `/ops`), write `status` only as one of the forms in the schema above:
+`draft` (or its written form `utkast`), `klar-att-skicka`, and -- written by the surface that did
+it -- `skickad`, `avskriven`, `arkiverad` with a date. A free phrase such as "redo att skicka" is
+an undeclared status: every tool reading the vocabulary treats it as unknown, and a draft marked
+that way looks unfinished to one tool and ready to another. `/ops check` reports undeclared status
+words with the closest declared one; it never rewrites them.
+
 ### `Klassificering` — who may receive it (CR-066, CR-070)
 
 **Distinct from `Kanal` and `Kontakt`, which say where it is going.** This field says who may
@@ -203,6 +232,10 @@ RESOLUTION-READY (archive candidates)
 DRAFT
   260506-someone_topic                 draft               -
 
+RESOLVED, NOT SENT (CR-047, CR-103)
+  260428-contact_offer            avskriven 260429    superseded by 260429-contact_offer-revised
+  260420-dan-smith_reflektion               avskriven 260421    tas muntligt vid nästa samtal
+
 WITHOUT MANIFEST (manual review needed)
   260418-bob-lindgren_acmecorp    -                   -
 
@@ -227,7 +260,10 @@ Alias for `list`.
 1. **Validate:**
    - Folder exists in `<vault>/_outbox/<folder-name>/`
    - `_manifest.md` exists and parses
-   - `Status:` is `skickad ...` (warn if `draft`, abort if missing)
+   - `Status:` is `skickad ...` or `avskriven ...` (warn if `draft`, abort if missing). An
+     `avskriven` item needs `Utfall` to say why (CR-047); when it is empty, write it from the
+     status note (`Skickades inte: <note>`, or `Ersatt av <item> (<its status>)` for a
+     superseded draft) and show it before moving
    - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm)
    - `Utfall` section populated (warn if empty)
 
@@ -248,7 +284,10 @@ Alias for `list`.
 
 5. **Update `_manifest.md`** at new location:
    - `Status:` -> `arkiverad YYYY-MM-DD`
-   - Add tidslinje row if not present
+   - Add tidslinje row if not present, and **record where it came from**:
+     ``- YYYY-MM-DD: stängd från `_outbox/<folder-name>` ``. A closed item is usually renamed, and
+     this line is how a superseded draft closed later still finds the item that replaced it
+     (CR-103)
    - Ensure all reference paths (Detaljer:, Source:) point to new locations
 
 6. **Update contact CHANGELOG.md:**
@@ -284,13 +323,44 @@ Batch mode over the single-folder `close` flow, so a backlog of sent items can b
 3. For each confirmed folder, run the standard `close <folder-name>` steps 1-9. Per-folder judgement calls (destination for multi-contact items, folder rename) are still asked individually -- batch mode batches the *selection*, not the decisions.
 4. Final report: one summary table (archived → destination), plus the items skipped and why (unchecked "Svar förväntas på", empty Utfall, missing manifest).
 
+### `close --all-resolved` (CR-103; proposed in CR-047)
+
+**Trigger:** `/outbox close --all-resolved`
+
+Batch mode for items resolved **without** being sent (`avskriven`), which `--all-sent` never picks
+up and which otherwise accumulate in `_outbox/` looking unfinished.
+
+1. **Plan, deterministically:** run `skills/outbox/resolved.py --vault <vault>` (add `--text` for
+   a readable listing). It prints every withdrawn item with its kind (`superseded` or `withdrawn`),
+   the replacing item and where it is, the archive sub-path, the outcome line and the timeline line.
+   **It moves nothing.** It also lists manifests with undeclared status words.
+2. **Show the plan and confirm** all / select / abort, as `--all-sent` does.
+3. For each confirmed item:
+   - **`withdrawn`** -- run the standard `close <folder-name>` steps 1-9, into the contact or
+     project folder, with `Utfall` from the plan when it was empty.
+   - **`superseded`** -- resolve the contact or project folder as in step 2 of `close`, then move
+     the item to `<that folder>/.archive/<YYMMDD>-<subject>-superseded/` instead of beside the
+     correspondence. Write `Utfall` (`Ersatt av <item> (<its status>)`) and set `arkiverad`. Then
+     **append** the plan's line to the replacing item's `## Tidslinje`
+     (`- YYYY-MM-DD: Ersätter <draft> (avskriven <date>)`), creating the section at the end if it
+     is absent -- an append to a settled manifest, which CR-102 permits; its field block is not
+     touched. Read that manifest immediately before appending and stop if it changed.
+   - **A missing replacing item** is reported by the plan; the draft is closed as an ordinary
+     `withdrawn` item and the report says which reference could not be found. Never guess.
+4. **Final report:** superseded drafts filed (draft -> `.archive/` path, replacing item), withdrawn
+   items closed, items skipped and why, and the undeclared status words found (report only).
+
+### `close --all`
+
+Runs `close --all-sent` and then `close --all-resolved`, with one confirmation per batch.
+
 ### `help`
 
 Print this skill's usage.
 
 ## Behaviour rules
 
-- **Never delete files.** Only move. Original outbox folder is removed only after successful move (it should be empty).
+- **Never delete files.** Only move. Original outbox folder is removed only after successful move (it should be empty). This includes superseded drafts: they are moved to `.archive/`, never removed -- a replaced draft shows what was considered before the version that went out (CR-103).
 - **Never auto-complete tasks.** Archiving is a file operation, not a workflow decision.
 - **Always confirm folder rename** -- destination folder name is a judgement call (theme vs context vs date-only).
 - **Preserve manifest history.** Append to `## Tidslinje` if it exists, never overwrite.

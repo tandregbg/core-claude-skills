@@ -193,6 +193,16 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 37 (CR-103, 2026-09-28, unreleased): the manifest's status vocabulary
+#   is declared here, not only in the /outbox skill — `status_forms` (logical name ->
+#   written words) and `superseded_note`, the one parseable form of a withdrawn item's
+#   status note: it STARTS WITH `ersatt av <item-name>` (logical `superseded_by <item>`),
+#   optionally followed by `; ` and free text. A superseded draft is filed to the contact
+#   or project folder's `.archive/`, not beside the correspondence; `/outbox close
+#   --all-resolved` closes withdrawn items in one pass. Staging writes only declared
+#   status words; the sweep reports undeclared ones. Additive: no field added, no key
+#   renamed; the written words are the ones already in use.
+#
 # contract_version 36 (CR-102, 2026-09-28, unreleased): a manifest that already exists
 #   is EDITED, never regenerated — the `manifest_edit_in_place` convention, level
 #   invariant. A skill session rewrote a staged manifest from its template seconds
@@ -249,7 +259,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 36
+contract_version: 37
 core_skills_version: "1.85.0"
 
 # --- Schema versions ---
@@ -553,7 +563,7 @@ vault_conventions:
       schema: null  # filesystem layout, not YAML
       writers: ["/ops", "user (manual)", "any tool that writes a manifest per this contract"]
       readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "vaultpulse/trillian", "the local mail client", "user"]
-      lifecycle: "staged -> sent -> closed by /outbox into the contact or project folder; nothing auto-deletes. An item decided against never reaches Status: skickad and so is not picked up by `close --all-sent` — see outbound_dispatch.known_gaps"
+      lifecycle: "staged -> sent -> closed by /outbox into the contact or project folder; nothing auto-deletes. An item decided against is marked withdrawn (avskriven, CR-047) and closed by `close --all-resolved` (CR-103); a superseded draft goes to the contact or project folder's .archive/"
 
     - path: "_outbox/<item>/_manifest.md"
       purpose: "The per-item contract every dispatcher reads: status, channel, contact, classification, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
@@ -562,6 +572,14 @@ vault_conventions:
       writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only)"]
       readers: ["/outbox", "a dispatching surface", "user"]
       lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder. Once it exists it is EDITED in place, never regenerated from a template — see the manifest_edit_in_place convention (CR-102)"
+      status_forms:  # CR-103 — logical name (identifier) -> the written words a manifest may carry (data, CR-049)
+        draft: ["draft", "utkast"]
+        ready: ["klar-att-skicka"]
+        sent: ["skickad YYYY-MM-DD"]
+        withdrawn: ["avskriven YYYY-MM-DD"]
+        archived: ["arkiverad YYYY-MM-DD"]
+      status_forms_rule: "Staging writes draft or ready only; sent, withdrawn and archived are written by the party that did it (a dispatching surface records sent/withdrawn, /outbox close writes archived). Any other word is an undeclared status: readers treat it as unknown, /ops check reports it with the closest declared form and never rewrites it"
+      superseded_note: "A withdrawn item replaced by a later one: its status note STARTS WITH `ersatt av <item-name>` — logical form `superseded_by <item>`, where <item-name> is the replacing item's outbox folder name, optionally in backticks — optionally followed by `; ` and free text. Written by a dispatching surface from its vocabulary when a person picks the replacing item, or typed. /outbox files such an item to <contact-or-project>/.archive/<YYMMDD>-<subject>-superseded/ with the outcome `Ersatt av <item> (<its status>)`, and appends one timeline line to the replacing item; nothing is deleted (CR-103)"
 
     - path: "<venture>/.teamschats/"
       purpose: "Chat archive from an external messaging platform (CR-047). Raw provider message objects, one JSON file per chat per day, plus a rendered .md per day and a _chat.json naming the meeting topic. A dot-folder so Obsidian ignores the raw data; the derived notes belong in the normal tree"
@@ -858,6 +876,7 @@ outbound_dispatch:
 
   known_gaps:
     - id: "archive-of-unsent-items"
+      resolved: "CR-047 made a withdrawn item (avskriven) archivable when its outcome says why; CR-103 added `close --all-resolved` and files superseded drafts to .archive/"
       what: "/outbox close requires a sent status, so an item decided against — marked as superseded, replaced or withdrawn — can never be archived and stays in _outbox indefinitely"
       seen: "a steady residue of stop-marked items that nothing files"
       proposal: "Treat a stop-marked manifest as archivable when its outcome section states why. That section already exists (written `## Utfall` in a Swedish vault), and 'not sent, because X' is an outcome"

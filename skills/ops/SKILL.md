@@ -910,7 +910,10 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
    `_insights.yaml` staleness is checked in **every** mode -- the knowledge layer is local regardless of where the work is tracked.
    Rationale worth keeping in the report: a *declared* absence is deliberate, an *undeclared* one is indistinguishable from neglect. Reporting a correctly-configured folder as broken every week is worse than not checking it -- the first time the sweep is right and nobody believes it, the check has stopped working.
 3. **Migration corpses** -- artifacts that look live but were superseded by a move: root symlinks/files whose same-purpose counterpart elsewhere is fresher (dashboards, `_TODAY-*`); folders inactive >60 days whose participant/topic stream demonstrably continues in a sibling folder. Offered fix: a **tombstone** (see ops-base Retirement Convention).
-4. **Outbox aging** -- run the `/outbox list` logic: sent-but-unarchived items, manifest-less items, **manifests missing `Kanonisk källa` (CR-032)**, items pending >30 days, and **items that were sent but whose manifest has no status (CR-102)**: where the dispatching surface keeps a record of what it posted (a post log naming the file it sent), an item it sent whose manifest carries no `status` is a finding -- the status was most likely lost to a rewrite. Where no such record is available the finding is skipped and the report says `sent-without-status: not checked (no dispatch record)`, never silently. Offered fix: `/outbox close --all-sent`. The `Kanonisk källa` finding matters because without it nobody can tell whether a folder is a disposable rendering or the only copy of the material -- which is what made a bulk clean-up unsafe in the 260828 audit (86 items, 3 of 71 manifests named a source).
+4. **Outbox aging** -- run the `/outbox list` logic: sent-but-unarchived items, manifest-less items, **manifests missing `Kanonisk källa` (CR-032)**, items pending >30 days, **items resolved without being sent** (`avskriven`, offered fix `/outbox close --all-resolved`,
+which files superseded drafts to `.archive/` -- CR-103), **manifests whose `status` is not a
+declared form** (report the item, the word, and the closest declared form from
+`skills/outbox/resolved.py`; never rewrite it -- CR-103), and **items that were sent but whose manifest has no status (CR-102)**: where the dispatching surface keeps a record of what it posted (a post log naming the file it sent), an item it sent whose manifest carries no `status` is a finding -- the status was most likely lost to a rewrite. Where no such record is available the finding is skipped and the report says `sent-without-status: not checked (no dispatch record)`, never silently. Offered fix: `/outbox close --all-sent`. The `Kanonisk källa` finding matters because without it nobody can tell whether a folder is a disposable rendering or the only copy of the material -- which is what made a bulk clean-up unsafe in the 260828 audit (86 items, 3 of 71 manifests named a source).
 5. **Sync duplicates** -- `* 2.*` / `* 3.*` files whose base file exists. Report size+mtime comparison side by side; **never auto-delete** (the larger "duplicate" is sometimes the newer content).
 6. **Unrouted residue** -- `unsorted/` folders with files >30 days old; `.ephemeral/` content >14 days old; root-level files matching paste conventions (`__*`, `xxx -*`, `Namnlös*`, untitled).
 7. **Triage hygiene (CR-022)** -- if a triage doc is registered: INKORG items unsorted >7 days, `[x]` items not yet moved to the KLART archive, week anchor >7 days stale, plaintext-credential-looking lines (no-secrets rule; lines marked `<!-- secret-ok -->` are a recorded owner decision and are skipped). Offered fix: `/inbox triage refresh` (which handles all but the sorting -- that stays human).
@@ -1581,7 +1584,15 @@ _outbox/YYMMDD-<recipient>_<subject>/     _manifest.md + the recap body
 
 The folder names the **subject of the send**, the left side the **recipient** -- `/outbox` owns that
 rule. **Author the manifest; never write `status` or `status-note`.** Those record what a dispatching
-surface did first-hand, and the send itself is a human act.
+surface did first-hand, and the send itself is a human act. The one exception is the staging state
+itself: an item staged unfinished may carry `draft`, and one staged ready may carry `klar-att-skicka`
+-- **those two words exactly, and nothing else** (CR-103). "redo att skicka" or "ready" is an
+undeclared status that each reader interprets differently; `/ops check` reports it.
+
+**A new version is a new item, and the old one is retired by a person.** When a draft is rewritten
+and restaged, the earlier item stays in `_outbox/` until someone marks it `avskriven` with the status note
+`ersatt av <new-item>` (the dispatching surface offers this). Do not mark it yourself and do not
+delete it: `/outbox close --all-resolved` files it to `.archive/` (CR-103).
 
 **A manifest that already exists is edited, never regenerated (CR-102, invariant).** Not writing a
 field is not the same as keeping it: a rewrite from the template that leaves `status` out erases a
