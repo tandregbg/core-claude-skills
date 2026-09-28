@@ -20,6 +20,18 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   - `/ops` staging and the `/outbox` schema state it; the sweep's outbox-aging check reports a sent
     item with no status where the dispatcher keeps a record of what it posted.
 
+- **A generated agenda is a draft until its digest is read (CR-101).** An agenda was reported as done
+  while missing most of what the room needed.
+  - **No roster, said:** the round prints *No roster* naming the file, and the attendees under
+    `meeting_types.<type>.participants` where present — never used as rows. `/ops check` 2c reports it.
+  - **Digest slot:** chat messages since the note leave a marked section; `prepare` Step P0 must read
+    them and replace the marker with facts, not quotes, before calling the agenda done. `/ops orient`
+    reports *generated, digest not filled*.
+  - **Pull requests and releases** are read where `reads:` declares them: merged, awaiting review with
+    age, opened, closed unmerged. The skip note means neither issues nor pulls is declared.
+  - **Closure evidence can be contradicted:** the newest match decides, a negative cancels an older
+    claim, a merged PR or release outranks chat, and the evidence shows its date and time.
+
 ## [1.85.0] - 2026-09-27
 
 ### Added

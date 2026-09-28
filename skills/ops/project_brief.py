@@ -26,6 +26,18 @@ SENT = ("skickad", "arkiverad")
 FIELD = re.compile(r"^\*\*(Status|Projekt):\*\*\s*(.+?)\s*$", re.M)
 
 
+
+# CR-101: build_agenda.py writes this marker into an agenda whose chat digest has not
+# been read yet; `prepare` replaces it. Its presence is what makes a draft visible.
+DIGEST_MARKER = "<!-- DIGEST:"
+
+
+def _read_text(path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
 def days(a: str, b: datetime.date) -> int:
     return (b - datetime.datetime.strptime(a, "%y%m%d").date()).days
 
@@ -141,7 +153,14 @@ def main() -> None:
                         bits = [r.get("id", "?"), r.get("title", ""), r.get("duration", ""), r.get("variant", "")]
                         out.append("                      " + "  ".join(str(b) for b in bits if b))
 
-        out.append(f"    next session    {nxt}  — agenda {'exists' if agenda.exists() else 'NOT GENERATED'}")
+        if not agenda.exists():
+            state = "NOT GENERATED"
+        elif DIGEST_MARKER in _read_text(agenda):
+            # CR-101: generated but its digest slot is unread -- a draft, not an agenda.
+            state = "generated, digest not filled"
+        else:
+            state = "exists"
+        out.append(f"    next session    {nxt}  — agenda {state}")
         if has_section(last):
             out.append("    chain           intact")
         else:

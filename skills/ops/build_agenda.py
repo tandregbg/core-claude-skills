@@ -112,6 +112,11 @@ def config(meetings: Path) -> dict:
             # look unbuilt when the config had the answer all along.
             cf["people"] = [p_ for p_ in (d.get("people") or [])
                             if p_.get("name") and not p_.get("adjacent")]
+            # CR-101: where the roster WOULD be declared, and who a schedule names.
+            # The participants key describes a schedule, not a round order, so it is
+            # only ever named in the no-roster message -- never used to fill rows.
+            cf["_config_file"] = p
+            cf["_participants"] = participants_of(d.get("meeting_types"))
             cf["ext"] = src or external(root)
             # The project's declared track axis (four permanent surfaces, one owner
             # each). Its presence is what makes the round's first column a STATED
@@ -128,6 +133,23 @@ def config(meetings: Path) -> dict:
             "escalate_after": 3, "escalate_after_days": 14, "people": [],
             "ext": external(meetings.parent),
             "_root": meetings.parent}
+
+
+def participants_of(meeting_types) -> list[str]:
+    """Names under `meeting_types.<type>.participants` (CR-101), in order, deduplicated.
+
+    Accepts strings or `{name: ...}` entries. Used only to name who a schedule lists
+    when the round has no `people:` roster -- never to populate the round.
+    """
+    names: list[str] = []
+    for m in (meeting_types or {}).values() if isinstance(meeting_types, dict) else []:
+        if not isinstance(m, dict):
+            continue
+        for p_ in m.get("participants") or []:
+            n = p_.get("name") if isinstance(p_, dict) else str(p_)
+            if n and n not in names:
+                names.append(n)
+    return names
 
 
 def note_pattern(suffix) -> re.Pattern:
@@ -427,8 +449,13 @@ def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[s
         info = json.loads(meta.read_text(encoding="utf-8"))
         if info.get("repo") not in declared:
             continue
-        if "issues" not in (info.get("reads") or []):
-            out.append({"note": f"{info['repo']}: issues not in declared reads — skipped"})
+        reads = info.get("reads") or []
+        # CR-101: pull requests are read when `pulls` is declared. A repository that
+        # tracks its work in a separate ticket system keeps its movement in PRs, and
+        # the early return on "no issues" made its appendix permanently empty while
+        # the archive held the pulls. The skip note now means neither is declared.
+        if "issues" not in reads and "pulls" not in reads:
+            out.append({"note": f"{info['repo']}: neither issues nor pulls in declared reads — skipped"})
             continue
         snaps = sorted(meta.parent.glob(f"{meta.parent.name}-*.json"))
         if not snaps:
@@ -443,6 +470,17 @@ def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[s
                 continue
             out.append({"note": f"{info['repo']}: newest snapshot is {taken}, older than the last note — not refreshed"})
             continue
+        if "pulls" in reads:
+            out += pulls_since(info["repo"], snap.get("pulls") or [], after)
+        if "releases" in reads:
+            for r in snap.get("releases") or []:
+                pub = (r.get("publishedAt") or r.get("createdAt") or "")
+                if pub and not r.get("isDraft") and datetime.date.fromisoformat(pub[:10]) >= after:
+                    out.append({"kind": "release", "repo": info["repo"],
+                                "n": r.get("tagName") or r.get("name") or "",
+                                "title": r.get("name") or r.get("tagName") or "", "when": pub})
+        if "issues" not in reads:
+            continue
         for i in snap.get("issues") or []:
             if datetime.date.fromisoformat(i["updatedAt"][:10]) >= after:
                 who = ", ".join(a.get("login", "?") for a in i.get("assignees") or []) or ""
@@ -452,10 +490,43 @@ def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[s
                 labs = [(l.get("name") if isinstance(l, dict) else str(l))
                         for l in (i.get("labels") or [])]
                 areas = [l for l in labs if l and l.startswith("area:")]
-                out.append({"repo": info["repo"], "n": i["number"], "title": i["title"],
-                            "state": i["state"].lower(), "who": who,
+                out.append({"kind": "issue", "repo": info["repo"], "n": i["number"], "title": i["title"],
+                            "state": i["state"].lower(), "who": who, "when": i.get("closedAt") or i["updatedAt"],
                             "area": (areas[0][5:] if areas else "no area"),
                             "new": datetime.date.fromisoformat(i["createdAt"][:10]) >= after})
+    return out
+
+
+def pulls_since(repo: str, pulls: list[dict], after: datetime.date,
+                today: datetime.date | None = None) -> list[dict]:
+    """Pull requests that moved since the last note (CR-101), one row each.
+
+    `status` is one of `merged`, `closed` (closed unmerged), `awaiting review`
+    (open, not a draft, no approval yet) or `open` (other open ones, drafts
+    included). `age` is days since the PR was opened -- the question for one
+    awaiting review is how long it has waited.
+    """
+    today = today or datetime.date.today()
+    out = []
+    for pr in pulls:
+        upd = (pr.get("updatedAt") or pr.get("createdAt") or "")[:10]
+        if not upd or datetime.date.fromisoformat(upd) < after:
+            continue
+        state = str(pr.get("state") or "").lower()
+        if pr.get("mergedAt"):
+            status, when = "merged", pr["mergedAt"]
+        elif state == "closed":
+            status, when = "closed", pr.get("closedAt") or pr.get("updatedAt")
+        elif not pr.get("isDraft") and str(pr.get("reviewDecision") or "").upper() != "APPROVED":
+            status, when = "awaiting review", pr.get("updatedAt")
+        else:
+            status, when = "open", pr.get("updatedAt")
+        created = (pr.get("createdAt") or "")[:10]
+        age = (today - datetime.date.fromisoformat(created)).days if created else 0
+        who = (pr.get("author") or {}).get("login", "") if isinstance(pr.get("author"), dict) else ""
+        out.append({"kind": "pull", "repo": repo, "n": pr.get("number"), "title": pr.get("title") or "",
+                    "status": status, "when": when or "", "age": age, "who": who,
+                    "new": bool(created) and datetime.date.fromisoformat(created) >= after})
     return out
 
 
@@ -522,6 +593,20 @@ def from_jira(cf: dict, after: datetime.date, rec: dict | None = None) -> list[d
 DONE_WORDS = re.compile(r"\b(deployed|shipped|released|live|merged|fixed|resolved|done|closed|moved to)\b", re.I)
 
 
+# CR-101: a done-word is evidence of a CLAIM, not of a state. "I have fixed and
+# raised a PR" claims an attempt; the next day's "not solved after my fix" is the
+# state. These words make a message counter-evidence.
+NEGATIVE_WORDS = re.compile(r"\b(failing|fails|failed|not solved|not fixed|not working|broken|reverted|still)\b", re.I)
+
+_CHAT_STAMP = re.compile(r"^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?")
+
+
+def _chat_when(txt: str) -> str:
+    """`YYYY-MM-DD HH:MM` from an archived chat line, or the date alone."""
+    m = _CHAT_STAMP.match(txt or "")
+    return f"{m.group(1)} {m.group(2)}".strip() if m and m.group(2) else (m.group(1) if m else "")
+
+
 def probably_closed(items, chat, repo, jira):
     """Carried items the sources suggest are finished.
 
@@ -530,19 +615,34 @@ def probably_closed(items, chat, repo, jira):
     saying so. This looks for evidence and separates those items -- it NEVER drops
     one. A human confirms in the room and the next note records the close: a
     machine that closes items silently is worse than one that repeats them.
+
+    CR-101, how evidence is weighed:
+    - per item, the NEWEST matching evidence decides, not the first found;
+    - a chat message with a negative (failing, not solved, reverted ...) is
+      counter-evidence, and a newer negative cancels an older positive;
+    - a merged PR, a published release, a closed issue or a done ticket that
+      matches outranks any chat message;
+    - the evidence cell carries the date (and time, for chat) that was used.
     """
-    ev = []
+    ev = []   # (rank, when, kind, ref, txt, negative)
     for c in chat:
         for line in (c.get("messages") or []):
             txt = line[1] if isinstance(line, (tuple, list)) and len(line) > 1 else str(line)
-            if DONE_WORDS.search(txt or ""):
-                ev.append(("chat", c.get("name") or "chat", txt.strip()))
+            neg = bool(NEGATIVE_WORDS.search(txt or ""))
+            if neg or DONE_WORDS.search(txt or ""):
+                ev.append((1, _chat_when(txt), "chat", c.get("name") or "chat", txt.strip(), neg))
     for r in repo:
-        if r.get("state") == "closed":
-            ev.append(("repo", f"{r.get('repo','')}#{r.get('n','')}", r.get("title", "")))
+        kind = r.get("kind", "issue")
+        when = str(r.get("when") or "")[:16].replace("T", " ")
+        if kind == "pull" and r.get("status") == "merged":
+            ev.append((2, when, "repo", f"{r.get('repo','')} PR #{r.get('n','')} merged", r.get("title", ""), False))
+        elif kind == "release":
+            ev.append((2, when, "repo", f"{r.get('repo','')} release {r.get('n','')}", r.get("title", ""), False))
+        elif kind == "issue" and r.get("state") == "closed":
+            ev.append((2, when, "repo", f"{r.get('repo','')}#{r.get('n','')}", r.get("title", ""), False))
     for t in jira:
         if any(w in (t.get("state") or "") for w in ("done", "closed", "resolved")):
-            ev.append(("tickets", str(t.get("n") or ""), t.get("title", "")))
+            ev.append((2, "", "tickets", str(t.get("n") or ""), t.get("title", ""), False))
     if not ev:
         return [], items
 
@@ -552,9 +652,19 @@ def probably_closed(items, chat, repo, jira):
     closed, still = [], []
     for label, rest in items:
         want = words(label)
-        hit = next(((kind, ref, txt) for kind, ref, txt in ev
-                    if want and len(want & words(f"{ref} {txt}")) >= 2), None)
-        (closed.append((label, rest, hit)) if hit else still.append((label, rest)))
+        matches = [e for e in ev if want and len(want & words(f"{e[3]} {e[4]}")) >= 2]
+        strong = sorted((e for e in matches if e[0] == 2), key=lambda e: e[1])
+        chats = sorted((e for e in matches if e[0] == 1), key=lambda e: e[1])
+        hit = None
+        if strong:
+            hit = strong[-1]
+        elif chats and not chats[-1][5]:
+            hit = chats[-1]           # the newest chat word is a positive one
+        if hit:
+            _rank, when, kind, ref, txt, _neg = hit
+            closed.append((label, rest, (kind, f"{ref} · {when}" if when else ref, txt)))
+        else:
+            still.append((label, rest))
     return closed, still
 
 
@@ -825,6 +935,11 @@ def main() -> None:
         else:
             src.append(f"  {kind:9} {'declared':44} read · {len([r for r in rows if not r.get('note')])} changed"
                        f" · {stale_mark(rec) or status}")
+    # CR-101: the digest is a slot prepare fills. Unfilled, the agenda is a draft,
+    # and the sources block says so where the reader looks first.
+    total_msgs = sum(len(c.get("messages") or []) for c in chat)
+    if total_msgs:
+        src.append(f"  digest    {str(total_msgs) + ' message(s) since ' + last_date:44} NOT FILLED — prepare reads them and fills the digest slot")
     src += ["```", ""]
     L += src
 
@@ -886,11 +1001,17 @@ def main() -> None:
         L.append("")
 
 
-    # The chat archive is deliberately NOT printed here. It is context for whoever
-    # writes the agenda and the facilitator sheet -- raw message lines pasted into
-    # a team-facing document are noise, and quoting a colleague's message back at
-    # the room reads as surveillance rather than preparation. Retrieved, counted,
-    # used; not reproduced.
+    # Raw chat lines are still NOT printed: pasted into a team-facing document they
+    # are noise, and quoting a colleague back at the room reads as surveillance.
+    # CR-101 keeps that and adds what the room does need -- the FACTS: what landed,
+    # who waits on whom, what depends on another team. A digest is a judgement this
+    # script cannot make, so it writes a marked slot and `prepare` fills it. The
+    # marker is what makes an unread digest visible: an agenda still carrying it is
+    # a draft, and `/ops orient` reports it as one.
+    if total_msgs:
+        per = ", ".join(f"{c.get('name') or 'chat'} {len(c['messages'])}" for c in chat if c.get("messages"))
+        L += ["## Since the last standup — not said in the room", "",
+              f"<!-- DIGEST: {total_msgs} messages since {last_date} ({per}). Not yet read. -->", ""]
     # CR-076: say when nothing was DECLARED, as distinct from declared-but-empty.
     # An undeclared block and a quiet week both render as no messages, and the one
     # that is a configuration miss is the one worth naming -- silently empty is how
@@ -900,8 +1021,8 @@ def main() -> None:
               " — nothing to retrieve (declare it, or ignore if intended)")
     total = sum(len(c["messages"]) for c in chat)
     if total:
-        print(f"  {total} chat message(s) since {last_date} — read them for the"
-              " facilitator sheet; they are not printed into the agenda")
+        print(f"  {total} chat message(s) since {last_date} — the agenda has a digest slot;"
+              " prepare must read them and fill it before the agenda is done (CR-101)")
         # Which chat to go and read. With one declared chat the name is noise; with
         # several, an undivided total does not say where the traffic was.
         if len([c for c in chat if c["messages"]]) > 1:
@@ -958,6 +1079,21 @@ def main() -> None:
         if empty:
             names = empty[0] if len(empty) == 1 else ", ".join(empty[:-1]) + " and " + empty[-1]
             L.append(f"- {names} had no one. Intended, or unbalanced?")
+    if not people:
+        # CR-101: an empty round is a configuration miss that renders as a finished
+        # section. Say so (CR-076: declared-but-empty is not undeclared), and name who
+        # a schedule lists -- but never fill rows from it: participants describe a
+        # schedule, not a round order, and an `adjacent` person would get a permanent
+        # empty row.
+        where = cf.get("_config_file")
+        where = where.name if where else "the config chain"
+        L += ["", "| | Owed into today |", "|---|---|", "",
+              f"No roster: `people:` is not declared beside `carry_forward` in {where}. The round has no rows."]
+        print(f"  no roster: `people:` is not declared beside carry_forward in {where} — the round has no rows")
+        if cf.get("_participants"):
+            names = ", ".join(cf["_participants"])
+            L.append(f"Attendees found under `meeting_types.<type>.participants`: {names} — declare them as `people:`.")
+            print(f"    attendees under meeting_types.<type>.participants: {names} — declare them as people:")
     if people:
         # A table is only worth its space when it has rows to hold.
         # The header must carry the same cell count as the separator and the rows:
@@ -1015,7 +1151,9 @@ def main() -> None:
 
     if repo:
         notes = [r["note"] for r in repo if "note" in r]
-        rows = [r for r in repo if "note" not in r]
+        rows = [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]
+        prs = [r for r in repo if r.get("kind") == "pull"]
+        rels = [r for r in repo if r.get("kind") == "release"]
         L += ["---", "", "## Appendix — what moved in the repo", ""]
         if notes:
             L += [f"- {n}" for n in notes] + [""]
@@ -1053,6 +1191,27 @@ def main() -> None:
             if nam:
                 L += [f"*{nam} of the {len(rows)} carry no assignee. That is the same shape as an"
                       " unowned carry-forward line, in a second place.*", ""]
+        if prs:
+            # CR-101: grouped by what the room does with each -- note what landed,
+            # chase what waits for review (oldest first), ask about what was dropped.
+            L += [f"**{len(prs)} pull request(s) moved since the last note.**", ""]
+            for status, head in (("merged", "Merged"), ("awaiting review", "Awaiting review"),
+                                 ("open", "Opened, still open"), ("closed", "Closed unmerged")):
+                group = [r for r in prs if r["status"] == status
+                         and (status != "open" or r.get("new"))]
+                if not group:
+                    continue
+                if status == "awaiting review":
+                    group.sort(key=lambda r: -r["age"])
+                L += [f"*{head} ({len(group)})*", ""]
+                for r in group:
+                    tail = f" — waiting {r['age']} day(s)" if status == "awaiting review" else ""
+                    L.append(f"- {r['repo']} #{r['n']} {r['title'][:90]}"
+                             + (f" ({r['who']})" if r.get("who") else "") + tail)
+                L.append("")
+        if rels:
+            L += [f"**Released since the last note ({len(rels)}):** "
+                  + ", ".join(f"{r['repo']} {r['n']}" for r in rels), ""]
 
     out.write_text("\n".join(L), encoding="utf-8")
 
@@ -1084,8 +1243,15 @@ def main() -> None:
         if un2:
             T += [f"**Nobody owes these: {', '.join(un2)}.** They have been on the agenda without a"
                   " name; today they get one or come off.", ""]
-    if repo and [r for r in repo if "note" not in r]:
-        rws = [r for r in repo if "note" not in r]
+    prs_all = [r for r in repo if r.get("kind") == "pull"]
+    if prs_all:
+        waiting = [r for r in prs_all if r["status"] == "awaiting review"]
+        oldest = max((r["age"] for r in waiting), default=0)
+        T += [f"**Repo since the last note:** {sum(1 for r in prs_all if r['status'] == 'merged')} merged, "
+              f"{len(waiting)} awaiting review"
+              + (f" (oldest {oldest} day{'s' if oldest != 1 else ''})" if waiting else "") + ".", ""]
+    if repo and [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]:
+        rws = [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]
         T += [f"**Repo since the last note:** {len(rws)} issues moved, "
               f"{sum(1 for r in rws if r['new'])} opened, "
               f"{sum(1 for r in rws if r['state'] == 'closed')} closed, "

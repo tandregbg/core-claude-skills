@@ -846,7 +846,9 @@ to work. Most folders will never need one.
 
 **`reads:` under a repo is a scope, not a capability.** It states what a tool is
 welcome to look at. The intended use is metadata — documentation, issues,
-releases — not cloning a codebase into the vault.
+releases, pull requests — not cloning a codebase into the vault. The agenda
+generator honours `issues`, `pulls` and `releases` (CR-101); a repository that
+declares only `docs` produces a skip note, never an empty-looking appendix.
 
 ### Inheritance
 

@@ -1111,7 +1111,7 @@ working_loop:
     phase: "before the session"
     label: "the agenda"
     command: "/ops prepare (runs build_agenda.py where the loop is wired); /preparation without a config"
-    does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard"
+    does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard — the script leaves a digest slot, and the agenda is a draft until prepare has read the messages and filled it (CR-101)"
     consumes: ["<venture>/.teamschats/", "<venture>/.githubmeta/", "the summary's carry-forward section"]
     produces: ["the agenda"]
 

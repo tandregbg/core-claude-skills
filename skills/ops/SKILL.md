@@ -263,6 +263,33 @@ the carried-forward block with session counts, the round from the declared roste
 silently drops all three** — the agenda looks complete and is missing the half that comes from
 outside the room.
 
+**A generated agenda is a draft until its digest is filled (CR-101) — required, not optional.**
+Where any declared chat has messages since the last note, the script writes a
+*Since the last standup — not said in the room* section holding only a marker:
+`<!-- DIGEST: N messages since YYMMDD (…). Not yet read. -->`. The script counts; it cannot judge.
+So after generating:
+
+1. **Read the counted messages** in the chat archive.
+2. **Replace the marker with a digest — facts, not quotes:**
+
+   | In the digest | Not in the digest |
+   |---|---|
+   | What landed (PR, build, release), with its reference | Message text reproduced |
+   | Asks, with **who is waiting on whom** — the owner, or `no owner named` | Who said what, beyond naming the requester of an ask |
+   | Dependencies on another team, with how long they have waited | Anything personal, or off-topic, in a work chat |
+   | Corrections to *Probably closed* evidence | |
+
+3. Round rows may be extended from the digest (e.g. *"test build 764"*), and the sources block's
+   `digest` line becomes `digest filled by prepare <date>`.
+
+**Do not report the agenda as done while the marker remains.** The script printing *read them* and a
+caller that does not read are two halves that each assume the other; this step gives the reading an
+owner. `/ops orient` reports an agenda still carrying the marker as *generated, digest not filled*.
+
+**No roster, said (CR-101).** When no `people:` is declared beside `carry_forward`, the round prints
+*No roster* and — where `meeting_types.<type>.participants` exists — names who that lists. Never fill
+the round from it: participants describe a schedule, not a round order. Declare `people:`.
+
 In **dual** mode the facilitator sheet is still written here, as a layer **on top of** the
 generated agenda: read the generated file, add only facilitator content. Never regenerate the
 agenda's own content into it.
@@ -750,8 +777,10 @@ once, first. An expired login is the usual way a scheduled archive goes stale an
 brief only a person can fix; re-running the fetch does nothing.
 
 
-1. **Loop position** — newest note, next session, **whether that agenda exists yet.** The common failure
-   is not a missing note but a missing next agenda, and nothing else surfaces it.
+1. **Loop position** — newest note, next session, **whether that agenda exists yet** — and, if it does,
+   whether its digest is still unread (*generated, digest not filled*, CR-101). The common failure
+   is not a missing note but a missing next agenda, and nothing else surfaces it; the second most
+   common is an agenda that exists and is still a draft.
 2. **Chain integrity** — whether the newest note ends with `## Carried forward`. The one failure in the
    loop that announces nothing: without it the next agenda carries zero items and looks correct.
 3. **What is carrying** — each item with sessions, age and owner. `UNOWNED` is counted and named,
@@ -791,7 +820,9 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    (`/ops normalize --filenames` stays the only route, and existing files are left alone).
 3. **Group findings by series and by first-deviating date** -- the output should read "this series forked at YYMMDD", not a flat per-file list:
 
-2c. **The roster matches who actually attends (CR-084).** Compare `people[]` with the participant
+2c. **The roster matches who actually attends (CR-084).** **No roster at all is the first finding
+   (CR-101):** a folder with `carry_forward` and no `people:` beside it generates a round with no rows;
+   report it, naming `meeting_types.<type>.participants` where present. Otherwise compare `people[]` with the participant
    lines of the last N notes and report two mismatches: **present every time but not in the roster**
    (they have no row in the round, so nothing they carry is ever routed to them), and **in the roster
    but absent every time** (suggest `adjacent: true`, which keeps the name for resolution and takes
@@ -922,8 +953,10 @@ connectivity — see Step 9, Pre-Meeting Retrieval.
 python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
 ```
 
-Reads the previous note's `## Carried forward`, counts consecutive sessions per item, and pulls the
-*Since the last standup* block from both archives. Refuses to overwrite an existing agenda.
+Reads the previous note's `## Carried forward`, counts consecutive sessions per item, writes the
+*Since the last standup* digest slot for `prepare` to fill (CR-101), and reads repository activity
+— issues, pull requests and releases, as declared — into the appendix. Refuses to overwrite an
+existing agenda.
 
 **`/ops prepare` in a wired project runs exactly this** — see `prepare`, Step P0. There is one way
 to make an agenda here, not two.
@@ -973,7 +1006,7 @@ it sent; nothing writes that unprompted, because the click is where the posted m
 | Step | Must not |
 |---|---|
 | Retrieval | Fetch. It reads archives; refreshing them is the archivers' job |
-| Agenda | Be hand-edited, or overwrite an existing one |
+| Agenda | Have its generated sections hand-edited, or overwrite an existing one. The digest slot is the exception: `prepare` fills it, once (CR-101) |
 | Facilitator sheet | Be staged in `_outbox/`, or be sent as drafted without a facilitator having edited it |
 | Transcript | Be chosen by the machine when duplicates exist |
 | Recap | Be written unasked, or keep a second copy outside `_outbox/` |
@@ -1294,14 +1327,25 @@ are siblings by design — an archiver writes, this reads. So an agenda generate
 no connectivity**, and the morning it is needed is not when a token turns out to have expired.
 
 **`reads:` is a declared scope, not a capability.** The archiver records the declared scope in
-`_repo.json`; honour it there. Report issues **only** where `issues` is listed, and say so where it is
-not — a skipped source that announces itself is honest; a silent one looks like an empty result.
+`_repo.json`; honour it there. Report issues where `issues` is listed and **pull requests where `pulls`
+is listed (CR-101)** — merged, awaiting review with age, opened, closed unmerged — and releases where
+`releases` is listed. Say so only when **neither** issues nor pulls is declared: a skipped source that
+announces itself is honest; a silent one looks like an empty result. A repository that tracks its work
+in a separate ticket system keeps its movement in pull requests, not issues.
+
+**Closure evidence can be contradicted (CR-101).** *Probably closed* takes the **newest** matching
+evidence, not the first; a matching chat message with a negative (*failing*, *not solved*,
+*reverted*, *still*) is counter-evidence and cancels an older positive; a merged PR, a published
+release, a closed issue or a done ticket outranks any chat message; the evidence cell shows the date
+(and time) it used. A done-word is evidence of a claim, not of a state.
 
 **A snapshot is a reading taken at a moment, not an event log.** If the newest one predates the last
 note, say so rather than presenting stale rows as news.
 
-`build_agenda.py` writes a **Since the last standup — not said in the room** block into the agenda.
-Both sources are **best effort**: a failure prints one line and the agenda is still generated, because
+`build_agenda.py` writes a **Since the last standup — not said in the room** section into the agenda
+**holding a marker, not the messages** (CR-101): raw chat lines in a team-facing document are noise
+and read as surveillance, while the facts they carry are the agenda. The digest is judgement, so the
+script leaves the slot and `prepare` Step P0 fills it — see there. Both sources are **best effort**: a failure prints one line and the agenda is still generated, because
 an agenda missing because a network call failed is worse than one missing its context block.
 
 **What to do with it:** the agenda carries the facts; the **facilitator sheet** is where they turn into

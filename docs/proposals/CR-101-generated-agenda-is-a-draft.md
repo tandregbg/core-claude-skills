@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** 2026-09-28 |
+| **Status** | **Implemented (unreleased)** — no contract change of its own; ships with contract 36 (CR-102) |
 | **Contract** | additive — one optional `reads:` value honoured, one new agenda block, no key renamed |
 | **Date** | 2026-09-28 |
 | **Area** | `ops` (`build_agenda.py`, `prepare` Step P0, Pre-Meeting Retrieval), `ops-config/schema.md` |
@@ -142,3 +142,40 @@ On the project that surfaced this, regenerate the 260928 agenda from the 260924 
 3. The repo appendix lists the PRs merged and awaiting review since 260924.
 4. The build item's evidence is the newest matching message; with the 25 Sep contradiction present it
    is not listed as probably closed on a chat claim alone.
+
+## Outcome (2026-09-28, unreleased)
+
+Implemented as proposed:
+
+1. **Round** — no `people:` beside `carry_forward` prints the table header and *No roster: …* naming
+   the file, plus the attendees under `meeting_types.<type>.participants` when present, never used as
+   rows; the same to stdout. `/ops check` 2c reports it first.
+2. **Digest slot** — any declared chat with messages since the note gives a
+   *Since the last standup — not said in the room* section holding only
+   `<!-- DIGEST: N messages since YYMMDD (chat n, …). Not yet read. -->`, and a sources line
+   `digest … NOT FILLED`. `prepare` Step P0 makes reading and filling a required step, with the
+   facts-not-quotes table, and forbids reporting the agenda done while the marker remains. The
+   "never hand-edited" rule now reads: generated sections are not hand-edited; the digest slot is
+   filled by `prepare`, once. Pre-Meeting Retrieval is corrected to match the script. `/ops orient`
+   block 1 (`project_brief.py`) reports *generated, digest not filled*.
+3. **Pull requests** — `pulls` in `reads:` gives merged, awaiting review (oldest first, with age),
+   opened and closed-unmerged groups in the appendix and one line in the chat post; `releases` is
+   read too. The skip note appears only when neither `issues` nor `pulls` is declared.
+4. **Evidence** — newest match decides; a negative in a matching message is counter-evidence and a
+   newer one cancels an older positive; merged PRs, published releases, closed issues and done tickets
+   outrank chat; the evidence cell carries the date and time used.
+
+**Decided during implementation:**
+- **No contract bump of its own.** `reads: pulls` was already a declared value (`ops-config/schema.md`);
+  CR-101 makes the generator honour it. The `working_loop` `prepare` step's `does:` text now says the
+  agenda is a draft until the digest is filled — wording, not a new key. It ships in the same release
+  as CR-102 (contract 36).
+- `releases` joined `pulls`: the archive held them, the CR names a published release as evidence, and
+  reading one without the other would have been an arbitrary line.
+- The chat post's repo line counts merged and awaiting-review PRs; the issue line is unchanged.
+
+Tests: `tests/test_cr101_agenda_draft.py` (15) — round with and without roster and participants,
+digest slot and its absence, pull classification and the appendix, the post line, the skip note,
+newest-negative-cancels, newest positive with time, merged PR outranks chat, nothing dropped, and
+`project_brief.py` reporting the unfilled digest and not the filled one.
+
