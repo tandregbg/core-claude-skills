@@ -193,6 +193,13 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 36 (CR-102, 2026-09-28, unreleased): a manifest that already exists
+#   is EDITED, never regenerated — the `manifest_edit_in_place` convention, level
+#   invariant. A skill session rewrote a staged manifest from its template seconds
+#   after the item was sent, and the dispatcher's Status was gone: "never write
+#   status" had been specified, "keep what is there" had not. Read immediately
+#   before writing and stop if it changed; a past-draft manifest keeps its field
+#   block. Additive: no field added, no key renamed.
 # contract_version 35 (CR-100, 2026-09-27, v1.85.0): a person's promotion review —
 #   an optional `promotion_review` block on an _insights.yaml entry (decision, date,
 #   by, group, group_key, split_from, reason) that a dashboard's review surface may
@@ -242,7 +249,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 35
+contract_version: 36
 core_skills_version: "1.85.0"
 
 # --- Schema versions ---
@@ -554,7 +561,7 @@ vault_conventions:
       schema: "see the /outbox skill, which owns the vocabulary"
       writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only)"]
       readers: ["/outbox", "a dispatching surface", "user"]
-      lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder"
+      lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder. Once it exists it is EDITED in place, never regenerated from a template — see the manifest_edit_in_place convention (CR-102)"
 
     - path: "<venture>/.teamschats/"
       purpose: "Chat archive from an external messaging platform (CR-047). Raw provider message objects, one JSON file per chat per day, plus a rendered .md per day and a _chat.json naming the meeting topic. A dot-folder so Obsidian ignores the raw data; the derived notes belong in the normal tree"
@@ -754,6 +761,11 @@ vault_conventions:
     - id: "single_inbox_outbox"
       level: invariant
       rule: "Exactly one _inbox/ and exactly one _outbox/ per vault, both at vault root. Per-folder inboxes/outboxes are not part of this contract."
+
+    - id: "manifest_edit_in_place"
+      level: invariant
+      applies_to: "_outbox/<item>/_manifest.md"
+      rule: "A manifest that already exists is edited, never regenerated (CR-102). A skill that changes an existing manifest changes only the lines it means to change and carries every other line through verbatim. The dispatcher-owned fields (status, status_note, channel, contact) are never dropped, reordered out of the field block, or reset to a template value by a skill. Read the manifest immediately before writing it and compare with what was last read: if it changed (a status appeared, a field changed), stop and report instead of writing over it. A manifest whose status is past draft (ready, sent, withdrawn) is settled: body sections may be appended to (the outcome and timeline sections), its field block is left alone, and a new version of the material is staged as a new item. Invariant because a violation loses the only record that something left the vault, and a manifest that silently reverts to not-sent invites a second send of the same message"
 
     - id: "config_resolution_order"
       level: invariant

@@ -9,6 +9,17 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Added
+
+- **A manifest that already exists is edited, never regenerated (CR-102, contract 36).** A skill
+  session rewrote a staged `_outbox/` manifest from its template seconds after the item was sent, and
+  the dispatcher's `Status` was gone. `/ops` said *never write* `status`; nothing said *keep* it.
+  - `vault_conventions.manifest_edit_in_place`, level invariant: change only the lines you mean to,
+    carry the dispatcher-owned fields through verbatim, read immediately before writing and stop if the
+    manifest changed, and treat a past-draft field block as settled.
+  - `/ops` staging and the `/outbox` schema state it; the sweep's outbox-aging check reports a sent
+    item with no status where the dispatcher keeps a record of what it posted.
+
 ## [1.85.0] - 2026-09-27
 
 ### Added

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Implemented (unreleased)** — contract 36 |
 | **Contract** | additive (35 → 36, or the next free number if another CR takes 36 first) — one rule on `_outbox/<item>/_manifest.md`; no new field |
 | **Date** | 2026-09-28 |
 | **Area** | `ops` (staging a recap or agenda into `_outbox/`), `outbox` (manifest schema), `vault_conventions` |
@@ -77,3 +77,21 @@ cross-check; where it does not, the finding is skipped and says so.
 - A skill asked to update a manifest that changed after it last read it reports the change and does
   not write.
 - `vault_conventions` carries the rule with `level: invariant`; `check-components.py` passes; contract 36.
+
+## Outcome (2026-09-28, unreleased)
+
+Implemented as proposed, contract 36:
+
+- `vault_conventions` gains `manifest_edit_in_place` (`level: invariant`, `applies_to:
+  _outbox/<item>/_manifest.md`); the manifest's own `lifecycle` points to it.
+- `/ops` staging: the edit-in-place, read-before-write and settled-manifest rules follow the existing
+  "never write `status`" paragraph, with the reason: not writing a field is not keeping it.
+- `/outbox` schema: a section "Editing an existing manifest" states the same rule for the skill that
+  owns the vocabulary, and notes that `close` follows it for the lines it does not mean to change.
+- The sweep's outbox-aging check reports sent items with no status where the dispatcher keeps a record
+  of what it posted, and says `not checked (no dispatch record)` where it does not. No tool or path is
+  named: the record is the dispatcher's, and this contract does not own its format.
+
+Acceptance 1 and 2 are behaviour of a skill following instructions, so they are verified by running
+the next staging edit against a manifest that carries a status, not by a unit test.
+

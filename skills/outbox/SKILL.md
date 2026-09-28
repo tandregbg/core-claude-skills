@@ -65,6 +65,23 @@ See `identifier_language` in `ecosystem.yaml`.
 
 When all `Svar förväntas på` items are checked AND `Utfall` is populated, the item is **resolution-ready** -- ready to archive.
 
+### Editing an existing manifest (CR-102)
+
+`vault_conventions.manifest_edit_in_place`, level invariant. The manifest has two writers -- the
+skill that authors it and the dispatcher that records a send -- so it is **edited in place, never
+regenerated**:
+
+- Change only the lines you mean to change; carry every other line through verbatim. `Status`,
+  `Statusnot`, `Kanal` and `Kontakt` are never dropped, moved out of the field block, or reset to a
+  template value by a skill.
+- Read the manifest immediately before writing and compare with what you last read. If it changed,
+  stop and report instead of writing.
+- Past draft (`klar-att-skicka`, `skickad`, `avskriven`), the field block is settled: append to
+  `## Utfall` or `## Tidslinje`, and stage a new version of the material as a new item.
+
+Archiving (`close`) moves the folder and appends; it follows the same rule for the lines it does not
+mean to change.
+
 ### `avskriven` -- resolved without being sent (CR-047)
 
 Some items are resolved by a decision not to send them. A recap that the
