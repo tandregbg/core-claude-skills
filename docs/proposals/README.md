@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-101**
+Next available CR number: **CR-102**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-101**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-101 | `ops` (`build_agenda.py`, `prepare` P0, Pre-Meeting Retrieval) | **High** | **Proposed.** A generated agenda was reported as done while missing most of what the room needed: an empty round (no `people:` roster, no warning), no chat facts (counted, deliberately not printed — while the docs say they are), no pull requests (reader handles `issues` only; the archive holds 200 pulls), and a *probably closed* line whose evidence was a failure message. Adds a no-roster line, a digest slot that `prepare` must fill (facts, not quotes) and `orient` reports while unfilled, a PR reader under `reads: [pulls]`, and closure evidence that takes the newest message and can be contradicted |
 | CR-100 | `_insights.yaml` schema, `insights` compile Pass 2, new `promotion_candidates.py` | Medium | **Implemented v1.85.0, contract 35.** Promotion is a reading task (CR-098: gates took 55 groups to 39, reading took 39 to 11), and the reading leaves no trace. Declares an optional `promotion_review` block (approved/rejected, date, group, group key, reason) that the dashboard's review surface may write, **field-scoped: never `confidence`**. Compile honours it: an approved group is promoted only if its key still matches and step 3b still passes; a rejection holds until the group changes. The gates' arithmetic moves into one script both sides use, so it is not implemented twice; the judged parts stay judged. Optional `promotion_review: required` and `insight_topic_tags`. Additive (34→35) |
 | CR-098 | `insights` Pass 2 steps 2-4 | **High** | **Implemented v1.84.0.** CR-094's open verification step, done: of the ten largest candidate groups, **one** is promotable as-is. Three failure modes the tag gate cannot see — a primary tag that names a topic not a claim; a decision grouped with its own reversal (they share *three* tags, and step 4 makes the **earliest** canonical, so the revoked decision becomes the rule); and same-session entries counted as independent confirmations. Both obvious tightenings were measured across all 55 groups: requiring two shared tags **removes a genuine cluster and keeps both bad ones**, and the date rule is nearly inert (55→49). Adds a contradiction check, a split-before-promote rule, topic-tag discounting, and `confirmation_count` from distinct dates |
 | CR-097 | `vault_conventions`, `/analytics`, the dashboard | Medium | **Implemented v1.83.0, contract 34.** `_analytics/` → `.analytics/`. By CR-034 the prefix answers read frequency; the snapshots are read on demand and by no skill, and the folder predates the rule. A dot also keeps their `YYMMDD-*.md` names out of every folder walk by rule. Readers fall back to the old path for one release; `/analytics` offers the move |
