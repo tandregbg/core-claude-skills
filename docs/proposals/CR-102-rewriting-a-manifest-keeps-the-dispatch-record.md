@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented (unreleased)** — contract 36 |
+| **Status** | **Implemented 2026-09-28, v1.86.0** — contract 36 |
 | **Contract** | additive (35 → 36, or the next free number if another CR takes 36 first) — one rule on `_outbox/<item>/_manifest.md`; no new field |
 | **Date** | 2026-09-28 |
 | **Area** | `ops` (staging a recap or agenda into `_outbox/`), `outbox` (manifest schema), `vault_conventions` |
@@ -78,7 +78,7 @@ cross-check; where it does not, the finding is skipped and says so.
   not write.
 - `vault_conventions` carries the rule with `level: invariant`; `check-components.py` passes; contract 36.
 
-## Outcome (2026-09-28, unreleased)
+## Outcome (2026-09-28, v1.86.0)
 
 Implemented as proposed, contract 36:
 

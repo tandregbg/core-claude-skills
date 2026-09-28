@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented (unreleased)** — no contract change of its own; ships with contract 36 (CR-102) |
+| **Status** | **Implemented 2026-09-28, v1.86.0** — no contract change of its own; ships with contract 36 (CR-102) |
 | **Contract** | additive — one optional `reads:` value honoured, one new agenda block, no key renamed |
 | **Date** | 2026-09-28 |
 | **Area** | `ops` (`build_agenda.py`, `prepare` Step P0, Pre-Meeting Retrieval), `ops-config/schema.md` |
@@ -143,7 +143,7 @@ On the project that surfaced this, regenerate the 260928 agenda from the 260924 
 4. The build item's evidence is the newest matching message; with the 25 Sep contradiction present it
    is not listed as probably closed on a chat claim alone.
 
-## Outcome (2026-09-28, unreleased)
+## Outcome (2026-09-28, v1.86.0)
 
 Implemented as proposed:
 

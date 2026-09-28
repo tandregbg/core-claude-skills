@@ -193,7 +193,7 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
-# contract_version 37 (CR-103, 2026-09-28, unreleased): the manifest's status vocabulary
+# contract_version 37 (CR-103, 2026-09-28, v1.86.0): the manifest's status vocabulary
 #   is declared here, not only in the /outbox skill — `status_forms` (logical name ->
 #   written words) and `superseded_note`, the one parseable form of a withdrawn item's
 #   status note: it STARTS WITH `ersatt av <item-name>` (logical `superseded_by <item>`),
@@ -203,7 +203,7 @@
 #   status words; the sweep reports undeclared ones. Additive: no field added, no key
 #   renamed; the written words are the ones already in use.
 #
-# contract_version 36 (CR-102, 2026-09-28, unreleased): a manifest that already exists
+# contract_version 36 (CR-102, 2026-09-28, v1.86.0): a manifest that already exists
 #   is EDITED, never regenerated — the `manifest_edit_in_place` convention, level
 #   invariant. A skill session rewrote a staged manifest from its template seconds
 #   after the item was sent, and the dispatcher's Status was gone: "never write
@@ -260,7 +260,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 37
-core_skills_version: "1.85.0"
+core_skills_version: "1.86.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

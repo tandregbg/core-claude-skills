@@ -9,6 +9,8 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.86.0] - 2026-09-28
+
 ### Fixed
 
 - **`resolved.py` (CR-103): two bugs found by its first read-only run on a real outbox.** The

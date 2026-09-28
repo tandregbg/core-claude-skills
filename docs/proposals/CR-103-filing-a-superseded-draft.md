@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented (unreleased)** — contract 37 |
+| **Status** | **Implemented 2026-09-28, v1.86.0** — contract 37 |
 | **Contract** | additive — one parseable note form for `avskriven`, one filing destination; no new field |
 | **Date** | 2026-09-28 |
 | **Area** | `outbox` (`close`, `list`, manifest schema), `ops` staging (status vocabulary) |
@@ -73,7 +73,7 @@ view and the resolved view say the same thing the dispatching surface shows.
 - An `avskriven` item without the `ersatt av` form is closed as today, into the contact folder.
 - `/ops sweep` reports a manifest with `Status: redo att skicka` and names `klar-att-skicka`.
 
-## Outcome (2026-09-28, unreleased)
+## Outcome (2026-09-28, v1.86.0)
 
 Implemented as proposed, contract 36 -> 37 (the status vocabulary and the superseded form are now
 declared in `ecosystem.yaml` on `_outbox/<item>/_manifest.md`: `status_forms`, `status_forms_rule`,
