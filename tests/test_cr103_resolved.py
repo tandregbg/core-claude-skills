@@ -127,6 +127,49 @@ class Plan(unittest.TestCase):
         self.assertNotIn("outcome", entry)
 
 
+class Destinations(unittest.TestCase):
+    """The Projekt field is free text; only folders that exist are offered (found live 2026-09-28)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.vault = Path(self.tmp.name)
+        (self.vault / "acme" / "_projects" / "rollout-2026").mkdir(parents=True)
+        (self.vault / "_contacts" / "bob-lindgren").mkdir(parents=True)
+        (self.vault / "_contacts" / ".archive" / "bob-old").mkdir(parents=True)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_free_text_after_the_project_slug_is_ignored(self):
+        found = rs.destination_candidates(
+            self.vault, "rollout-2026 (action A-12); also used by offboarding", "Bob (Acme, CS)")
+        self.assertEqual([(c["kind"], c["path"]) for c in found], [
+            ("project", "acme/_projects/rollout-2026"),
+            ("contact", "_contacts/bob-lindgren"),
+        ])
+
+    def test_the_organisation_in_parentheses_does_not_match_contacts(self):
+        (self.vault / "_contacts" / "carol-jones_acme").mkdir()
+        found = rs.destination_candidates(self.vault, None, "Bob (Acme, CS)")
+        self.assertEqual([c["path"] for c in found], ["_contacts/bob-lindgren"])
+
+    def test_nothing_that_does_not_exist_is_offered(self):
+        self.assertEqual(rs.destination_candidates(self.vault, "no-such-project", "Carol"), [])
+
+    def test_dot_folders_are_never_offered(self):
+        found = rs.destination_candidates(self.vault, None, "Bob")
+        self.assertNotIn("_contacts/.archive/bob-old", [c["path"] for c in found])
+
+    def test_the_text_render_shows_folders_not_the_field(self):
+        text = rs.render_text({"outbox": "x", "undeclared_status": [], "resolved": [{
+            "item": "260928-person-d_reply", "kind": "superseded",
+            "replaced_by": "260928-person-d_reply-v2", "archive_subdir": ".archive/260928-reply-superseded",
+            "project": "rollout-2026 (action A-12)", "problems": [],
+            "destinations": [{"kind": "project", "path": "acme/_projects/rollout-2026"}]}]})
+        self.assertIn("folder? project  acme/_projects/rollout-2026", text)
+        self.assertNotIn("(action A-12)", text)
+
+
 class Parsing(unittest.TestCase):
     def test_the_note_form_with_backticks_and_trailing_text(self):
         m = rs.SUPERSEDED_NOTE.match("ersatt av `260928-person-d_reply-v2`; kept for the record")
@@ -134,6 +177,13 @@ class Parsing(unittest.TestCase):
 
     def test_a_note_that_merely_mentions_it_is_not_the_form(self):
         self.assertIsNone(rs.SUPERSEDED_NOTE.match("sent after 260928-person-d_reply was ersatt av x"))
+
+    def test_a_negated_status_word_is_never_suggested(self):
+        # "ej skickad" means NOT sent; suggesting `skickad` would propose the opposite.
+        self.assertIsNone(rs.closest_declared("ej skickad"))
+        self.assertIsNone(rs.closest_declared("not sent yet"))
+        self.assertEqual(rs.closest_declared("OBSOLET -- aldrig skickad, ersatt"), "avskriven")
+        self.assertEqual(rs.closest_declared("redo att skicka"), "klar-att-skicka")
 
     def test_status_kinds(self):
         self.assertEqual(rs.status_kind("skickad 2026-09-28"), "sent")

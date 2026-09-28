@@ -127,18 +127,70 @@ def status_kind(status: str) -> str | None:
     return None
 
 
+# A status word right after one of these is negated: "ej skickad" means NOT sent, and suggesting
+# `skickad` for it would propose the opposite of what the line says.
+NEGATIONS = {"ej", "inte", "icke", "aldrig", "not", "never", "no", "un"}
+
+
 def closest_declared(status: str) -> str | None:
-    """The declared written form an undeclared status most likely meant."""
+    """The declared written form an undeclared status most likely meant.
+
+    A word preceded by a negation is skipped, so `ej skickad` gets no suggestion rather than
+    `skickad`. Better no hint than the opposite of what the person wrote.
+    """
     words = re.findall(r"[\wåäöÅÄÖ-]+", clean(status).lower())
-    for word in words:
+    usable = [w for i, w in enumerate(words) if not (i and words[i - 1] in NEGATIONS)
+              and w not in NEGATIONS]
+    for word in usable:
         if word in SYNONYMS:
             return CANONICAL[SYNONYMS[word]]
     candidates = [w for ws in DECLARED_STATUS.values() for w in ws]
-    for word in words:
+    for word in usable:
         match = difflib.get_close_matches(word, candidates, n=1, cutoff=0.7)
         if match:
             return CANONICAL[next(k for k, ws in DECLARED_STATUS.items() if match[0] in ws)]
     return None
+
+
+def _slug_of_project(text: str | None) -> str | None:
+    """The folder-name part of a free-text Projekt field: `rollout-2026 (note); more` -> `rollout-2026`."""
+    m = re.match(r"\s*`?([A-Za-z0-9][A-Za-z0-9._-]*)", text or "")
+    return m.group(1) if m else None
+
+
+def _name_words(text: str | None) -> set[str]:
+    return {w.lower() for w in re.findall(r"[^\W\d_]{3,}", text or "", re.UNICODE)}
+
+
+def destination_candidates(vault: Path, project: str | None, contact: str | None) -> list[dict]:
+    """Folders in the vault a closed item could be filed under, most likely first.
+
+    Not a decision: `/outbox close` picks, and asks when there is more than one or none. What this
+    fixes is showing the manifest's free text (`rollout-2026 (action …); used by …`) as if it
+    were a path. Only folders that exist are returned; dot-folders are never searched.
+    """
+    out: list[dict] = []
+    slug = _slug_of_project(project)
+    if slug:
+        for pattern in (f"_projects/{slug}", f"*/_projects/{slug}", f"*/*/_projects/{slug}"):
+            for hit in sorted(vault.glob(pattern)):
+                if hit.is_dir() and not any(p.startswith(".") for p in hit.relative_to(vault).parts):
+                    out.append({"kind": "project", "path": hit.relative_to(vault).as_posix()})
+    # The person is named before any parenthesis, comma or dash: "Bob (Acme, CS)".
+    # Matching the whole field also matched every folder carrying the company's name.
+    name_part = re.split(r"[(,;]| — | -- ", contact or "", maxsplit=1)[0]
+    wanted = _name_words(name_part)
+    contacts = vault / "_contacts"
+    if wanted and contacts.is_dir():
+        for folder in sorted(contacts.iterdir()):
+            if folder.is_dir() and not folder.name.startswith(".") \
+                    and _name_words(folder.name.replace("-", " ")) & wanted:
+                out.append({"kind": "contact", "path": folder.relative_to(vault).as_posix()})
+    seen, unique = set(), []
+    for c in out:
+        if c["path"] not in seen:
+            seen.add(c["path"]); unique.append(c)
+    return unique
 
 
 def subject_of(item: str) -> str:
@@ -219,6 +271,7 @@ def plan(vault: Path, outbox: Path, today: datetime.date) -> dict:
             "note": note,
             "contact": fields.get("contact"),
             "project": fields.get("project"),
+            "destinations": destination_candidates(vault, fields.get("project"), fields.get("contact")),
             "outcome_present": bool(section(text, "Utfall")),
             "kind": "withdrawn",
             "problems": [],
@@ -271,10 +324,15 @@ def render_text(result: dict) -> str:
     for e in result["resolved"]:
         if e["kind"] == "superseded":
             out.append(f"  {e['item']:<48} superseded by {e['replaced_by']}")
-            out.append(f"      -> <{e.get('project') or e.get('contact') or 'contact/project'}>/"
-                       f"{e['archive_subdir']}/")
+            out.append(f"      -> <folder>/{e['archive_subdir']}/")
         else:
             out.append(f"  {e['item']:<48} withdrawn")
+        dests = e.get("destinations") or []
+        if dests:
+            for d in dests:
+                out.append(f"      folder? {d['kind']:<8} {d['path']}")
+        else:
+            out.append("      folder? none found from Projekt/Kontakt -- /outbox close asks")
         for problem in e["problems"]:
             out.append(f"      ! {problem}")
     if result["undeclared_status"]:

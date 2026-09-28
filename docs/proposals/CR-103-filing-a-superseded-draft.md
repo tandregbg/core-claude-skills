@@ -94,3 +94,8 @@ declared in `ecosystem.yaml` on `_outbox/<item>/_manifest.md`: `status_forms`, `
 - **Verified read-only on one vault:** the helper found the one real superseded draft, its replacing
   item (already sent, still in `_outbox/`), and planned `.archive/<date>-<subject>-superseded/`; it
   also listed the undeclared status words in use. Nothing was moved.
+
+**Correction (2026-09-28), found by the first read-only run on a real outbox.** The plan printed the
+manifest's free-text project field as a folder, and suggested `skickad` for a status reading "not
+sent". The helper now offers only existing folders (project by the field's leading slug; contacts by
+the name before any parenthesis) and never suggests a negated word. Tests pin both.

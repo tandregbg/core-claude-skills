@@ -9,6 +9,15 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Fixed
+
+- **`resolved.py` (CR-103): two bugs found by its first read-only run on a real outbox.** The
+  destination showed the manifest's free-text `Projekt` field as if it were a folder
+  (`<goa-… (action …); used by …>/.archive/…`); it now lists only folders that exist -- the project
+  named by the field's leading slug, and contacts named before any parenthesis -- and says
+  "`/outbox close` asks" when there are none. And an undeclared status such as `ej skickad` ("not
+  sent") was answered "did you mean `skickad`?", the opposite; a negated word is never suggested.
+
 ### Added
 
 - **What was never sent gets filed too; a replaced draft goes to `.archive/` (CR-103, contract 37).**
