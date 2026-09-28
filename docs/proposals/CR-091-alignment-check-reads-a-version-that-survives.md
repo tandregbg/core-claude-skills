@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-09-24** |
+| **Status** | **Superseded by CR-089 (v1.79.0)** — the file said Proposed after the index had recorded this; corrected 2026-09-28 |
 | **Contract** | none — script behaviour only, no schema change |
 | **Date** | 2026-09-24 |
 | **Area** | `scripts/check-ecosystem-alignment.sh`, `/ops sweep` check 8 |
