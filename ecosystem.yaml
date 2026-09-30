@@ -403,6 +403,7 @@ terms:
   - {id: carry-forward, en: carry-forward, sv: överföring, verb: carry, avoid: ["carried items", "carry-over"]}
   - {id: recap, en: recap, sv: recap, verb: recap, file: recap}
   - {id: priorities, en: priorities, sv: prioriteringar, file: priorities}
+  - {id: content, en: content, sv: underlag, file: content, note: "incoming material the vault received and did not produce: a report, a newsletter, an automated digest. Not a meeting -- it has a sender, not participants, and no facilitator. CR-105"}
   # work and knowledge
   - {id: task, en: task, sv: uppgift, note: "the action-table column (Action / Åtgärd) is a template-contract heading (CR-018) and keeps its label"}
   - {id: ledger, en: ledger, sv: uppgiftsregister, note: "where tasks live; matches workflows.task_ledger"}

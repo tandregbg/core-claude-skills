@@ -33,6 +33,35 @@ recognised: say which subcommand it became, and do not run it.
 Runs the PROCESSING FLOW below (Steps 0.5–9). This is the loop's `process` step; `/transcript` is
 the same step for a folder with no config.
 
+**When the input is incoming material rather than a meeting (CR-105)** — a report, a newsletter,
+an automated digest, a vendor's weekly mail — `process` writes a **content** file instead of a
+summary. Same folder, same insight and changelog steps, four differences:
+
+| | summary | content |
+|---|---|---|
+| Filename | `YYMMDD-summary-<participants>-<topic>.md` | `YYMMDD-content-<source>-<topic>.md` |
+| Header | Participants, facilitator, duration | **Sender**, period covered, what it measures |
+| Action table | Owners drawn from participants | Owners are **ours** — the sender owns nothing |
+| Placement | `meetings/` | **not** `meetings/` — see below |
+
+**It does not go in `meetings/`.** A weekly report is not an occurrence of anything; filing it
+there makes the folder answer "what did we meet about?" wrongly, and every count over that folder
+inherits the error. Put it where the declared `verticals:` path points if the config has one, else
+a sibling folder in the same project.
+
+**Check the name before creating the folder.** `content/` is the obvious choice and is often
+already taken by something else — in a marketing project it usually means *material we produce*,
+which is the opposite of material we received. Where the name is taken, `reports/` is the fallback;
+the term `content` names the artifact, not the folder, and a collision here is worse than a
+slightly different folder name.
+
+**No participant machinery runs.** There is no diarisation to recover, no ASR spelling to check
+against folder precedent, no owner to downgrade to `?`. The sender is in a header and is correct.
+Proper-noun verification (CR-016) still applies to names *inside* the content.
+
+**The action table is the point.** A report states numbers; the value added is what we do about
+them, owned by us. A row owned by the sender is a routing error — they will never read this file.
+
 ### `status` -- Show available configurations
 
 **Trigger:** `/ops status`

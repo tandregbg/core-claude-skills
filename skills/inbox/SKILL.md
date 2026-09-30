@@ -55,11 +55,20 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    |--------|---------------|-------------|
    | Speaker labels, timestamps, dialogue format | `transcript` | `/transcript` |
    | Org team member names (from ops-config), meeting context | `ops` | `/ops` |
+   | **Sender header, no dialogue: a report, newsletter, automated digest, or any mail whose value is its content rather than an exchange** | `content` | `/ops process` (writes a `content` file, **not** a summary — CR-105) |
    | "TODO", "remind me", imperative sentences, action items | `task` | `/tasks add` |
    | Short observation, no action context | `note` | None (already saved) |
    | Idea, brainstorm, "what if" | `idea` | Appended to an `_ideas.md` -- see step 6 |
 
    Assign confidence: `high` (clear signals), `medium` (some signals), `low` (ambiguous).
+
+   **`content` vs `transcript` (CR-105).** Step 1 detects `email` as a content *type*; this is
+   where it goes. The distinction is not the channel but the shape: a transcript lost its
+   structure and the pipeline recovers it (who spoke, how names are spelled), while incoming
+   material arrives structured — it has a **sender, not participants**, and no facilitator.
+   Routing it as a meeting invents an event that never happened. A mail that *is* an exchange
+   between people about a decision is still correspondence and remains out of scope until
+   CR-080 lands; this row covers the one-way case, which is the common one.
 
 3. **Determine routing** -- consult CLAUDE.md MEETING ROUTING for folder suggestions:
    - Match participant names using the name resolution algorithm:

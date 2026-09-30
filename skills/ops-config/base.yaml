@@ -201,6 +201,7 @@ strings:
     call: "summary"
     summary: "summary"
     standup: "standup"
+    content: "content"   # CR-105: incoming material, not a meeting
   insights:
     section_label: "Key Insights"
     decisions_label: "Decisions & Rationale"
@@ -261,6 +262,7 @@ strings_sv:
     call: "summary"
     summary: "summary"
     standup: "standup"
+    content: "content"   # CR-105: incoming material, not a meeting
   insights:
     section_label: "Nyckelinsikter"
     decisions_label: "Beslut och motivering"
