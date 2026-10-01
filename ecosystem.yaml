@@ -193,6 +193,15 @@
 #   canonical set counted finished tasks as outstanding. Split active/finished,
 #   since that is the question every consumer actually asks.
 #
+# contract_version 38 (CR-105 + CR-080, 2026-09-30/10-01, v1.87.0): incoming material is
+#   not a meeting. `content` names one-way material the vault received (a report, a
+#   newsletter, an automated digest); `correspondence` names a two-way thread with a
+#   person. The test between them is whether anyone replied. Neither goes in meetings/,
+#   and a correspondence record never writes a participant list -- a thread has a sender
+#   and recipients PER TURN. Raw email is not retained and never enters .transcripts/,
+#   which is for transcripts of recordings the user took part in (CR-080 decision 6).
+#   terms: gains both ids; filename_keywords gains content + correspondence.
+#
 # contract_version 37 (CR-103, 2026-09-28, v1.86.0): the manifest's status vocabulary
 #   is declared here, not only in the /outbox skill — `status_forms` (logical name ->
 #   written words) and `superseded_note`, the one parseable form of a withdrawn item's
@@ -259,8 +268,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 37
-core_skills_version: "1.86.0"
+contract_version: 38
+core_skills_version: "1.87.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

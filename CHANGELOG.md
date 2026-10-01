@@ -9,6 +9,39 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.87.0] - 2026-10-01
+
+### Added
+- **CR-105 — incoming material is `content`, not a meeting.** A vendor's weekly report had been
+  processed into a project's `meetings/` folder as a meeting summary; it was the thirty-third
+  non-meeting in that one folder. Reports, audits and newsletters had all borrowed a declared
+  `meeting_type` whose config names a facilitator and participants neither of them has. The error
+  is invisible in the artifact and only shows in aggregate: the folder that answers *"what did we
+  meet about?"* answers with events that never happened. Adds the `content` term (sv `underlag`),
+  `filename_keywords.content`, an `/inbox` classification row so the `email` type step 1 already
+  detected stops leading nowhere, and the `/ops process` content variant — sender not participants,
+  our owners only, and **not** `meetings/`.
+- **CR-080 — `correspondence` is a third shape, and raw email is not kept.** Revived after being
+  blocked since 2026-09-24 on decision 6 (where the raw form goes, deliberately left open so an
+  implementation would not settle it by default). **The default settled it anyway:** a three-thread
+  exchange with an external consultant was written to `.transcripts/` with `type: raw-transcript`,
+  silently widening a seal meant for the user's own recordings to cover someone else's private mail.
+  Answered: the record keeps sender, recipients, timestamps and thread key; the wire form is
+  discarded. Consent does not transfer — a recording is made by the user, of a meeting the user was
+  in. Adds the `correspondence` term, its filename keyword, a second `/inbox` row, and the `/ops`
+  variant: **turns with time and direction, never a participant list**, only `from`/`to` may own an
+  action, and raw mail never enters `.transcripts/`. Calendar half still deferred.
+
+### Changed
+- `contract_version` 37 → **38**. Additive: clients that do not know `content` or `correspondence`
+  are unaffected.
+
+### Notes
+- Forward only. Files already written as meetings are not renamed by the skills; a vault may
+  migrate its own on its own terms.
+- Found while applying CR-105: `content/` is often already taken and means the opposite (material
+  *we produce*). The term names the artifact, not the folder — `reports/` is the fallback.
+
 ## [1.86.0] - 2026-09-28
 
 ### Fixed
