@@ -56,6 +56,7 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    | Speaker labels, timestamps, dialogue format | `transcript` | `/transcript` |
    | Org team member names (from ops-config), meeting context | `ops` | `/ops` |
    | **Sender header, no dialogue: a report, newsletter, automated digest, or any mail whose value is its content rather than an exchange** | `content` | `/ops process` (writes a `content` file, **not** a summary — CR-105) |
+   | **A thread: someone wrote, you replied, they replied again** | `correspondence` | `/ops process` (writes a `correspondence` file — CR-080) |
    | "TODO", "remind me", imperative sentences, action items | `task` | `/tasks add` |
    | Short observation, no action context | `note` | None (already saved) |
    | Idea, brainstorm, "what if" | `idea` | Appended to an `_ideas.md` -- see step 6 |
@@ -67,8 +68,8 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    structure and the pipeline recovers it (who spoke, how names are spelled), while incoming
    material arrives structured — it has a **sender, not participants**, and no facilitator.
    Routing it as a meeting invents an event that never happened. A mail that *is* an exchange
-   between people about a decision is still correspondence and remains out of scope until
-   CR-080 lands; this row covers the one-way case, which is the common one.
+   between people about a decision is **correspondence**, the row below (CR-080, revived
+   2026-10-01). The test between them is simply whether anyone replied.
 
 3. **Determine routing** -- consult CLAUDE.md MEETING ROUTING for folder suggestions:
    - Match participant names using the name resolution algorithm:

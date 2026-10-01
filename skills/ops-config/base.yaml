@@ -201,7 +201,8 @@ strings:
     call: "summary"
     summary: "summary"
     standup: "standup"
-    content: "content"   # CR-105: incoming material, not a meeting
+    content: "content"   # CR-105: one-way incoming material, not a meeting
+    correspondence: "correspondence"   # CR-080: a two-way thread with a person
   insights:
     section_label: "Key Insights"
     decisions_label: "Decisions & Rationale"
@@ -262,7 +263,8 @@ strings_sv:
     call: "summary"
     summary: "summary"
     standup: "standup"
-    content: "content"   # CR-105: incoming material, not a meeting
+    content: "content"   # CR-105: one-way incoming material, not a meeting
+    correspondence: "correspondence"   # CR-080: a two-way thread with a person
   insights:
     section_label: "Nyckelinsikter"
     decisions_label: "Beslut och motivering"

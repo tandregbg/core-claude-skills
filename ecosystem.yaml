@@ -404,6 +404,7 @@ terms:
   - {id: recap, en: recap, sv: recap, verb: recap, file: recap}
   - {id: priorities, en: priorities, sv: prioriteringar, file: priorities}
   - {id: content, en: content, sv: underlag, file: content, note: "incoming material the vault received and did not produce: a report, a newsletter, an automated digest. Not a meeting -- it has a sender, not participants, and no facilitator. CR-105"}
+  - {id: correspondence, en: correspondence, sv: korrespondens, file: correspondence, note: "a two-way thread with a person: turns alternate and a decision may be reached in the exchange. Sender and recipients PER TURN, never a participant list. One-way material is `content` instead. CR-080"}
   # work and knowledge
   - {id: task, en: task, sv: uppgift, note: "the action-table column (Action / Åtgärd) is a template-contract heading (CR-018) and keeps its label"}
   - {id: ledger, en: ledger, sv: uppgiftsregister, note: "where tasks live; matches workflows.task_ledger"}

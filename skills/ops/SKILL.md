@@ -62,6 +62,28 @@ Proper-noun verification (CR-016) still applies to names *inside* the content.
 **The action table is the point.** A report states numbers; the value added is what we do about
 them, owned by us. A row owned by the sender is a routing error — they will never read this file.
 
+**When the input is a two-way thread with a person (CR-080)** — someone wrote, you replied, they
+replied again — it is **correspondence**, not content and not a meeting. Content is one-way; the
+test is whether anyone replied.
+
+| | content | correspondence |
+|---|---|---|
+| Shape | One-way: a report, a digest, a newsletter | Turns alternate between people |
+| Filename | `YYMMDD-content-<source>-<topic>.md` | `YYMMDD-correspondence-<person>-<topic>.md` |
+| Header | Sender, period, what it measures | **Turns with time and direction**, and whether a decision was reached |
+| Placement | `content.path` in config, else `reports/` | `correspondence.path` in config, else `correspondence/` |
+
+**Never write a participant list.** A thread has a sender and recipients *per turn*; flattening
+them claims six people conversed when two did, and loses that a `cc` recipient was informed
+rather than engaged. Only a `from`/`to` party may own an action item — never a `cc`.
+
+**The raw mail is not kept, and never goes in `.transcripts/` (CR-080 decision 6, answered
+2026-10-01).** That archive is for transcripts of recordings the user took part in. A pasted mail
+carries someone else's words, written to the user with an expectation about where they go. The
+record keeps sender, recipients, timestamps and thread key; the wire form is discarded. **A raw
+email found in `.transcripts/` is a finding, not a convention** — it happened once, by default,
+which is what settled the question.
+
 ### `status` -- Show available configurations
 
 **Trigger:** `/ops status`

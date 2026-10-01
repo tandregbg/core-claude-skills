@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | **Revived 2026-10-01** — decision 6 answered below; email half ready to build, calendar half still deferred |
 | **Contract** | additive (28 → 29, assuming CR-077/078/079 land first; renumber if they do not) |
 | **Date** | 2026-09-24 |
 | **Area** | a new `/correspondence` skill, `_inbox/` classification, `vault_conventions` |
@@ -151,6 +151,46 @@ decide it silently. Two defensible answers:
 transcript of a meeting the user attended: it carries other people's words verbatim, addressed
 privately, with routing metadata attached — in an iCloud-synced vault. Deciding it by default,
 in code, is how the wrong answer gets made permanent.
+
+### Answered 2026-10-01 — and the warning above had already come true
+
+**The default did decide it, exactly as predicted.** On 2026-09-30 a three-thread email exchange
+with an external consultant was processed by the ordinary route. The raw mail was written to
+`.transcripts/` with `type: raw-transcript` in its frontmatter. Nobody chose that; it is simply
+what the pipeline does with input it is handed, and the seal meant for recordings silently
+widened to cover private correspondence with a third party.
+
+That settles the question by showing the cost of not settling it.
+
+**The answer: option one. The record carries the identity; the raw form is not kept.**
+
+| | |
+|---|---|
+| **Frontmatter keeps** | sender, recipients with roles, timestamp per turn, `message_id` and thread key where available |
+| **Not kept** | the wire form: full headers, complete `References` chain, original encoding, quoted history below the reply |
+| **`.transcripts/` is for transcripts** | A pasted mail is not one. Writing one there is a finding, not a convention |
+
+**Three reasons, in order of weight.**
+
+1. **Consent does not transfer.** A recording is made by the user, of a meeting the user was in.
+   A mail is written by someone else, to the user, often with an expectation about where it will
+   and will not go. Sealing it in an archive the user never reads back is not a privacy measure —
+   it is accumulation without purpose.
+2. **The re-derivation argument is weaker than it looks.** The cost of discarding the raw form is
+   that nothing can be re-derived if the record is later found wrong. But in the one case observed,
+   what mattered was the *figures and the decision*, and both survive in the record. The wire form
+   would have added quoted signatures and a reply chain.
+3. **Widening a seal changes what its name means.** CR-068 exists because of exactly that failure.
+   `.transcripts/` is already read-blocked for a specific reason; stretching it to a second kind of
+   material makes both harder to reason about.
+
+**The calendar half stays deferred.** Recurrence, mutation after recording, and RSVP-as-attendance
+(decision 5) are untouched by this and still deserve their own pass.
+
+**What CR-105 settled in the meantime.** One-way incoming material — a report, a newsletter, an
+automated digest — is `content`, shipped 2026-09-30. This CR covers what that one deliberately
+excluded: a **two-way thread with a person**, where turns alternate and a decision may be reached
+in the exchange. The distinguishing test is not the channel but whether anyone replied.
 
 Related: this is the same question CR-075 raises about meeting recordings (*where is the line
 between my working material and the organisation's material that happens to pass through me?*),
