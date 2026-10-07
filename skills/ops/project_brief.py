@@ -14,7 +14,7 @@ import argparse, datetime, json, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_agenda import (COMPANION, config, carried, has_section, key, owner_of,
+from build_agenda import (COMPANION, config, carried, has_section, key, owner_of, details_name,
                           streak, next_session, recorded_since, since,
                           fetch_record, fetch_status)   # noqa: E402
 
@@ -153,9 +153,11 @@ def main() -> None:
                         bits = [r.get("id", "?"), r.get("title", ""), r.get("duration", ""), r.get("variant", "")]
                         out.append("                      " + "  ".join(str(b) for b in bits if b))
 
+        # CR-107: a card-layout agenda keeps the digest slot in its details file.
+        details = md / details_name(cf, nxt)
         if not agenda.exists():
             state = "NOT GENERATED"
-        elif DIGEST_MARKER in _read_text(agenda):
+        elif DIGEST_MARKER in _read_text(agenda) or (details.exists() and DIGEST_MARKER in _read_text(details)):
             # CR-101: generated but its digest slot is unread -- a draft, not an agenda.
             state = "generated, digest not filled"
         else:

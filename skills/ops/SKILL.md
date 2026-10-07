@@ -325,6 +325,25 @@ nearest declaration wins, walking up).
 python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
 ```
 
+**Card layout (CR-107, `carry_forward.layout: card`).** The generated agenda then obeys *the card
+comes first* (above): it opens with **Milestone → Movement → Blockers → Dependencies → Decisions
+needed today → Stuck? → One-minute round → Close**, and writes everything else -- the Sources block,
+the full carried list, *Probably closed*, the digest slot and the repo detail -- to a companion
+`YYMMDD-agenda-details-<…>.md`. The meeting talks through the agenda; the details file is what it was
+built from and is not read out. The chat post becomes the card too: milestone, release gap, blockers,
+what is waited on, what must be decided, the round question.
+
+| In the agenda (talked about) | In the details file (appendix) |
+|---|---|
+| The milestone and days left (`milestone:`), or *date not set; decide by …* | Sources and fetch status, declared reports and their age |
+| The movement block, with its checks (`build_movement.py`, live from the repo) | The full carried list with session counts |
+| Carried `[blocker]`, `[dependency]`, `[decision]` items | *Probably closed* |
+| Tasks carried past the escalation threshold, as *Stuck?* | The digest slot (prepare fills it **there**) |
+| The one-minute round: *what moved toward the milestone, what is stuck* | Repo, issue and pull-request detail |
+
+The default (`layout` absent) is unchanged. In card layout the digest marker lives in the details file,
+and `/ops orient` reads both files.
+
 It writes `YYMMDD-<agenda_suffix>.md` and the chat post, carrying what the transcript cannot:
 the carried-forward block with session counts, the round from the declared roster, and the
 *Since the last standup* block from the archives. **Hand-writing the agenda in a wired project
@@ -968,6 +987,13 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    cannot resolve what it refers to. Every carried line should reference an issue, a ticket, a path in
    the repo, a chat message or a session — or state the matter in plain words.
 
+   **CR-107 sharpens it.** A term borrowed from another document is *not* plain words: carried
+   without its source, it reaches its owner as jargon (observed: a plan's mechanism name, carried
+   for days, that its named owner did not recognise in the room). Also flag: **a count inside a
+   carried line** (stale by the next session; the movement block reads it fresh), **an unknown kind
+   prefix** (only `[blocker]`, `[dependency]`, `[decision]`), and, in `layout: card`, **no
+   `milestone:` declared** (the card has nothing to run toward).
+
 ```
 /ops check meetings/management
 
@@ -1521,7 +1547,21 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    ```
    - **<item>** — <note> · **<owner>**
    - **<Name>:** <what they owe>
+   - [blocker] **<item>** — <source> · **<owner>**        (CR-107: optional kind)
    ```
+
+   **Kind (CR-107).** A line may open with `[blocker]`, `[dependency]` or `[decision]`; untagged is a
+   task. In card layout the kind decides whether the item is talked about or sits in the appendix, so
+   `process` assigns it while writing the section: **blocker** -- work is stuck and someone in the room
+   can unstick it; **dependency** -- waiting on someone outside the room; **decision** -- the room must
+   choose. Everything else is a task, and a task only reaches the card when it has carried past the
+   escalation threshold.
+
+   **A carried line names something its owner can open** -- an issue or ticket id, a path with a section,
+   a decision id. A paraphrase of another document's term fails in the room: its owner does not
+   recognise it. **And it carries no counts**: a number written into a carried line is stale by the next
+   session, while the movement block reads it fresh. *(Observed: two lines recognised by nobody, and a
+   count read out after the movement block had already given the current one.)*
 
 2. **Owner is read from a defined position, never guessed from prose.** Trailing bold after the last
    middot, or the label itself when it is a person's own line. **Anything else is `UNOWNED`, and that

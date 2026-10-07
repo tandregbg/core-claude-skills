@@ -311,6 +311,42 @@ workflows:
       task_file: string          # Path to _tasks.yaml (default: vault parent)
 ```
 
+#### Carry-forward card layout and movement (CR-107)
+
+```yaml
+milestone:                         # project-wide, beside `tracks:`
+  name: string                     # what the next milestone is
+  date: YYYY-MM-DD                 # optional; absent = "date not set"
+  decide_by: YYYY-MM-DD            # optional; when the date itself must be decided
+  criteria: string                 # optional; where the exit criteria live
+workflows:
+  post_processing:
+    carry_forward:
+      layout: card                 # card | list (default list: unchanged behaviour)
+      movement:                    # optional; used when a repo declares labels
+        out: status/movement       # relative to the project root
+        days: 14
+        note: string               # optional line under the movement block
+external_systems:
+  repos:
+    - url: github.com/org/repo
+      labels:                      # enables the movement block
+        priority: [blocker, critical, medium]   # highest first
+        gap: [blocker, critical]                # what counts as the release gap
+        awaiting_test: "status: Fixed"
+        blocked: "status: Blocked on backend"   # optional
+        answered: answered-waiting-on-jira      # optional
+        area_prefix: "area:"
+      reports:                     # optional: dated reports the details file lists, newest first
+        - name: Status report
+          dir: docs/investigations
+          pattern: '^\d{4}-\d{2}-\d{2}-status-report\.md$'
+```
+
+The movement block is read live from the repo (`gh`), best effort, and carries three printed checks:
+the rebuilt state equals the repo's current state, every day shown is covered by event history, and
+the agenda's date equals the day it was read (else **STALE**).
+
 #### Task Import
 
 When `task_import.enabled` is true, action items from the meeting summary are extracted and matched against the task file. New items are offered for import; existing tasks mentioned in the meeting are updated.

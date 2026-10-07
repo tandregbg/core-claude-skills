@@ -49,7 +49,11 @@ SECTION = re.compile(r"^## Carried forward\s*$(.*?)(?=^## |\Z)", re.M | re.S)
 COMPANION = ("-agenda", "agenda-", "-preparation", "preparation-", "-förberedelse",
              "förberedelse-", "-priorities", "priorities-", "-facilitator",
              "facilitator-", "-appendix", "-recap", "-mejl", "-teams")
-ITEM = re.compile(r"^-\s+\*\*(.+?)\*\*(.*)$", re.M)
+ITEM = re.compile(r"^-\s+(?:\[[a-z]+\]\s+)?\*\*(.+?)\*\*(.*)$", re.M)
+# CR-107: a carried line may open with its kind -- `- [blocker] **item** — note · **owner**`.
+# The kind decides where the item goes in a card-layout agenda; an untagged line is a task.
+KIND_RE = re.compile(r"^-\s+\[([a-z]+)\]\s+\*\*(.+?)\*\*", re.M)
+KINDS = ("blocker", "dependency", "decision")
 
 
 def external(start: Path) -> dict:
@@ -122,6 +126,9 @@ def config(meetings: Path) -> dict:
             # each). Its presence is what makes the round's first column a STATED
             # axis rather than a looked-up attribute -- see the round table below.
             cf["tracks"] = [str(t) for t in (d.get("tracks") or []) if t]
+            # CR-107: the date the card runs toward. Project-wide, so it sits beside
+            # `tracks:` rather than inside carry_forward; a nearer declaration wins.
+            cf["milestone"] = d.get("milestone") or cf.get("milestone")
             if not cf.get("schedule_days"):
                 mt = (d.get("meeting_types") or {}).values()
                 sched = next((m.get("schedule", {}).get("days") for m in mt
@@ -216,6 +223,19 @@ def has_section(path: Path) -> bool:
     perfectly correct. So the absence is said out loud, here and in the agenda.
     """
     return SECTION.search(path.read_text(encoding="utf-8")) is not None
+
+
+def kinds(path: Path) -> dict[str, str]:
+    """CR-107: key(label) -> declared kind, for lines that carry one. Unknown kinds are
+    kept as written so /ops check can name them; only KINDS are routed to the card."""
+    m = SECTION.search(path.read_text(encoding="utf-8"))
+    return {key(lab): k for k, lab in KIND_RE.findall(m.group(1))} if m else {}
+
+
+def details_name(cf: dict, target: str) -> str:
+    """CR-107: the card layout's companion file. `agenda-x` -> `agenda-details-x`."""
+    a = cf["agenda_suffix"]
+    return f"{target}-" + (a.replace("agenda-", "agenda-details-", 1) if a.startswith("agenda-") else a + "-details") + ".md"
 
 
 def carried(path: Path) -> list[tuple[str, str]]:
@@ -890,6 +910,16 @@ def main() -> None:
                 balance[t] += 1
 
     built = datetime.datetime.now().strftime("%y%m%d %H:%M")
+    card = cf.get("layout") == "card"     # CR-107
+    mv_head = mv_note = None
+    mv_reports: list[str] = []
+    if card:
+        try:
+            import build_movement
+            mv_head, mv_note, mv_reports = build_movement.run(cf, day)
+        except Exception as e:   # best effort, like every other source
+            mv_head, mv_note = None, f"not read — {e}"
+    i_src = len(L)
     src = [f"## Sources — built {built} from", "", "```"]
     src.append(f"  note      {last.name:44} read")
     if tracks:
@@ -940,8 +970,12 @@ def main() -> None:
     total_msgs = sum(len(c.get("messages") or []) for c in chat)
     if total_msgs:
         src.append(f"  digest    {str(total_msgs) + ' message(s) since ' + last_date:44} NOT FILLED — prepare reads them and fills the digest slot")
+    if card:
+        src.append(f"  movement  {('read' if mv_head else (mv_note or '—'))[:60]}")
+        src += mv_reports
     src += ["```", ""]
     L += src
+    i_carry = len(L)
 
     if items:
         fresh = [i for i in items if i[2] <= 1]
@@ -987,6 +1021,7 @@ def main() -> None:
               "*nothing carried* — and regenerate. Otherwise anything left open at the last session is",
               "now invisible to this one.", ""]
 
+    i_closed = len(L)
     # CR-084: printed after the carried block, before anything else the room does.
     if closed_hits:
         L += ["## Probably closed — confirm", "",
@@ -1008,6 +1043,7 @@ def main() -> None:
     # script cannot make, so it writes a marked slot and `prepare` fills it. The
     # marker is what makes an unread digest visible: an agenda still carrying it is
     # a draft, and `/ops orient` reports it as one.
+    i_digest = len(L)
     if total_msgs:
         per = ", ".join(f"{c.get('name') or 'chat'} {len(c['messages'])}" for c in chat if c.get("messages"))
         L += ["## Since the last standup — not said in the room", "",
@@ -1060,6 +1096,7 @@ def main() -> None:
     # contradicted the instruction above the table -- worse than blank, because a
     # wrong prefilled answer teaches the wrong vocabulary.
     cols, people = cf.get("round_columns") or [], cf["people"]
+    i_round = len(L)
     L += ["---", "", "## Round", ""]
     # The legend below says this better when there is one; printing both repeats
     # the instruction and buries the values.
@@ -1145,10 +1182,12 @@ def main() -> None:
         if (un := [item_of(l, r) for l, r, *_ in items if owner_of(l, r) == "UNOWNED"]):
             L += ["", f"**Nobody owes these: {', '.join(un)}.** They are on no row above, which is"
                   " why they keep carrying. Give each one a name in the round or take it off the list."]
+    i_close = len(L)
     L += ["", "---", "", "## Close", "", "- Read-back: what the recap says",
           "- **Read-back: what carries to tomorrow, and whose name is on each.** An item read back",
           "  without a name is the one that will be here again", ""]
 
+    i_app = len(L)
     if repo:
         notes = [r["note"] for r in repo if "note" in r]
         rows = [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]
@@ -1213,7 +1252,77 @@ def main() -> None:
             L += [f"**Released since the last note ({len(rels)}):** "
                   + ", ".join(f"{r['repo']} {r['n']}" for r in rels), ""]
 
-    out.write_text("\n".join(L), encoding="utf-8")
+    if card:
+        kd = kinds(last)
+        dname = details_name(cf, target)
+        head = L[:i_src]
+        A = list(head)
+        ms = cf.get("milestone") or {}
+        A += ["## Milestone", ""]
+        if ms:
+            when = ms.get("date")
+            line = f"**{ms.get('name', 'Next milestone')}**"
+            if when:
+                dd = (datetime.datetime.strptime(str(when), "%Y-%m-%d").date() - day).days
+                line += f" — {when} · **{dd} days**"
+            else:
+                line += " — **date not set**" + (f"; decide by {ms['decide_by']}" if ms.get("decide_by") else "")
+            A.append(line)
+            if ms.get("criteria"):
+                A.append(f"Exit criteria: {ms['criteria']}")
+        else:
+            A.append("*No milestone declared (`milestone:` in the project config). An agenda with no date has nothing to run toward.*")
+        A.append("")
+        if mv_head:
+            A += ["## Movement", "", mv_head, ""]
+        elif cf.get("movement") is not None or any((r or {}).get("labels") for r in ((cf.get("ext") or {}).get("repos") or []) if isinstance(r, dict)):
+            A += ["## Movement", "", f"*Not available: {mv_note}.*", ""]
+
+        def sect(kind, title, lead, col):
+            rows_ = [t for t in items if kd.get(key(t[0])) == kind]
+            if not rows_:
+                return [f"## {title}", "", f"*None carried as `[{kind}]`.*", ""]
+            out_ = [f"## {title}", "", lead, "", f"| Item | Owner | {col} |", "|---|---|---|"]
+            for lab, rest, n, g, d in rows_:
+                mark = f"**{n}** sessions" if n >= E else f"{n} session{'s' if n != 1 else ''}"
+                if d >= 7:
+                    mark += f" · {d}d"
+                note = rest.split("·")[0].strip(" —-") if "·" in rest else ""
+                out_.append(f"| **{item_of(lab, rest)}**" + (f" — {note}" if note else "") + f" | {owner_of(lab, rest)} | {mark} |")
+            return out_ + [""]
+        A += sect("blocker", "Blockers", "**What is stuck, who owns it, what unblocks it.**", "Stuck for")
+        A += sect("dependency", "Dependencies", "**Waiting on someone outside the room.**", "Waiting")
+        A += sect("decision", "Decisions needed today", "**Each one leaves the room decided, or with a date.**", "Open for")
+        stuck_tasks = [t for t in items if kd.get(key(t[0])) not in KINDS and (t[2] >= E or (ED and t[4] >= ED))]
+        if stuck_tasks:
+            A += [f"## Stuck? ({len(stuck_tasks)})", "",
+                  f"Tasks carried {E}+ sessions. Give each a date and a name, or drop it.", ""]
+            A += [f"- {item_of(l, r)} · **{owner_of(l, r)}** ({n} sessions)" for l, r, n, _g, _d in stuck_tasks] + [""]
+        rest_n = len([t for t in items if kd.get(key(t[0])) not in KINDS]) - len(stuck_tasks)
+        A += [f"*{rest_n} more carried task(s), the sources, the chat digest and the repo detail: [{dname}]({dname}).*", ""]
+        # The round: one minute each, one question, the previous track as a hint.
+        rnd = L[i_round:i_close]
+        A += ["---", "", "## One-minute round", "",
+              "**One minute each. What moved toward the milestone? What is stuck, and who owns the other end?**"
+              + (" Track first." if tracks else ""), ""]
+        A += [x for x in rnd if x.startswith("Last session") or x.startswith("Last ") or x.startswith("- ") and "had no one" in x]
+        if people and tracks and round_recorded:
+            A += ["", "| | Last track |", "|---|---|"]
+            for p_ in people:
+                prev = next((last_round[k.lower()] for k in [p_["name"]] + list(p_.get("aliases") or [])
+                             if k.lower() in last_round), "")
+                A.append(f"| **{p_['name']}** | {declared_track(prev, tracks) or ''} |")
+        elif people:
+            A += ["", "**Order:** " + " · ".join(p_["name"] for p_ in people)]
+        A += L[i_close:i_app]
+        out.write_text("\n".join(A), encoding="utf-8")
+        D = [f"# Agenda details — {day.strftime('%A %-d %B')}", "",
+             f"Companion to [{out.name}]({out.name}): what the agenda was built from, the full carried list, "
+             "and the detail nobody needs to talk through. Not read out in the meeting.", ""]
+        D += L[i_src:i_carry] + L[i_carry:i_closed] + L[i_closed:i_digest] + L[i_digest:i_round] + L[i_app:]
+        (md / dname).write_text("\n".join(D), encoding="utf-8")
+    else:
+        out.write_text("\n".join(L), encoding="utf-8")
 
     # ---- the Teams post: same facts, a shape that survives being pasted --------
     # Markdown tables flatten into unreadable runs in a chat client, so the post
@@ -1243,20 +1352,48 @@ def main() -> None:
         if un2:
             T += [f"**Nobody owes these: {', '.join(un2)}.** They have been on the agenda without a"
                   " name; today they get one or come off.", ""]
+    # One repo line, not two (CR-107): pull requests and issues in a single sentence.
     prs_all = [r for r in repo if r.get("kind") == "pull"]
+    rws = [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]
+    bits = []
     if prs_all:
         waiting = [r for r in prs_all if r["status"] == "awaiting review"]
         oldest = max((r["age"] for r in waiting), default=0)
-        T += [f"**Repo since the last note:** {sum(1 for r in prs_all if r['status'] == 'merged')} merged, "
-              f"{len(waiting)} awaiting review"
-              + (f" (oldest {oldest} day{'s' if oldest != 1 else ''})" if waiting else "") + ".", ""]
-    if repo and [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]:
-        rws = [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]
-        T += [f"**Repo since the last note:** {len(rws)} issues moved, "
-              f"{sum(1 for r in rws if r['new'])} opened, "
-              f"{sum(1 for r in rws if r['state'] == 'closed')} closed, "
-              f"{sum(1 for r in rws if not r['who'])} with no assignee. Breakdown in the full agenda.", ""]
-    T += [f"Full agenda: `{out.name}`"]
+        bits.append(f"{sum(1 for r in prs_all if r['status'] == 'merged')} merged, "
+                    f"{len(waiting)} awaiting review"
+                    + (f" (oldest {oldest} day{'s' if oldest != 1 else ''})" if waiting else ""))
+    if rws:
+        bits.append(f"{len(rws)} issues moved, {sum(1 for r in rws if r['new'])} opened, "
+                    f"{sum(1 for r in rws if r['state'] == 'closed')} closed, "
+                    f"{sum(1 for r in rws if not r['who'])} with no assignee")
+    if bits:
+        T += ["**Repo since the last note:** " + " · ".join(bits) + ".", ""]
+    if card:
+        # CR-107: the post is the card -- the date, what is stuck, what is waiting,
+        # what must be decided. Each person's full carried list stays in the details.
+        kd = kinds(last)
+        ms = cf.get("milestone") or {}
+        C = [T[0], ""]
+        if ms:
+            C.append(f"**Milestone:** {ms.get('name', '')}" + (f" — {ms['date']}" if ms.get("date") else
+                     " — date not set" + (f", decide by {ms['decide_by']}" if ms.get("decide_by") else "")))
+        if mv_head:
+            m_ = re.search(r"\*\*Open [^*]+\*\* \| \*\*(\d+)\*\* \(([^)]*)\) \| ([^|]+)\|", mv_head)
+            m2 = re.search(r"still to fix \| \*\*(\d+)\*\*", mv_head)
+            if m_:
+                C.append(f"**Release gap:** {m_.group(1)} open ({m_.group(2)})"
+                         + (f", {m2.group(1)} still to fix" if m2 else "") + f" · since yesterday {m_.group(3).strip()}")
+        for kind, title in (("blocker", "Blockers"), ("dependency", "Waiting on"), ("decision", "Decide today")):
+            rows_ = [t for t in items if kd.get(key(t[0])) == kind]
+            if rows_:
+                C.append(f"**{title}:** " + " · ".join(f"{item_of(l, r)} ({owner_of(l, r)})" for l, r, *_ in rows_))
+        C += ["", "**Round, one minute each:** what moved toward the milestone, what is stuck."]
+        if bits:
+            C += ["", "**Repo since the last note:** " + " · ".join(bits) + "."]
+        C += ["", f"Agenda: `{out.name}` · details: `{details_name(cf, target)}`"]
+        T = C
+    else:
+        T += [f"Full agenda: `{out.name}`"]
     post = md / f"{target}-teams-{cf['agenda_suffix']}.md"
     post.write_text("\n".join(T) + "\n", encoding="utf-8")
     if not has_section(last):

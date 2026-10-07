@@ -9,6 +9,35 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.1] - 2026-10-07
+
+### Added
+
+- **CR-107 — the generated agenda is the card.** `/ops prepare` has said *the card comes first* since
+  CR-005; the generator for wired projects never did it. Its agendas opened with an 11-line sources
+  block and every carried line, so the more diligent the carry-forward, the longer the list the meeting
+  read out: in one series, 13 minutes of a 48-minute standup against a 30-minute target, with two
+  lines their owners did not recognise and one stale count. Opt-in `carry_forward.layout: card`
+  writes **Milestone, Movement, Blockers, Dependencies, Decisions needed today, Stuck?, a one-minute
+  round, Close**, and moves the sources, the full carried list, *Probably closed*, the digest slot and
+  the repo detail to a companion `…-agenda-details-…` file. The chat post becomes the card.
+- **Kinds on carried lines:** `[blocker]`, `[dependency]`, `[decision]`; untagged is a task, which
+  reaches the card only past the escalation threshold. The list layout parses and ignores the prefix.
+- **`milestone:`** (name, date or decide-by, criteria). Without one the card says the agenda has
+  nothing to run toward.
+- **`build_movement.py`:** the release gap over time and by area, rebuilt from issue events with label
+  names from `external_systems.repos[].labels`. Three printed checks: the rebuild equals the repo's
+  current state, every day shown is covered by event history, and the read is not stale for the
+  agenda's date. Plus `repos[].reports`: the newest of a dated report series and its age.
+
+### Changed
+
+- `check` 2d: a term borrowed from another document is not plain words; carried lines carry no
+  counts; unknown kinds and a card layout without `milestone:` are flagged.
+- The chat post prints one repo line instead of two. `/ops orient` reads the details file for an
+  unfilled digest.
+- Proposal numbering: an unreleased proposal that duplicated CR-105 is renumbered CR-108.
+
 ## [1.89.0] - 2026-10-07
 
 ### Fixed
