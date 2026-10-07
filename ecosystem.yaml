@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 39 (CR-080 + CR-104, 2026-10-07, v1.88.0): two additions. A new
+#   `/correspondence` skill builds out the shape CR-080 declared in contract 38 -- a two-way
+#   thread with a person, routed by subject rather than sender, with sender/recipient roles per
+#   turn and a cc that may not own an action. And `/ops project close` completes the project
+#   lifecycle CR-086 opened: `new` registers in four places, nothing unregistered until now.
+#   Additive -- no existing key changes meaning.
+#
 # contract_version 31 (CR-088, 2026-09-25, v1.78.0): each archive root carries a _fetch.json —
 #   <venture>/.teamschats/, .githubmeta/ and .jirameta/ each gain one record of the last
 #   fetch: when it was attempted, when it last succeeded, and the result (ok, partial,
@@ -268,8 +275,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 38
-core_skills_version: "1.87.0"
+contract_version: 39
+core_skills_version: "1.88.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -348,6 +355,10 @@ skills:
       description: "The config-free form of /ops prepare: an agenda for a meeting with a contact, with a walk-in card on top."
       badge: Context
       subcommands: [help]
+    - name: correspondence
+      description: "A two-way thread with a person -- email, chat, messages -- as a living document appended to newest first. No participant list: sender and recipients per turn, cc may not own an action, and the raw wire form is not kept. Routed by the thread's subject, not its sender. CR-080"
+      badge: Context
+      subcommands: [help]
     - name: transcript
       description: "The config-free form of /ops process: a summary from a transcript of a call, meeting or voice recording."
       badge: Lightweight
@@ -355,7 +366,7 @@ skills:
     - name: ops
       description: "The config layer over prepare and process, plus orient, check and project set-up — config-driven for any organization."
       badge: Primary
-      subcommands: [process, prepare, orient, check, status, project list, project new, normalize, help]
+      subcommands: [process, prepare, orient, check, status, project list, project new, project close, normalize, help]
     - name: outbox
       description: "Lifecycle management for `_outbox/` items — list pending, close resolved ones into their contact or project folder."
       badge: Utility

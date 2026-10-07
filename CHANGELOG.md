@@ -9,6 +9,35 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.88.0] - 2026-10-07
+
+### Added
+
+- **CR-080 — `/correspondence`, the email half.** The shape was declared in contract 38; this
+  builds it. A two-way thread with a person, recorded as a **living** document appended to newest
+  first, where a transcript is frozen. Three rules that each exist because flattening them loses
+  information: **no participant list** (a thread has a sender and recipients per turn, not a cast);
+  **cc is informed, not engaged** and may not own an action item (CR-015 applied where the evidence
+  is actually present); and **the raw wire form is not kept** — `.transcripts/` is for transcripts,
+  and writing a pasted mail there is a finding, not a convention (decision 6, answered 2026-10-01).
+  Routing inverts the meeting table's default: **the subject of the thread decides the folder, not
+  the sender.** The gate asks exactly one question — new file or update of an existing one — because
+  a wrong merge corrupts two records silently while a wrong split is visible and cheap to fix.
+  **The calendar half stays deferred.**
+- **CR-104 — `/ops project close`.** `project new` registers a project in four places; nothing
+  unregistered it, so the register kept claiming a project was live long after the work moved or
+  stopped. Read-only by default, every write confirmed. **Reports the open surface first** — open
+  task rows with owners and ages, unresolved outbox items, register rows, rolling-plan rows — because
+  a project whose ledger holds eleven open P1s is not closed, it is abandoned, and the report is what
+  makes the operator say which. Then offers the tombstone, unwinds the `registry:` block in reverse,
+  and **asks for the evaluation without ever writing the judgement**. Not an archiver, not automatic,
+  not a status field.
+
+### Changed
+
+- `contract_version` 38 → 39, `core_skills_version` 1.87.0 → 1.88.0. Additive: no existing key
+  changes meaning.
+
 ## [1.87.0] - 2026-10-01
 
 ### Added

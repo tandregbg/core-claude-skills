@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** |
+| **Status** | **Implemented 2026-10-07** — `/ops project close` |
 | **Contract** | additive — a `close` subcommand and an optional `lifecycle:` config block; no existing key changes |
 | **Date** | 2026-09-28 |
 | **Area** | `ops` (`project new`, `project close`), `ops-config` schema |

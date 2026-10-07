@@ -2,7 +2,7 @@
 name: ops
 description: Process meeting content into structured documentation -- summaries, decision tracking, action propagation, file updates. Config-driven for any organization. Replaces project-ops, bravo-ops, management-ops, marketing-ops.
 user-invocable: true
-argument-hint: [process <content> | prepare [type] | orient <folder> | check [<folder>] | status | project list | project new <name> | normalize <path> | help | meeting content, transcript, or standup notes]
+argument-hint: [process <content> | prepare [type] | orient <folder> | check [<folder>] | status | project list | project new <name> | project close <name> | normalize <path> | help | meeting content, transcript, or standup notes]
 ---
 
 # Operations Framework
@@ -809,6 +809,71 @@ history* — in **every** plan that carries it, and seed the new README's backgr
 
 The golden rule made executable: one item, one owner, one document. A row copied rather than linked
 becomes two rows that disagree within a week.
+
+---
+
+### `project close <project>` -- the missing half of `new` (CR-104)
+
+**Trigger:** `/ops project close <project> --reason <handover|delivered|abandoned> [--to <project>/<track>]`
+
+`project new` registers a project in four places. Nothing unregisters it. The register keeps
+claiming a project is live long after the work moved or stopped, and the only signal that it did
+not is silence -- which reads the same as a project that is merely quiet.
+
+**Read-only by default, every write confirmed**, in the manner of `check`.
+
+#### Step C1: Report the open surface -- before anything is written
+
+| What | Why it is shown |
+|---|---|
+| Open rows in `_tasks.yaml`, with owners and ages | A project whose ledger holds eleven open P1s is not closed, it is **abandoned** |
+| Outbox items not yet resolved | Material staged and never sent is an open loop, not a closed project |
+| Register rows naming this project | What will be unwound in step C3 |
+| Rolling-plan rows pointing at it | Someone else's plan may still depend on this |
+
+**Nothing is written before this is shown.** The report is what makes the operator say which of
+the three reasons actually applies, rather than reaching for the flattering one.
+
+#### Step C2: Offer the tombstone
+
+In the existing Retirement Convention shape, naming the reason and -- for a handover -- the
+receiving project and track.
+
+#### Step C3: Unwind what `new` wrote
+
+The same declared `registry:` block, **in reverse**: the portfolio row moves to its closed
+section, the structure doc's tree entry goes. `mode: propose | write` is honoured exactly as on
+create.
+
+#### Step C4: Ask for the evaluation, and only ask
+
+Where the config declares one, `close` opens the evaluation document from its template with the
+project's own numbers already filled in: duration, meeting count, participants, tasks opened
+against tasks closed.
+
+**It never writes the judgement.** What went well is human work, and a generated retrospective is
+worth nothing.
+
+#### Config
+
+```yaml
+lifecycle:
+  close:
+    evaluation:
+      template: <path>          # omitted: no evaluation step
+      destination: <path>
+    tombstone: true             # default
+```
+
+Absent the block, `close` still reports, offers the tombstone, and unwinds the register. The
+evaluation is the part that varies by organisation, so it is **declared, never assumed**.
+
+#### What `close` is not
+
+- **Not an archiver.** Closing a project does not move its folder. The Archive Policy is unchanged.
+- **Not automatic.** No sweeper closes a project. `check` may *report* a project that looks
+  finished and suggest the command; **the decision that something is done stays with a person.**
+- **Not a status field.** The tombstone and the register are the record.
 
 ---
 

@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.87.0
+**Version:** 1.88.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -203,6 +203,7 @@ The suite is developed **on live production data**: real usage generates evidenc
 | `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024) and routes them to their skill (`/inbox route`). Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned triage doc without ever reordering or rewording it. | Yes (`/inbox`) |
 | `preparation` | The config-free form of `/ops prepare`: the agenda for a meeting with a contact, with a 60-second walk-in card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]). Frozen at meeting time. | Yes (`/preparation`) |
 | `transcript` | The config-free form of `/ops process`: a summary from a transcript of a call, meeting or voice recording. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund), three template variants by length, optional task import, insights to `_insights.yaml`. | Yes (`/transcript`) |
+| `correspondence` | A **two-way thread with a person** — email, chat, messages — as a living document appended to newest first. No participant list (sender and recipients *per turn*), cc may not own an action, and the raw wire form is not kept. Routed by the thread's subject, not its sender. One-way material is `content` instead; the test is whether anyone replied (CR-080) |
 | `ops` | The config layer over `prepare` and `process`, plus the loop steps it owns. Subcommands are the loop's verbs: `orient`, `prepare`, `process` (the default), `check <folder>` (template contracts, carry-forward chain) and `check` (vault closure debt); `status` shows each project's resolved config; `project list` / `project new`; `normalize` repairs Swedish characters, names and filenames. | Yes (`/ops`) |
 | `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending items by reading each `_manifest.md`; closes resolved folders into the relevant contact or project folder while updating manifest, CHANGELOG and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `close <folder>`, `close --all-sent`, `help`. | Yes (`/outbox`) |
 | `tasks` | Personal task tracker with cross-project correlation. Per-folder ledgers, source linking, automatic carry-forward, privacy model. Subcommands: `list`, `add`, `done`, `import`, `weekly`, `archive`, `help`. | Yes (`/tasks`) |
@@ -265,6 +266,7 @@ core-skills (this repo)
     +-- ops (extends ops-base, config-driven, replaces all domain ops skills)
   transcript (extraction layer) --> offers task import, writes _insights.yaml
   preparation (standalone -- meeting preparation)
+  correspondence (standalone -- two-way threads; CR-080)
   tasks (standalone -- personal task tracker) <-- writes _tasks.yaml
   update-skills (standalone -- repo management)
   insights (standalone -- extraction manager + evolution engine) --> reads transcripts + CLAUDE.md, writes _insights.yaml, compiles patterns, proposes SKILL.md changes

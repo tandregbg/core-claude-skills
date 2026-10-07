@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Revived 2026-10-01** — decision 6 answered below; email half ready to build, calendar half still deferred |
+| **Status** | **Implemented 2026-10-07** — email half built as `/correspondence`; calendar half still deferred |
 | **Contract** | additive (28 → 29, assuming CR-077/078/079 land first; renumber if they do not) |
 | **Date** | 2026-09-24 |
 | **Area** | a new `/correspondence` skill, `_inbox/` classification, `vault_conventions` |
