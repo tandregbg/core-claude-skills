@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** — renumbered from CR-105 (that number was released for another change). Its *pending decisions* gap is absorbed by CR-107's card (*Decisions needed today*) for wired projects; the deferrals half and the unwired template remain here |
+| **Status** | **Implemented 2026-10-07** — five of six parts built; part 5 (agenda-first order) was already delivered by CR-106, and the *pending decisions* gap by CR-107's card for wired projects |
 | **Contract** | additive — two template sections, one P0 option, one sentence on linking, and a section order change (existing agendas stay readable; nothing parses agenda order); no config key changes |
 | **Date** | 2026-10-06 |
 | **Area** | `ops` (`prepare` P0, P3, P5) |

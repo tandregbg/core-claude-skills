@@ -389,10 +389,73 @@ entirely** — re-raising what it closed and carrying none of what it opened. Pr
 
 **Check for an existing preparation before writing (CR-086).** Glob the target folder and its
 siblings for a preparation, agenda or facilitator sheet matching this meeting's **date and
-participants**. If one exists, report it and offer: open it, regenerate it from current sources, or
-write anyway. `build_agenda.py` already refuses to overwrite an agenda; the hand-prepared path had no
+participants**. If one exists, report it and offer **four** choices, not three (CR-108):
+
+| Choice | When |
+|---|---|
+| **Open it** | Nothing has changed since it was written |
+| **Update it** | The sources have moved -- chat, repository, a processed meeting. Keep the structure, add what changed, and say what moved |
+| **Regenerate it** | The structure is wrong, or the meeting changed |
+| **Write anyway** | Never the default. Say why |
+
+**An update is not finished until every copy matches.** Where the agenda has been staged in
+`_outbox/<item>/`, copy the updated source over the staged copy, **verify they are identical**, and
+edit the manifest in place under CR-102: append one line naming what changed, and never touch
+`status`. A staged copy that differs from its source is the exact failure `Kanonisk källa` exists to
+prevent, and nothing catches it today. `build_agenda.py` already refuses to overwrite an agenda; the hand-prepared path had no
 equivalent, and a second prep for the same meeting is indistinguishable from the first until someone
 opens both.
+
+#### Three template sections the agenda needs (CR-108)
+
+**1. A pending decision carries its options.** `Decisions -> Pending` stays one line per decision.
+Each decision with **more than one real answer** gets a block under `# Reference`:
+
+```markdown
+## Decision: <what is being decided>
+
+| Option | What it means |
+|---|---|
+| **A. <option>** | <consequence> |
+| **B. <option>** | <consequence> |
+
+**Recommendation:** <A or B, one line why>, or *none -- the room decides*
+**Decides:** <name> · **Open since:** <date>
+```
+
+The agenda item then says *"options under Reference"*. **A decision with only one answer on the
+table is a confirmation, not a decision** -- it goes in Status Overview's *Today* column instead.
+
+**2. A fixed section for what is deliberately NOT on the agenda.** Between `## Decisions` and
+`# Reference`:
+
+```markdown
+## Carried, not on today's agenda
+
+- **<item>** -- <one line of state> · **<owner>**
+```
+
+Same line shape as `## Carried forward`, so `/ops orient` and a later wiring of the loop read it
+without a second format. **Write the section even when it is empty** -- *"Nothing deferred."* An
+omitted section means the same as an omitted `## Carried forward` (CR-082): nobody can tell it from
+a section someone forgot.
+
+`/ops process` closes the loop: an item here that the meeting did not address is **carried into the
+summary's Next Steps rather than dropped**.
+
+**3. An agenda item links to its material.** An item whose discussion needs more than one line of
+background gets a section under `# Reference`, and the item says so. **Material does not go between
+`## Agenda` and `## Blockers`** -- inline placement is what reordered the agenda in the first place.
+
+#### Template check before reporting (CR-108, extends CR-018)
+
+Before reporting the agenda as done, compare its `##` headings against the declared order: Agenda,
+Status Overview, Key Updates, Reported Updates, Blockers, Decisions, Carried-not-today, then
+`# Reference`. **Report any heading outside `# Reference` that the template does not name.** This is
+the template-contract check the summaries have had since CR-018, applied to the artifact that until
+now had none.
+
+*`build_agenda.py` keeps its own order (sources block first, CR-084) and is out of scope.*
 
 **Announce the path before saving** — which route was taken (generated or template) and the
 exact filenames to be written. A hand-written agenda in a wired project then cannot happen
@@ -1148,6 +1211,11 @@ it came from.
 Step 9 then runs post-processing as configured. **The summary ends with `## Carried forward`** — that
 section is what tomorrow's agenda is built from, so a note without it silently ends the chain.
 `/ops check` checks that chain; it is the only defect in this loop that does not announce itself.
+
+**A deferred item the meeting never reached is carried, not dropped (CR-108).** Where the agenda
+carried a `## Carried, not on today's agenda` section, read it when writing the summary: any item
+in it that the meeting did not address goes into **Next Steps**, keeping its owner. Deferring
+something once is a decision; losing it because nobody raised it is not.
 
 **6. The recap is offered, not written** — see Step 9, *Generate Post-Meeting Recap*. Say what it would
 carry and wait to be asked. It is the one artifact that leaves the building; assembled automatically

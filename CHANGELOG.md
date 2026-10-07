@@ -26,6 +26,36 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   per-person *Owed into today* table, *Nobody owes these* and *Not in this room*; the Teams post keeps
   per-person lines.
 
+## [1.89.2] - 2026-10-07
+
+### Added
+
+- **CR-108 — the prepare template had no place for options or deferrals.** Five of six parts built;
+  part 5 (agenda first) was already delivered by CR-106, and the *pending decisions* gap by CR-107's
+  card for wired projects.
+  - **A pending decision carries its options.** Each decision with more than one real answer gets a
+    block under `# Reference` with options, consequences, a recommendation (or *none — the room
+    decides*), who decides and since when. **A decision with only one answer on the table is a
+    confirmation, not a decision**, and belongs in Status Overview instead.
+  - **A fixed section for what is deliberately not on the agenda.** `## Carried, not on today's
+    agenda`, same line shape as `## Carried forward`, **written even when empty** — an omitted
+    section is indistinguishable from one someone forgot (CR-082's lesson). `/ops process` then
+    carries any item the meeting never reached into *Next Steps*: deferring something once is a
+    decision, losing it because nobody raised it is not.
+  - **An agenda item links to its material** under `# Reference`, never inline between `## Agenda`
+    and `## Blockers` — inline placement is what reordered the agenda to begin with.
+  - **P0 offers four choices, not three:** open, **update**, regenerate, write anyway. And an update
+    is not finished until every copy matches — the staged copy in `_outbox/` is overwritten,
+    verified identical, and the manifest edited in place under CR-102. A staged copy that differs
+    from its source is the exact failure `Kanonisk källa` exists to prevent, and nothing caught it.
+  - **Template check before reporting**, extending CR-018's contract check to the agenda: report any
+    heading outside `# Reference` the template does not name.
+
+### Changed
+
+- `core_skills_version` 1.89.1 → 1.89.2. `contract_version` unchanged at 40 — additive template
+  sections only.
+
 ## [1.89.1] - 2026-10-07
 
 ### Added
