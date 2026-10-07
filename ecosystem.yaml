@@ -12,6 +12,10 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 40 (CR-106, 2026-10-07, v1.89.0): a preparation reads the task
+#   register, not only the generated triage view -- and `/ops prepare` inherits CR-005's
+#   card. Additive: one new step in /preparation, one inherited rule in /ops.
+#
 # contract_version 39 (CR-080 + CR-104, 2026-10-07, v1.88.0): two additions. A new
 #   `/correspondence` skill builds out the shape CR-080 declared in contract 38 -- a two-way
 #   thread with a person, routed by subject rather than sender, with sender/recipient roles per
@@ -275,8 +279,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 39
-core_skills_version: "1.88.0"
+contract_version: 40
+core_skills_version: "1.89.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),

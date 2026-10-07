@@ -149,6 +149,35 @@ After gathering context from the contact's own folder, scan the vault for **late
 
 **Do NOT** add an empty "Cross-references" header. Either the section has explained references, or it does not exist.
 
+### Step 2.6: Register Scan -- the truth, not only the generated view (CR-106)
+
+**Step 2.4 reads the triage document. That is a generated view of the register, and a view is
+filtered** -- it carries what has a date or a P0/P1 and leaves the rest in YAML. A prep built on the
+view alone sees a subset, and sees it silently.
+
+Query the vault's task register (`_tasks.yaml`, or whatever `ops-config` declares) for **every open
+row naming the contact**, then split:
+
+| Bucket | Where it goes |
+|---|---|
+| **Requires them** -- their answer, their decision, or something only sayable to their face | Candidates for the walk-in card |
+| **Mentions them** -- context, or an action that is entirely yours | Open actions, below the fold |
+
+**Short and overdue beats important and new.** An item that takes under a minute and has waited
+weeks belongs in front of the person *now*. Where the card is full at five, these go in a separate
+two-to-three-line block titled *"while you are both here"* (or its declared equivalent) -- it is not
+an agenda item and does not consume one of the five.
+
+**Always state the remainder.** When more rows require the person than fit, say so with a count and
+point at the full list:
+
+```markdown
+*Nine more open rows require them but do not belong in a lunch card -- see `Open actions` below.*
+```
+
+The failure this prevents is not omission -- a card of 24 items is useless. It is a card that gives
+**no sign that anything was left out.**
+
 ### Step 3: Ask for Additional Context
 
 After gathering file-based context, ask the user. Use the resolved language (see Language section below) for this prompt:

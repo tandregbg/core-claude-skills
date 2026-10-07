@@ -239,6 +239,23 @@ drifts fails the check rather than misleading a reader.
 
 Generate a structured preparation document for an upcoming team meeting. Pulls context from recent meetings, tasks, and optionally incorporates pre-submitted async updates from team members.
 
+#### The card comes first (CR-005, inherited by CR-106)
+
+**A preparation opens with the card, or it has failed at its one job.** The shape is the same one
+`/preparation` has carried since CR-005, and it applies here too:
+
+- **Top of file:** at most **five** items, self-sufficient -- a reader who sees only this can lead
+  the meeting
+- **Below a horizontal rule:** everything else. **Metadata, source links and rationale belong here,
+  not above the card.** A file that opens with 27 lines of provenance is not readable on a phone,
+  whatever its own note claims
+- **Dual mode** may declare its own card for the facilitator layer -- a facilitator needs time-boxing
+  and deflection cues where a 1-on-1 needs questions. Declared in `workflows`, never assumed
+
+**Read the register, not only the recent meetings** (CR-106, Step 2.6 in `/preparation`): query open
+rows naming the participants, split into *requires them* and *mentions them*, and **state the
+remainder with a count** when more rows require someone than fit in five.
+
 **Arguments:**
 - `type` (optional): Meeting type hint (e.g., `standup`, `war-room`, `weekly`). Default: `standup`
 - `async-updates` (optional): Pre-submitted text updates from team members to incorporate

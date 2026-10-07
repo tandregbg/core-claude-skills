@@ -9,6 +9,31 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.0] - 2026-10-07
+
+### Fixed
+
+- **CR-106 — a preparation must read the task register.** `/preparation` read the triage document
+  (CR-022) but never `_tasks.yaml` — the string appeared **zero times** in its SKILL.md. The triage
+  doc stopped being the truth on 2026-09-07 and became a *generated view*, filtered to what has a
+  date or a P0/P1. A prep built on the view saw a subset, silently. Found when a lunch prep carried
+  six questions and the reader asked whether that was really everything: the register held **43 open
+  rows naming the person, 15 requiring them, 9 absent from the prep** — three of them trivial,
+  overdue by a week, and answerable in under a minute at the table. New **Step 2.6** queries the
+  register, splits *requires them* from *mentions them*, and **states the remainder with a count**.
+  The failure was never omission; a card of 24 items is useless. It was a card that gave no sign
+  anything had been left out.
+- **`/ops prepare` inherits the CR-005 card.** It had no card rule at all — zero occurrences of
+  `walk-in`, `60-second` or `agenda-card` — so the same document type had two shapes depending on
+  which skill ran. The instance that surfaced this opened with **27 lines of metadata and source
+  links** before the card, in a file whose own note said the card existed so it could be read from a
+  phone. Metadata now goes below the rule. Dual mode may declare its own card for the facilitator
+  layer.
+
+### Changed
+
+- `contract_version` 39 → 40, `core_skills_version` 1.88.0 → 1.89.0. Additive.
+
 ## [1.88.0] - 2026-10-07
 
 ### Added
