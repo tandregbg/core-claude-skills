@@ -65,6 +65,16 @@ See `identifier_language` in `ecosystem.yaml`.
 
 When all `Svar förväntas på` items are checked AND `Utfall` is populated, the item is **resolution-ready** -- ready to archive.
 
+### A manifest created by a dispatching surface (CR-115)
+
+A folder with no manifest cannot record a send, be marked not sent, or be closed. A dispatching surface
+may **create** one, never replace one: an exclusive create, after showing the person the exact file. The
+person picks the status from the declared forms. The surface derives what it can (recipient and subject
+from a mail body's header lines, the recipient from the folder name, routing from a sibling item for the
+same recipient), writes `Kanonisk källa`, and may write `Klassificering` once, at creation, as the person
+chose it. It writes no `Svar förväntas på` and no `Utfall`. From then on it is an ordinary manifest,
+edited in place as below.
+
 ### Editing an existing manifest (CR-102)
 
 `vault_conventions.manifest_edit_in_place`, level invariant. The manifest has two writers -- the
@@ -369,7 +379,11 @@ Print this skill's usage.
 
 ## Manifest detection edge cases
 
-- **No manifest:** flag in `list`, refuse to archive without one. User must create manifest manually first.
+- **No manifest:** flag in `list`, refuse to archive without one. The user creates it, by hand or through
+  a dispatching surface, which may create a manifest where a folder has none (CR-115, `create_missing`).
+  Such a manifest carries the field block, `## Innehåll` and one `## Tidslinje` line saying the surface
+  created it. It has no `Svar förväntas på`: when closing it, ask whether a reply is expected rather than
+  reading the absence as "none".
 - **Manifest with `Projekt:` set, no contact:** treat as project-scoped; archive to `<vault>/_projects/<projekt>/` or venture project folder.
 - **Multiple contacts (ambassador case):** flag as fan-out; ask user for resolution strategy.
 - **Old outbox layout (`260427-name_topic`)** vs new (`260427-topic`): support both for `list`; new naming is for archived destinations.

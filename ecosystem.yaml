@@ -12,6 +12,12 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 41 (CR-115, 2026-10-08, v1.89.4): a dispatching surface may CREATE
+#   a manifest for an outbox folder that has none -- exclusive create, after showing
+#   the exact file, status chosen by the person from status_forms, Kanonisk källa
+#   written, Klassificering at creation only, no reply checklist or outcome. Additive:
+#   a narrow new writer permission; existing manifests are untouched by it.
+#
 # contract_version 40 (CR-106, 2026-10-07, v1.89.0): a preparation reads the task
 #   register, not only the generated triage view -- and `/ops prepare` inherits CR-005's
 #   card. Additive: one new step in /preparation, one inherited rule in /ops.
@@ -279,8 +285,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 40
-core_skills_version: "1.89.3"
+contract_version: 41
+core_skills_version: "1.89.4"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -595,7 +601,8 @@ vault_conventions:
       purpose: "The per-item contract every dispatcher reads: status, channel, contact, classification, canonical source. Declared in its own right because two different parties write it — the skill authors it, a dispatcher records only that it sent something"
       classification: "Who may RECEIVE the item, as distinct from where it is going (channel/contact). Values, most to least permissive: team-wide-safe (anyone internal — the default when absent), team-only (the working team; not interns or contractors) and management-only (named recipients, not a group — CR-070). The order is part of the declaration, not an inference: the first two scale a group, the third leaves group distribution, and widening from it into any channel is the step that turns individual assessment into a group communication. Authored by the skill and READ-ONLY to a dispatcher: a dispatching surface may write channel and contact, so without this an operator can widen the audience of an item never written for it, and nothing in the file objects. A dispatcher WARNS and requires confirmation when a send would widen beyond the declared value; it does not refuse, because refusing is enforcing policy and that is not a dispatcher's to decide (CR-047)"
       schema: "see the /outbox skill, which owns the vocabulary"
-      writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only)"]
+      writers: ["/outbox and /ops (author it)", "a dispatching surface (status, status-note, channel and contact only; and creating one where a folder has none, per create_missing)"]
+      create_missing: "A dispatching surface may CREATE the manifest of an outbox FOLDER that has none (CR-115), on explicit confirmation after showing the exact file. Exclusive create: if a manifest exists by the time it writes, it stops and overwrites nothing. Status is one of status_forms, chosen by the person and never derived, since a dispatcher cannot see a send it did not make. Kanonisk källa is written (CR-032), defaulting to the 'lives here' form. Klassificering may be written at creation only, as the person chose it (absent reads as team-wide-safe); afterwards it is read-only to the dispatcher again. Body: the contents table (one row per file) and one timeline line saying the dispatcher created it and when; never the reply checklist or the outcome, which stay the skill's. Once written it is an ordinary manifest under manifest_edit_in_place. Loose top-level files are out of scope: moving one into a folder is a staging judgement"
       readers: ["/outbox", "a dispatching surface", "user"]
       lifecycle: "written when the item is staged; Status advances as it moves; archived with its folder. Once it exists it is EDITED in place, never regenerated from a template — see the manifest_edit_in_place convention (CR-102)"
       status_forms:  # CR-103 — logical name (identifier) -> the written words a manifest may carry (data, CR-049)
@@ -879,8 +886,8 @@ outbound_dispatch:
       kind: "external app, outside this repo"
       role: "Reads the vault and serves it: tasks, insights, activity — and the outbox, where staged material is previewed and dispatched through a channel"
       reads: ["_outbox/", "the vault generally"]
-      writes: ["_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only"]
-      never: "Authors a manifest, decides what a status means, or archives. Archiving is /outbox's: eight steps across several files with judgement calls. The status-note is an exception that proves the rule — a dispatcher may record WHAT IT DID first-hand (channel, time, which recipient, a message id) because that is observation, not judgement; it may not write what that outcome MEANS for the item"
+      writes: ["_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only", "_outbox/<item>/_manifest.md — a new one where the folder has none, per create_missing (CR-115)"]
+      never: "Edits an existing manifest beyond those four fields, decides what a status means, or archives. Creating a missing manifest is not authoring one: there is no author to compete with, and without it the status cannot exist at all (CR-115). Archiving is /outbox's: eight steps across several files with judgement calls. The status-note is an exception that proves the rule — a dispatcher may record WHAT IT DID first-hand (channel, time, which recipient, a message id) because that is observation, not judgement; it may not write what that outcome MEANS for the item"
       note: "Dispatch began as a separate tool and was merged in 2026-09-21. Two surfaces for one workflow was the wrong shape once the dashboard could write at all. It binds to localhost, because it can now send as the user"
 
     - name: "chat-archive/send CLI"
@@ -951,6 +958,7 @@ components:
       - "_inbox/_tasks.yaml — appends a captured task, marks one finished"
       - "_inbox/_inbox.yaml — capture items"
       - "_outbox/<item>/_manifest.md — the status, status-note, channel and contact fields only"
+      - "_outbox/<item>/_manifest.md — a new one where the folder has none, on confirmation (CR-115)"
       - "<folder>/_summary.yaml — its own derived cache"
       - "<folder>/_ops.yaml — one external_systems.chats entry, on explicit confirmation (CR-064)"
       - "<folder>/_insights.yaml — the promotion_review block only, on explicit action (CR-100)"
@@ -1214,7 +1222,7 @@ working_loop:
     phase: "after, the same day"
     label: "the dispatching surface"
     external: true
-    does: "A dashboard reads _outbox/, previews the staged item and delivers it over the channel its manifest declares - a chat workspace through the messaging client, or an email draft a person presses send on. It writes back status, status-note, channel and contact ONLY; it never authors a manifest, decides what a status means, or archives"
+    does: "A dashboard reads _outbox/, previews the staged item and delivers it over the channel its manifest declares - a chat workspace through the messaging client, or an email draft a person presses send on. It writes back status, status-note, channel and contact ONLY, and may create a manifest where a folder has none (CR-115); it never rewrites one, decides what a status means, or archives"
     consumes: ["_outbox/<item>/_manifest.md"]
     produces: ["the message, delivered"]
 

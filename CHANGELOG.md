@@ -9,6 +9,23 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.4] - 2026-10-08
+
+### Added
+
+- **CR-115 — a dispatching surface may create a missing manifest.** `contract_version` 40 → 41,
+  additive. A folder with no `_manifest.md` could not record a send, be marked not sent, or be closed,
+  and only a hand edit fixed it. Creating one where none exists is now declared
+  (`_manifest.md` `create_missing`):
+  - an exclusive create after showing the exact file, so an existing manifest is never overwritten;
+  - the status is chosen by the person from `status_forms`, never derived;
+  - `Kanonisk källa` is written, and `Klassificering` only at creation;
+  - the body has the contents table and one timeline line, and no reply checklist or outcome.
+
+  Afterwards it is an ordinary manifest under CR-102. The `/outbox` edge case now says the surface can do
+  it, and `close` asks whether a reply is expected instead of reading the absent checklist as "none".
+  The dashboard's `writes`/`never` and the dispatch step are amended to match.
+
 ## [1.89.3] - 2026-10-08
 
 ### Fixed
