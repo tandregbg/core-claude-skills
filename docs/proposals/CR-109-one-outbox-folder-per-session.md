@@ -1,4 +1,4 @@
-# CR-109 — One outbox folder per session; the recap speaks the card's language; an opt-in layout says so
+# CR-109 — One outbox folder per session part (agenda, recap); the recap speaks the card's language; an opt-in layout says so
 
 | | |
 |---|---|
@@ -50,6 +50,13 @@ the sources block or `prepare`'s output said that a newer layout existed and thi
 ## Proposal
 
 ### 1. One folder per session (amends CR-102)
+
+> **Revised 2026-10-08, same day:** the owner then asked for the **recap in a folder of its own**. So:
+> **two folders per session** -- `YYMMDD-<who>_<what>/` for the agenda and its pre-meeting updates, and
+> `YYMMDD-<who>_<what>-recap/` for the recap. Everything below applies to each folder; what it rules out
+> is still the `YYMMDDb-` sibling for a new version. CR-056's "named for the session, not the artifact"
+> holds for the agenda folder; the `-recap` suffix is the one deliberate exception, because the recap is a
+> separate send with its own status.
 
 For an item that belongs to a **meeting session** — agenda, pre-meeting update, recap — every later part is
 added to the session's existing folder. A new sibling (`…b-…`) is created only when the owner asks for one.
