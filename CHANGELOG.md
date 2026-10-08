@@ -9,6 +9,23 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Proposed
+
+- **CR-109 — one outbox folder per session.** A pre-meeting update and the recap go into the session's
+  folder; a replaced file's sent copy moves to `_outbox/.archive/<folder>-sent-<date>/`. Amends CR-102's
+  new-item corollary for sessions only. Also: a mixed folder's status follows its unsent part, a
+  `milestone` recap section, and a `prepare` notice when a project runs `list` while `card` is available.
+- **CR-110 — *Probably closed* matches on identifiers, not shared words.** The repository name and the
+  ticket prefix made unrelated PRs match; match on ticket keys, `#n`, versions and paths, ignore evidence
+  older than the previous note, and print why it matched.
+- **CR-111 — per-chat freshness.** *Quiet* and *not swept* printed the same; the archiver records
+  `last_swept` per chat and the agenda prints `quiet`, `<n> since the note` or `NOT SWEPT since <date>`.
+- **CR-112 — a ticket board narrowed to the project.** `external_systems.jira[].scope` (components,
+  labels), list-contains, applied wherever `.jirameta/` is read.
+- **CR-113 — the card keeps the round table.** The one-minute round is the body of the card, with the
+  per-person *Owed into today* table, *Nobody owes these* and *Not in this room*; the Teams post keeps
+  per-person lines.
+
 ## [1.89.1] - 2026-10-07
 
 ### Added
