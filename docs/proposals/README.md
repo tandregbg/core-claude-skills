@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-114**
+Next available CR number: **CR-115**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-114**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-114 | `ops` (card layout, `build_movement.py`, kinds), `ops-config` schema | **High** | **Implemented v1.89.3** (implements CR-113's round routing in part). First meeting on the CR-107 card: the room corrected AI-sorted items, separated *blocker* (release, a repo label) from *dependency* (a person waiting), found the round blank and a real blocker removed by a false match, and asked for one stable status source per area instead of a dated file per day. The card lists release blockers from the repo label; kinds sharpened; `reports[].current` and `owner`; a 5–10 minute lead line; the round routes each person's items. Additive |
 | CR-113 | `ops` (`build_agenda.py` card layout, Teams post) | **High** | **Proposed.** CR-107's card reduced the one-minute round to a question and an order line, dropping the per-person *Owed into today* table (CR-084) along with the carried list. Restore the table as the body of the card, add *Nobody owes these* and *Not in this room* lines, limit *Stuck?* to items not routed to a round member, and keep per-person lines in the Teams post. Observed the first morning a project switched to card |
 | CR-112 | `ops` (`from_jira`, `orient`), `ops-config/schema.md`; optional companion in the ticket archiver | Medium | **Proposed.** A declared Jira board can carry `scope:` (components, exclude_components, labels), matched list-contains, applied wherever `.jirameta/` is read -- sources counts, ticket block, *Probably closed*, orient. The sources line says it is scoped and how much the filter removed; a scope matching nothing warns. Observed: a project whose tickets are one component of the whole R&D board |
 | CR-111 | `ops` (sources block, `orient`), `.teamschats/<chat>/_chat.json`; companion in the chat archiver | **High** | **Proposed.** *Quiet* and *not swept* printed the same: the archiver skips inactive chats without a record, so two declared chats showed "0 since the note · fetched ok" for two weeks with a two-week-old `last_fetch`. The archiver writes `last_swept` for every chat it considered; the agenda prints `quiet`, `<n> since the note` or `NOT SWEPT since <date>` per chat, never a bare ok. Corrects CR-088's assumption that snapshot dates carry per-subject freshness |

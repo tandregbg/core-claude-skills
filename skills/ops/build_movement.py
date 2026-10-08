@@ -313,9 +313,27 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
     path = out / f"{stamp}-issue-movement.md"
     path.write_text("\n".join(L) + "\n", encoding="utf-8")
 
-    # ---- declared reports: newest per pattern (CR-107)
+    # ---- declared reports (CR-107), with a stable current path (CR-114)
+    # A dated file per day is history, not a source: if today's is missing, nothing
+    # says what to rely on. `current:` names the one path that is always the status;
+    # its last commit date is its age. `pattern:` alone is reported as a series with
+    # no stable source, which is the finding.
     rep = []
+    report_state = []          # (name, owner, path_or_None, age_days_or_None)
     for r in (repo_decl.get("reports") or []):
+        if r.get("current"):
+            try:
+                when = _gh(["api", f"repos/{repo}/commits?path={r['current']}&per_page=1",
+                            "--jq", ".[0].commit.committer.date"]).strip()
+                age_ = (today - _ts(when).astimezone(TZ).date()).days if when else None
+                tag = ("updated today" if age_ == 0 else f"STALE — last updated {age_}d ago") if age_ is not None else "NOT FOUND"
+                rep.append(f"  report    {r.get('name', r['current'])[:44]:44} current {r['current']} · {tag}")
+                report_state.append((r.get("name", r["current"]), r.get("owner"), r["current"], age_))
+            except Exception as e:
+                rep.append(f"  report    {r.get('name', r['current'])[:44]:44} NOT READ — {e}")
+                report_state.append((r.get("name", r["current"]), r.get("owner"), r["current"], None))
+            if not r.get("pattern"):
+                continue
         try:
             names_ = json.loads(_gh(["api", f"repos/{repo}/contents/{r['dir']}", "--jq", "[.[].name]"]))
             hits = sorted(n for n in names_ if re.match(r["pattern"], n))
@@ -323,21 +341,31 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
             ds = re.search(r"(\d{4})-?(\d{2})-?(\d{2})", newest or "")
             age = f" · {(today - dt.date(int(ds[1]), int(ds[2]), int(ds[3]))).days}d old" if ds else ""
             rep.append(f"  report    {r.get('name', r['dir'])[:44]:44} "
-                       + (f"newest {r['dir']}/{newest}{age}" if newest else "NONE FOUND"))
+                       + (f"newest {r['dir']}/{newest}{age}" if newest else "NONE FOUND")
+                       + ("" if r.get("current") else " · no stable current path (CR-114)"))
+            if not r.get("current"):
+                d_ = int(age.split()[1][:-1]) if age else None
+                report_state.append((r.get("name", r["dir"]), r.get("owner"),
+                                     f"{r['dir']}/{newest}" if newest else None, d_))
         except Exception as e:  # best effort
             rep.append(f"  report    {r.get('name', r.get('dir', '?'))[:44]:44} NOT READ — {e}")
-    return headline, path, rep
+    top = PRIORITY[0] if PRIORITY else None
+    blockers = [{"n": i["number"], "title": i["title"], "url": i["url"], "area": area(i),
+                 "fixed": bool(FIXED and FIXED in names(i)),
+                 "who": [a["login"] for a in i["assignees"]]}
+                for i in gapi if top and prio(i) == top]
+    return headline, path, rep, {"blockers": blockers, "reports": report_state, "top": top}
 
 
 def run(cf: dict, agenda_day: dt.date | None = None):
     """For build_agenda: (headline, path, report_lines) or (None, reason, [])."""
     decl = declared(cf)
     if not decl:
-        return None, "no repo with `labels:` declared", []
+        return None, "no repo with `labels:` declared", [], {}
     try:
         return build(decl, cf.get("movement") or {}, Path(cf["_root"]), agenda_day)
     except Exception as e:
-        return None, f"not read — {e}", []
+        return None, f"not read — {e}", [], {}
 
 
 if __name__ == "__main__":
@@ -349,7 +377,7 @@ if __name__ == "__main__":
     a = ap.parse_args()
     cf = config(Path(a.dir).resolve())
     day = dt.datetime.strptime(a.date, "%y%m%d").date() if a.date else None
-    head, path, rep = run(cf, day)
+    head, path, rep, _x = run(cf, day)
     if head is None:
         sys.exit(f"movement: {path}")
     print(head)

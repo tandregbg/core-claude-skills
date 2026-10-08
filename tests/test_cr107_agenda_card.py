@@ -29,14 +29,14 @@ class Card(unittest.TestCase):
 
     def test_card_order(self):
         a = self.agenda
-        order = [a.index(h) for h in ("## Milestone", "## Blockers", "## Dependencies",
+        order = [a.index(h) for h in ("## Milestone", "## Release blockers", "## Dependencies",
                                       "## Decisions needed today", "## One-minute round", "## Close")]
         self.assertEqual(order, sorted(order))
         self.assertNotIn("## Sources", a)
 
     def test_kinds_route_to_their_section(self):
         a = self.agenda
-        self.assertIn("**Payment webhook fails**", a[a.index("## Blockers"):a.index("## Dependencies")])
+        self.assertIn("**Payment webhook fails**", a[a.index("## Release blockers"):a.index("## Dependencies")])
         self.assertIn("**Backend answer on refunds**", a[a.index("## Dependencies"):a.index("## Decisions")])
         self.assertIn("**Canary shape**", a[a.index("## Decisions"):a.index("## One-minute")])
 
@@ -45,6 +45,12 @@ class Card(unittest.TestCase):
         self.assertIn("Update the readme", self.details)
         self.assertIn("## Sources", self.details)
         self.assertIn("260924-agenda-details-daily-standup.md", self.agenda)
+
+    def test_round_routes_each_persons_items(self):
+        rnd = self.agenda[self.agenda.index("## One-minute round"):]
+        self.assertIn("| **Bob** | *blocked:* Payment webhook fails · *decide:* Canary shape · 1 carried task (details) |", rnd)
+        self.assertIn("| **Ann** | *waiting:* Backend answer on refunds · *decide:* Canary shape |", rnd)
+        self.assertIn("Order: **Ann** (Backend answer on refunds; Canary shape) · **Bob** (Payment webhook fails; Canary shape)", build.last_post)
 
     def test_milestone_without_date_says_so(self):
         self.assertIn("**date not set**; decide by 2026-09-28", self.agenda)
@@ -63,6 +69,17 @@ class Digest(unittest.TestCase):
         details = (Path(build.last_meetings) / "260924-agenda-details-daily-standup.md").read_text(encoding="utf-8")
         self.assertNotIn("<!-- DIGEST:", agenda)
         self.assertIn("<!-- DIGEST:", details)
+
+
+class ProbablyClosedNeverEmptiesTheCard(unittest.TestCase):
+    def test_a_matched_blocker_stays_on_the_card_marked(self):
+        repo = {"reads": ["issues", "pulls"], "pulls": [
+            {"number": 7, "title": "fix payment webhook fails on retry", "state": "MERGED",
+             "mergedAt": "2026-09-23T10:00:00Z", "createdAt": "2026-09-23T09:00:00Z", "author": {"login": "bob"}}]}
+        agenda, _ = build(CARD + "external_systems:\n  repos:\n    - url: https://github.com/acme/app\n      reads: [issues, pulls]\n",
+                          note_items=ITEMS, repo=repo)
+        blockers = agenda[agenda.index("## Release blockers"):agenda.index("## Dependencies")]
+        self.assertIn("**Payment webhook fails**", blockers)
 
 
 class ListLayoutUnchanged(unittest.TestCase):

@@ -875,6 +875,15 @@ def main() -> None:
     # records the close. Silent closing is worse than repetition.
     closed_hits, _still = probably_closed(raw_items, chat, repo, jira)
     closed_keys = {key(l) for l, _r, _h in closed_hits}
+    # CR-107: in card layout a blocker, dependency or decision is never taken off the card
+    # by a match. The matcher is a word heuristic; a false hit would silently drop the one
+    # thing the room most needs to see. It stays in its section, marked, and the evidence
+    # sits in the details file. Tasks still move to *Probably closed* as before.
+    card_keep = set()
+    if cf.get("layout") == "card":
+        kd0 = kinds(last)
+        card_keep = {k for k in closed_keys if kd0.get(k) in KINDS}
+    all_items = items
     items = [t for t in items if key(t[0]) not in closed_keys]
 
     L = [f"# {cf.get('title', md.parent.name)}",
@@ -913,10 +922,11 @@ def main() -> None:
     card = cf.get("layout") == "card"     # CR-107
     mv_head = mv_note = None
     mv_reports: list[str] = []
+    mv_x: dict = {}
     if card:
         try:
             import build_movement
-            mv_head, mv_note, mv_reports = build_movement.run(cf, day)
+            mv_head, mv_note, mv_reports, mv_x = build_movement.run(cf, day)
         except Exception as e:   # best effort, like every other source
             mv_head, mv_note = None, f"not read — {e}"
     i_src = len(L)
@@ -1257,6 +1267,8 @@ def main() -> None:
         dname = details_name(cf, target)
         head = L[:i_src]
         A = list(head)
+        A.insert(len(A) - 2, "*Confirm the release blockers and their plan, raise what you wait on, then one minute each. "
+                             "Five to ten minutes when nothing blocks; statistics are read offline.*\n")
         ms = cf.get("milestone") or {}
         A += ["## Milestone", ""]
         if ms:
@@ -1275,11 +1287,19 @@ def main() -> None:
         A.append("")
         if mv_head:
             A += ["## Movement", "", mv_head, ""]
+            rs = (mv_x or {}).get("reports") or []
+            if rs:
+                A.append("**Status sources:** " + " · ".join(
+                    f"{nm} — " + ("updated today" if a_ == 0 else ("missing" if a_ is None else f"**{a_}d old**"))
+                    + ("" if p_ and not p_.split("/")[-1][:4].isdigit() else " (dated file, no stable link)")
+                    for nm, _o, p_, a_ in rs))
+                A.append("")
         elif cf.get("movement") is not None or any((r or {}).get("labels") for r in ((cf.get("ext") or {}).get("repos") or []) if isinstance(r, dict)):
             A += ["## Movement", "", f"*Not available: {mv_note}.*", ""]
 
         def sect(kind, title, lead, col):
-            rows_ = [t for t in items if kd.get(key(t[0])) == kind]
+            rows_ = [t for t in all_items if kd.get(key(t[0])) == kind
+                     and (key(t[0]) not in closed_keys or key(t[0]) in card_keep)]
             if not rows_:
                 return [f"## {title}", "", f"*None carried as `[{kind}]`.*", ""]
             out_ = [f"## {title}", "", lead, "", f"| Item | Owner | {col} |", "|---|---|---|"]
@@ -1288,10 +1308,29 @@ def main() -> None:
                 if d >= 7:
                     mark += f" · {d}d"
                 note = rest.split("·")[0].strip(" —-") if "·" in rest else ""
+                if key(lab) in card_keep:
+                    mark += " · *probably closed? evidence in details*"
                 out_.append(f"| **{item_of(lab, rest)}**" + (f" — {note}" if note else "") + f" | {owner_of(lab, rest)} | {mark} |")
             return out_ + [""]
-        A += sect("blocker", "Blockers", "**What is stuck, who owns it, what unblocks it.**", "Stuck for")
-        A += sect("dependency", "Dependencies", "**Waiting on someone outside the room.**", "Waiting")
+        # CR-114: a blocker is a RELEASE blocker. With labels declared, the list comes
+        # from the repo -- the label is the definition -- and the room confirms it.
+        # Carried [blocker] lines follow; people waiting on people are dependencies.
+        rb = (mv_x or {}).get("blockers") or []
+        if rb:
+            A += ["## Release blockers", "",
+                  f"**From the repo's `{mv_x.get('top')}` label. Is this the list? Anything missing? What is the plan for each?**", "",
+                  "| # | Area | State | Assignee | Issue |", "|---|---|---|---|---|"]
+            for b_ in rb:
+                A.append(f"| [#{b_['n']}]({b_['url']}) | {b_['area']} | "
+                         + ("fixed, waiting for a test" if b_["fixed"] else "**open**")
+                         + f" | {', '.join(b_['who']) or '—'} | {b_['title'][:80].replace('|', '/')} |")
+            A.append("")
+            more = sect("blocker", "Other blockers carried", "**Carried as blockers; not labelled in the repo.**", "Stuck for")
+            if not more[2].startswith("*None"):
+                A += more
+        else:
+            A += sect("blocker", "Release blockers", "**What blocks the release, who owns it, the plan.**", "Stuck for")
+        A += sect("dependency", "Dependencies", "**A person waiting on another person, or on someone outside the room.**", "Waiting")
         A += sect("decision", "Decisions needed today", "**Each one leaves the room decided, or with a date.**", "Open for")
         stuck_tasks = [t for t in items if kd.get(key(t[0])) not in KINDS and (t[2] >= E or (ED and t[4] >= ED))]
         if stuck_tasks:
@@ -1306,14 +1345,51 @@ def main() -> None:
               "**One minute each. What moved toward the milestone? What is stuck, and who owns the other end?**"
               + (" Track first." if tracks else ""), ""]
         A += [x for x in rnd if x.startswith("Last session") or x.startswith("Last ") or x.startswith("- ") and "had no one" in x]
-        if people and tracks and round_recorded:
-            A += ["", "| | Last track |", "|---|---|"]
+        # Each person's minute starts from what they carry (CR-084 routed it to their row;
+        # the card must not lose that): their card items by kind, then a count of their
+        # other carried tasks. The question is the same for everyone; the prompt is not.
+        mark_ = {"blocker": "blocked", "dependency": "waiting", "decision": "decide"}
+        per: dict[str, list[str]] = {}
+        tasks_n: dict[str, int] = {}
+        for lab, rest, n, _g, _d in all_items:
+            if key(lab) in closed_keys and key(lab) not in card_keep:
+                continue
+            who = owner_of(lab, rest)
+            if who == "UNOWNED":
+                continue
+            k_ = kd.get(key(lab))
+            short = re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:60]
+            for nm in re.split(r",|\band\b|·", who):
+                nm = nm.strip().strip("*").lower()
+                if not nm:
+                    continue
+                if k_ in KINDS:
+                    per.setdefault(nm, []).append(f"*{mark_[k_]}:* {short}")
+                else:
+                    tasks_n[nm] = tasks_n.get(nm, 0) + 1
+        if people:
+            lt_col = bool(tracks and round_recorded)
+            A += ["", "| | " + ("Last track | " if lt_col else "") + "Bring to your minute |",
+                  "|---|" + ("---|" if lt_col else "") + "---|"]
             for p_ in people:
-                prev = next((last_round[k.lower()] for k in [p_["name"]] + list(p_.get("aliases") or [])
-                             if k.lower() in last_round), "")
-                A.append(f"| **{p_['name']}** | {declared_track(prev, tracks) or ''} |")
-        elif people:
-            A += ["", "**Order:** " + " · ".join(p_["name"] for p_ in people)]
+                keys_ = [p_["name"]] + list(p_.get("aliases") or [])
+                mine_, seen_ = [], set()
+                for k in keys_:
+                    for x in per.get(k.lower(), []):
+                        if x not in seen_:
+                            seen_.add(x); mine_.append(x)
+                order_k = {"*blocked:*": 0, "*waiting:*": 1, "*decide:*": 2}
+                mine_.sort(key=lambda x: order_k.get(x.split(" ", 1)[0], 3))
+                nt = max((tasks_n.get(k.lower(), 0) for k in keys_), default=0)
+                cell = " · ".join(mine_)
+                for nm_r, own_r, _p, a_r in ((mv_x or {}).get("reports") or []):
+                    if own_r and own_r.lower() in [k.lower() for k in keys_]:
+                        cell = f"*summarise:* {nm_r}" + (" (STALE)" if a_r not in (0,) else "") + (" · " + cell if cell else "")
+                if nt:
+                    cell += (" · " if cell else "") + f"{nt} carried task{'s' if nt != 1 else ''} (details)"
+                prev = next((last_round[k.lower()] for k in keys_ if k.lower() in last_round), "")
+                A.append(f"| **{p_['name']}** | " + (f"{declared_track(prev, tracks) or ''} | " if lt_col else "")
+                         + (cell or "—") + " |")
         A += L[i_close:i_app]
         out.write_text("\n".join(A), encoding="utf-8")
         D = [f"# Agenda details — {day.strftime('%A %-d %B')}", "",
@@ -1384,10 +1460,25 @@ def main() -> None:
                 C.append(f"**Release gap:** {m_.group(1)} open ({m_.group(2)})"
                          + (f", {m2.group(1)} still to fix" if m2 else "") + f" · since yesterday {m_.group(3).strip()}")
         for kind, title in (("blocker", "Blockers"), ("dependency", "Waiting on"), ("decision", "Decide today")):
-            rows_ = [t for t in items if kd.get(key(t[0])) == kind]
+            rows_ = [t for t in all_items if kd.get(key(t[0])) == kind
+                     and (key(t[0]) not in closed_keys or key(t[0]) in card_keep)]
             if rows_:
                 C.append(f"**{title}:** " + " · ".join(f"{item_of(l, r)} ({owner_of(l, r)})" for l, r, *_ in rows_))
         C += ["", "**Round, one minute each:** what moved toward the milestone, what is stuck."]
+        order_ = []
+        for p_ in people:
+            keys_ = [p_["name"]] + list(p_.get("aliases") or [])
+            mine_ = []
+            for lab, rest, *_ in all_items:
+                if kd.get(key(lab)) in KINDS and (key(lab) not in closed_keys or key(lab) in card_keep):
+                    owners_ = [o.strip().strip("*").lower() for o in re.split(r",|\band\b|·", owner_of(lab, rest))]
+                    if any(k.lower() in owners_ for k in keys_):
+                        mine_.append((["blocker", "dependency", "decision"].index(kd.get(key(lab))),
+                                      re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:50]))
+            mine_ = [x for _, x in sorted(mine_, key=lambda t: t[0])]
+            order_.append(f"**{p_['name']}**" + (f" ({'; '.join(mine_)})" if mine_ else ""))
+        if order_:
+            C.append("Order: " + " · ".join(order_))
         if bits:
             C += ["", "**Repo since the last note:** " + " · ".join(bits) + "."]
         C += ["", f"Agenda: `{out.name}` · details: `{details_name(cf, target)}`"]

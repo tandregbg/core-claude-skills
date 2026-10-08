@@ -9,6 +9,25 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.3] - 2026-10-08
+
+### Fixed
+
+- **CR-107 regressions, found in its first meeting.** The card's one-minute round printed names only:
+  the per-person routing CR-084 built was dropped, so everyone got the same blank question. Each row
+  now carries that person's card items (blocked, waiting, decide) and a count of their other tasks, and
+  the post names the order (part of CR-113). And a false *probably closed* match took a real blocker off the card; in
+  card layout a blocker, dependency or decision now stays, marked.
+
+### Changed
+
+- **CR-114 — a blocker is a release blocker; a dependency is a person waiting; one stable source per
+  status.** With labels declared, the card's *Release blockers* lists the repo's top-label issues and
+  asks the room to confirm the list and the plan; carried unlabelled blockers follow. Kinds sharpened:
+  a person's own pending work is a task. `reports[].current` names the path that is the status, shown
+  with its age; a dated series alone is reported as having no stable source. `reports[].owner` puts the
+  report in its owner's round minute. The card states it: five to ten minutes when nothing blocks.
+
 ### Proposed
 
 - **CR-109 — one outbox folder per session.** A pre-meeting update and the recap go into the session's

@@ -344,6 +344,24 @@ what is waited on, what must be decided, the round question.
 The default (`layout` absent) is unchanged. In card layout the digest marker lives in the details file,
 and `/ops orient` reads both files.
 
+**Refined after the first meeting run on it (CR-114):**
+
+- **A blocker is a release blocker.** With `labels:` declared, the *Release blockers* section lists the
+  open issues carrying the top priority label (the label is the definition), and the room confirms
+  the list and the plan for each. Carried `[blocker]` lines without a label follow as *Other blockers
+  carried*. **A person waiting on another person is a `[dependency]`** — dialogue, raised in the room,
+  rarely in any tracker. Someone's own pending work is a task, not a dependency.
+- **Five to ten minutes when nothing blocks.** The card says so under its title. Statistics are read
+  offline; each report's owner summarises it in their minute (the round names it for them).
+- **One current status per area, at a stable path** (`reports[].current`). A dated file per day is
+  history, not a source: when today's is missing, nothing says what to rely on. The card shows each
+  source's age, and a dated series with no stable path is reported as such.
+- **The round routes each person's items to their row**, blocked → waiting → decide, plus a count of
+  their other carried tasks; the post names the order. A match in *Probably closed* never takes a
+  blocker, dependency or decision off the card: it stays, marked.
+- **The card is a draft its owners correct.** Kinds are assigned by `process` from a transcript; the
+  first minutes of a meeting confirm or fix them, and the next note records the correction.
+
 It writes `YYMMDD-<agenda_suffix>.md` and the chat post, carrying what the transcript cannot:
 the carried-forward block with session counts, the round from the declared roster, and the
 *Since the last standup* block from the archives. **Hand-writing the agenda in a wired project
@@ -1620,9 +1638,10 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
 
    **Kind (CR-107).** A line may open with `[blocker]`, `[dependency]` or `[decision]`; untagged is a
    task. In card layout the kind decides whether the item is talked about or sits in the appendix, so
-   `process` assigns it while writing the section: **blocker** -- work is stuck and someone in the room
-   can unstick it; **dependency** -- waiting on someone outside the room; **decision** -- the room must
-   choose. Everything else is a task, and a task only reaches the card when it has carried past the
+   `process` assigns it while writing the section: **blocker** -- it blocks the *release* (CR-114; with
+   labels declared, prefer the repo's label to a carried line); **dependency** -- a person waits on another
+   person or on someone outside the room; **decision** -- the room must choose. A person's own pending
+   work is a task, however important. Everything else is a task, and a task only reaches the card when it has carried past the
    escalation threshold.
 
    **A carried line names something its owner can open** -- an issue or ticket id, a path with a section,

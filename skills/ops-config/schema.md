@@ -337,11 +337,16 @@ external_systems:
         blocked: "status: Blocked on backend"   # optional
         answered: answered-waiting-on-jira      # optional
         area_prefix: "area:"
-      reports:                     # optional: dated reports the details file lists, newest first
+      reports:                     # optional: status sources the card and details file show with their age
         - name: Status report
-          dir: docs/investigations
+          current: docs/status/STATUS.md            # CR-114: the stable path that IS the status
+          owner: Bob                                # CR-114: summarises it in their round minute
+          dir: docs/investigations                  # optional: the dated history series
           pattern: '^\d{4}-\d{2}-\d{2}-status-report\.md$'
 ```
+
+**`current:` is the source; a dated series is history (CR-114).** A file per day leaves no answer when
+today's is missing. With only `pattern:`, the details file reports the series as *no stable current path*.
 
 The movement block is read live from the repo (`gh`), best effort, and carries three printed checks:
 the rebuilt state equals the repo's current state, every day shown is covered by event history, and
