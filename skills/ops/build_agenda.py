@@ -1008,8 +1008,8 @@ def main() -> None:
                 continue
             kind, rest = ln[2:11].strip(), ln[11:].strip()
             name, status = (rest[:44].strip(), rest[44:].strip()) if len(rest) > 44 else (rest, "")
-            if kind in ("digest", "round"):
-                continue
+            if kind in ("digest", "round", "record"):
+                continue                          # recordings feed the note, not the agenda
             if kind == "report":
                 if "current " in status:
                     seen_current.add(name)

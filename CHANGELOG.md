@@ -9,6 +9,13 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.7] - 2026-10-09
+
+### Changed
+
+- **CR-117:** the *Built from* line no longer lists the recordings store. Recordings feed the daily note, not the
+  agenda; listing them as *not used* read as a missing source. The `record` line stays in the sources block.
+
 ## [1.89.6] - 2026-10-09
 
 ### Added

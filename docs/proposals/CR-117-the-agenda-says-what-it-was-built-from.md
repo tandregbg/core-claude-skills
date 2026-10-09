@@ -22,6 +22,7 @@ operator asked for that note back at the top, by hand, on the second day of the 
 - **It is parsed from the sources block,** so the two cannot disagree. A dated history file behind a stable
   `current` report is not listed twice.
 - **The post carries a short version** (names only).
+- **Recordings are not listed in *Built from*** (v1.89.7): they feed the note, not the agenda.
 - **The sources block gains a `record` line** when `external_systems.transcripts` is declared: *archive read*,
   or *declared, no archive — prepare checks the store by hand*.
 

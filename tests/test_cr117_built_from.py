@@ -25,7 +25,7 @@ class BuiltFrom(unittest.TestCase):
         line = next(l for l in self.agenda.splitlines() if l.startswith("> **Built from**"))
         self.assertIn("**Not used or stale:**", line)
         self.assertIn("chat", line[line.index("Not used"):])
-        self.assertIn("recordings (Recorder) (checked by hand)", line)
+        self.assertNotIn("Recorder", line)   # recordings feed the note, not the agenda
 
     def test_post_carries_it(self):
         self.assertIn("**Built from:** 260922-daily-standup.md", build.last_post)
