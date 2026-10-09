@@ -363,7 +363,7 @@ and `/ops orient` reads both files.
   the newest file of a dated series, or a stable `current` file, with its age. Read locally, never fetched.
 - **The card opens with *Built from*** (CR-117): each source with its age in a word, then *Not used or stale*,
   parsed from the sources block so the two cannot disagree; the post carries a short version. Recordings are
-  not listed (they feed the note, not the agenda); the sources block keeps a `record` line saying how a
+  not listed (they feed the summary, not the agenda); the sources block keeps a `record` line saying how a
   declared store is checked.
 - **The card is a draft its owners correct.** Kinds are assigned by `process` from a transcript; the
   first minutes of a meeting confirm or fix them, and the next note records the correction.
