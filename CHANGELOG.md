@@ -9,6 +9,15 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.6] - 2026-10-09
+
+### Added
+
+- **CR-117 — the agenda says what it was built from.** The card opens with a *Built from* line: each source
+  with its age in a word, then *Not used or stale* (undeclared, unread, two days old or more, a recordings
+  store with no archive), parsed from the sources block so the two cannot disagree. The post carries a short
+  version. The sources block gains a `record` line for a declared recordings store.
+
 ## [1.89.5] - 2026-10-09
 
 ### Added

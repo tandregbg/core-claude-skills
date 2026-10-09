@@ -987,10 +987,54 @@ def main() -> None:
     total_msgs = sum(len(c.get("messages") or []) for c in chat)
     if total_msgs:
         src.append(f"  digest    {str(total_msgs) + ' message(s) since ' + last_date:44} NOT FILLED — prepare reads them and fills the digest slot")
+    trd = (cf.get("ext") or {}).get("transcripts") or {}
+    if trd:
+        src.append(f"  record    {str(trd.get('store') or 'declared')[:44]:44} "
+                   + ("archive read" if trd.get("archive") else
+                      "declared, no archive — prepare checks the store by hand (CR-117)"))
     if card:
         src.append(f"  movement  {('read' if mv_head else (mv_note or '—'))[:60]}")
         src += mv_reports
     src += ["```", ""]
+
+    # CR-117: the same facts as one line a reader sees first -- what the agenda was
+    # built from, what it did not use, and the age of each. Parsed from the block
+    # above so the two can never disagree.
+    def built_from(lines: list[str]) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+        """(name, short status) for each source, split into used and not used/stale."""
+        used, unused, seen_current = [], [], set()
+        for ln in lines:
+            if not ln.startswith("  ") or ln.startswith("```"):
+                continue
+            kind, rest = ln[2:11].strip(), ln[11:].strip()
+            name, status = (rest[:44].strip(), rest[44:].strip()) if len(rest) > 44 else (rest, "")
+            if kind in ("digest", "round"):
+                continue
+            if kind == "report":
+                if "current " in status:
+                    seen_current.add(name)
+                elif name in seen_current:
+                    continue                      # the dated history behind a stable file
+            nm = {"note": name, "chat": f"chat {name}", "repo": "repo", "tickets": "tickets",
+                  "movement": "issue labels", "record": f"recordings ({name})"}.get(kind, name)
+            bits = []
+            if (m := re.search(r"(\d+) since the note", status)):
+                bits.append(f"{m.group(1)} msgs")
+            if (m := re.search(r"fetched (\d\d:\d\d)", status)):
+                bits.append(f"fetched {m.group(1)}")
+            if "updated today" in status or re.search(r"\b0d old", status):
+                bits.append("today")
+            elif (m := re.search(r"(\d+)d (old|ago)", status)):
+                bits.append(f"{m.group(1)}d old")
+            bad = any(w in status for w in ("NOT DECLARED", "NOT READ", "NOT FOUND", "STALE", "not read", "no archive"))
+            if kind == "report" and not bad and re.search(r"\b[2-9]\d*d old|\b1\dd old", " ".join(bits)):
+                bad = True                        # two days or more counts as stale on a daily series
+            if "NOT DECLARED" in status:
+                bits = ["not declared"]
+            elif "no archive" in status:
+                bits = ["checked by hand"]
+            (unused if bad else used).append((nm, ", ".join(bits)))
+        return used, unused
     L += src
     i_carry = len(L)
 
@@ -1274,6 +1318,11 @@ def main() -> None:
         dname = details_name(cf, target)
         head = L[:i_src]
         A = list(head)
+        used_, unused_ = built_from(src)
+        fmt = lambda xs: " · ".join(n + (f" ({b})" if b else "") for n, b in xs)
+        A.insert(len(A) - 2, f"> **Built from** ({built}): " + fmt(used_)
+                 + ("" if not unused_ else ". **Not used or stale:** " + fmt(unused_))
+                 + f". Detail: [{details_name(cf, target)}]({details_name(cf, target)}).\n")
         A.insert(len(A) - 2, "*Confirm the release blockers and their plan, raise what you wait on, then one minute each. "
                              "Five to ten minutes when nothing blocks; statistics are read offline.*\n")
         ms = cf.get("milestone") or {}
@@ -1457,6 +1506,9 @@ def main() -> None:
         kd = kinds(last)
         ms = cf.get("milestone") or {}
         C = [T[0], ""]
+        used_, unused_ = built_from(src)
+        C += ["**Built from:** " + " · ".join(n for n, _ in used_)
+              + ("" if not unused_ else ". Not used or stale: " + " · ".join(n for n, _ in unused_)) + ".", ""]
         if ms:
             C.append(f"**Milestone:** {ms.get('name', '')}" + (f" — {ms['date']}" if ms.get("date") else
                      " — date not set" + (f", decide by {ms['decide_by']}" if ms.get("decide_by") else "")))
