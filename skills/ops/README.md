@@ -85,6 +85,28 @@ Produces: Structured preparation document with status tracking (Yesterday → Do
 /ops [transcript]        → creates summary, marks prep as superseded
 ```
 
+### Generated agenda, card layout (wired projects)
+
+Where `carry_forward` is enabled, the agenda is generated, not written:
+
+```
+python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
+```
+
+With `carry_forward.layout: card` (CR-107, CR-114, CR-116, CR-117) it writes three files:
+
+| File | Holds |
+|---|---|
+| `YYMMDD-<agenda_suffix>.md` | **The card**, talked through in this order: *Built from* (each source and its age), milestone, movement, release blockers, dependencies, decisions needed, tasks stuck past the threshold, the one-minute round with each person's items |
+| `YYMMDD-agenda-details-<…>.md` | The appendix, not read out: sources block, full carried list, *probably closed*, the chat digest slot, repo detail |
+| `YYMMDD-teams-<agenda_suffix>.md` | The chat post: the card in a few lines |
+
+`build_movement.py` (called by the generator, or run on its own with `--dir`) reads the repo's issues and label
+history live and writes `status/movement/YYMMDD-issue-movement.md`: the release gap per day and by area, with
+three printed checks (the rebuild matches the repo now, history covers every day shown, not stale for the
+agenda's date). Declared reports — in the repo (`repos[].reports`) or the vault (`vault_reports`) — are shown
+with their age. Config keys: `ops-config/schema.md`, *Carry-forward card layout and movement*.
+
 ## What it configures
 
 - **Summary structure** -- custom sections or TWO-TIER default

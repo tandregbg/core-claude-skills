@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** 2026-10-08 |
+| **Status** | **Proposed** 2026-10-08 — **partly implemented by CR-114 (v1.89.3)**: items 1 (routing, as a *Bring to your minute* column with kinds and a task count) and 4 (the post names the round order). Items 2, 3 and the per-person post lines remain |
 | **Contract** | none — card layout output only (`build_agenda.py`); no config key |
 | **Date** | 2026-10-08 |
 | **Area** | `ops` (`build_agenda.py` card layout, the Teams post in card layout) |

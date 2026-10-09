@@ -359,6 +359,12 @@ and `/ops orient` reads both files.
 - **The round routes each person's items to their row**, blocked → waiting → decide, plus a count of
   their other carried tasks; the post names the order. A match in *Probably closed* never takes a
   blocker, dependency or decision off the card: it stays, marked.
+- **Report series kept in the vault** (`external_systems.vault_reports`, CR-116) are declared like repo reports:
+  the newest file of a dated series, or a stable `current` file, with its age. Read locally, never fetched.
+- **The card opens with *Built from*** (CR-117): each source with its age in a word, then *Not used or stale*,
+  parsed from the sources block so the two cannot disagree; the post carries a short version. Recordings are
+  not listed (they feed the note, not the agenda); the sources block keeps a `record` line saying how a
+  declared store is checked.
 - **The card is a draft its owners correct.** Kinds are assigned by `process` from a transcript; the
   first minutes of a meeting confirm or fix them, and the next note records the correction.
 
