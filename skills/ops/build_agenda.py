@@ -929,6 +929,13 @@ def main() -> None:
             mv_head, mv_note, mv_reports, mv_x = build_movement.run(cf, day)
         except Exception as e:   # best effort, like every other source
             mv_head, mv_note = None, f"not read — {e}"
+        # CR-116: vault-kept report series join the repo ones -- same lines, same card.
+        try:
+            vl, vs = build_movement.vault_reports(cf, datetime.date.today())
+            mv_reports = list(mv_reports) + vl
+            mv_x = dict(mv_x or {}); mv_x["reports"] = list(mv_x.get("reports") or []) + vs
+        except Exception as e:
+            mv_reports = list(mv_reports) + [f"  report    vault reports NOT READ — {e}"]
     i_src = len(L)
     src = [f"## Sources — built {built} from", "", "```"]
     src.append(f"  note      {last.name:44} read")

@@ -357,6 +357,48 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
     return headline, path, rep, {"blockers": blockers, "reports": report_state, "top": top}
 
 
+def vault_reports(cf: dict, today: dt.date | None = None):
+    """CR-116: report series kept in the vault, not the repo -- board reports, dashboards.
+
+    external_systems:
+      vault_reports:
+        - name: Board status
+          dir: ../../meetings/board/status      # relative to the project root, or found walking up
+          pattern: '^\\d{6}[a-z]?-board-status\\.md$'
+          current: status.md                    # optional: a stable file in that dir
+          owner: Ann                            # optional: summarised in that person's round minute
+
+    Local files only -- no fetch. Returns (source lines, report states) in the shape
+    `build()` returns for repo reports, so the card treats both alike.
+    """
+    today = today or dt.date.today()
+    lines, states = [], []
+    root = Path(cf["_root"])
+    for r in ((cf.get("ext") or {}).get("vault_reports") or []):
+        nm = r.get("name") or r.get("dir", "?")
+        d = next(((p_ / r["dir"]).resolve() for p_ in (root, *root.parents) if (p_ / r["dir"]).is_dir()), None)
+        if not d:
+            lines.append(f"  report    {nm[:44]:44} NOT FOUND — {r.get('dir')}")
+            states.append((nm, r.get("owner"), None, None))
+            continue
+        if r.get("current"):
+            f = d / r["current"]
+            if f.exists():
+                age = (today - dt.date.fromtimestamp(f.stat().st_mtime)).days
+                lines.append(f"  report    {nm[:44]:44} current {r['current']} · "
+                             + ("updated today" if age == 0 else f"STALE — last updated {age}d ago"))
+                states.append((nm, r.get("owner"), r["current"], age))
+                continue
+        hits = sorted(x.name for x in d.iterdir() if x.is_file() and re.match(r.get("pattern") or r"^$", x.name))
+        newest = hits[-1] if hits else None
+        m = re.match(r"(\d{2})(\d{2})(\d{2})", newest or "")
+        age = (today - dt.date(2000 + int(m[1]), int(m[2]), int(m[3]))).days if m else None
+        lines.append(f"  report    {nm[:44]:44} " + (f"newest {newest}" + (f" · {age}d old" if age is not None else "")
+                                                     if newest else "NONE FOUND"))
+        states.append((nm, r.get("owner"), newest, age))
+    return lines, states
+
+
 def run(cf: dict, agenda_day: dt.date | None = None):
     """For build_agenda: (headline, path, report_lines) or (None, reason, [])."""
     decl = declared(cf)

@@ -345,6 +345,16 @@ external_systems:
           pattern: '^\d{4}-\d{2}-\d{2}-status-report\.md$'
 ```
 
+```yaml
+external_systems:
+  vault_reports:                   # CR-116: report series kept in the vault, read locally
+    - name: Board status
+      dir: ../../meetings/board/status        # relative to the project root, or found walking up
+      pattern: '^\d{6}[a-z]?-board-status\.md$'
+      current: status.md                      # optional
+      owner: Ann                              # optional
+```
+
 **`current:` is the source; a dated series is history (CR-114).** A file per day leaves no answer when
 today's is missing. With only `pattern:`, the details file reports the series as *no stable current path*.
 

@@ -9,6 +9,15 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.5] - 2026-10-09
+
+### Added
+
+- **CR-116 — report series kept in the vault are declared sources.** `external_systems.vault_reports`
+  (`name`, `dir`, `pattern`, optional `current` and `owner`) shows the newest file or the stable one with
+  its age, in the sources block and on the card, like repo reports (CR-114). Read locally, never fetched.
+  Two daily report series bearing on an agenda had been read by hand only on the days someone remembered.
+
 ## [1.89.4] - 2026-10-08
 
 ### Added

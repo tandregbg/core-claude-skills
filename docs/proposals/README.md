@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-116**
+Next available CR number: **CR-117**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-116**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-116 | `ops` (`build_movement.py`, `build_agenda.py`), `ops-config` schema | Medium | **Implemented v1.89.5.** Report series kept in the vault (board reports, dashboards) were read by hand on the days someone remembered. `external_systems.vault_reports` declares them like repo reports: newest of a dated series or a stable `current`, with its age, in the sources block and on the card; `owner` routes it to the round. Local only. Additive |
 | CR-115 | `ecosystem.yaml` (`_manifest.md` writers, `outbound_dispatch`, `components.dashboard`), `outbox` (edge cases, `list`) | Medium | **Implemented v1.89.4, contract 41.** A folder with no `_manifest.md` cannot record a send, be marked not sent, or be closed, and only a hand edit could fix it. A dispatching surface may **create** one where none exists, on confirmation after a preview: exclusive create (never overwrites), a declared status chosen by the person, `Kanonisk källa` required, `Klassificering` writable at creation only, `## Innehåll` + one `## Tidslinje` line, no `Svar förväntas på`/`Utfall`. Afterwards an ordinary manifest under CR-102. The dispatcher side is implemented by Marvin CR-024. Additive (40→41) |
 | CR-114 | `ops` (card layout, `build_movement.py`, kinds), `ops-config` schema | **High** | **Implemented v1.89.3** (implements CR-113's round routing in part). First meeting on the CR-107 card: the room corrected AI-sorted items, separated *blocker* (release, a repo label) from *dependency* (a person waiting), found the round blank and a real blocker removed by a false match, and asked for one stable status source per area instead of a dated file per day. The card lists release blockers from the repo label; kinds sharpened; `reports[].current` and `owner`; a 5–10 minute lead line; the round routes each person's items. Additive |
 | CR-113 | `ops` (`build_agenda.py` card layout, Teams post) | **High** | **Proposed.** CR-107's card reduced the one-minute round to a question and an order line, dropping the per-person *Owed into today* table (CR-084) along with the carried list. Restore the table as the body of the card, add *Nobody owes these* and *Not in this room* lines, limit *Stuck?* to items not routed to a round member, and keep per-person lines in the Teams post. Observed the first morning a project switched to card |
