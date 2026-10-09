@@ -10,11 +10,11 @@ session rebuilt the same picture by hand and lost the parts nobody wrote down.
 `/bod` for a coordination project. Both exist because the expensive mistake is not
 doing the wrong work; it is doing the right work against yesterday's picture.
 """
-import argparse, datetime, json, re, sys
+import argparse, os, datetime, json, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_agenda import (COMPANION, config, carried, has_section, key, owner_of, details_name,
+from build_agenda import (COMPANION, config, carried, has_section, key, owner_of, details_name, definitions,
                           streak, next_session, recorded_since, since,
                           fetch_record, fetch_status)   # noqa: E402
 
@@ -115,6 +115,18 @@ def main() -> None:
         for k, r in problems:
             out.append(f"    ⚠ {k:9} {fetch_status(r)}")
         out.append("")
+
+    # CR-118: the two levels of definitions, so a reader knows which words are company
+    # standards and which are this project's own -- and how many wait to go upward.
+    dfs = definitions(cf)
+    out.append("  Definitions")
+    out.append("    standards       " + (os.path.relpath(dfs["standards"], root) if dfs["standards"] else "NOT DECLARED (`standards:` in an org config)"))
+    if dfs["definitions"]:
+        out.append(f"    project         {dfs['definitions'].name} — {dfs['local']} local, {dfs['upward']} proposed upward"
+                   + (f", {dfs['unmarked']} without a status" if dfs["unmarked"] else ""))
+    else:
+        out.append("    project         NOT DECLARED (`definitions:` beside carry_forward)")
+    out.append("")
 
     # 1-3. loop position, chain, what is carrying
     hist = notes(md, cf)

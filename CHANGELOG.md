@@ -9,6 +9,15 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.8] - 2026-10-09
+
+### Added
+
+- **CR-118 — company standards and project definitions.** `standards:` (org config) and `definitions:` (project
+  config) declare two levels with one direction of authority: a project never redefines a standard term, each project
+  term is *local* or *proposed upward*, `process` writes new terms to the project file only, and promotion is a
+  company decision. `/ops orient` prints both levels with counts; `/ops check` reports redefinitions and unmarked terms.
+
 ## [1.89.7] - 2026-10-09
 
 ### Changed

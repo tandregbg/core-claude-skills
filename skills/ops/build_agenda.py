@@ -129,6 +129,7 @@ def config(meetings: Path) -> dict:
             # CR-107: the date the card runs toward. Project-wide, so it sits beside
             # `tracks:` rather than inside carry_forward; a nearer declaration wins.
             cf["milestone"] = d.get("milestone") or cf.get("milestone")
+            cf["definitions"] = d.get("definitions") or cf.get("definitions")   # CR-118
             if not cf.get("schedule_days"):
                 mt = (d.get("meeting_types") or {}).values()
                 sched = next((m.get("schedule", {}).get("days") for m in mt
@@ -223,6 +224,57 @@ def has_section(path: Path) -> bool:
     perfectly correct. So the absence is said out loud, here and in the agenda.
     """
     return SECTION.search(path.read_text(encoding="utf-8")) is not None
+
+
+def definitions(cf: dict) -> dict:
+    """CR-118: the two levels of definitions a project works under.
+
+    `definitions:` -- the project's own file (beside `carry_forward`, relative to the project root).
+    `standards:`   -- the organisation's standards folder, from the nearest config further up that
+                      declares it (relative to that config's folder). Its README is the index.
+
+    Returns {"definitions": Path|None, "standards": Path|None, "local": n, "upward": n, "unmarked": n}.
+    Counting reads the definitions file's status words; it never decides anything.
+    """
+    root = Path(cf["_root"])
+    out = {"definitions": None, "standards": None, "local": 0, "upward": 0, "unmarked": 0}
+    if cf.get("definitions"):
+        f = root / cf["definitions"]
+        out["definitions"] = f if f.exists() else None
+    for d in (root, *root.parents):
+        for name in (Path(".claude") / "ops-config.yaml", Path("_ops.yaml")):
+            p = d / name
+            if p.exists():
+                try:
+                    y = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+                except Exception:
+                    continue
+                if y.get("standards") and out["standards"] is None:
+                    sp = (p.parent if name.name == "_ops.yaml" else p.parent.parent) / y["standards"]
+                    out["standards"] = sp if sp.exists() else None
+    if out["definitions"]:
+        # Only tables whose header has a Status column carry statuses; other tables in
+        # the file (examples, role matrices) are not term registers.
+        col, in_table = None, False
+        for ln in out["definitions"].read_text(encoding="utf-8").splitlines():
+            if not ln.startswith("|"):
+                col, in_table = None, False
+                continue
+            cells = [c.strip() for c in ln.strip("|").split("|")]
+            if not in_table:
+                in_table = True
+                col = next((i for i, c in enumerate(cells) if c.lower().strip("* ") == "status"), None)
+                continue
+            if col is None or set(ln.replace("|", "").strip()) <= set("-: "):
+                continue
+            st = cells[col].lower() if col < len(cells) else ""
+            if "proposed" in st:
+                out["upward"] += 1
+            elif "local" in st:
+                out["local"] += 1
+            else:
+                out["unmarked"] += 1
+    return out
 
 
 def kinds(path: Path) -> dict[str, str]:

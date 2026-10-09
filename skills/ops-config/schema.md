@@ -362,6 +362,18 @@ The movement block is read live from the repo (`gh`), best effort, and carries t
 the rebuilt state equals the repo's current state, every day shown is covered by event history, and
 the agenda's date equals the day it was read (else **STALE**).
 
+#### Definitions: standards and project terms (CR-118)
+
+```yaml
+# org config (e.g. <org>/_ops.yaml)
+standards: ops/_standards        # folder of company standards; README.md is the index
+# project config, beside carry_forward
+definitions: taxonomy.md         # the project's own terms, each marked local or proposed upward
+```
+
+`/ops orient` prints *Definitions*: the standards path, and the project file with its counts (local, proposed
+upward, without a status). Only tables with a *Status* column are counted.
+
 #### Task Import
 
 When `task_import.enabled` is true, action items from the meeting summary are extracted and matched against the task file. New items are offered for import; existing tasks mentioned in the meeting are updated.

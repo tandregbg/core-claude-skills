@@ -1606,6 +1606,23 @@ an agenda missing because a network call failed is worse than one missing its co
 questions. An issue that moved with nobody assigned, or a decision taken in chat that half the room has
 not seen, is exactly what the round will otherwise skip.
 
+#### Definitions: company standards and project terms (CR-118)
+
+**Two levels, one direction of authority.** An organisation declares its standards folder (`standards:` in an org
+config; its README is the index). A project declares its own definitions file (`definitions:` beside
+`carry_forward`). `/ops orient` prints both, with the project file's counts.
+
+- **A project never redefines a standard term.** It links to it; a narrower meaning says *narrower than* and links.
+- **Every project term carries a status** in a table with a *Status* column: **local** (specific to this project)
+  or **proposed upward** (looks general; named in the standards' open list).
+- **When a meeting decides or coins a term, `process` writes it to the project's definitions file, never to the
+  standards.** First question: *would another product need this word?* If yes, mark it *proposed upward* and name
+  it in the organisation's open list. Promotion is a company decision (a forum, by consent), recorded where the
+  organisation records decisions; the standards then point there, and the project keeps one linking line.
+- **Nothing reaches the standards as decided from a project.** `/ops check` reports: a project term that also
+  appears in the standards index without a *narrower than* link; a term row without a status; a *proposed upward*
+  term not named in the open list.
+
 #### Carry-Forward (if `carry_forward.enabled`)
 
 **The gap this closes:** a series writes an agenda, holds the meeting, records a note -- and nothing
