@@ -194,6 +194,8 @@ CR-022 formalizes what heavy real-world use converged on: a single markdown **tr
 
 The suite is developed **on live production data**: real usage generates evidence, evidence becomes CRs, CRs become releases. That loop has its own guardrails (CR-026): [`docs/RELEASING.md`](docs/RELEASING.md) codifies the one-way membrane between the private operating vault and this public repo — generic-by-construction writing, a private CR archive, and a **fail-closed pre-push guard** that scans every outgoing line against secret patterns and a private identifier denylist. Ecosystem components (the visualiser, the landing page) are held on the same version by an alignment check that `/ops check` reads on schedule (CR-023).
 
+What is released now and what waits, and on whom, is on the ops board: [`docs/ops/ops-status.md`](docs/ops/ops-status.md) (index [`docs/ops/README.md`](docs/ops/README.md)).
+
 ---
 
 ## Skills included

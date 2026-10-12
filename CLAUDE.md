@@ -13,6 +13,9 @@ the release process and its privacy guardrails, enforced by the pre-push guard.
 - Releases go in `CHANGELOG.md`, newest first; `README.md` **Version** and `ecosystem.yaml`
   `core_skills_version` match the first entry. Run `scripts/check-ecosystem-alignment.sh` before
   a release commit; one release is one commit.
+- This repo's own ops board is `docs/ops/ops-status.md` (index `docs/ops/README.md`): what is
+  released, what is configured, what waits. Start here for this product; a release updates it the
+  same day.
 - A checkout may be shared: commit only your own files; never stash, reset or discard
   someone else's work.
 
