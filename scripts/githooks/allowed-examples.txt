@@ -33,3 +33,6 @@ display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Li
 # RFC 5322 mail header names, not people. The Name-Name matcher reads
 # `In-Reply-To` as a hyphenated pair; it is a protocol field (CR-080).
 -(Reply-To|Message-ID|In-Reply-To)
+# Invented contact folder and staged-item names in the CR-120 outbox examples
+# (handled status / Destination). No relation to any real person in this vault.
+(_contacts/cai-nilsson|26[0-9]{4}-alex_weekend-checklist)

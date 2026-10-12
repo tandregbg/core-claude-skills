@@ -58,11 +58,12 @@ DECLARED_STATUS = {
     "ready": ["klar-att-skicka"],
     "sent": ["skickad"],
     "withdrawn": ["avskriven"],
+    "handled": ["hanterad"],
     "archived": ["arkiverad"],
 }
 # The canonical written word for each, used when naming the closest declared form.
 CANONICAL = {"draft": "draft", "ready": "klar-att-skicka", "sent": "skickad",
-             "withdrawn": "avskriven", "archived": "arkiverad"}
+             "withdrawn": "avskriven", "handled": "hanterad", "archived": "arkiverad"}
 
 # Words seen in undeclared statuses, mapped to the declared form they meant.
 SYNONYMS = {
@@ -71,6 +72,8 @@ SYNONYMS = {
     "avbruten": "withdrawn", "withdrawn": "withdrawn", "struken": "withdrawn",
     "obsolet": "withdrawn", "obsolete": "withdrawn", "inaktuell": "withdrawn",
     "arkiverat": "archived", "archived": "archived",
+    "hanterat": "handled", "handled": "handled", "behandlad": "handled",
+    "använd": "handled", "förbrukad": "handled",
     "utkast": "draft", "draft": "draft", "påbörjad": "draft",
 }
 

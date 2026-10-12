@@ -41,13 +41,14 @@ way the same tool serves a vault in another language without a code change.
 See `identifier_language` in `ecosystem.yaml`.
 
 ```markdown
-**Status:** [draft | klar-att-skicka | skickad YYYY-MM-DD | avskriven YYYY-MM-DD | arkiverad YYYY-MM-DD]
+**Status:** [draft | klar-att-skicka | skickad YYYY-MM-DD | avskriven YYYY-MM-DD | hanterad YYYY-MM-DD | arkiverad YYYY-MM-DD]
 **Statusnot:** [free text: what actually happened — channel, time, a link, a circumstance]
 **Kanal:** [mejl | slack | print | ...]
 **Kontakt:** [email or name]
 **Projekt:** [optional theme/context]
 **Klassificering:** [team-wide-safe | team-only | management-only]
 **Kanonisk källa:** [path to the source doc each attachment is rendered from — or `ingen (originalet bor här)`]
+**Destination:** [optional (CR-120): where the folder goes when closed, e.g. `acme/meetings/management/Dana/`]
 
 ## Innehåll
 [file table]
@@ -139,6 +140,51 @@ then says which item replaced it, in one declared form:
 - A superseded draft is **filed differently** from other withdrawn items: to the contact's or
   project's `.archive/`, not beside the correspondence (see `close --all-resolved`). Filed beside
   what was actually sent, a replaced draft reads later as a second message that went out.
+
+### `hanterad` -- worked from, never meant to be sent (CR-120)
+
+`_outbox/` is also the one queue an external surface reads to find what needs working on, and some of
+what lands there is never going anywhere: a meeting preparation, a weekend checklist, a documentation
+inventory, a triage list. It is read, used, and then done.
+
+Such an item could not be closed before this status existed. `close` requires `skickad` or `avskriven`,
+and both are wrong:
+
+| | `avskriven` (CR-047) | `hanterad` |
+|---|---|---|
+| Means | Resolved **without** being sent | Worked from; **sending was never the point** |
+| `## Utfall` | **Required** -- must say why it was not sent | Optional -- no decision was taken |
+| Typical | A recap the meeting made unnecessary | A preparation, a checklist, an inventory |
+
+```markdown
+**Status:** hanterad 2026-10-12
+**Statusnot:** läst inför passet; agendan användes
+```
+
+**The test is whether a send was ever on the table.** Withdrawn records a decision against sending, and
+the withdrawn list is what an operator reads to see what they chose against -- filing used-up material
+there makes that list unreadable and invents a decision nobody took.
+
+**Archivable on the same terms as `skickad`**, and `list` shows these under **HANDLED, NOT SENT**.
+
+A dispatching surface may set it, for the same reason it may set `skickad`: whether material was worked
+from is an observation. It must not write the `Utfall`.
+
+### `Destination` -- where the folder goes home (CR-120)
+
+Optional. Where the material belongs once it is closed:
+
+```markdown
+**Destination:** acme/meetings/management/Dana/
+```
+
+**Never inferred.** Absent, `close` asks as it always has. Written by whoever stages the item, who knows
+the answer -- so `close` files mechanically instead of guessing, and a dispatching surface can offer a
+*file it back* action against a declared target instead of proposing a path of its own.
+
+**Distinct from `Kanonisk källa`, and the pair is the point:** the source says where the *original* lives,
+the destination says where *this folder* goes. For an item whose original lives here they are different
+answers.
 
 ### Status words are declared, not invented (CR-103)
 
@@ -242,6 +288,9 @@ RESOLUTION-READY (archive candidates)
 DRAFT
   260506-someone_topic                 draft               -
 
+HANDLED, NOT SENT (CR-120)
+  261008-alex_weekend-checklist  hanterad 261012    -> _contacts/cai-nilsson/
+
 RESOLVED, NOT SENT (CR-047, CR-103)
   260428-contact_offer            avskriven 260429    superseded by 260429-contact_offer-revised
   260420-dan-smith_reflektion               avskriven 260421    tas muntligt vid nästa samtal
@@ -270,15 +319,18 @@ Alias for `list`.
 1. **Validate:**
    - Folder exists in `<vault>/_outbox/<folder-name>/`
    - `_manifest.md` exists and parses
-   - `Status:` is `skickad ...` or `avskriven ...` (warn if `draft`, abort if missing). An
-     `avskriven` item needs `Utfall` to say why (CR-047); when it is empty, write it from the
-     status note (`Skickades inte: <note>`, or `Ersatt av <item> (<its status>)` for a
-     superseded draft) and show it before moving
+   - `Status:` is `skickad ...`, `avskriven ...` or `hanterad ...` (warn if `draft`, abort if
+     missing). An `avskriven` item needs `Utfall` to say why (CR-047); when it is empty, write it
+     from the status note (`Skickades inte: <note>`, or `Ersatt av <item> (<its status>)` for a
+     superseded draft) and show it before moving. A `hanterad` item needs **no** `Utfall` (CR-120)
+     -- there was no decision to record
    - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm)
    - `Utfall` section populated (warn if empty)
 
 2. **Determine destination:**
-   - From manifest `Kontakt:` or folder-name prefix, identify contact/project
+   - **`Destination:` in the manifest wins when present (CR-120)** -- it was written by whoever staged
+     the item and needs no guessing. Verify the path exists and confirm; never silently create it
+   - Otherwise, from manifest `Kontakt:` or folder-name prefix, identify contact/project
    - For contact: `<vault>/_contacts/<contact-slug>/`
    - For project: read manifest `Projekt:` or ask user
    - **Multiple contacts** (e.g. ambassador-style fan-out): ask user -- duplicate to each, or pick primary, or keep in a shared `_outbox/.archive/`. Default suggestion: duplicate to each contact folder.
