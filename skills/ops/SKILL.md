@@ -325,6 +325,22 @@ nearest declaration wins, walking up).
 python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings [--date YYMMDD]
 ```
 
+**Validate the configuration first (CR-119) — part of every prepare, before anything else is read.** A decision
+that changes the project's shape is not done until the config says so; otherwise the agenda keeps reading the old
+project and nobody notices until a number looks wrong in the room.
+
+1. **The script checks what it can see** and prints it in the sources block (`config` lines) and, in card layout,
+   on the card under *Built from* as **Config: N finding(s)**: the milestone date passed, or undecided past its
+   decide-by; a card without a milestone; a declared label the repo does not have; a declared report not found or
+   three days old or more; a roster name absent from the last three rounds; an unknown kind in the last note; terms
+   without a status in the project's definitions file. Nothing is changed by the script.
+2. **Prepare checks what needs judgement.** Read the decisions since the last agenda and ask of each: *does this
+   change the config?* A source added or retired, a milestone confirmed or moved, a definition, someone joining or
+   leaving the meeting. **Propose the edit out loud before generating**, make it, then regenerate.
+3. **State it.** The generator leaves a slot, `<!-- CONFIG-REVIEW: … -->`; prepare replaces it with *Config
+   reviewed against <decisions>*. `/ops orient` reports an agenda still carrying it as *generated, config review
+   not stated*, after the digest (CR-101).
+
 **Card layout (CR-107, `carry_forward.layout: card`).** The generated agenda then obeys *the card
 comes first* (above): it opens with **Milestone → Movement → Blockers → Dependencies → Decisions
 needed today → Stuck? → One-minute round → Close**, and writes everything else -- the Sources block,

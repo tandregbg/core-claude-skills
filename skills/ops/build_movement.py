@@ -357,7 +357,10 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
                  "fixed": bool(FIXED and FIXED in names(i)),
                  "who": [a["login"] for a in i["assignees"]]}
                 for i in gapi if top and prio(i) == top]
-    return headline, path, rep, {"blockers": blockers, "reports": report_state, "top": top}
+    # CR-119: a declared label the repo does not have makes every count silently zero.
+    missing = [x for x in PRIORITY + [FIXED, BLOCKED, ANSWERED] if x and x not in defs]
+    return headline, path, rep, {"blockers": blockers, "reports": report_state, "top": top,
+                                 "missing_labels": missing}
 
 
 def vault_reports(cf: dict, today: dt.date | None = None):

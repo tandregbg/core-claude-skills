@@ -823,6 +823,54 @@ def round_table(path: Path) -> dict[str, str]:
     return out
 
 
+CONFIG_MARKER = "<!-- CONFIG-REVIEW:"
+
+
+def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -> list[str]:
+    """CR-119: what a script can tell about whether the config still describes the project.
+
+    Each finding is one plain sentence. Nothing is changed: the config is a person's to edit,
+    and prepare proposes the edit out loud before generating.
+    """
+    out = []
+    ms = cf.get("milestone") or {}
+    def _d(v):
+        try:
+            return v if isinstance(v, datetime.date) else datetime.datetime.strptime(str(v), "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    if ms:
+        if ms.get("date") and _d(ms["date"]) and _d(ms["date"]) < day:
+            out.append(f"milestone date {ms['date']} has passed: move it, or declare the next milestone")
+        elif not ms.get("date") and ms.get("decide_by") and _d(ms["decide_by"]) and _d(ms["decide_by"]) < day:
+            out.append(f"milestone has no date and its decide-by ({ms['decide_by']}) has passed")
+    elif cf.get("layout") == "card":
+        out.append("card layout without a milestone: the card has nothing to run toward")
+    for lab in ((mv_x or {}).get("missing_labels") or []):
+        out.append(f"declared label `{lab}` does not exist in the repo: its counts read as zero")
+    for nm, _own, p_, age in ((mv_x or {}).get("reports") or []):
+        if p_ is None:
+            out.append(f"report '{nm}' declared but not found")
+        elif age is not None and age >= 3:
+            out.append(f"report '{nm}' is {age} days old: retire the declaration, or ask its owner")
+    rounds = [round_table(n) for _d_, n in hist[-3:]]
+    if rounds and all(rounds):
+        absent = [p_["name"] for p_ in cf.get("people") or []
+                  if not any(k.lower() in r for r in rounds for k in [p_["name"]] + list(p_.get("aliases") or []))]
+        if absent:
+            out.append("on the roster, not in the last three rounds: " + ", ".join(absent)
+                       + " (absent, or no longer in this meeting?)")
+    if hist:
+        sec = SECTION.search(hist[-1][1].read_text(encoding="utf-8"))
+        unknown = sorted({k for k, _l in KIND_RE.findall(sec.group(1))} - set(KINDS)) if sec else []
+        if unknown:
+            out.append("unknown kind(s) in the last note: " + ", ".join(f"[{k}]" for k in unknown))
+    dfs = definitions(cf)
+    if dfs["unmarked"]:
+        out.append(f"{dfs['unmarked']} term(s) in {dfs['definitions'].name} without a status")
+    return out
+
+
 def declared_track(value: str, tracks: list[str]) -> str | None:
     """The declared track a round cell names, in its declared spelling -- or None.
 
@@ -1047,7 +1095,15 @@ def main() -> None:
     if card:
         src.append(f"  movement  {('read' if mv_head else (mv_note or '—'))[:60]}")
         src += mv_reports
-    src += ["```", ""]
+    # CR-119: the config checked against the project, by script; prepare adds the judgement.
+    cfg_findings = config_checks(cf, hist, day, mv_x if card else None)
+    for f_ in cfg_findings:
+        src.append(f"  config    {f_}")
+    if not cfg_findings:
+        src.append("  config    checks passed")
+    src += ["```", "",
+            f"{CONFIG_MARKER} decisions since {last_date} not yet checked against the config. Prepare: read them,"
+            " propose any config edit out loud, then replace this line with 'Config reviewed against <decisions>'. -->", ""]
 
     # CR-117: the same facts as one line a reader sees first -- what the agenda was
     # built from, what it did not use, and the age of each. Parsed from the block
@@ -1060,7 +1116,7 @@ def main() -> None:
                 continue
             kind, rest = ln[2:11].strip(), ln[11:].strip()
             name, status = (rest[:44].strip(), rest[44:].strip()) if len(rest) > 44 else (rest, "")
-            if kind in ("digest", "round", "record"):
+            if kind in ("digest", "round", "record", "config"):
                 continue                          # recordings feed the note, not the agenda
             if kind == "report":
                 if "current " in status:
@@ -1372,6 +1428,9 @@ def main() -> None:
         A = list(head)
         used_, unused_ = built_from(src)
         fmt = lambda xs: " · ".join(n + (f" ({b})" if b else "") for n, b in xs)
+        if cfg_findings:
+            A.insert(len(A) - 2, f"> **Config: {len(cfg_findings)} finding(s)** — " + "; ".join(cfg_findings)
+                     + ". Fix the config, or say why not, before the meeting.\n")
         A.insert(len(A) - 2, f"> **Built from** ({built}): " + fmt(used_)
                  + ("" if not unused_ else ". **Not used or stale:** " + fmt(unused_))
                  + f". Detail: [{details_name(cf, target)}]({details_name(cf, target)}).\n")

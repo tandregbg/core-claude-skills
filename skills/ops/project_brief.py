@@ -14,7 +14,7 @@ import argparse, os, datetime, json, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_agenda import (COMPANION, config, carried, has_section, key, owner_of, details_name, definitions,
+from build_agenda import (COMPANION, config, carried, has_section, key, owner_of, details_name, definitions, CONFIG_MARKER,
                           streak, next_session, recorded_since, since,
                           fetch_record, fetch_status)   # noqa: E402
 
@@ -172,6 +172,9 @@ def main() -> None:
         elif DIGEST_MARKER in _read_text(agenda) or (details.exists() and DIGEST_MARKER in _read_text(details)):
             # CR-101: generated but its digest slot is unread -- a draft, not an agenda.
             state = "generated, digest not filled"
+        elif CONFIG_MARKER in _read_text(agenda) or (details.exists() and CONFIG_MARKER in _read_text(details)):
+            # CR-119: generated, but nobody has checked the config against the latest decisions.
+            state = "generated, config review not stated"
         else:
             state = "exists"
         out.append(f"    next session    {nxt}  — agenda {state}")

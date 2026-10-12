@@ -9,6 +9,17 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.10] - 2026-10-12
+
+### Added
+
+- **CR-119 — validate the configuration first.** Every generation checks the config against the project and prints
+  `config` findings in the sources block and, on a card, as *Config: N finding(s)*: milestone passed or undecided past
+  its decide-by, a card without a milestone, declared labels missing in the repo, reports not found or three days
+  old, roster names absent from the last three rounds, unknown kinds, unmarked definitions. Prepare reviews the
+  decisions since the last agenda against the config and states it in a slot that `/ops orient` tracks
+  (*generated, config review not stated*). The script never edits the config.
+
 ## [1.89.9] - 2026-10-12
 
 ### Changed
