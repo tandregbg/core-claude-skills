@@ -71,6 +71,7 @@ graph TB
     fetch -->|&lt;venture&gt;/.teamschats/| prepare
     fetch -->|&lt;venture&gt;/.githubmeta/| prepare
     carry -->|the summary's carry-forward section| prepare
+    prepare -->|the agenda| facilitate
     meet -->|a transcript| process
     declare -->|the config| process
     process -->|the summary| carry
