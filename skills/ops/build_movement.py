@@ -222,31 +222,33 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
     known_w = wk is not None and wk["prio_known"]
     fixed_since = h.first_use.get(FIXED) if FIXED else None
     rel = os.path.relpath(out / f"{stamp}-issue-movement.md", root)
+    # CR-114 (a reader, 9/10): every row says whether it is the release gap or all issues, so the two
+    # "waiting for a test" counts cannot be read as duplicates.
+    gap_labels = " or ".join(f"`{g}`" for g in GAP)
+    gap_split = ", ".join(f"{g} {t[g]}" for g in GAP)
+    todo_split = ", ".join(f"{g} {t[g] - t[g + '_fixed']}" for g in GAP)
     head = [
         f"**Movement** — `{repo}`, read {now:%d/%m %H:%M} · details: `{rel}`",
         "",
         "| | Now | Since yesterday | Since 7 days |",
         "|---|--:|--:|--:|",
-        f"| **Open {' + '.join(GAP)}, by label** | **{gap(t)}** ({split}) | "
-        f"{d(gap(t), gap(y)) if known_y else 'not labelled yet'} | {d(gap(t), gap(wk)) if known_w else 'not labelled yet'} |",
-        f"| … still to fix | **{todo(t)}** ({split_todo}) | {d(todo(t), todo(y)) if known_y else '—'} | |",
-        f"| … fixed, waiting for a test | {gap(t) - todo(t)} | | |",
-        f"| Open issues, all | {t['open']} | {d(t['open'], y['open'] if y else None)} | {d(t['open'], wk['open'] if wk else None)} |",
+        f"| **Release gap** — open issues labelled {gap_labels} | **{gap(t)}** ({gap_split}) | "
+        f"{d(gap(t), gap(y)) if known_y else '—'} | {d(gap(t), gap(wk)) if known_w else '—'} |",
+        f"| Release gap: still to fix | **{todo(t)}** ({todo_split}) | {d(todo(t), todo(y)) if known_y else '—'} | |",
+        f"| Release gap: fixed, waiting for a test | {gap(t) - todo(t)} | | |",
+        f"| All issues: open | {t['open']} | {d(t['open'], y['open'] if y else None)} | {d(t['open'], wk['open'] if wk else None)} |",
     ]
     if FIXED:
         wcell = (d(t["fixed"], wk["fixed"]) if wk and fixed_since and
-                 dt.datetime.combine(wk["date"], dt.time(23, 59), TZ) >= fixed_since
-                 else (f"label used from {fixed_since.astimezone(TZ):%d/%m}" if fixed_since else "—"))
-        head.append(f"| Fixed, waiting for a test | {t['fixed']} | {d(t['fixed'], y['fixed'] if y else None)} | {wcell} |")
-    head.append(f"| Opened / closed today | {t['opened']} / {t['closed']} | | |")
+                 dt.datetime.combine(wk["date"], dt.time(23, 59), TZ) >= fixed_since else "—")
+        head.append(f"| All issues: fixed, waiting for a test | {t['fixed']} | {d(t['fixed'], y['fixed'] if y else None)} | {wcell} |")
+    head.append(f"| All issues: opened / closed today | {t['opened']} / {t['closed']} | | |")
 
     gapi = sorted([i for i in live_open if prio(i) in GAP],
                   key=lambda i: (PRIORITY.index(prio(i)), area(i), i["number"]))
     if gapi:
         top = collections.Counter(area(i) for i in gapi).most_common(2)
         head += ["", "Where the gap is: " + "; ".join(f"**{a}** {c}" for a, c in top) + f" of {len(gapi)}."]
-    if first_prio:
-        head.append(f"Priority labels in use since {first_prio.astimezone(TZ):%d/%m}; earlier days have no priority history.")
     if mv.get("note"):
         head.append(str(mv["note"]))
     head += ["", "**Checks: passed** — the rebuilt state matches GitHub now, and every day shown is covered by history."
@@ -300,6 +302,7 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
         if n in defs:
             L.append(f"| `{n}` | {defs[n] or '*(no description)*'} |")
     L += ["", "## 6. Limits", "",
+          (f"- Priority labels in use since {first_prio.astimezone(TZ):%d/%m}; earlier days show —." if first_prio else "- No priority labels found."),
           "- Labels applied when an issue was created leave no event; they count from creation, never before the label's first use.",
           f"- Areas are the repo's `{AREA}` labels, so anyone can reproduce a count with a GitHub filter.",
           "- Ticket systems outside GitHub are not read."]

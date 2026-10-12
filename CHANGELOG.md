@@ -9,6 +9,15 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.89.9] - 2026-10-12
+
+### Changed
+
+- **CR-114: the movement block says which count is which.** A reader took the two "fixed, waiting for a test" rows
+  for duplicates and could not place the line about label history. Rows are now *Release gap* (open, still to fix,
+  fixed waiting for a test) and *All issues* (open, fixed waiting for a test, opened/closed today); the label-history
+  note moves to the details file's limits.
+
 ## [1.89.8] - 2026-10-09
 
 ### Added

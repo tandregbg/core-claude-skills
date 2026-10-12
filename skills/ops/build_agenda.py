@@ -1565,8 +1565,8 @@ def main() -> None:
             C.append(f"**Milestone:** {ms.get('name', '')}" + (f" — {ms['date']}" if ms.get("date") else
                      " — date not set" + (f", decide by {ms['decide_by']}" if ms.get("decide_by") else "")))
         if mv_head:
-            m_ = re.search(r"\*\*Open [^*]+\*\* \| \*\*(\d+)\*\* \(([^)]*)\) \| ([^|]+)\|", mv_head)
-            m2 = re.search(r"still to fix \| \*\*(\d+)\*\*", mv_head)
+            m_ = re.search(r"\*\*Release gap\*\*[^|]*\| \*\*(\d+)\*\* \(([^)]*)\) \| ([^|]+)\|", mv_head)
+            m2 = re.search(r"Release gap: still to fix \| \*\*(\d+)\*\*", mv_head)
             if m_:
                 C.append(f"**Release gap:** {m_.group(1)} open ({m_.group(2)})"
                          + (f", {m2.group(1)} still to fix" if m2 else "") + f" · since yesterday {m_.group(3).strip()}")
