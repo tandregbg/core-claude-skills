@@ -1164,9 +1164,9 @@ working_loop:
     phase: "before the session"
     label: "the agenda"
     command: "/ops prepare (runs build_agenda.py where the loop is wired); /preparation without a config"
-    does: "Writes the agenda: what did not land last time, with its session count and age, then what the archives hold that the room has not heard — the script leaves a digest slot, and the agenda is a draft until prepare has read the messages and filled it (CR-101)"
+    does: "First checks that the project config still matches the project (CR-119). Then writes the agenda as a card: the milestone, the movement of the release gap, the release blockers, what people wait on, the decisions due, and a one-minute round with each person's own items; the sources, the full carried list and the repo detail go to a details file, and every source is shown with its age. The agenda is a draft until prepare has read the new messages and reviewed the config against the latest decisions (CR-101, CR-107, CR-114, CR-117)"
     consumes: ["<venture>/.teamschats/", "<venture>/.githubmeta/", "the summary's carry-forward section"]
-    produces: ["the agenda"]
+    produces: ["the agenda (the card)", "the agenda details file", "the chat post", "the movement file"]
 
   - id: "facilitate"
     phase: "before the session"
