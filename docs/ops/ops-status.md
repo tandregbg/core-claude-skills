@@ -51,7 +51,8 @@ Names and places only, never values.
 
 | Decision | State | Next step | Who | Since | Source |
 |---|---|---|---|---|---|
-| Open proposals: CR-080, CR-109, CR-110, CR-111, CR-112, CR-113 (rest), CR-119 (the card fits the project), CR-120 | Proposed | Decide order and implement per release flow | The maintainer | 2026-10-12 | [Proposals index](../proposals/README.md) "Proposed" |
+| Open proposals: CR-080, CR-109, CR-110, CR-111, CR-112, CR-113 (rest), CR-120, CR-121 (the card fits the project; renumbered from CR-119) | Proposed | Decide order and implement per release flow | The maintainer | 2026-10-12 | [Proposals index](../proposals/README.md) "Proposed" |
+| v1.90.0: CR-122 (hygiene checks), CR-123 (podcast profile, insights schema 3), CR-124 (themes registry) | Proposed 2026-10-13; decisions taken (profile key `profile:`, all three in one minor, `voice` generic, `consensus` counted in status, follow-up vs task set by profile). Contract 41 to 42 | Implement and release as one commit; same day: Marvin CR-025 and the landing page (What's new, both languages) | The maintainer | 2026-10-13 | [CR-123](../proposals/CR-123-podcast-profile-and-insights-schema-3.md) |
 
 ## F. Operator steps waiting in CRs
 
