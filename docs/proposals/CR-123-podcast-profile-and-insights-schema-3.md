@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (target **v1.90.0**, released together with CR-122 and CR-124) |
+| **Status** | **Implemented 2026-10-13, v1.90.0** (with the other two of CR-122, CR-123, CR-124) |
 | **Contract** | additive, `contract_version` 41 → 42 (one bump for the release, shared with CR-124); `schemas.insights` 2 → 3; `schemas.ops_config` "1.4" → "1.5"; new `terms:` ids; `insight_types` gains a profile block. Meeting vaults behave exactly as before |
 | **Date** | 2026-10-13 |
 | **Area** | `ecosystem.yaml` (`schemas`, `terms`, `insight_types`), `ops-config` (`base.yaml` `profiles:`, schema 1.5), `transcript` (Step 3.5, summary skeleton), `ops` (`process`, index update), `insights` (compile Pass 2, `status`, new `migrate`), `promotion_candidates.py`, `tasks` (optional `kind`) |

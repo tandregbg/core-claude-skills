@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed 2026-10-12** |
+| **Status** | **Implemented v1.90.0** (proposed and committed 2026-10-12, released 2026-10-13; the dashboard side is not written yet) |
 | **Contract** | additive — one new status form (`hanterad`), one new optional field (`Destination`) |
 | **Date** | 2026-10-12 |
 | **Area** | `outbox` (`resolved.py`, SKILL.md), `ecosystem.yaml` (`status_forms`), `ops` (`check` outbox aging) |

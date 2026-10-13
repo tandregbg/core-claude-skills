@@ -1,4 +1,4 @@
-# Configuration Schema v1.4
+# Configuration Schema v1.5
 
 ## Overview
 
@@ -12,8 +12,13 @@ This document defines the YAML schema for ops-config files.
 ## Root Properties
 
 ```yaml
-schema_version: "1.3"           # Required: Schema version
+schema_version: "1.5"           # Required: Schema version
 organization: string            # Required: Organization name
+profile: string                 # Optional (CR-123, v1.5): meeting (default) | podcast
+profiles:                       # Optional (CR-123, v1.5): per-key overrides of a profile
+  <name>: object
+themes:                         # Optional (CR-124, v1.5): the themes registry
+  enabled: bool                 #   default false
 language: enum                  # Required: Output language
 swedish_chars: enum             # Optional: Swedish character enforcement (strict)
 language_inheritance:           # Optional (CR-007): Sub-tree inheritance rules
@@ -81,6 +86,48 @@ language_inheritance:
 This means a sub-tree like `_projects/bravo-project/` automatically inherits strict mode without requiring its own CLAUDE.md.
 
 ---
+
+## Profiles (CR-123, v1.5)
+
+A **profile** is a bundle of defaults declared in `base.yaml` `profiles:`. A project selects one with
+one line and may override any of its keys in its own config. Resolved, nearest first, by
+`skills/ops-config/profiles.py <folder>` (which every script uses):
+
+```yaml
+profile: podcast              # missing -> meeting; unknown -> meeting + a /ops check finding
+profiles:
+  podcast:
+    consensus_threshold: 4    # nearest override wins, key by key
+```
+
+| Key | `meeting` (default) | `podcast` | Read by |
+|---|---|---|---|
+| `unit` | `meeting` | `episode` | `/ops`, `/transcript`, Marvin (list label) |
+| `summary_folder` | `meetings/` | `episodes/` | `/ops`, `/transcript`, Marvin (activity) |
+| `index_key` | `meetings_index` | `episode_index` (alias, same behaviour) | `/ops` Step 5 |
+| `follow_up` | `action_items` | `announcements` (Follow-up, no owners, no tasks) | `/transcript`, `/ops` |
+| `insight_types` | `content` | `podcast` (`ecosystem.yaml` `insight_types`) | Step 3.5, Marvin |
+| `promotable_types` | decision, preference, learning, pattern | claim, practice, tool_tip, prediction | `promotion_candidates.py` |
+| `promotes_to` | `rule` (loaded) | `consensus` (never loaded) | `/insights compile` |
+| `count_by` | `date` (CR-098) | `unit` | `promotion_candidates.py` |
+| `voices` | none | host, guest, both | Step 3.5 |
+| `owner_voice` | none | `host` (never counts as independent) | `promotion_candidates.py` |
+| `consensus_threshold` | none | 3 | `promotion_candidates.py` |
+| `task_kinds` | none | episode_idea, guest_lead, housekeeping, publication | `/tasks`, `/ops check` |
+
+Display words are not profile keys: they come from `strings` (`transcript.follow_up`,
+`transcript.themes`, `transcript.originally_published`, `units.recent_<unit>`, `meeting_types.episode`).
+
+## Themes (CR-124, v1.5)
+
+```yaml
+themes:
+  enabled: true               # default false: no Themes line, no registry, no theme checks
+```
+
+With `enabled: true` the project keeps `<project>/_themes.yaml` (see `skills/ops/themes.py` for its
+schema), each summary carries a `Themes:` line and each insight a `themes` list; `/ops check` reports
+disagreements between the three. Available under every profile.
 
 ## Team Structure
 

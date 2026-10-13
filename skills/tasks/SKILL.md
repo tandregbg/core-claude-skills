@@ -82,6 +82,12 @@ next_id: 2
 - No `project:` field per task (implicit from folder context)
 - `context` + `scope` fields at file level (mirrors `_insights.yaml`)
 - `version: 2` distinguishes from v1
+- **`kind` (optional, CR-123):** a task's kind, from the folder profile's `task_kinds`. The podcast
+  profile declares `episode_idea | guest_lead | housekeeping | publication`, because its ledger is the
+  host's **editorial backlog**: announcements in a summary's Follow-up section (a guest's own plans,
+  calls to action to listeners) never become tasks. A profile that declares no kinds writes no `kind`.
+- **The enums are checked (CR-122):** `/ops check` reports a missing `task` (often written as `title`), a
+  `status`, `priority`, `source.type`, `scope` or `kind` outside the declared values. Report only.
 
 ### Root file keeps
 
@@ -353,6 +359,7 @@ properties:
         blocked_reason: { type: [string, "null"] }
         completed: { type: [string, integer, "null"] }
         private: { type: boolean }
+        kind: { type: string }   # optional (CR-123); legal values = the profile's task_kinds
         notes:
           type: array
           items:

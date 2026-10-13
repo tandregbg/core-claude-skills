@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (target **v1.90.0**, released together with CR-123 and CR-124) |
+| **Status** | **Implemented 2026-10-13, v1.90.0** (with the other two of CR-122, CR-123, CR-124) |
 | **Contract** | additive — three report-only findings in `/ops check`; one writing rule for agents that edit YAML; no key changes |
 | **Date** | 2026-10-13 |
 | **Area** | `ops` (`check`), `ops-base` (agent briefs that edit YAML), `transcript` (link targets in summaries), `tasks` (schema enums, read only) |
@@ -59,6 +59,17 @@ Read `ecosystem.yaml` `task_statuses` and the tasks skill schema, and report per
 
 Report only: the check never rewrites a ledger, because the right fix (rename the field, map the
 status, or cancel the task) is a judgement.
+
+## As implemented (v1.90.0)
+
+- `skills/ops/hygiene_check.py` (kinds `links`, `yaml`, `tasks`, `profile`, `themes`), run by `/ops check`.
+- A link target is resolved from the file's folder **and every folder above it**: a vault may write
+  links from its root, and those are not broken.
+- Task findings are **one line per file, field and value**, with the first task ids. A ledger with one
+  habit (eighty tasks with the same undeclared source type) gives one line.
+- `content` (CR-105) and `correspondence` (CR-080) are accepted as `source.type`: the contract declared
+  them as terms after the tasks schema was written. Other undeclared source types are reported; whether
+  to declare them is a separate decision.
 
 ## What this does not do
 

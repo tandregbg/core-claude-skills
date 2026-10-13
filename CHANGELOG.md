@@ -9,6 +9,55 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.90.0] - 2026-10-13
+
+Profiles, insights schema 3 and a themes registry. `contract_version` 41 -> 42, `schemas.insights`
+2 -> 3, `schemas.ops_config` "1.4" -> "1.5". Additive: a vault that sets nothing behaves as before.
+
+### Added
+
+- **CR-123 -- a podcast profile, and consensus that is never a rule.** A project selects
+  `profile: podcast` (default `meeting`, unchanged); `base.yaml` `profiles:` declares both, and
+  `skills/ops-config/profiles.py` resolves them for every script. Under the podcast profile the unit is
+  an episode (`episodes/`, role keyword `episode`, `episode_index` as an alias), section 1 is
+  *Follow-up* (announcements, no owners, never tasks), the insight types are claim, practice, tool_tip,
+  prediction, opportunity and quote, and each insight and confirmation records its `voice`.
+  Confirmations are counted by distinct unit, not date: re-published and same-day episodes share a
+  date. A claim confirmed by `consensus_threshold` independent voices and contradicted by none becomes
+  `consensus` -- knowledge about the conversation, **never loaded** by `/transcript` or `/ops`, and read
+  as `hypothesis` by readers that do not know it. `promotion_candidates.py` reads the profile
+  (`promotable_types`, `count_by`, `promotes_to`) and lists `consensus_candidates` and
+  `consensus_stale`; `/insights status` counts consensus. A confirmation adds an item with a one-line
+  `note` and never extends `rationale` (every profile). Optional `Originally published:` line and
+  `original_date`; optional task `kind` from the profile's `task_kinds`. `/insights migrate --profile`
+  with `profile_migrate.py`: the judged remap as a plan, applied by targeted line edits, re-parsed and
+  compared before anything is written.
+- **CR-124 -- a themes registry.** Opt-in per project (`themes.enabled`), any profile:
+  `<project>/_themes.yaml`, a `Themes:` line per summary, `themes` per insight, reuse before create.
+  `skills/ops/themes.py` checks registry, summaries and insights against each other in every direction
+  and counts units per quarter by original date; theme pages come from
+  `/insights synthesize --themes` into `.knowledge/wiki/themes/`. `/ops process --themes-backfill`
+  proposes tags for older summaries and writes after confirmation.
+- **CR-122 -- link, YAML and task hygiene.** `skills/ops/hygiene_check.py`, run by `/ops check`, reports
+  link targets with a raw parenthesis or space or no file, YAML files re-dumped by an agent (escaped
+  letters), `_tasks.yaml` outside its enums, unknown profiles, and the CR-124 theme findings. Report
+  only. A link target is resolved from the file's folder and every folder above it (vault-root links);
+  task findings are one line per file, field and value; `content` and `correspondence` (CR-105, CR-080)
+  are accepted as task source types. Tried read-only on one venture of a real vault: 0 findings in a
+  small folder; in a large one the links found were files that had moved, and the task lines were
+  source types the schema never declared. ops-base gains the rule: edit YAML by targeted edit, never load and dump a whole file.
+- **CR-120 -- handled is not sent** (committed 2026-10-12, released here): the outbox status
+  `hanterad` for material worked from rather than dispatched, archivable without `Utfall`, and an
+  optional `Destination` field.
+
+### Changed
+
+- `/transcript` Step 0.5 and `/ops` Step 0.5 state that `consensus` is never loaded; the write-time
+  guard takes the profile's types and voices.
+- `ecosystem.yaml`: `insight_types.podcast`; terms `episode`, `profile`, `follow-up`, `consensus`,
+  `theme`; `_themes.yaml` declared under `vault_conventions.per_folder`; `_insights.yaml` schema label
+  `insights v3`.
+
 ## [1.89.10] - 2026-10-12
 
 ### Added

@@ -84,6 +84,21 @@ record keeps sender, recipients, timestamps and thread key; the wire form is dis
 email found in `.transcripts/` is a finding, not a convention** — it happened once, by default,
 which is what settled the question.
 
+**Profiles (CR-123).** `process` resolves the folder's profile first
+(`python3 ~/.claude/skills/ops-config/profiles.py <folder> --text`). With no `profile:` it is
+`meeting` and nothing in this skill changes. Under `profile: podcast` the unit is an **episode**: the
+summary goes to `episodes/` with the role keyword `episode`, section 1 is **Follow-up**
+(announcements, no owners, no tasks), insights use the podcast types and voices, and `index_key:
+episode_index` is the same index update as `meetings_index`. Full rules: `/transcript` Step 1 and
+Step 3.5, which `process` follows.
+
+**Themes (CR-124).** With `themes: {enabled: true}` in the config chain, `process` tags the summary and
+its insights and updates `<project>/_themes.yaml` in the same step (reuse before create; `/transcript`
+Step 3.5). **`/ops process --themes-backfill <project>`** tags summaries written before themes were
+enabled: it proposes a `Themes:` line per summary, in date order, and writes each (summary line,
+insight `themes`, registry entry) only after confirmation. A merge is a person's decision, recorded as
+`status: merged` and `merged_into`; no step merges or deletes a theme on its own.
+
 ### `status` -- Show available configurations
 
 **Trigger:** `/ops status`
@@ -1022,6 +1037,9 @@ evaluation is the part that varies by organisation, so it is **declared, never a
 
 **Read-only. Writes nothing, fetches nothing, judges nothing.**
 
+**The first line names the resolved profile (CR-123)**: `Profile: podcast (from <file>)`, or
+`Profile: meeting (default)`. An unknown profile name is printed with its fallback.
+
 `/ops status` reports which *config* applies. `/ops check` audits closure debt across a vault. This
 reports one folder's **current state** — the question a session asks when it opens a project cold and
 would otherwise rebuild the answer from four files, losing whatever nobody wrote down.
@@ -1067,6 +1085,15 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
 
 1. Resolve the contract registry (`workflows.meeting_templates` from the merged config; `default` = CR-006 canonical).
 2. For each `YYMMDD-*.md` meeting summary in the folder (skip preps, agendas, emails, `.archive/`): resolve its contract by `match` glob and run the three checks (heading sequence, action-table header row, empty-Beslut marker).
+2a. **Hygiene (CR-122, CR-123, CR-124).** Run
+   `python3 ~/.claude/skills/ops/hygiene_check.py <folder>` and report its lines under their kinds:
+   `links` (a raw `(`, `)` or space in a Markdown link target, or a relative target that does not
+   exist), `yaml` (escaped letters such as `\xE5`: a file an agent re-dumped), `tasks` (`_tasks.yaml`
+   outside its declared enums, including a `kind` the profile does not declare), `profile` (an unknown
+   profile name) and `themes` (the registry checks, when themes are enabled: registry, summary line and
+   insights disagreeing in any direction, unknown or merged ids, too many primary themes, a missing
+   synthesis page). **Report only**: the fix is a judgement each time.
+
 2b. **`agenda_suffix` names the project (CR-082).** Where `carry_forward` is declared, check that
    `agenda_suffix` contains the project's folder slug. A default or generic suffix
    (`agenda-daily-standup`) produces filenames that say nothing about where they came from — and an
@@ -1161,7 +1188,7 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
 
 Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations leave live-looking corpses, sent outbox items never get archived. Bookkeeping follows attention, not structure -- so nothing catches the abandoned lane until a human stumbles on it. `/ops check` is the missing sweeper: one read-only pass that detects the closure-debt classes and **offers** fixes (report-only by default; every fix is confirmed, never automatic).
 
-**The nine checks:**
+**The checks:**
 
 1. **Index lag** -- README.md / meetings/README.md whose newest referenced date lags the folder's newest `YYMMDD-*` file or CHANGELOG head entry by >14 days. CHANGELOGs are the heartbeat; READMEs are the lag indicator -- compare them per folder.
 2. **Ledger rot** -- `_tasks.yaml` with open tasks whose `last_updated` lags folder activity by >30 days; `_insights.yaml` whose `last_compiled` stamp is absent or >30 days older than its newest entry (compile never ran / is stale).
@@ -1181,6 +1208,9 @@ declared form** (report the item, the word, and the closest declared form from
 7. **Triage hygiene (CR-022)** -- if a triage doc is registered: INKORG items unsorted >7 days, `[x]` items not yet moved to the KLART archive, week anchor >7 days stale, plaintext-credential-looking lines (no-secrets rule; lines marked `<!-- secret-ok -->` are a recorded owner decision and are skipped). Offered fix: `/inbox triage refresh` (which handles all but the sorting -- that stays human).
 8. **Contract alignment & repo privacy (CR-023/CR-029)** -- if `workflows.sweep.alignment_check.command` and/or `workflows.sweep.privacy_scan.command` are configured (maintainer machines only; **absent → skip silently**): run each command (read-only by construction) and parse its `[OK]`/`[DRIFT]`/`[FINDING]`/`[SKIP]` verdict lines. The privacy scan watches the whole public-repo tree continuously — denylist identifiers, secret patterns, and name-like tokens missing from the invented-examples allowlist — so a leak that somehow lands is caught within a week, not at the next audit. Report each `[DRIFT]` component with expected-vs-actual version and a pointer to the update runbook (documented in the alignment script's header). **`[SKIP]` is reported as *unverified*, not clean** -- an unreachable component (e.g. a stale mount) is itself a finding, and has previously hidden six releases of drift. Never auto-applies fixes: cross-repo version references and live deploys are human-confirmed changes. The alignment command stays the single source of truth for the component list; the sweep is the scheduled reader that guarantees its output is actually seen.
 9. **Structure conformance (CR-025)** -- enforce the CR-010 single-inbox/outbox rule with a **fuzzy matcher**, because reality drifts through variants that exact-name checks miss: scan for directories matching `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*`, and localized forms (`inkorg*`/`utkorg*`), case-insensitive. Everything except the vault-root `_inbox/` + `_outbox/` pair is a finding -- **including empty scaffolds** (they re-seed the habit). Paths in `workflows.sweep.structure_exemptions` are skipped with a one-line `(exempt: <path> -- <reason>)` note: deliberate exceptions are recorded once and respected. Offered fixes (never auto-applied): merge pending items into the central folder *via the normal `/inbox`/`/outbox` flows* so manifests and indexes stay true; archive already-resolved material to its destination folder; delete empty scaffolds; or add a `structure_exemptions` entry if the exception is deliberate. Rationale worth repeating in the report: a second outbox means the central pending list lies.
+
+11. **Hygiene (CR-122)** -- the folder check's `hygiene_check.py` run over the whole scope: link targets,
+re-dumped YAML, task ledgers outside their enums, unknown profiles, theme consistency. Report only.
 
 10. **Unregistered project (CR-086)** -- a folder carrying an `_ops.yaml` but **no row in any register declared under `registry:`** is a finding, with the proposed row as the offered fix. This is what catches a project created before `/ops project new` existed, or created by hand after it. Registers are resolved through the normal config chain, so both a vault-root portfolio and a per-organisation index count; **a vault that declares no register skips this check silently** rather than reporting every project. Never auto-applies: a hand-written register carries judgement columns (role, sponsor, mode) the sweep cannot fill, and a row proposed with those blank is the point -- it shows what is missing instead of inventing it.
 
@@ -1365,7 +1395,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 Before parsing the input, load any promoted **rules** from the `_insights.yaml` chain in scope:
 
 1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `.handoff/`, `clones/`).
-2. **Filter to rules:** entries where `confidence: rule` AND `status: active`.
+2. **Filter to rules:** entries where `confidence: rule` AND `status: active`. **`consensus` is never loaded** (CR-123): it records what independent voices said, not how this session should work. An unknown confidence is read as `hypothesis`, never `rule`.
 3. **Cap to 20 entries** — if more, prefer highest `confirmation_count`, ties broken by most recent confirmation date.
 4. **Build a one-line-per-rule preamble** in the form `[type] summary` and treat it as additional standing instructions for this run. For example:
    - `[preference] Bob prefers concise weekly summaries`
@@ -1432,9 +1462,9 @@ Update files per `workflows.update_files` from config:
 |----------|--------|--------|
 | `summary` | Meeting summary | Always created (Step 3) |
 | `changelog` | CHANGELOG.md | Add dated entry at top |
-| `readme` | README.md | Update Current Status, Active Tasks, Recent Meetings |
-| `task_yaml` | _tasks.yaml | Update/create per-folder task file (v2 schema). **Skipped entirely when `workflows.task_ledger.mode` is not `local` (CR-040)** |
-| `meetings_index` | meetings/README.md | Add entry to meeting index |
+| `readme` | README.md | Update Current Status, Active Tasks, Recent Meetings (the list label is the profile's: `strings.units.recent_<unit>`, CR-123) |
+| `task_yaml` | _tasks.yaml | Update/create per-folder task file (v2 schema). **Skipped entirely when `workflows.task_ledger.mode` is not `local` (CR-040).** Under `follow_up: announcements` (podcast profile) Follow-up rows never become tasks; the ledger is the host's editorial backlog, each task with a `kind` from the profile's `task_kinds` (CR-123) |
+| `meetings_index` | `<summary_folder>/README.md` | Add entry to the unit index. `episode_index` is an accepted alias with the same behaviour (CR-123); the folder is the profile's `summary_folder` (`meetings/` by default) |
 
 For `changelog`, follow the format in ops-base. Always reference the meeting summary file.
 
@@ -1487,7 +1517,7 @@ After updating files, scan the meeting summary for durable insights worth accumu
 
 **Same extraction logic as `/transcript` Step 3.5** (insight types, threshold, format, dedup). See the transcript skill for the full `_insights.yaml` schema and extraction criteria.
 
-**Reusability (CR-020):** Names are allowed in insight entries (the former no-names privacy rule is retired). Prefer name-free phrasing in `summary`/`tags` when the insight generalizes -- `context` and `source.file` carry the who/what; names in `rationale` are always fine. Apply the write-time vocabulary guard from `/transcript` Step 3.5 (canonical types only, `confidence` = `hypothesis|rule`, YYMMDD dates, integer ids, max 5 tags).
+**Reusability (CR-020):** Names are allowed in insight entries (the former no-names privacy rule is retired). Prefer name-free phrasing in `summary`/`tags` when the insight generalizes -- `context` and `source.file` carry the who/what; names in `rationale` are always fine. Apply the write-time vocabulary guard from `/transcript` Step 3.5 (the resolved profile's types only, `confidence` = `hypothesis|rule|consensus` and never written here above `hypothesis`, YYMMDD dates, integer ids, max 5 tags, `voice` only from the profile's voices, targeted edits and never a re-dump, CR-122/CR-123).
 
 **Swedish characters:** When writing Swedish content in `_insights.yaml`, ALL words MUST use correct å, ä, ö. YAML files are equally prone to missing characters.
 

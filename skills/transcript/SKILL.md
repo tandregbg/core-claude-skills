@@ -43,7 +43,7 @@ Template strings marked as `{strings.section.key}` are resolved at runtime.
 Before creating the summary, load any promoted **rules** from the `_insights.yaml` chain in scope:
 
 1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`).
-2. **Filter to rules:** entries where `confidence: rule` AND `status: active`.
+2. **Filter to rules:** entries where `confidence: rule` AND `status: active`. **`consensus` is never loaded** (CR-123): it is knowledge about a conversation (claims several guests made), not an instruction to this session. A value this step does not know is read as `hypothesis`, never as `rule`.
 3. **Cap to 20 entries** — if more, prefer highest `confirmation_count`, ties broken by most recent confirmation date.
 4. **Build a one-line-per-rule preamble** in the form `[type] summary`. Treat the preamble as additional standing instructions for this run.
 
@@ -59,6 +59,30 @@ Do not echo the preamble in the output. Rules influence content, not chrome.
 ---
 
 ## Step 1: Create the Summary
+
+**Profile first (CR-123).** Resolve the target folder's profile
+(`python3 ~/.claude/skills/ops-config/profiles.py <folder> --text`; no `profile:` means `meeting` and
+everything below applies unchanged). Under the **podcast** profile:
+
+- the unit is an **episode**; summaries go to the profile's `summary_folder` (`episodes/`) and the
+  filename role keyword is `episode` (`YYMMDD-episode-<description>.md`, CR-089, forward only);
+- section 1 is **Follow-up** (`strings.transcript.follow_up`: *Follow-up* / *Uppföljning*) instead of
+  Next Steps: a plain list of announcements -- the guest's own plans, the next episode, the host's
+  housekeeping notes, calls to action to listeners. **No owner column and no task import** (Step 4 is
+  skipped for it). A deliverable of the host's with real consequence goes to the editorial backlog
+  (`/tasks`, with a `kind`), not to Follow-up;
+- the Decisions section is still written, and is usually the empty-marker form;
+- voices are the profile's (`host`, `guest`): attribute what is said to the voice, by name where the
+  transcript gives one.
+
+**Optional metadata lines (every profile)**, directly under the heading:
+
+- `**Originally published:** YYYY-MM-DD` (`strings.transcript.originally_published`) -- for re-published
+  or back-catalogue material whose true date differs from the date in the file name. The file name keeps
+  the processing/publication date; anything time-based (reading order, confirmation order, theme
+  quarters) uses this date when present.
+- `**Themes:** T07 (primary), T03` (`strings.transcript.themes`) -- only when the project enables themes
+  (CR-124, see Step 3.5). Two to six themes, at most two primary.
 
 ### Heading Format
 1. Check for date in filename or metadata (YYMMDD, YYYYMMDD, YYYY-MM-DD, etc.)
@@ -230,6 +254,9 @@ Example: `250721-summary-Alex-Bob-strategisk-genomgång.md` (files written befor
 Use the resolved canonical name (with correct Swedish characters) in the filename. For example, if the transcript says "dave" but `_contacts/david-ekberg/_meta.yaml` has `display_name: "David Ekberg"`, the filename should use `David-Ekberg`.
 
 **Slug contract (CR-021):** the filename follows the same Swedish-character rule as the content -- keep å/ä/ö in every slug token (`möte`, not `mote`/`m0te`; `utlösen`, not `utlosen`), run the driftword check against the slug before saving, always use the `YYMMDD-` prefix, and always include the English role keyword from `terms:` (`summary`, `agenda`, ... — CR-089) so the file's role is machine-readable. See ops-base General Naming Rules.
+
+**Links (CR-122):** a Markdown link target that contains `(`, `)` or a space is written percent-encoded
+(`%28`, `%29`, `%20`); the link text stays readable. `/ops check` reports raw ones.
 
 If the project has a CLAUDE.md that defines specific filename patterns (MEETING FILENAME FORMAT section), follow those conventions instead. For example, management 1-on-1s, weekly meetings, board meetings, and marketing meetings may each have their own naming pattern.
 
@@ -449,6 +476,18 @@ After creating the summary and updating the CHANGELOG, scan the summary for dura
 | `quote` | Memorable verbatim quote | "Ska du lyckas i affär så måste du gneta. I varenda liten del av businessen." |
 | `metric` | A measurement where the number **is** the insight | "Trial-to-paid conversion rose from 4.1% to 6.8%" |
 
+The list above is the **meeting** profile's (`ecosystem.yaml` `insight_types.content`). Under the
+**podcast** profile (CR-123) the types are `insight_types.podcast`:
+
+| Type | Captures | Example |
+|------|----------|---------|
+| `claim` | Something asserted to be true | "Most early hires fail on pace, not skill" |
+| `practice` | A way of working someone uses | "Writes the press release before the product" |
+| `tool_tip` | A concrete tool or technique | "Records every customer call and rereads the first minute" |
+| `prediction` | A statement about what will happen | "Voice interfaces replace forms within five years" |
+| `opportunity` | An idea not yet acted on | as above |
+| `quote` | A memorable verbatim statement | as above |
+
 ### Threshold
 
 Only extract insights that are:
@@ -511,7 +550,7 @@ rationale: "Tim, reflecting on his role in the partner discussion"
 
 ### `_insights.yaml` format
 
-Schema version 2 (CR-013) adds the optional `confidence`, `confirmation_count`, `confirmations[]`, and `contradicted_by[]` fields. v1 readers ignore them.
+Schema version 2 (CR-013) adds the optional `confidence`, `confirmation_count`, `confirmations[]`, and `contradicted_by[]` fields. v1 readers ignore them. Schema version 3 (CR-123) adds `voice`, `independent_count`, `owner_count`, `confirmations[].voice`, `confirmations[].note`, `original_date` and `themes`, and the confidence `consensus`; full rules in the insights skill, "Insights schema 3".
 
 ```yaml
 version: 2
@@ -535,20 +574,40 @@ insights:
     confirmation_count: 1
     confirmations: []         # [{source, date}], populated on promotion
     contradicted_by: []       # [{source, date}], populated on demotion
+    # CR-123 schema 3 (optional; written when the profile declares voices)
+    voice: guest              # who raised it in THIS summary: a profile voice (host | guest | both)
+    original_date: YYMMDD     # when the summary has an Originally published line
+    themes: [T07]             # CR-124, when the project enables themes
 
 next_id: 2
 ```
 
-**When `/transcript` writes new insights:** always emit them as `confidence: hypothesis` with `confirmation_count: 1`. Promotion to `rule` happens later via `/insights compile`. Do not promote inline — Step 3.5 only extracts; lifecycle transitions are batched.
+**Confirming an existing insight (every profile, CR-123):** append one item to `confirmations[]`
+(`{source, date, voice, note}`, where `note` is one line saying how this unit said it) and bump
+`confirmation_count`. **Never extend `rationale`** to record a confirmation -- appended clauses turn a
+rationale into a log. A unit that disagrees goes to `contradicted_by[]` the same way. Under a profile
+with voices, also recount `independent_count` and `owner_count` (distinct units, the origin included;
+`both` counts for each), or leave them for `/insights compile`, which recounts.
+
+**Themes (CR-124, only with `themes.enabled`):** read `<project>/_themes.yaml` first and **reuse before
+create**: a new theme only when no active theme or alias fits and it should plausibly recur in three or
+more units. Write the summary's `Themes:` line, the insight's `themes`, and in the **same step** the
+registry (`units[]` entry with role and a one-line note, the insight ids in `insight_ids`, `last_seen`),
+by targeted edit. No personal or company names in any theme field.
+
+**When `/transcript` writes new insights:** always emit them as `confidence: hypothesis` with `confirmation_count: 1`. Promotion to `rule` (or, under the podcast profile, `consensus`) happens later via `/insights compile`. Do not promote inline — Step 3.5 only extracts; lifecycle transitions are batched.
 
 ### Write-time vocabulary guard (CR-020)
 
 Before writing any entry to `_insights.yaml`, verify:
 
-- `type` is one of: `decision | preference | learning | opportunity | pattern | quote | metric | edge_case | correction | skill_pattern`. Never invent variants (`decision-pattern`, `principle`, `outcome`, `design` are known past drift -- map to the nearest canonical type instead).
-- `confidence` (when present) is `hypothesis` or `rule` -- never `high`/`medium`/`confirmed`/`supported`. A re-confirmed insight keeps `confidence: hypothesis` and bumps `confirmation_count`; it does not rename its confidence.
+- `type` is one of the resolved profile's list (`ecosystem.yaml` `insight_types.<profile insight_types>`) or the evolution types: meeting `decision | preference | learning | opportunity | pattern | quote | metric`, podcast `claim | practice | tool_tip | prediction | opportunity | quote`, evolution `edge_case | correction | skill_pattern`. Never invent variants (`decision-pattern`, `principle`, `outcome`, `design` are known past drift -- map to the nearest canonical type instead).
+- `confidence` (when present) is `hypothesis`, `rule` or `consensus` (CR-123; never written by this step) -- never `high`/`medium`/`confirmed`/`supported`. A re-confirmed insight keeps `confidence: hypothesis` and bumps `confirmation_count`; it does not rename its confidence.
 - `date` is `YYMMDD` (never ISO `YYYY-MM-DD`), `id` is an integer, and `next_id` equals `max(id)+1` after the write.
 - `tags` has at most 5 entries.
+- `voice` (when present) is one of the profile's `voices`; never written under a profile that declares none.
+- **Edit, never re-dump (CR-122).** Insert or change lines in place; never load the whole file and
+  write it back. A re-dump reorders keys, drops comments and escapes å/ä/ö.
 - **Append inside the list, never at the end of the file (CR-096).** `next_id` is a top-level key that
   follows `insights:`. New entries belong **before** it, at the list's indentation. Written at
   end-of-file they land outside the list -- which either breaks the parse, or worse, parses cleanly
@@ -649,6 +708,7 @@ Source: [transcript.md](path/to/transcript.md)
 Do NOT offer task import if:
 - No action items found for the user
 - User declined import previously in same session
+- The profile's `follow_up` is `announcements` (CR-123): Follow-up rows are announcements, never tasks. A host deliverable with real consequence is offered as an editorial-backlog task with a `kind` from the profile's `task_kinds`, one at a time and only when the user confirms
 
 ### Integration with /tasks skill
 

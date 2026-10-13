@@ -59,16 +59,43 @@ that is gone or no longer a candidate, makes it `stale`.
 CONFIG: the nearest `.claude/ops-config.yaml` or `_ops.yaml` walking up from the
 target that sets workflows.knowledge_extraction.evolution; --config names one.
 Flags override the file.
+
+PROFILES (CR-123): each folder's profile is resolved by skills/ops-config/profiles.py.
+The `meeting` profile changes nothing above. A profile supplies:
+  promotable_types  the candidate filter, instead of the four meeting types
+  count_by          `date` (CR-098) or `unit`: distinct `source` files, because
+                    several units can share one publication date. Every group
+                    reports `distinct_units` beside `distinct_dates`, and
+                    `confirmation_count` is the one the profile names
+  promotes_to       `rule` or `consensus`. For `consensus` the script also lists
+                    `consensus_candidates`, one per ENTRY, from the entry's own
+                    source and its confirmations[]:
+                      independent_count  distinct units where a voice other than
+                                         owner_voice raised it (`both` counts)
+                      owner_count        distinct units where owner_voice raised it
+                                         (`both` counts)
+                      eligible           independent_count >= consensus_threshold,
+                                         contradicted_by empty, type promotable,
+                                         status active, not already rule/consensus
+                    A unit whose voice is missing counts as neither and is listed
+                    under `unlabelled`. `consensus_stale` lists entries already at
+                    consensus that no longer pass (a contradiction arrived, a
+                    recount fell). Consensus is never a rule: nothing here, and
+                    nothing in /transcript Step 0.5, loads it.
 """
 import argparse, datetime, hashlib, json, os, sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-config"))
+import profiles  # noqa: E402  (CR-123: one resolver for every script)
 
 try:
     import yaml
 except ImportError:
     sys.exit("needs pyyaml -- run with a python that has it")
 
-PROMOTABLE = ("decision", "preference", "learning", "pattern")
+PROMOTABLE = ("decision", "preference", "learning", "pattern")   # the meeting profile's list
+NOT_CANDIDATE_CONFIDENCE = ("rule", "consensus")
 DEFAULT_THRESHOLD = 3
 REVIEW_DECISIONS = ("approved", "rejected")
 
@@ -123,14 +150,62 @@ def _tags(entry: dict) -> list:
     return [str(t).strip().lower() for t in raw if str(t).strip()]
 
 
-def is_candidate(entry: dict) -> bool:
+def is_candidate(entry: dict, promotable=PROMOTABLE) -> bool:
     if not isinstance(entry, dict) or not isinstance(entry.get("id"), int):
         return False
-    if str(entry.get("confidence") or "").strip().lower() == "rule":
+    if str(entry.get("confidence") or "").strip().lower() in NOT_CANDIDATE_CONFIDENCE:
         return False
     if str(entry.get("status") or "active").strip().lower() != "active":
         return False
-    return str(entry.get("type") or "").strip().lower() in PROMOTABLE
+    return str(entry.get("type") or "").strip().lower() in promotable
+
+
+def _unit(value) -> str:
+    return str(value or "").strip()
+
+
+def _voice(value) -> str:
+    return str(value or "").strip().lower()
+
+
+def voice_units(entry: dict, owner: str) -> dict:
+    """Distinct units by voice, from the entry's own source and its confirmations (CR-123)."""
+    independent, owned, unlabelled = set(), set(), set()
+    sightings = [(entry.get("source"), entry.get("voice"))]
+    for c in entry.get("confirmations") or []:
+        if isinstance(c, dict):
+            sightings.append((c.get("source"), c.get("voice")))
+    for source, voice in sightings:
+        unit, v = _unit(source), _voice(voice)
+        if not unit:
+            continue
+        if not v:
+            unlabelled.add(unit)
+            continue
+        if v == "both" or v != owner:
+            independent.add(unit)
+        if v == "both" or v == owner:
+            owned.add(unit)
+    return {"independent": sorted(independent), "owner": sorted(owned),
+            "unlabelled": sorted(unlabelled - independent - owned)}
+
+
+def consensus_state(entry: dict, prof: dict) -> dict:
+    owner = _voice(prof.get("owner_voice"))
+    threshold = int(prof.get("consensus_threshold") or DEFAULT_THRESHOLD)
+    promotable = tuple(prof.get("promotable_types") or ())
+    units = voice_units(entry, owner)
+    contradicted = [c for c in (entry.get("contradicted_by") or []) if c]
+    passes = (len(units["independent"]) >= threshold and not contradicted
+              and str(entry.get("type") or "").strip().lower() in promotable
+              and str(entry.get("status") or "active").strip().lower() == "active")
+    return {"id": entry.get("id"), "type": entry.get("type"), "summary": entry.get("summary"),
+            "confidence": entry.get("confidence") or "hypothesis",
+            "independent_count": len(units["independent"]), "owner_count": len(units["owner"]),
+            "stored_independent_count": entry.get("independent_count"),
+            "stored_owner_count": entry.get("owner_count"),
+            "contradicted": bool(contradicted), "threshold": threshold, "passes": passes,
+            "units": units}
 
 
 # --- the arithmetic ------------------------------------------------------
@@ -232,10 +307,11 @@ def shared_tags(members: list, topic_tags) -> list:
     return out
 
 
-def scan(root: Path, threshold: int, topic_tags) -> dict:
+def scan(root: Path, threshold: int, topic_tags, profile_override: dict | None = None) -> dict:
     report = {"root": str(root), "threshold": threshold,
               "topic_tags_configured": topic_tags is not None,
-              "folders_scanned": 0, "unreadable": [], "candidate_groups": []}
+              "folders_scanned": 0, "unreadable": [], "profiles": {},
+              "candidate_groups": [], "consensus_candidates": [], "consensus_stale": []}
     for f in insight_files(root):
         try:
             doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
@@ -243,19 +319,43 @@ def scan(root: Path, threshold: int, topic_tags) -> dict:
             report["unreadable"].append({"file": str(f), "error": type(error).__name__})
             continue
         report["folders_scanned"] += 1
-        entries = [e for e in (doc.get("insights") or []) if is_candidate(e)]
-        by_id = {e["id"]: e for e in entries}
         folder = f.parent
         try:
             rel = str(folder.relative_to(root)) if root.is_dir() else str(folder)
         except ValueError:
             rel = str(folder)
-        for kind in PROMOTABLE:
+        resolved = profiles.resolve(folder)
+        prof = dict(resolved["values"])
+        if profile_override:
+            prof.update(profile_override)
+        promotable = tuple(str(t).strip().lower() for t in (prof.get("promotable_types") or PROMOTABLE))
+        count_by = prof.get("count_by") or "date"
+        promotes_to = prof.get("promotes_to") or "rule"
+        report["profiles"][rel] = {"name": resolved["name"], "count_by": count_by,
+                                   "promotes_to": promotes_to, "warnings": resolved["warnings"]}
+        everything = [e for e in (doc.get("insights") or []) if isinstance(e, dict)]
+        entries = [e for e in everything if is_candidate(e, promotable)]
+        by_id = {e["id"]: e for e in entries}
+        if promotes_to == "consensus":
+            for e in everything:
+                if not isinstance(e.get("id"), int):
+                    continue
+                conf = str(e.get("confidence") or "").strip().lower()
+                if conf == "rule":
+                    continue
+                cs = dict(consensus_state(e, prof), folder=rel)
+                if conf == "consensus":
+                    if not cs["passes"]:
+                        report["consensus_stale"].append(cs)
+                elif cs["passes"]:
+                    report["consensus_candidates"].append(cs)
+        for kind in promotable:
             same_type = [e for e in entries if str(e.get("type")).strip().lower() == kind]
             for members in components(same_type):
                 if len(members) < threshold:
                     continue
                 dates = sorted({_date(e.get("date")) for e in members})
+                units = sorted({_unit(e.get("source")) for e in members if _unit(e.get("source"))})
                 state, own, subsets = review_states(members, by_id)
                 report["candidate_groups"].append({
                     "folder": rel,
@@ -264,7 +364,11 @@ def scan(root: Path, threshold: int, topic_tags) -> dict:
                     "canonical_id": members[0]["id"],
                     "size": len(members),
                     "distinct_dates": len(dates),
-                    "single_session": len(dates) == 1,
+                    "distinct_units": len(units),
+                    "count_by": count_by,
+                    "confirmation_count": len(units) if count_by == "unit" else len(dates),
+                    "promotes_to": promotes_to,
+                    "single_session": (len(units) if count_by == "unit" else len(dates)) == 1,
                     "shared_tags": shared_tags(members, topic_tags),
                     "group_key": group_key(members),
                     "review_state": state,
@@ -275,6 +379,7 @@ def scan(root: Path, threshold: int, topic_tags) -> dict:
                                  "source": e.get("source")} for e in members],
                 })
     report["candidate_groups"].sort(key=lambda g: (-g["size"], g["folder"], g["type"]))
+    report["consensus_candidates"].sort(key=lambda c: (-c["independent_count"], c["folder"], c["id"]))
     return report
 
 
@@ -293,11 +398,23 @@ def as_text(report: dict) -> str:
             flags.append(g["review_state"])
         tags = ", ".join(t["tag"] + (" (topic)" if t.get("topic") else "") for t in g["shared_tags"])
         lines.append("")
+        count = (f"{g['distinct_units']} unit(s)" if g.get("count_by") == "unit"
+                 else f"{g['distinct_dates']} date(s)")
         lines.append(f"{g['folder']}  {g['type']}  {g['size']} entries, "
-                     f"{g['distinct_dates']} date(s){'  [' + '; '.join(flags) + ']' if flags else ''}")
+                     f"{count}{'  [' + '; '.join(flags) + ']' if flags else ''}")
         lines.append(f"  shared: {tags}")
         for m in g["members"]:
             lines.append(f"  #{m['id']} {m['date']}  {m['summary']}")
+    if report.get("consensus_candidates") or report.get("consensus_stale"):
+        lines.append("")
+        lines.append(f"{len(report['consensus_candidates'])} consensus candidate(s), "
+                     f"{len(report['consensus_stale'])} consensus entr(y/ies) no longer passing")
+        for c in report["consensus_candidates"]:
+            lines.append(f"  {c['folder']}  #{c['id']} {c['type']}  independent {c['independent_count']}, "
+                         f"owner {c['owner_count']}  {c['summary']}")
+        for c in report["consensus_stale"]:
+            why = "contradicted" if c["contradicted"] else f"independent {c['independent_count']} < {c['threshold']}"
+            lines.append(f"  STALE {c['folder']}  #{c['id']}  {why}  {c['summary']}")
     return "\n".join(lines)
 
 

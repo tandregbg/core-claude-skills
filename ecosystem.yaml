@@ -12,6 +12,26 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 42 (CR-122 + CR-123 + CR-124, 2026-10-13, v1.90.0): profiles, insights
+#   schema 3 and a themes registry. Additive: a vault that sets nothing behaves as before.
+#   - `profile:` in a project config selects a bundle of defaults declared in ops-config
+#     base.yaml `profiles:` (`meeting`, the default and today's behaviour; `podcast`). A
+#     profile names the unit and its folder, the follow-up form, the insight type list, the
+#     promotable types, the promotion target, how confirmations are counted, the voices, and
+#     the task kinds. Resolved by skills/ops-config/profiles.py (ops_config schema 1.5).
+#   - insight_types gains a `podcast` list (claim, practice, tool_tip, prediction,
+#     opportunity, quote). Readers must not assume `content` is the only content list.
+#   - insights schema 3: optional `voice`, `independent_count`, `owner_count`,
+#     `confirmations[].voice`, `confirmations[].note`, `original_date`, `themes`, and a third
+#     confidence, `consensus`. CONSENSUS IS NEVER LOADED AS AN INSTRUCTION: only
+#     `confidence: rule` is. A reader that does not know `consensus` treats it as
+#     `hypothesis`, never as `rule`. A confirmation never extends `rationale` (every profile).
+#   - terms gains profile, episode, follow-up, consensus; filename_keywords gains `episode`.
+#   - <folder>/_themes.yaml (CR-124): an opt-in, per-project themes registry; summaries
+#     carry a `Themes:` line and may carry `Originally published:` (CR-123).
+#   - /ops check gains report-only hygiene findings (CR-122): link targets, re-dumped YAML,
+#     _tasks.yaml outside its enums, unknown profiles, theme consistency.
+#
 # contract_version 41 (CR-115, 2026-10-08, v1.89.4): a dispatching surface may CREATE
 #   a manifest for an outbox folder that has none -- exclusive create, after showing
 #   the exact file, status chosen by the person from status_forms, Kanonisk källa
@@ -285,8 +305,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 41
-core_skills_version: "1.89.10"
+contract_version: 42
+core_skills_version: "1.90.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -294,11 +314,23 @@ core_skills_version: "1.89.10"
 # entry. Bump is additive — v1 readers ignore unknown fields.
 # CR-100 adds the optional `promotion_review` block within schema 2 (additive;
 # declared in skills/insights/SKILL.md). Readers that ignore it behave as before.
+# insights schema 3 (CR-123, v1.90.0): adds optional `voice`, `independent_count`,
+# `owner_count`, `confirmations[].voice`, `confirmations[].note`, `original_date`,
+# `themes` (CR-124) and the confidence `consensus`. Additive: v1/v2 readers ignore
+# the fields, and MUST read an unknown confidence as `hypothesis`, never `rule`.
+# `consensus` is knowledge about the conversation and is never loaded as a standing
+# instruction. Under the podcast profile the owner voice (the host) chooses the
+# other voices, so consensus means "recurring among guests", not "generally
+# accepted". Declared in skills/insights/SKILL.md.
+# ops_config schema 1.5 (CR-123, v1.90.0): `profile:` and `profiles:`; `themes:`
+# (CR-124). Declared in skills/ops-config/schema.md.
+# tasks: optional `kind` (CR-123), legal values from the profile's task_kinds;
+# still schema 2.
 schemas:
-  ops_config: "1.4"
+  ops_config: "1.5"
   contact_meta: "1.1"
   tasks: 2
-  insights: 2
+  insights: 3
 
 # --- Task status enum ---
 # Declared here because it was not, and three other dialects grew in its
@@ -326,6 +358,16 @@ insight_types:
     - pattern
     - quote
     - metric
+  # CR-123: the podcast profile's list. A podcast produces claims, practices, tips
+  # and predictions, not decisions; under the meeting list nearly everything became
+  # learning or pattern and the type stopped carrying information.
+  podcast:
+    - claim
+    - practice
+    - tool_tip
+    - prediction
+    - opportunity
+    - quote
   evolution:
     - edge_case
     - correction
@@ -425,6 +467,9 @@ terms:
   # meetings
   - {id: meeting, en: meeting, sv: möte, note: "one occurrence: a meeting, a call or a recording"}
   - {id: series, en: series, sv: serie}
+  - {id: episode, en: episode, sv: avsnitt, file: episode, note: "one published recording of a series the vault processes; the unit of the podcast profile (CR-123)"}
+  - {id: profile, en: profile, sv: profil, note: "the bundle of defaults a project selects with `profile:`; not a meeting type (CR-123)"}
+  - {id: follow-up, en: follow-up, sv: uppföljning, note: "announcements in a summary under the podcast profile: plans, the next episode, calls to action. Never tasks (CR-123)"}
   - {id: session, en: session, sv: session, note: "a Claude Code session; in older text also a meeting of a series"}
   - {id: transcript, en: transcript, sv: transkript, note: "the input; the raw copy lives in .transcripts/", avoid: ["raw transcript"]}
   - {id: summary, en: summary, sv: sammanfattning, verb: process, file: summary, legacy_file: [samtal, sammanfattning, möte], note: "the config keys note_suffix keep their name", avoid: ["the note", "the notes"]}
@@ -441,6 +486,8 @@ terms:
   - {id: index, en: index, sv: index, note: "the generated _INDEX-* files; a project REGISTRY (CR-086) is a different, hand-written thing"}
   - {id: insight, en: insight, sv: insikt}
   - {id: rule, en: rule, sv: regel, note: "an insight confirmed often enough to be loaded as a standing instruction (CR-013)"}
+  - {id: consensus, en: consensus, sv: konsensus, note: "an insight confirmed by enough independent voices and not contradicted; knowledge about the conversation, NEVER loaded as an instruction (CR-123)"}
+  - {id: theme, en: theme, sv: tema, note: "a subject a series keeps returning to, declared in the project's _themes.yaml (CR-124)"}
   - {id: convention, en: convention, sv: konvention, note: "the contract's rules for the vault (vault_conventions.conventions, CR-092)"}
   - {id: standard, en: standard, sv: standard, note: "a convention's middle level: holds generally, exceptions named (CR-037, CR-092)"}
   - {id: wiki, en: wiki, sv: wiki, verb: compound, avoid: ["knowledge base"]}
@@ -732,9 +779,16 @@ vault_conventions:
       readers: ["/tasks", "marvin"]
       lifecycle: "live; tasks added/completed/archived in place. MAY BE ABSENT BY DECLARATION (CR-040): see workflows.task_ledger — absence is then deliberate, and the work is tracked in the declared external system"
 
+    - path: "<folder>/_themes.yaml"
+      purpose: "Themes registry (CR-124): the subjects a series keeps returning to, with the units and insights that carry them. Opt-in per project (themes.enabled)"
+      schema: "skills/ops/themes.py (registry schema 1)"
+      writers: ["/ops", "/transcript"]
+      readers: ["/ops", "/insights", "marvin"]
+      lifecycle: "live; a theme is created only when none fits (reuse before create), merged by a person (status merged, merged_into), never deleted. Checked three-way against summaries and insights by /ops check"
+
     - path: "<folder>/_insights.yaml"
       purpose: "Extracted decisions, learnings, patterns, evolution feedback"
-      schema: "insights v1"
+      schema: "insights v3"
       writers: ["/insights", "/ops", "/transcript", "a dashboard — the promotion_review block only (CR-100)"]
       field_scoped_writers:
         - writer: "dashboard"

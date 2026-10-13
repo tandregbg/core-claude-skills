@@ -403,6 +403,20 @@ This applies to skills moving their own output (e.g. a skill changing its output
 - Task document: `[Tasks: ../tasks/YYMMDD.md]`
 - Changelog entry: `[CHANGELOG: YYYY-MM-DD]`
 - Use relative paths for reliability
+- **Encode link targets (CR-122):** a target containing `(`, `)` or a space is written `%28`, `%29`,
+  `%20`. A raw one renders as text plus a dangling `.md)` and fails only when clicked.
+
+### Editing YAML files (CR-122)
+
+Every skill, and every agent brief a skill writes, edits an existing YAML file **by targeted edit**:
+insert or change the lines concerned, at the list's indentation, and leave every other line as it is.
+**Never load a whole `_insights.yaml`, `_tasks.yaml`, `_themes.yaml`, `_ops.yaml` or registry file and
+write it back.** A re-dump with default settings reorders keys, drops every comment and escapes
+`å/ä/ö` as `\xE5`; the data survives, the diff is the whole file, and the comments were the part a
+person wrote. Where a full write is unavoidable (a migration), use
+`safe_dump(allow_unicode=True, sort_keys=False, width=1000)`, then verify: no letter escapes, the same
+count of `å/ä/ö`, and comments kept or their loss reported. `/ops check` reports re-dump signatures
+(`hygiene_check.py`, kind `yaml`).
 
 ---
 

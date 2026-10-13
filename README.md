@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.89.10
+**Version:** 1.90.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
@@ -127,7 +127,7 @@ Formats used to erode by *template forking*: one deviating file re-seeds its who
 
 ### 3. Knowledge — insights that actually compound (loop closed in v1.31)
 
-Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights migrate` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent. v1.31 (CR-027) added the human-facing half: `/insights synthesize` renders the corpus into a **knowledge wiki** — crosslinked topic articles plus a master INDEX that sessions read first when answering knowledge questions, no RAG required.
+Every meeting silently accumulates durable insights (`_insights.yaml`); `/insights compile` promotes repeatedly-confirmed hypotheses to **rules** that are loaded back as context on future runs (CR-013), so the skills demonstrably get smarter in the folders you work in most. v1.21 (CR-020) hardened the loop: a write-time vocabulary guard stops schema drift at the source, `/insights migrate` migrates legacy files, and a `last_compiled` stamp makes a never-running synthesis loop visible instead of silent. v1.31 (CR-027) added the human-facing half: `/insights synthesize` renders the corpus into a **knowledge wiki** — crosslinked topic articles plus a master INDEX that sessions read first when answering knowledge questions, no RAG required. v1.90 (CR-123, CR-124) made the loop work for material that is not a meeting: a project may select **`profile: podcast`** (episodes, a Follow-up section of announcements instead of action items, claim/practice/tool-tip/prediction types, who raised each point, and **consensus** -- a claim confirmed by enough independent guests, which is knowledge and never loaded as an instruction), and any project may keep a **themes registry** checked against its summaries and insights.
 
 ### 4. Closure — the loop most systems never build
 
@@ -210,11 +210,11 @@ What is released now and what waits, and on whom, is on the ops board: [`docs/op
 | `outbox` | Lifecycle management for `<vault>/_outbox/`. Lists pending items by reading each `_manifest.md`; closes resolved folders into the relevant contact or project folder while updating manifest, CHANGELOG and `_tasks.yaml` source paths. Subcommands: `list`, `status`, `close <folder>`, `close --all-sent`, `help`. | Yes (`/outbox`) |
 | `tasks` | Personal task tracker with cross-project correlation. Per-folder ledgers, source linking, automatic carry-forward, privacy model. Subcommands: `list`, `add`, `done`, `import`, `weekly`, `archive`, `help`. | Yes (`/tasks`) |
 | `handoff` | Frozen context documents in `<vault>/.handoff/`. One bounded subject from a conversation as a self-contained document a different work session can pick up cold. **Nothing in the suite picks it up: a human opens it.** Subcommands: `list`, `read <name>`, `help`. | Yes (`/handoff`) |
-| `insights` | Knowledge extraction manager and skill evolution engine. Compiles execution feedback into patterns (hypothesis → rule), migrates drifted files to the current schema, **synthesizes the corpus into a wiki** (CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `migrate`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
+| `insights` | Knowledge extraction manager and skill evolution engine. Compiles execution feedback into patterns (hypothesis → rule), migrates drifted files to the current schema (and, with `--profile`, a corpus to a profile, CR-123), **synthesizes the corpus into a wiki** (CR-027), proposes SKILL.md improvements. Subcommands: `reprocess`, `scan-claude-md`, `compile`, `migrate`, `synthesize`, `propose`, `status`, `help`. | Yes (`/insights`) |
 | `analytics` | Vault-level content analytics -- file creation trends, skill adoption, contact engagement, content distribution, unprocessed backlog detection. Reads file metadata, not contents. Writes `.analytics/`. | Yes (`/analytics`) |
 | `update-skills` | Skill repo management -- fetch/pull with version safety, symlink creation, health auditing, repo installation. | Yes (`/update-skills`) |
 | `ops-base` | Shared operational framework (meeting formats, task management, workflows, archive policy). Base module referenced by the other skills. | No |
-| `ops-config` | Configuration system -- schema definition and base defaults. | No |
+| `ops-config` | Configuration system -- schema definition, base defaults and profiles (`profiles.py`, CR-123). | No |
 
 **Two skills left in v1.79.0 (CR-089):** `daily-dashboard` was retired, and `md2pdf` moved to a
 personal skill repository — neither was part of the loop, and no other skill read either.
@@ -233,7 +233,7 @@ It declares:
 - **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `conventions` (key renamed from `rules` by CR-092; each declares a level — invariant, standard or guideline) (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
 - **Visualisation features** -- the page list Marvin renders
 
-The contract is versioned (`contract_version: 33`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
+The contract is versioned (`contract_version: 42`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
 
 ## Architecture
 

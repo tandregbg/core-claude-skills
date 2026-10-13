@@ -1,6 +1,6 @@
 # Ops status — core-skills: what is released, what is configured, what waits
 
-**Last verified: 2026-10-12 13:30 (read back: `README.md` **Version**, `ecosystem.yaml` `core_skills_version` and
+**Last verified: 2026-10-13 (read back: `README.md` **Version**, `ecosystem.yaml` `core_skills_version` and `contract_version`, the first `CHANGELOG.md` entry, `docs/proposals/README.md`, and `scripts/check-ecosystem-alignment.sh`: 5 aligned, 2 drifted -- Marvin and the landing page, updated after the release commit)**, `ecosystem.yaml` `core_skills_version` and
 `contract_version`, the first `CHANGELOG.md` entry, `docs/proposals/README.md`, and
 `scripts/check-ecosystem-alignment.sh`: 6 aligned, 0 drifted, visualiser skipped)**
 
@@ -18,11 +18,10 @@ version rows in A, and any row the release closes or opens. Then re-stamp the "L
 
 | Item | State | Next step | Who | Since | Source |
 |---|---|---|---|---|---|
-| core-skills release | **1.89.10** (CR-119, validate the configuration first). `README.md` **Version**, `ecosystem.yaml` `core_skills_version` and the first `CHANGELOG.md` entry agree | Next release per `docs/RELEASING.md` | The maintainer | 2026-10-12 | [CHANGELOG](../../CHANGELOG.md) |
-| Ecosystem contract | `contract_version` **41** (CR-115, v1.89.4); highest documented bump 41 | A contract change bumps it in the same release | The maintainer | 2026-10-08 | [`ecosystem.yaml`](../../ecosystem.yaml) |
-| Landing page | Built from **v1.89.10**, contract 41 (its build 2.0.13), read back by the alignment check | Rebuild and deploy on every `core_skills_version` change (`docs/RELEASING.md`, "When to update the webpage") | The maintainer | 2026-10-12 | `scripts/check-ecosystem-alignment.sh` |
+| core-skills release | **1.90.0** (CR-122 hygiene checks, CR-123 podcast profile + insights schema 3, CR-124 themes registry; CR-120 released with it). `README.md` **Version**, `ecosystem.yaml` `core_skills_version` and the first `CHANGELOG.md` entry agree | Next release per `docs/RELEASING.md` | The maintainer | 2026-10-13 | [CHANGELOG](../../CHANGELOG.md) |
+| Ecosystem contract | `contract_version` **42** (CR-122..CR-124, v1.90.0); highest documented bump 42. Schemas: insights 3, ops_config 1.5 | A contract change bumps it in the same release | The maintainer | 2026-10-13 | [`ecosystem.yaml`](../../ecosystem.yaml) |
+| Landing page | **Drifted:** live build is v1.89.10, contract 41 (its build 2.0.13); release is 1.90.0, contract 42 | Rebuild and deploy with a What's new entry for 1.90.0 in both languages; check the source for text that says *meeting* where it now means *meeting or episode* (`docs/RELEASING.md`, "When to update the webpage") | The maintainer | 2026-10-12 | `scripts/check-ecosystem-alignment.sh` |
 | Visualiser | Not checked: the alignment check reports `[SKIP]` (no checkout where it looks). A skip is unverified, not clean | Run the check where the visualiser checkout exists | The maintainer | 2026-10-12 | same |
-| Unreleased work on main | CR-120 (handled is not sent) committed as **Proposed** with code and tests; no CHANGELOG entry, `[Unreleased]` empty | Release it (CHANGELOG, README, version bump, index row), or mark it as not yet released in the index | The maintainer | 2026-10-12 | [CR-120](../proposals/CR-120-handled-is-not-sent.md) |
 
 ## B. Feature switches / configuration
 
@@ -51,8 +50,8 @@ Names and places only, never values.
 
 | Decision | State | Next step | Who | Since | Source |
 |---|---|---|---|---|---|
-| Open proposals: CR-080, CR-109, CR-110, CR-111, CR-112, CR-113 (rest), CR-120, CR-121 (the card fits the project; renumbered from CR-119) | Proposed | Decide order and implement per release flow | The maintainer | 2026-10-12 | [Proposals index](../proposals/README.md) "Proposed" |
-| v1.90.0: CR-122 (hygiene checks), CR-123 (podcast profile, insights schema 3), CR-124 (themes registry) | Proposed 2026-10-13; decisions taken (profile key `profile:`, all three in one minor, `voice` generic, `consensus` counted in status, follow-up vs task set by profile). Contract 41 to 42 | Implement and release as one commit; same day: Marvin CR-025 and the landing page (What's new, both languages) | The maintainer | 2026-10-13 | [CR-123](../proposals/CR-123-podcast-profile-and-insights-schema-3.md) |
+| Open proposals: CR-080, CR-109, CR-110, CR-111, CR-112, CR-113 (rest), CR-121 (the card fits the project; renumbered from CR-119) | Proposed | Decide order and implement per release flow | The maintainer | 2026-10-12 | [Proposals index](../proposals/README.md) "Proposed" |
+| Marvin side of 1.90.0 and of CR-120 | Marvin CR-025 (profiles, consensus, voice, themes); the `hanterad` status picker for CR-120 is still unwritten | Release Marvin; its version is the maintainer's decision | The maintainer | 2026-10-13 | Marvin `docs/change-requests/` |
 
 ## F. Operator steps waiting in CRs
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (target **v1.90.0**, released together with CR-122 and CR-123) |
+| **Status** | **Implemented 2026-10-13, v1.90.0** (with the other two of CR-122, CR-123, CR-124) |
 | **Contract** | additive, inside `contract_version` 42 (CR-123); a new optional per-project file `_themes.yaml`; an optional `themes` field in insights schema 3; one optional metadata line in the summary skeleton. Opt-in for **every** profile, not podcast-only |
 | **Date** | 2026-10-13 |
 | **Area** | `ecosystem.yaml` (`vault_conventions`), `transcript` (summary metadata, Step 3.5), `ops` (`process`, `check`), `insights` (`synthesize`) |

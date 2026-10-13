@@ -142,6 +142,40 @@ workflows:
       # public skill repo. Vault-relative path.
       proposals_path: ".skill-evolution/proposals"
 
+# --- Profiles (CR-123, schema 1.5) ---
+# A profile is a bundle of defaults a project selects with one line (`profile: podcast`)
+# and may override key by key (`profiles: {podcast: {consensus_threshold: 4}}` in its own
+# config). A missing `profile:` resolves to `meeting`; an unknown name is a /ops check
+# finding and resolves to `meeting`, never to a guess. Every `meeting` value equals the
+# behaviour before profiles existed. Resolved by skills/ops-config/profiles.py.
+profiles:
+  meeting:
+    unit: meeting                  # a term id (ecosystem.yaml terms)
+    summary_folder: meetings/
+    index_key: meetings_index
+    follow_up: action_items        # Next Steps = action items with owners
+    insight_types: content         # ecosystem.yaml insight_types.content
+    promotable_types: [decision, preference, learning, pattern]
+    promotes_to: rule              # loaded as a standing instruction (CR-013)
+    count_by: date                 # confirmation_count = distinct dates (CR-098)
+    voices: []                     # no voice field written
+    owner_voice: null
+    consensus_threshold: null
+    task_kinds: []
+  podcast:
+    unit: episode
+    summary_folder: episodes/
+    index_key: episode_index       # accepted alias of meetings_index; same behaviour
+    follow_up: announcements       # Follow-up: plans, next episode, calls to action; no tasks
+    insight_types: podcast         # ecosystem.yaml insight_types.podcast
+    promotable_types: [claim, practice, tool_tip, prediction]
+    promotes_to: consensus         # knowledge about the conversation; NEVER loaded
+    count_by: unit                 # distinct summaries, not distinct dates
+    voices: [host, guest, both]
+    owner_voice: host              # chooses the other voices; never counts as independent
+    consensus_threshold: 3
+    task_kinds: [episode_idea, guest_lead, housekeeping, publication]
+
 # No custom templates by default
 templates: {}
 
@@ -179,6 +213,9 @@ strings:
     fyi: "FYI"
   transcript:
     next_steps: "Next Steps"
+    follow_up: "Follow-up"          # CR-123: profile follow_up: announcements
+    themes: "Themes"                # CR-124: the summary's theme metadata line
+    originally_published: "Originally published"   # CR-123: optional true date
     decisions: "Decisions"
     outcome: "Outcome"
     discussion: "Discussion"
@@ -192,6 +229,11 @@ strings:
   meeting_types:
     call: "Call"
     meeting: "Meeting"
+    episode: "Episode"              # CR-123
+  units:
+    # CR-123: the list label per profile unit (README, project page)
+    recent_meeting: "Recent Meetings"
+    recent_episode: "Latest episodes"
   filename_keywords:
     # CR-089: role keywords are identifiers - English in every language, from `terms:`
     # in ecosystem.yaml. Keys are unchanged. Forward only: files written with the old
@@ -203,6 +245,7 @@ strings:
     standup: "standup"
     content: "content"   # CR-105: one-way incoming material, not a meeting
     correspondence: "correspondence"   # CR-080: a two-way thread with a person
+    episode: "episode"   # CR-123: an episode summary, profile podcast
   insights:
     section_label: "Key Insights"
     decisions_label: "Decisions & Rationale"
@@ -241,6 +284,9 @@ strings_sv:
     fyi: "FYI"
   transcript:
     next_steps: "Nästa steg"
+    follow_up: "Uppföljning"
+    themes: "Teman"
+    originally_published: "Ursprungligen publicerad"
     decisions: "Beslut"
     outcome: "Konklusion"
     discussion: "Diskussion"
@@ -254,6 +300,10 @@ strings_sv:
   meeting_types:
     call: "Samtal"
     meeting: "Möte"
+    episode: "Avsnitt"
+  units:
+    recent_meeting: "Senaste möten"
+    recent_episode: "Senaste avsnitt"
   filename_keywords:
     # CR-089: role keywords are identifiers - English in every language, from `terms:`
     # in ecosystem.yaml. Keys are unchanged. Forward only: files written with the old
@@ -265,6 +315,7 @@ strings_sv:
     standup: "standup"
     content: "content"   # CR-105: one-way incoming material, not a meeting
     correspondence: "correspondence"   # CR-080: a two-way thread with a person
+    episode: "episode"   # CR-123: an episode summary, profile podcast
   insights:
     section_label: "Nyckelinsikter"
     decisions_label: "Beslut och motivering"

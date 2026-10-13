@@ -16,7 +16,8 @@ This skill complements the forward-looking extraction in `/transcript` Step 3.5 
 - **No duplication of extraction logic.** The authoritative definition of insight types, thresholds, and `_insights.yaml` format lives in `/transcript` Step 3.5. This skill references it and includes a quick-reference copy for convenience.
 - **Dedup by `source.file`.** Processing the same file twice never creates duplicate entries.
 - **Additive only.** Never removes or modifies existing insights (except `scan-claude-md` which replaces stale CLAUDE.md-sourced entries, and the promotion/demotion passes in `compile` which mutate `confidence`, `confirmation_count`, `status`, and `superseded_by` fields per CR-013).
-- **Silent accumulation, active loading.** Insights are written by `/transcript`, `/ops`, and this skill. Promoted **rules** (per CR-013 lifecycle below) are read back by `/ops` and `/transcript` as a context preamble before each run. Hypotheses remain silent; only rules surface.
+- **Silent accumulation, active loading.** Insights are written by `/transcript`, `/ops`, and this skill. Promoted **rules** (per CR-013 lifecycle below) are read back by `/ops` and `/transcript` as a context preamble before each run. Hypotheses remain silent; only rules surface. **Consensus (CR-123) never surfaces as an instruction either**: it is knowledge, shown by `status` and `synthesize`, never loaded.
+- **Profiles (CR-123).** Which types exist, which are promotable, how confirmations are counted and what a promotion produces come from the folder's resolved profile (`skills/ops-config/profiles.py`). Without `profile:` everything below is the meeting behaviour, unchanged.
 
 ---
 
@@ -26,15 +27,24 @@ Each insight has an optional `confidence` field:
 
 - **`hypothesis`** (default when absent) — observation that needs more confirmation. Not loaded into other skills' context.
 - **`rule`** — confirmed pattern. Loaded as a preamble by `/ops` and `/transcript` when working in the rule's folder chain.
+- **`consensus`** (CR-123, profiles with `promotes_to: consensus`, i.e. podcast) — a claim confirmed by at least `consensus_threshold` (default 3) **independent** voices and contradicted by none. **Never loaded** into any skill's context: a recurring claim among guests is knowledge about the conversation, not an instruction to the assistant. A reader that does not know the value reads it as `hypothesis`, never as `rule`.
 
 Two lifecycle transitions, both performed by `/insights compile`:
 
 - **Promotion:** when ≥ `compile_threshold` (default 3) semantically similar `hypothesis` entries exist in one folder, the canonical (earliest) entry is promoted to `confidence: rule`. Non-canonical entries are marked `status: superseded`, `superseded_by: <canonical-id>`. The canonical entry's `confirmation_count` is set to the number of **distinct dates** in the group (CR-098) and `confirmations[]` is populated with each merged entry's `source`. A person's review recorded in `promotion_review` (CR-100) is honoured, but never replaces the contradiction check.
 - **Demotion:** when a `correction` entry contradicts a `rule` (same primary tag, opposing summary keyword), the rule's `confidence` flips back to `hypothesis`, the correction's `source` is appended to `contradicted_by[]`, and `confirmation_count` is reduced by 1 (floor 1).
 
+**Under a consensus profile (CR-123)** the promotion pass works per entry, not per group: an entry
+reaches `consensus` when `independent_count >= consensus_threshold`, `contradicted_by` is empty, its
+type is in the profile's `promotable_types` (never `quote`) and it is active. A point only the owner
+voice (the host) raised can never reach it, however often: the host chooses the guests. So under the
+podcast profile `consensus` means **recurring among guests**, not *generally accepted*. When a
+contradiction arrives later, or a recount falls below the threshold, the entry goes back to
+`hypothesis` (the script lists it under `consensus_stale`).
+
 `confidence` and `status` are **orthogonal**:
 - `status` (active / superseded / archived) is the curation/archival lifecycle.
-- `confidence` (hypothesis / rule) is the maturity lifecycle.
+- `confidence` (hypothesis / rule / consensus) is the maturity lifecycle.
 
 A rule can be archived. A hypothesis can be superseded by a more specific hypothesis. Both fields coexist.
 
@@ -50,6 +60,36 @@ contradicted_by:                     # list, populated on demotion
   - source: <relative-path>
     date: YYMMDD
 ```
+
+**Insights schema 3 (CR-123, all optional, additive).** v1/v2 readers ignore the new fields.
+
+```yaml
+voice: guest                         # who raised it in the SOURCE unit: one of the profile's voices
+independent_count: 3                 # distinct units where a voice other than owner_voice raised it
+owner_count: 1                       # distinct units where owner_voice raised it
+confirmations:
+  - source: <relative-path>
+    date: YYMMDD
+    voice: guest                     # who raised it in that unit
+    note: "one line: how this unit said it"
+original_date: YYMMDD                # the unit's Originally published date, when it has one
+themes: [T07]                        # CR-124, projects with themes enabled
+confidence: consensus                # third value; never loaded as an instruction
+```
+
+Counting rules:
+
+- **Units, not dates, under `count_by: unit`.** `confirmation_count`, `independent_count` and
+  `owner_count` count distinct `source` units, the origin included. Re-published back-catalogue
+  material and same-day live or bonus episodes share a publication date; counting dates (CR-098)
+  would collapse them into one confirmation. The meeting profile keeps `count_by: date`.
+- **`both` counts for both** counts. A sighting with no `voice` counts for neither, and is reported as
+  unlabelled until a voice is set.
+- **A confirmation never extends `rationale`** (every profile): it adds an item with its own one-line
+  `note`. Appended clauses turned rationales into logs of over a thousand characters.
+- **Voice labels are a model's judgement** from the summary and transcript. Where a confirmation is a
+  paraphrase that cannot be placed, the writer uses `both`, so owner voice is probably undercounted;
+  treat the split between voices as indicative.
 
 **`promotion_review` (CR-100, optional, additive).** A person's judgement of a candidate group,
 recorded on the group's canonical (earliest) entry by a review surface. It is an observation --
@@ -256,6 +296,11 @@ By status:
   superseded:  11
   archived:    3
 
+By confidence:
+  hypothesis:  168
+  rule:        4
+  consensus:   0        # CR-123: its own count; the line is omitted when no folder has a consensus profile
+
 Top folders:
   acme/meetings/management    42 insights
   _contacts/bob-smith                  18 insights
@@ -362,7 +407,18 @@ agreement, topic tags (unless `insight_topic_tags` is configured), splitting and
 check below stay judged. Its groups are connected components of the tag gate, so a group may hold
 more than one claim -- that is what *split before promoting* is for.
 
-1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `metric`, `edge_case`, `correction`, `skill_pattern`).
+**Profiles (CR-123).** The script resolves each folder's profile and reports it under `profiles`.
+It reads `promotable_types` instead of the four meeting types, reports `distinct_units` beside
+`distinct_dates` and a `confirmation_count` by the profile's `count_by`, and names the target in
+`promotes_to`. **When the target is `consensus`** the pass is per entry: the script lists
+`consensus_candidates` (with `independent_count`, `owner_count` and the units behind each) and
+`consensus_stale`. For each candidate, compile writes `confidence: consensus` and the recounted fields
+(by targeted edit, CR-122); for each stale entry, it writes `confidence: hypothesis` and says why. The
+group steps below still run for the group-shaped cases (several entries making one claim): merge them
+into the earliest, as below, and then judge the merged entry against the consensus gate. **A consensus
+pass never writes `rule`.**
+
+1. **Filter to candidates:** entries where `confidence` is `hypothesis` (or absent) AND `status: active` AND `type` is one of the profile's `promotable_types` -- for the meeting profile `decision | preference | learning | pattern` (skip `opportunity`, `quote`, `metric`, `edge_case`, `correction`, `skill_pattern`); for the podcast profile `claim | practice | tool_tip | prediction`.
    **`metric` is never promotable (CR-046):** the same measurement recurring three times is a time series, not a standing instruction. Trend questions belong in `/analytics`.
 2. **Group by similarity within the folder (CR-094):**
    - Same `type`
@@ -522,6 +578,33 @@ Brings legacy and drifted `_insights.yaml` files up to the current schema. Compl
 3. On `--apply`: write files atomically, add a one-line CHANGELOG entry in each affected folder (`- **YYMMDD: Normalize** _insights.yaml -- N schema fixes (CR-020)`)
 4. Never touch entry content (`summary`/`rationale` text) -- structure and vocabulary only; content remediation stays with `/ops normalize`
 
+#### `migrate --profile <name>` -- move a corpus to a profile (CR-123)
+
+**Trigger:** `/insights migrate --profile podcast <folder> [--apply]` (dry run by default). Refused when
+the folder's resolved profile is `meeting`: set `profile:` in its config first.
+
+An existing v2 corpus that adopts a profile needs four changes. Two are judgements, two are arithmetic,
+and they are kept apart:
+
+1. **Judge, per entry, and show it as a table before anything is written:** the new type (from the
+   wording of the entry: `learning`/`pattern` become `claim`, `practice` or `tool_tip`, a statement about
+   the future `prediction`; borderline cases are named), the `voice` of the source unit and of each
+   confirmation (from the summaries; `both` when a paraphrase cannot be placed), and whether an
+   existing `rule` is really a **claim** (then `consensus` or `hypothesis`) or an instruction the user
+   wrote (then it stays `rule`, and the type keeps a meeting value).
+2. Write the judgement as a plan file (`entries: {id: {type, voice, confidence}}`,
+   `confirmations: {id: {source: voice}}`) in the session's scratch space, never in the vault.
+3. **Apply and recount with the script:**
+   `python3 ~/.claude/skills/insights/profile_migrate.py <folder> --plan <plan.yaml>` prints the table
+   with the recounted `confirmation_count`, `independent_count` and `owner_count`; `--apply` writes
+   by targeted line edits, sets `version: 3`, then re-parses and compares: every entry must be equal
+   except for the fields set, and the count of `å/ä/ö` must be unchanged, or nothing is written. A plan
+   that would create a `rule` is refused.
+4. `python3 ~/.claude/skills/insights/profile_migrate.py <folder> --recount [--apply]` recounts only,
+   after voices are labelled by hand or by later sessions.
+
+Add a one-line CHANGELOG entry in the folder (`- **YYMMDD: Migrate** _insights.yaml to the podcast profile -- N entries retyped, M voiced (CR-123)`).
+
 ---
 
 ### `synthesize` -- Render insight clusters into the knowledge wiki (CR-027)
@@ -551,6 +634,17 @@ Turns the accumulated `_insights.yaml` corpus into a **curated wiki**: readable,
 4. **Idempotent refresh:** re-running updates an article only from insights not yet in its `sources:`, appending/reworking sections as needed and bumping `updated:`. An article containing `<!-- human-edited -->` is NEVER auto-updated — report it and ask (flag once, respect the answer).
 5. **Maintain `<vault>/.knowledge/INDEX.md`:** one line per article — `[[slug]] — one-sentence hook (updated YYMMDD)` — grouped by theme; plus an **Osorterat** section listing loose notes at the `.knowledge/` root (legacy notes are never modified or moved by this skill).
 6. **Report:** articles created/updated/skipped(human-edited), clusters below threshold (with counts, so growth toward threshold is visible).
+
+**Theme pages (CR-124): `/insights synthesize --themes <project>`.** For a project with
+`themes.enabled`, the registry (`<project>/_themes.yaml`) is the cluster definition instead of semantic
+clustering: one article per theme with at least `article_threshold` units, written to
+`<wiki_path>/themes/<id>-<slug>.md` and listed in `INDEX.md` under the project's name. No second
+mechanism: the same frontmatter, refresh, human-edited and INDEX rules apply. Each page holds, in
+order: a table of units per quarter by **original** date
+(`python3 ~/.claude/skills/ops/themes.py quarters <project> --theme <id>`), core messages, where voices
+disagree, phases over time (breadth is handled by phases, not by splitting a broad theme), who raises
+it (by voice, never by name), gaps, and a unit table (date, unit, role, note). It says what it was built
+from. After writing, set the theme's `synthesis:` path in the registry by targeted edit.
 
 **How the wiki is USED (the no-RAG contract):** a session answering a knowledge question reads `INDEX.md` first, then opens only the relevant article(s). No vault-wide scanning, no retrieval infrastructure. The INDEX is maintained by this subcommand only — never hand-edited by other skills.
 
