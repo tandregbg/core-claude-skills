@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-14). Not implemented, not pushed |
-| **Contract** | additive, `contract_version` 42 to 43. A new optional path `<org>/_company/`, new optional `company:` block in ops-config. A vault that sets nothing behaves as before |
+| **Status** | **Implemented 2026-10-14, v1.91.0** (committed locally; not pushed) |
+| **Contract** | additive, `contract_version` 42 to 43, `ops_config` 1.5 to 1.6. A new optional path `<org>/_company/`, new optional `company:` block in ops-config. A vault that sets nothing behaves as before |
 | **Date** | 2026-10-14 |
 | **Area** | `ecosystem.yaml` (`vault_conventions`), new skill `company`, `ops-config` (`company:`), `ops` (`check`), readers: `ops`, `preparation`, `cr-intake`, `website-create` |
 | **Related CRs** | CR-123 (`profile:` already means meeting/podcast in ops-config, hence `facet:` here), CR-122 (report-only check pattern), CR-026 (release guard) |
@@ -46,15 +46,17 @@ subject the company must be able to state. The names and one-line purposes are t
 | Facet | Purpose |
 |---|---|
 | `essence` | The core: why the company exists, where it is heading, what it stands for |
-| `positioning` | Who it is for, in which category, against which alternatives, and what it may claim |
-| `messaging` | The message framework and the words to use and avoid |
-| `audience` | The people it serves: needs, jobs, objections |
-| `brand` | Voice, visual rules, the never-say list |
-| `gtm` | How it reaches and sells to the audience |
-| `strategy` | Decided and open strategic choices |
+| `company` | Who and what it is: owners, roles, numbers, siblings, current focus |
+| `offering` | What is sold now: status, version, price, what is decided next |
+| `positioning` | Where it stands: segments, value, differentiation, competitors, what it may claim |
+| `messaging` | What it says: the message framework, the words to use and avoid |
+| `gtm` | How it wins: audience, journey, qualification, channels, partners, pipeline |
+| `strategy` | Where it goes: direction, bets decided or draft, open questions, horizon |
+| `brand` | How it sounds and looks: voice, rules, vocabulary, visual rules, images |
+| `public` | Only what outsiders can already see |
 
-Each file carries frontmatter: `facet`, `level` (`light` | `medium` | `full`), `status` (`draft` | `decided`),
-`updated`, `review` (`yearly` | `quarterly` | `on-change`), `language`, `sources`. Every fact in the body
+Each file carries frontmatter: `vertical`, `facet`, `level` (`public` | `light` | `medium` | `full`), `status` (`draft` |
+`synthesis-locked` | `draft-locked` | `final` | `stale`), `generated`, `reviewed`, `language`, `sources`. Every fact in the body
 carries a source marker. Numbers carry a date and a definition. Open items are listed with a reason, never
 guessed.
 
@@ -140,3 +142,15 @@ say nothing when it does not. A reader never writes to a profile.
 - `/company init` without a template produces a valid skeleton and a message that no question set is attached.
 - `/company check` reports each planted defect in section 5 and writes nothing.
 - No file in this repository contains text from a private template; the release guard passes.
+
+## As built (2026-10-14)
+
+- The nine facets above replace the first draft's seven (`audience` is part of `gtm`; `company`, `offering` and
+  `public` are facets). Frontmatter keys follow the profiles already written by hand.
+- `/company check` splits in two: `company_tool.py check` decides what a program can (stale, schema, locked
+  without sources, credential value, copies with `--copies`); the agent does the judgement checks (a status
+  claim with no recent evidence, a fact without a source marker).
+- Readers in this repository: `ops` (`prepare`, `orient`, `check`) and `preparation`. Skills in other
+  repositories read the same folder under the same contract.
+- Examples and tests use invented companies. Real profiles were only ever read, never copied, to test the
+  checker.

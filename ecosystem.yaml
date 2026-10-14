@@ -12,6 +12,17 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 43 (CR-125, 2026-10-14, v1.91.0): the company profile. Additive: a vault that
+#   sets nothing behaves as before.
+#   - A new optional folder `<org>/_company/`: one file per facet (nine named facets), `sources.yaml`,
+#     `brands.yaml`, `AUDIT-LOG.md`, `exports/`; frontmatter `vertical`, `facet`, `level`, `status`,
+#     `generated`, `reviewed`, `language`, `sources`. Contract: skills/company/references/contract.md;
+#     schemas: docs/schemas/company-sources.schema.json and company-brands.schema.json.
+#   - A new skill `/company` (init, intake, check, build, export) and `company_tool.py`.
+#   - A `company:` block in ops-config (ops_config schema 1.6). The skill carries no question set:
+#     an optional template is read from `company.template:`.
+#   - `/ops check` runs the profile checks; `/ops` and `/preparation` read the facets when present.
+#
 # contract_version 42 (CR-122 + CR-123 + CR-124, 2026-10-13, v1.90.0): profiles, insights
 #   schema 3 and a themes registry. Additive: a vault that sets nothing behaves as before.
 #   - `profile:` in a project config selects a bundle of defaults declared in ops-config
@@ -305,8 +316,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 42
-core_skills_version: "1.90.0"
+contract_version: 43
+core_skills_version: "1.91.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -322,12 +333,13 @@ core_skills_version: "1.90.0"
 # instruction. Under the podcast profile the owner voice (the host) chooses the
 # other voices, so consensus means "recurring among guests", not "generally
 # accepted". Declared in skills/insights/SKILL.md.
+# ops_config schema 1.6 (CR-125, v1.91.0): `company:`.
 # ops_config schema 1.5 (CR-123, v1.90.0): `profile:` and `profiles:`; `themes:`
 # (CR-124). Declared in skills/ops-config/schema.md.
 # tasks: optional `kind` (CR-123), legal values from the profile's task_kinds;
 # still schema 2.
 schemas:
-  ops_config: "1.5"
+  ops_config: "1.6"
   contact_meta: "1.1"
   tasks: 2
   insights: 3
@@ -411,6 +423,10 @@ skills:
       description: "A two-way thread with a person -- email, chat, messages -- as a living document appended to newest first. No participant list: sender and recipients per turn, cc may not own an action, and the raw wire form is not kept. Routed by the thread's subject, not its sender. CR-080"
       badge: Context
       subcommands: [help]
+    - name: company
+      description: "The company profile: a current, source-backed picture of an organisation in `<org>/_company/`, with an open contract. Any question set is an optional template read from config; this repository carries none."
+      badge: Context
+      subcommands: [init, intake, check, build, export, help]
     - name: transcript
       description: "The config-free form of /ops process: a summary from a transcript of a call, meeting or voice recording."
       badge: Lightweight
@@ -778,6 +794,13 @@ vault_conventions:
       writers: ["/tasks", "/transcript", "/ops"]
       readers: ["/tasks", "marvin"]
       lifecycle: "live; tasks added/completed/archived in place. MAY BE ABSENT BY DECLARATION (CR-040): see workflows.task_ledger — absence is then deliberate, and the work is tracked in the declared external system"
+
+    - path: "<org>/_company/"
+      purpose: "The company profile (CR-125): one file per facet (essence, company, offering, positioning, messaging, gtm, strategy, brand, public), plus sources.yaml (where the facts live, what is off-limits), brands.yaml (brand architecture and web domains), AUDIT-LOG.md, README.md, exports/<target>/ and an optional layers/. Customer data: lives in the organisation's own area, never an example in a skill or test"
+      schema: "skills/company/references/contract.md; docs/schemas/company-sources.schema.json; docs/schemas/company-brands.schema.json"
+      writers: ["/company", "user (manual)"]
+      readers: ["/ops", "/preparation", "/company", "marvin", "skills in other repositories that write for a company"]
+      lifecycle: "live; edited in place as facts change, reviewed on its own cadence, checked by /company check and /ops check. exports/ is derived and regenerated, never hand-edited. A profile file outside _company/ is a copy and is reported"
 
     - path: "<folder>/_themes.yaml"
       purpose: "Themes registry (CR-124): the subjects a series keeps returning to, with the units and insights that carry them. Opt-in per project (themes.enabled)"

@@ -252,7 +252,7 @@ drifts fails the check rather than misleading a reader.
 
 **Trigger:** `/ops prepare [type] [async-updates]`
 
-Generate a structured preparation document for an upcoming team meeting. Pulls context from recent meetings, tasks, and optionally incorporates pre-submitted async updates from team members.
+Generate a structured preparation document for an upcoming team meeting. When the organisation has a `<org>/_company/` (CR-125), the `company`, `positioning` and `strategy` facets are read as standing context and cited by facet, never copied in; silent when there is none. Pulls context from recent meetings, tasks, and optionally incorporates pre-submitted async updates from team members.
 
 #### The card comes first (CR-005, inherited by CR-106)
 
@@ -1040,6 +1040,10 @@ evaluation is the part that varies by organisation, so it is **declared, never a
 **The first line names the resolved profile (CR-123)**: `Profile: podcast (from <file>)`, or
 `Profile: meeting (default)`. An unknown profile name is printed with its fallback.
 
+**Company profile (CR-125).** After the script's blocks, the agent adds one line when the organisation has a
+`<org>/_company/` whose `company`, `positioning` or `strategy` facet is stale or still `draft`
+(`/company check` has the full list). Silent when there is no `_company/`. Reads only; the script does not.
+
 `/ops status` reports which *config* applies. `/ops check` audits closure debt across a vault. This
 reports one folder's **current state** — the question a session asks when it opens a project cold and
 would otherwise rebuild the answer from four files, losing whatever nobody wrote down.
@@ -1093,6 +1097,11 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    profile name) and `themes` (the registry checks, when themes are enabled: registry, summary line and
    insights disagreeing in any direction, unknown or merged ids, too many primary themes, a missing
    synthesis page). **Report only**: the fix is a judgement each time.
+2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
+   `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:
+   `stale`, `schema` (frontmatter, `sources.yaml`, `brands.yaml`), `unsourced`, `credential` (a key value in
+   a profile is a defect), and with `--copies` a profile file outside `_company/`. Report only. The
+   judgement checks (status claims, facts without a source marker) belong to `/company check`.
 
 2b. **`agenda_suffix` names the project (CR-082).** Where `carry_forward` is declared, check that
    `agenda_suffix` contains the project's folder slug. A default or generic suffix
@@ -1211,6 +1220,10 @@ declared form** (report the item, the word, and the closest declared form from
 
 11. **Hygiene (CR-122)** -- the folder check's `hygiene_check.py` run over the whole scope: link targets,
 re-dumped YAML, task ledgers outside their enums, unknown profiles, theme consistency. Report only.
+
+12. **Company profiles (CR-125)** -- `company_tool.py check <vault> --copies` over the whole vault: stale
+facets, schema errors in `sources.yaml` and `brands.yaml`, locked facets without sources, credential-looking
+values, profile files outside `_company/`. Report only.
 
 10. **Unregistered project (CR-086)** -- a folder carrying an `_ops.yaml` but **no row in any register declared under `registry:`** is a finding, with the proposed row as the offered fix. This is what catches a project created before `/ops project new` existed, or created by hand after it. Registers are resolved through the normal config chain, so both a vault-root portfolio and a per-organisation index count; **a vault that declares no register skips this check silently** rather than reporting every project. Never auto-applies: a hand-written register carries judgement columns (role, sponsor, mode) the sweep cannot fill, and a row proposed with those blank is the point -- it shows what is missing instead of inventing it.
 

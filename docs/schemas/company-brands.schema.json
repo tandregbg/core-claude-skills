@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core-skills/company-brands.schema.json",
+  "title": "company brands.yaml: brand architecture and web domains (CR-125). 'unknown' is valid wherever a fact is not established",
+  "type": "object",
+  "required": ["vertical", "brands"],
+  "additionalProperties": false,
+  "properties": {
+    "vertical": {"type": "string", "minLength": 1},
+    "brands": {"type": "array", "items": {"$ref": "#/$defs/brand"}}
+  },
+  "$defs": {
+    "tri": {"oneOf": [{"type": "boolean"}, {"const": "unknown"}]},
+    "text": {"type": "string", "minLength": 1},
+    "brand": {
+      "type": "object",
+      "required": ["id", "name", "kind", "relation", "status", "domains", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "name": {"$ref": "#/$defs/text"},
+        "kind": {"enum": ["company", "product", "personal", "sub-brand"]},
+        "relation": {"type": "string", "pattern": "^(masterbrand|endorsed|independent|unknown|sub-brand-of:[a-z0-9][a-z0-9-]*)$"},
+        "ip_owner": {"$ref": "#/$defs/text"},
+        "operator": {"$ref": "#/$defs/text"},
+        "status": {"enum": ["live", "beta", "pre-launch", "paused", "retired", "unknown"]},
+        "voice": {"$ref": "#/$defs/text"},
+        "tokens": {"$ref": "#/$defs/text"},
+        "images": {"$ref": "#/$defs/text"},
+        "design": {"$ref": "#/$defs/text"},
+        "domains": {"type": "array", "items": {"$ref": "#/$defs/domain"}},
+        "source": {"$ref": "#/$defs/text"}
+      }
+    },
+    "domain": {
+      "type": "object",
+      "required": ["domain", "role", "public"],
+      "additionalProperties": false,
+      "properties": {
+        "domain": {"type": "string", "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"},
+        "role": {"enum": ["site", "app", "api", "docs", "mail", "redirect", "staging"]},
+        "public": {"$ref": "#/$defs/tri"},
+        "languages": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}},
+        "hosting": {"$ref": "#/$defs/text"},
+        "dns": {"$ref": "#/$defs/text"},
+        "search_console": {"$ref": "#/$defs/tri"},
+        "analytics": {"$ref": "#/$defs/text"},
+        "llm_visibility": {
+          "type": "object",
+          "required": ["tracked"],
+          "additionalProperties": false,
+          "properties": {
+            "tracked": {"$ref": "#/$defs/tri"},
+            "subject": {"$ref": "#/$defs/text"},
+            "markets": {"type": "array", "items": {"$ref": "#/$defs/text"}}
+          }
+        }
+      }
+    }
+  }
+}

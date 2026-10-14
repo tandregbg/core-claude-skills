@@ -1,12 +1,12 @@
 # core-skills
 
-**Version:** 1.90.0
+**Version:** 1.91.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
-**Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 122 entries, newest first. This
+**Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 123 entries, newest first. This
 file used to repeat the last 34 of them; it no longer does, because a second
 copy of a changelog is a second thing to keep true.
 
@@ -204,6 +204,7 @@ What is released now and what waits, and on whom, is on the ops board: [`docs/op
 |-------|-------------|----------------|
 | `inbox` | Universal entry point for unstructured content. Classifies voice memos, quick notes, emails, raw text **and file drops** (`_inbox/.files/`, CR-024) and routes them to their skill (`/inbox route`). Also maintains the **triage working surface** (CR-022): `/inbox triage refresh` does mechanical upkeep of a human-owned triage doc without ever reordering or rewording it. | Yes (`/inbox`) |
 | `preparation` | The config-free form of `/ops prepare`: the agenda for a meeting with a contact, with a 60-second walk-in card on top and deep-dive content below the fold. Tagged questions ([DECISION]/[DEMO]/[STATUS]/[QUESTION]/[FYI]). Frozen at meeting time. | Yes (`/preparation`) |
+| `company` | The **company profile**: a current, source-backed picture of an organisation in `<org>/_company/`, one file per facet plus `sources.yaml` and `brands.yaml`, with an open contract. Subcommands: `init`, `intake`, `check`, `build`, `export`, `help`. **The structure is open; any question set is an optional template read from config, and this repository carries none.** | Yes (`/company`) |
 | `transcript` | The config-free form of `/ops process`: a summary from a transcript of a call, meeting or voice recording. Action-first canonical structure (Nästa steg → Beslut → Konklusion → Diskussion → Bakgrund), three template variants by length, optional task import, insights to `_insights.yaml`. | Yes (`/transcript`) |
 | `correspondence` | A **two-way thread with a person** — email, chat, messages — as a living document appended to newest first. No participant list (sender and recipients *per turn*), cc may not own an action, and the raw wire form is not kept. Routed by the thread's subject, not its sender. One-way material is `content` instead; the test is whether anyone replied (CR-080) |
 | `ops` | The config layer over `prepare` and `process`, plus the loop steps it owns. Subcommands are the loop's verbs: `orient`, `prepare`, `process` (the default), `check <folder>` (template contracts, carry-forward chain) and `check` (vault closure debt); `status` shows each project's resolved config; `project list` / `project new`; `normalize` repairs Swedish characters, names and filenames. | Yes (`/ops`) |

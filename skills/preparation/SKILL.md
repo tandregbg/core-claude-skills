@@ -105,6 +105,7 @@ Read existing files in the contact folder to build context:
 2. **Recent transcripts** -- read the 2-3 most recent `YYMMDD-samtal-*.md`, `YYMMDD-call-*.md`, or other `YYMMDD-*.md` files (sorted by date, newest first). Search for both Swedish and English filename keywords.
 3. **Previous preparations** -- read any existing `YYMMDD-förberedelse-*.md` or `YYMMDD-preparation-*.md` files, especially the most recent one for continuity
 4. **Other files** -- note any other relevant documents (project files, notes, etc.)
+5. **Company profile (CR-125)** -- if the contact's company has a `_company/` folder, read its `company` and `positioning` facets as standing context (who they are, what they sell, where they stand) and cite the facet; do not copy text in. Silent when there is none. Never write to it.
 
 Extract from these sources:
 - Open action items (unchecked `- [ ]` items)

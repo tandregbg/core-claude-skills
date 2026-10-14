@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core-skills/company-sources.schema.json",
+  "title": "company sources.yaml: where the facts live, and what is off-limits (CR-125)",
+  "type": "object",
+  "required": ["vertical", "updated", "sources"],
+  "additionalProperties": false,
+  "properties": {
+    "vertical": {"type": "string", "minLength": 1},
+    "updated": {"type": "string", "format": "date"},
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "except": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "path", "authority", "feeds"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^s-[a-z0-9][a-z0-9-]*$"},
+          "kind": {"enum": ["vault", "host", "repo", "url", "intake", "interview"]},
+          "path": {"type": "string", "minLength": 1},
+          "authority": {"enum": ["binding", "current", "public", "draft"]},
+          "feeds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+                    "$comment": "facet names; empty = declared for context only"},
+          "note": {"type": "string"}
+        }
+      }
+    }
+  }
+}

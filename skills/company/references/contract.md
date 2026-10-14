@@ -1,0 +1,120 @@
+# The company profile contract (CR-125)
+
+The open part of Company 360: where a company's profile lives, what its files are called, what they carry,
+and the rules every file follows. This file is the whole contract. It contains **no questions and no method**:
+what to ask, in which order, to what standard, belongs to an optional template the skill reads from
+`company.template:` (see SKILL.md). Without a template the skill works with the plain skeleton below.
+
+## 1. Where
+
+One folder per organisation, at the top of that organisation's area:
+
+```
+<org>/_company/
+  <facet>-<vertical>.md     one file per facet (names below); <vertical> is the organisation's folder name
+  sources.yaml              where the facts live and what is off-limits       (schema: docs/schemas/company-sources.schema.json)
+  brands.yaml               brand architecture and web domains                (schema: docs/schemas/company-brands.schema.json)
+  layers/<department>.md    optional department layers (section 6)
+  exports/<target>/         derived files for other systems; regenerated, never edited
+  README.md                 sources read, conflicts, gaps, confidence, when to regenerate
+  AUDIT-LOG.md              reviews: what was checked, by whom, what changed, next due
+  .intake/                  dropped material that exists nowhere else
+```
+
+The folder name is fixed so tools find it; every file name carries the vertical so a copy that loses its folder
+still says what it is. A profile file found **outside** `_company/` is a copy and is reported.
+
+## 2. Facets
+
+A facet is a subject the company must be able to state. The names and one-line purposes are the contract.
+
+| Facet | Purpose |
+|---|---|
+| `essence` | The core: why the company exists, where it is heading, what it stands for |
+| `company` | Who and what it is: owners, roles, numbers, siblings, current focus |
+| `offering` | What is sold now: status, version, price, what is decided next |
+| `positioning` | Where it stands: segments, value, differentiation, competitors, what it may claim |
+| `messaging` | What it says: the message framework, the words to use and avoid |
+| `gtm` | How it wins: audience, journey, qualification, channels, partners, pipeline |
+| `strategy` | Where it goes: direction, bets decided or draft, open questions, horizon |
+| `brand` | How it sounds and looks: voice, rules, vocabulary, visual rules, images |
+| `public` | Only what outsiders can already see |
+
+**Levels** say how much must be answered, not what is asked: `public` < `light` < `medium` < `full`.
+
+| Level | Facets in play |
+|---|---|
+| public | company, offering, public |
+| light | + essence, positioning, messaging, strategy, brand |
+| medium, full | + gtm (all nine); `full` also expects every required item answered or explicitly open |
+
+## 3. Frontmatter (every profile file)
+
+```yaml
+vertical: acme
+facet: positioning            # one of the nine, or: readme
+level: medium                 # public | light | medium | full
+status: draft                 # draft | synthesis-locked | draft-locked | final | stale
+generated: 2026-01-05         # when the text was written
+reviewed:                     # date and who; empty until a person has read it
+language: en
+sources: []                   # host:path, vault:path, url:..., interview:<date>
+```
+
+H1 is `# <Display name> -- <facet>`, facet always in English. A facet leaves `draft` only when every item
+required at its level is answered, marked `na`, or listed as open with a reason.
+
+## 4. Rules
+
+1. **Never invent.** A fact without a source is not written. An open item reads `_Not provided yet._`
+2. **Every fact carries its source** (`[s1]`, resolved in the file's Sources list). Numbers carry a date and a definition.
+3. **Conflicts are written out**, never resolved silently: both values, both sources, which one the text uses and why.
+4. **Gaps are information.** They are listed, not filled.
+5. **Decisions are made, not found.** Anything that needs a decision is marked and goes to the owner.
+   A file with status `draft-locked` or `final` must list its sources.
+6. **A never-say list filters every file**, not only the brand file.
+7. **Public means already public.** The `public` facet and level use only published sources.
+8. **Methodology is not profile.** What the company teaches or delivers is linked, never summarised.
+9. **Proof is reconciled** against engagement records before it is used as proof.
+10. **Privacy.** No credentials, no private one-to-one content, no judgements of named people.
+11. **Status claims are dated.** "Active" with no recent evidence is a finding; a paused business is written as paused.
+
+## 5. Machine files
+
+`sources.yaml` and `brands.yaml` follow the two schemas in `docs/schemas/`. `unknown` is a valid value wherever a
+fact is not established; `null` and omission are not. A source has `id` (`s-...`, unique), `kind`
+(`vault|host|repo|url|intake|interview`), `path`, `authority` (`binding|current|public|draft`), `feeds` (facet
+names; empty means context only) and an optional `note`. `exclude` lists off-limits paths with a reason and
+optional exceptions.
+
+**Service accounts** are declared in `<org>/_ops.yaml` under `company.services` by reference, never by value:
+
+```yaml
+company:
+  services:
+    ranking: {account: acme, key_ref: "env:RANKING_API_KEY"}
+```
+
+One key per payer or account, never per profile. A key **value** in any profile, `sources.yaml`, `brands.yaml`
+or repository is a defect (`/company check` reports it).
+
+## 6. Department layers
+
+A layer adds what one function needs and states which facets it may read:
+
+```markdown
+---
+vertical: acme
+layer: sales
+reads: [positioning, messaging, gtm, offering, brand]
+owner: <role>
+---
+```
+
+An agent for a department loads its layer plus the facets in `reads`, nothing else.
+
+## 7. Exports
+
+`exports/<target>/` holds files derived for another system. They are regenerated from the profile and never
+edited. The first target is an external search-visibility tracker: the subject, the buying category, named
+competitors, buying situations and a context line per market. Search data, when it exists, beats the profile.

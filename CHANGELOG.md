@@ -9,6 +9,32 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+## [1.91.0] - 2026-10-14
+
+The company profile. `contract_version` 42 -> 43, `ops_config` 1.5 -> 1.6. Additive: a vault that sets
+nothing behaves as before.
+
+### Added
+
+- **CR-125 -- `/company`: a company profile with an open contract and an optional private template.** A new
+  skill and a new optional folder `<org>/_company/`: one file per facet (essence, company, offering,
+  positioning, messaging, gtm, strategy, brand, public), `sources.yaml` (where the facts live, what is
+  off-limits, each with its authority and the facets it feeds), `brands.yaml` (brand architecture and web
+  domains; `unknown` is valid, `null` and omission are not), `AUDIT-LOG.md`, `README.md`, `exports/<target>/`
+  and optional department layers. The contract is `skills/company/references/contract.md`; the two machine
+  files have JSON Schemas in `docs/schemas/`. Subcommands: `init` (the plain skeleton per level, never
+  overwrites), `intake`, `check`, `build`, `export` (first target: an external search-visibility tracker).
+  `company_tool.py` does the mechanical part and reports, never rewrites: stale facets, schema errors,
+  locked facets without sources, credential-looking values, and with `--copies` profile files outside
+  `_company/`; the judgement checks (a status claim with no recent evidence, a fact without a source marker)
+  stay with the agent. The skill carries **no question set and no method**: an optional template is read
+  from `company.template:` (a path or an address), and without one the skill says so and stops at the
+  skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
+  `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;
+  `/ops prepare` and `/preparation` read the `company` and `positioning` facets as standing context when a
+  profile exists and are silent when it does not. A profile is customer data: it lives in the organisation's
+  own area and is never an example in a skill or a test.
+
 ## [1.90.0] - 2026-10-13
 
 Profiles, insights schema 3 and a themes registry. `contract_version` 41 -> 42, `schemas.insights`
