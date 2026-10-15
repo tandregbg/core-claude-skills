@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-126**
+Next available CR number: **CR-128**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-126**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-127 | `tasks` (v2 schema + writers), `ops-config` (`milestone:`, schema 1.7), `ops` (`prepare` config review, `check`, `config_checks()`), `ecosystem.yaml` (`schemas`) | **High** | **Proposed** (2026-10-15). The ledger and the milestone record *when*, not just *what*: `closed:` for a finished task (`completed:` accepted as a read alias, no migration) and `set_on:` + append-only `history:` under `milestone:`, appended by the CR-119 config review when a decision moves the date. Two report-only checks: a finished task with no closing day, a milestone date with no provenance. Makes throughput and schedule slip computable; both are unrecoverable for every day they are not written. Additive, contract 43 to 44 |
 | CR-126 | `company` (`export deep-thought`), contract section 7, `ops-config` (`company.deep_thought`, schema 1.7), two export schemas | Medium | **Proposed** (2026-10-14). The company profile becomes Deep Thought's tag and account context, opt-in per organisation, reviewed facets only, no strategy or gtm; record-me for Mac sends it (MAC-CR-007); Deep Thought side DT-CR-745 |
 | CR-125 | `ecosystem.yaml` (`vault_conventions`, `skills`), new skill `company`, `ops-config` (`company:`, schema 1.6), `ops` (`check`, `orient`, `prepare`), `preparation` | Medium | **Implemented v1.91.0.** `/company`: a company profile with an open contract. A folder `<org>/_company/` with one file per facet (essence, company, offering, positioning, messaging, gtm, strategy, brand, public), source markers, `sources.yaml` and `brands.yaml` with JSON Schemas, report-only checks (stale facet, locked without sources, credential value, copy outside the folder), and a derived export. An optional private question template is read from `company.template:`; this repository carries none. Additive, contract 42 to 43 |
 | CR-124 | `ecosystem.yaml` (`vault_conventions`), `transcript`, `ops` (`process`, `check`), `insights` (`synthesize`) | Medium | **Implemented v1.90.0.** A themes registry per project (`_themes.yaml`, opt-in for any profile): themes with aliases, status and merges, the units and insights that carry them; a `Themes:` line per summary and `themes` per insight. Reuse before create. `/ops check` reports three-way (registry, summary, insight) and two-way (insight, registry) disagreements; theme pages come from `/insights synthesize` into `.knowledge/wiki/`, with counts per quarter by original date. Additive, inside contract 42 |
