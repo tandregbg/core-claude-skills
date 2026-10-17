@@ -19,7 +19,7 @@ Judgement checks that need reading (a status claim with no recent evidence, a fa
 are done by the agent in `/company check`; this script covers what a program can decide.
 Dot-folders are never walked.
 """
-import argparse, datetime, json, re, sys
+import argparse, datetime, json, re, sys, unicodedata
 from pathlib import Path
 
 try:
@@ -183,9 +183,46 @@ def check_markers(p, fm, ids):
     return out
 
 
+H1 = re.compile(r"^# (.+?) -- ([a-z]+)\s*$", re.M)
+OPEN = re.compile(r"_Not provided yet\._|\(gap\)|\(No source found|\(Ingen källa hittad")
+DECISION = re.compile(r"\*\*Decision needed:\*\*|\*\*Beslut krävs:\*\*|\((?:beslut krävs|decision needed)", re.I)
+
+
+def summarise(d):
+    """Per facet: open items and decisions waiting for the owner. A count, not a finding."""
+    rows = []
+    for facet in FACETS:
+        for p in sorted(d.glob(f"{facet}-*.md")):
+            t = p.read_text(encoding="utf-8", errors="replace")
+            rows.append((facet, len(OPEN.findall(t)), len(DECISION.findall(t))))
+    return rows
+
+
+def check_names(d):
+    """The H1 of a facet file is `# <Display name> -- <facet>` (facet in English), same display name everywhere."""
+    names, out = {}, []
+    for p in sorted(d.glob("*.md")):
+        fm = frontmatter(p) or {}
+        facet = fm.get("facet")
+        if facet not in FACETS:
+            continue
+        m = re.search(r"^# (.+)$", p.read_text(encoding="utf-8", errors="replace"), re.M)
+        mm = H1.match(m.group(0)) if m else None
+        if not mm or mm.group(2) != facet:
+            out.append(finding("name", p, f"H1 should read '# <Display name> -- {facet}'"))
+        else:
+            names.setdefault(unicodedata.normalize("NFC", mm.group(1)), []).append(p)
+    if len(names) > 1:
+        main = max(names, key=lambda k: len(names[k]))
+        out += [finding("name", ps[0], f"H1 display name {n!r} differs from {main!r} used in most files")
+                for n, ps in names.items() if n != main]
+    return out
+
+
 def check_dir(d, max_age_days, today):
     out = []
     ids_declared = register_ids(d)
+    out += check_names(d)
     for p in sorted(d.glob("*.md")):
         if p.name in ("AUDIT-LOG.md",):
             continue
@@ -280,6 +317,11 @@ def cmd_check(a):
             loc = f"{f['file']}:{f['line']}" if f.get("line") else f["file"]
             print(f"[FINDING] {f['kind']}: {loc} -- {f['message']}")
         print(f"{len(dirs)} _company folder(s), {len(findings)} finding(s)")
+        if a.summary:
+            for d in dirs:
+                print(f"\n{d}\n  facet            open items  decisions needed")
+                for facet, n_open, n_dec in summarise(d):
+                    print(f"  {facet:<16} {n_open:>10}  {n_dec:>16}")
     return 1 if findings else 0
 
 
@@ -304,7 +346,10 @@ def cmd_init(a):
             f"language: {a.language}\nsources: []\n---\n\n# {display} -- {facet}\n\n_Not provided yet._\n", encoding="utf-8")
     (target / "README.md").write_text(
         f"---\nvertical: {v}\nfacet: readme\nstatus: draft\ngenerated: {today}\nreviewed:\nlanguage: {a.language}\n---\n\n"
-        f"# {display} -- profile maintenance\n\n## Sources read\n\n## Conflicts\n\n## Gaps\n\n## Regenerate when\n", encoding="utf-8")
+        f"# {display} -- profile maintenance\n\n## Sources read\n\n## Synthesis\n\nOwner confirmation: pending\n\n"
+        "| Facet | Established | Conflicts | Missing | Decision needed |\n|---|---|---|---|---|\n\n"
+        "## Conflicts\n\n| # | What | Value A (source) | Value B (source) | Used in the text, and why |\n|---|---|---|---|---|\n\n"
+        "## Gaps\n\n## Decisions\n\n## Regenerate when\n", encoding="utf-8")
     (target / "AUDIT-LOG.md").write_text(f"# {display} -- audit log\n\n| Date | By | What was checked | Changed | Next due |\n|---|---|---|---|---|\n", encoding="utf-8")
     (target / "sources.yaml").write_text(f"vertical: {v}\nupdated: {today}\nsources: []\n", encoding="utf-8")
     (target / "brands.yaml").write_text(f"vertical: {v}\nbrands: []\n", encoding="utf-8")
@@ -318,7 +363,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("folder")
-    c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
+    c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
     c.add_argument("--copies", action="store_true"); c.add_argument("--today")
     c.set_defaults(fn=cmd_check)
     i = sub.add_parser("init"); i.add_argument("folder"); i.add_argument("--vertical", required=True)

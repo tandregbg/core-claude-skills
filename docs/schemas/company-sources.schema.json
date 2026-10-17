@@ -35,6 +35,9 @@
           "feeds": {"type": "array", "uniqueItems": true,
                     "items": {"enum": ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]},
                     "$comment": "facet names; empty = declared for context only"},
+          "as_of": {"type": "string", "format": "date",
+                    "$comment": "when a captured copy was taken; with origin_url, lets a public fact cite an internal capture"},
+          "origin_url": {"type": "string", "minLength": 1},
           "note": {"type": "string"}
         }
       }

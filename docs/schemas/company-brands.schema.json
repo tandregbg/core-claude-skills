@@ -19,11 +19,11 @@
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
         "name": {"$ref": "#/$defs/text"},
-        "kind": {"enum": ["company", "product", "personal", "sub-brand"]},
+        "kind": {"enum": ["company", "product", "personal", "sub-brand", "system"]},
         "relation": {"type": "string", "pattern": "^(masterbrand|endorsed|independent|unknown|sub-brand-of:[a-z0-9][a-z0-9-]*)$"},
         "ip_owner": {"$ref": "#/$defs/text"},
         "operator": {"$ref": "#/$defs/text"},
-        "status": {"enum": ["live", "beta", "pre-launch", "paused", "retired", "unknown"]},
+        "status": {"enum": ["live", "beta", "pre-launch", "paused", "retired", "planned", "legacy", "unknown"]},
         "voice": {"$ref": "#/$defs/text"},
         "tokens": {"$ref": "#/$defs/text"},
         "images": {"$ref": "#/$defs/text"},

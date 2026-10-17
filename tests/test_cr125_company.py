@@ -172,6 +172,30 @@ class Check(unittest.TestCase):
         p.write_text(base.replace("sources: []", "sources: [s-ghost]"), encoding="utf-8")
         self.assertEqual(self.kinds(), ["marker"])
 
+    def test_display_name_must_agree(self):
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8").replace("# acme -- company", "# Acme Ltd -- company"), encoding="utf-8")
+        self.assertEqual(self.kinds(), ["name"])
+
+    def test_summary_counts_open_items_and_decisions(self):
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\n**Decision needed:** keep the name? (owner)\n_Not provided yet._\n", encoding="utf-8")
+        rows = {r[0]: r[1:] for r in ct.summarise(self.d)}
+        self.assertEqual(rows["company"], (2, 1))
+
+    def test_brand_kind_system_and_status_planned(self):
+        good = ("vertical: acme\nbrands:\n  - id: acme\n    name: Acme\n    kind: system\n    relation: masterbrand\n"
+                "    status: planned\n    ip_owner: unknown\n    operator: unknown\n    voice: unknown\n    tokens: unknown\n"
+                "    images: unknown\n    design: unknown\n    source: x\n    domains: []\n")
+        (self.d / "brands.yaml").write_text(good, encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+
+    def test_captured_copy_fields(self):
+        (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nsources:\n"
+            "  - {id: s-copy, kind: vault, path: \"vault:web/about.md\", authority: public, feeds: [public], "
+            "origin_url: \"https://example.com/about\", as_of: 2026-01-04}\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+
     def test_copy_outside_company_folder(self):
         (self.org / "positioning-acme.md").write_text(
             "---\nvertical: acme\nfacet: positioning\nstatus: draft\n---\n\n# copy\n", encoding="utf-8")

@@ -45,8 +45,8 @@ A facet is a subject the company must be able to state. The names and one-line p
 | Level | Meaning |
 |---|---|
 | public | Only what outsiders can already see |
-| basic | Facts stated with a source; gaps listed |
-| standard | Conflicts between sources resolved or recorded; numbers dated and defined |
+| basic | Facts stated with a source; conflicts and gaps listed (rules 3 and 4 hold at every level) |
+| standard | Every conflict resolved by the owner or by a `binding` source; numbers dated and defined |
 | complete | Every required item answered or explicitly open, and a person has reviewed it |
 
 ## 3. Frontmatter (every profile file)
@@ -65,6 +65,10 @@ sources: []                   # host:path, vault:path, url:..., interview:<date>
 H1 is `# <Display name> -- <facet>`, facet always in English. A facet leaves `draft` only when every item
 required at its level is answered, marked `na`, or listed as open with a reason.
 
+Every profile file carries the keys above except `README.md` (`vertical`, `facet: readme`, `status`, `generated`,
+`reviewed`, `language`) and `AUDIT-LOG.md` (none). The H1 display name is the same in every facet file, written as
+the company writes it: check the company's own naming rule (spelling, diacritics, casing) before `init --display`.
+
 ## 4. Rules
 
 1. **Never invent.** A fact without a source is not written. An open item reads `_Not provided yet._`
@@ -73,12 +77,34 @@ required at its level is answered, marked `na`, or listed as open with a reason.
 4. **Gaps are information.** They are listed, not filled.
 5. **Decisions are made, not found.** Anything that needs a decision is marked and goes to the owner.
    A file with status `draft-locked` or `final` must list its sources.
-6. **A never-say list filters every file**, not only the brand file.
+6. **A never-say list filters every file**, not only the brand file. It lives in `messaging-<vertical>.md`
+   under the heading `## Never say`: words, claims and comparisons the company has ruled out, each with its
+   source. With a template, the template's list is the starting point. Without one, derive it from the
+   company's own written rules, mark it `derived` and leave it for the owner to confirm.
 7. **Public means already public.** The `public` facet and level use only published sources.
 8. **Methodology is not profile.** What the company teaches or delivers is linked, never summarised.
-9. **Proof is reconciled** against engagement records before it is used as proof.
-10. **Privacy.** No credentials, no private one-to-one content, no judgements of named people.
+9. **Proof is reconciled** against engagement records before it is used as proof. Until then a superlative, a
+   certification or an award may appear only as a published claim ("the company states ..."), with its source,
+   never as a fact and never as the basis of `positioning`.
+10. **Privacy.** No credentials, no private one-to-one content, no judgements of named people. Name a person
+    by role (owner, sign-off, contact) unless the company names them on its own public pages.
 11. **Status claims are dated.** "Active" with no recent evidence is a finding; a paused business is written as paused.
+12. **A fact has one home.** Other facets link to it:
+
+    | Fact | Home |
+    |---|---|
+    | Owners, legal entities, headcount, revenue, number of brands or products | `company` |
+    | What is sold, versions, prices, lifecycle | `offering` |
+    | Segments, differentiation, competitors, claims (as claims) | `positioning` |
+    | Wording, message framework, the never-say list | `messaging` |
+    | Domains, hosting, brand relations | `brands.yaml` (facets cite it) |
+    | What outsiders can already see | `public`, only from published sources |
+    | Anything that waits for a person | the owner's decision, marked as in rule 5 |
+13. **Decisions are marked the same way everywhere:** a line `**Decision needed:** <the question> (<owner role>)`
+    in the facet, and the same question listed under `## Decisions` in the README. `check --summary` counts them
+    per facet, together with the `_Not provided yet._` lines.
+14. **A source cited by an included source** that is itself excluded (an interview behind a register) is named in
+    the cited source's `note`; the excluded one stays unread.
 
 ## 5. Machine files
 
@@ -86,7 +112,10 @@ required at its level is answered, marked `na`, or listed as open with a reason.
 fact is not established; `null` and omission are not. A source has `id` (`s-...`, unique), `kind`
 (`vault|host|repo|url|intake|interview`), `path`, `authority`, `feeds` (facet names, each one of the nine;
 empty means context only) and an optional `note`. `exclude` lists off-limits paths with a reason and optional
-exceptions.
+exceptions. Paths in `exclude` are relative to the organisation folder (the parent of `_company/`),
+a trailing `/` means a folder, `*` is a glob, and a path may be declared although it does not exist yet. A source
+that is a captured copy of a web page is `kind: vault` (or `repo`) with `origin_url` and `as_of` set, so a public
+fact can cite the capture and still be traced to the page.
 
 **`authority`** says how much a source weighs when sources disagree:
 
@@ -103,8 +132,15 @@ A document that looks ratified but carries no sign-off is `current`, not `bindin
 names. In a facet text a fact is marked with the register id (`[s-site]`) or with a local number (`[s1]`) whose
 entry in the file's Sources list names the register id or a locator. The frontmatter `sources:` lists the register
 ids the file draws on; a locator (`vault:`, `host:`, `url:`, `interview:<date>`) is allowed where no register
-entry exists yet. A `vault:` path resolves against the organisation folder (the parent of `_company/`).
+entry exists yet. A `vault:` path resolves against the vault root (the folder that holds the organisation folders); in a
+stand-alone organisation folder with no vault around it, against the organisation folder. `check` does not test
+that a path exists.
 `/company check` reports a marker nobody defines and an `s-` id the register does not declare.
+
+**Brand `kind` and `status`.** `kind` is `company`, `product`, `personal`, `sub-brand` or `system` (an internal
+grouping label that has no consumer-facing name). `status` is `live`, `beta`, `pre-launch`, `paused`, `retired`,
+`planned` (announced, not yet in the system), `legacy` (still published, being phased out) or `unknown`.
+`source` is provenance only; a nuance belongs in a note in the facet that cites the brand.
 
 **`brands.yaml` is complete or `unknown`.** Every field the schema lists as required is present; where a fact is
 not established the value is `unknown` (for `languages`, the string `unknown` instead of a list). Quote language

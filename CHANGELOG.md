@@ -30,7 +30,11 @@ nothing behaves as before.
   stay with the agent. The contract states what `authority` means, how `[s1]`, `s-` ids and frontmatter sources
   relate, and that `brands.yaml` is complete or `unknown`; `check` reports an undefined marker, an undeclared
   `s-` id, a `feeds` value that is not a facet, a missing required brand field, and gives a hint for an unquoted
-  `no` (found by running the skill from blank paper). The skill carries **no question set and no method**: an optional template is read
+  `no` (found by running the skill from blank paper). The same run settled where the never-say list lives
+  (`## Never say` in `messaging`), how decisions are marked, which facet is the home of which fact, what a claim
+  may be before it is reconciled, how an absent owner is handled, `kind: system` and `status: planned|legacy`,
+  `origin_url` and `as_of` for captured pages, and `check --summary` (open items and decisions per facet) and an
+  H1 display-name check. The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
   `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;

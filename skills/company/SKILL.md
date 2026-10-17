@@ -40,6 +40,7 @@ the facts change; events go to the meeting archive.
 
 Creates `<org>/_company/` with the plain skeleton for the configured level (`company.level`, default `basic`):
 one file per facet (all nine), `README.md`, `AUDIT-LOG.md`, empty `sources.yaml` and `brands.yaml`, `.intake/`.
+Before `--display`, check how the company itself writes its name (spelling, diacritics, casing) and use that.
 Run `python3 ~/.claude/skills/company/company_tool.py init <org-folder> --vertical <v> [--level L] [--language xx]`.
 It never overwrites an existing folder. With `company.template:` set, read the question set from there and say
 which; without it, say that no question set is attached and stop at the skeleton.
@@ -66,23 +67,29 @@ the question set is read by you, the agent, and is never copied into this reposi
    of what is off-limits, with a reason. Read sources in place and never edit them.
 2. **Synthesis.** If `company.template:` is set, read it as described under `init` before this step. For each facet in play, list per item: what is established (with source markers), what
    conflicts (both values, both sources, never resolved silently), what is missing, what needs a decision.
-   Summarise the understanding for the owner to confirm before writing facet text.
+   Summarise the understanding for the owner to confirm before writing facet text. Put it in the README
+   (`## Synthesis`, one row per facet). If the owner is not available, do not stop: write the synthesis, set
+   `Owner confirmation: pending`, keep every facet `draft` (never `synthesis-locked`), and write on.
 3. **Write each facet** from its sources, one facet at a time, within its own scope; link to other facets
-   instead of repeating them. Open items read `_Not provided yet._` Apply the never-say list.
-4. **Decisions** are not made by the skill. Mark them and hand them to the owner; record the owner's answer as
-   a dated `interview:<date>` source.
+   instead of repeating them (contract rule 12 says which facet is the home of which fact). Open items read
+   `_Not provided yet._` Apply the never-say list (`## Never say` in `messaging`; contract rule 6 says how to
+   make one when no template supplies it). Sources stay where they are: `.intake/` holds only dropped material
+   that exists nowhere else.
+4. **Decisions** are not made by the skill. Mark each as `**Decision needed:** <question> (<owner role>)`, list
+   it under `## Decisions` in the README and hand it to the owner; record the owner's answer as a dated
+   `interview:<date>` source.
 
 ### `check [org]`
 
 Report only; nothing is rewritten.
 
 ```
-python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--max-age-days N] [--json]
+python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--max-age-days N] [--json]
 ```
 
 The script reports a stale facet (no review or generation within `company.max_age_days`, default 365, or status
 `stale`), schema errors in the frontmatter and in `sources.yaml` / `brands.yaml`, a facet marked `draft-locked` or
-`final` with no sources, a **credential-looking value anywhere in a profile**, and with `--copies` any profile
+`final` with no sources, a marker nobody defines, a facet H1 whose display name differs, a **credential-looking value anywhere in a profile**, and with `--copies` any profile
 file outside `_company/`. Then read the files for what a program cannot decide:
 
 - a **status claim** ("active", "live") with no recent evidence, or a paused business written as running;
