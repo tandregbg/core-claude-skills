@@ -103,13 +103,13 @@ What extraction cannot carry (images, diagrams, colour swatches, tables) goes in
 Report only; nothing is rewritten.
 
 ```
-python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--leak-from items.json] [--max-age-days N] [--json]
+python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--items-from items.json] [--leak-from items.json] [--max-age-days N] [--json]
 ```
 
 The script reports a stale facet (no review or generation within `company.max_age_days`, default 365, or status
 `stale`), schema errors in the frontmatter and in `sources.yaml` / `brands.yaml`, a facet marked `draft-locked` or
 `final` with no sources, a marker nobody defines, a facet H1 whose display name differs, a **credential-looking value anywhere in a profile**, and with `--copies` any profile
-file outside `_company/`. `--leak-from items.json` takes the question wording of the attached set (as the server returns it) and reports every profile file in which that wording appears (item id and line, never the text): a profile holds answers, not questions. `check` reads `company:` from the config, so `max_age_days` and `level_map` (the question set's level names are accepted in frontmatter) apply without flags. `--strict` also reports what the overview graph needs (contract section 8): conflicts written `C<n>` with two
+file outside `_company/`. `--items-from items.json` derives the required ids itself from the set's items (as the server returns them, saved as received), `company.level_map` and `company.level_order`; `company_tool.py required-ids <org> --items-from items.json [--out ids.json]` writes the same list to a file. `--leak-from items.json` takes the question wording of the attached set (as the server returns it) and reports every profile file in which that wording appears (item id and line, never the text): a profile holds answers, not questions. `check` reads `company:` from the config, so `max_age_days` and `level_map` (the question set's level names are accepted in frontmatter) apply without flags. `--strict` also reports what the overview graph needs (contract section 8): conflicts written `C<n>` with two
 `[s-id]` sides and their facets, local markers that name a register id, decisions in the one form with an owner
 role, `feeds` that match what a facet cites. Then read the files for what a program cannot decide:
 
@@ -150,6 +150,7 @@ company:
   max_age_days: 365       # a facet older than this is reported stale
   template: null          # path or address of an optional private template; null = the plain skeleton
   level_map: {}           # profile level -> the attached question set's own level name; no default is shipped
+  level_order: []         # the question set's own level names, lowest first; no default is shipped
   services: {}            # references only: {ranking: {account: acme, key_ref: "env:RANKING_KEY"}}
 ```
 

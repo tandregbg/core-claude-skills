@@ -223,6 +223,8 @@ def check_names(d):
 
 
 SID = re.compile(r"s-[a-z0-9][a-z0-9-]*")
+CITE_FORM = re.compile(r"\((?:pp?\.\s*\d+(?:\s*[-\u2013,]\s*\d+)*(?:\s*[;,]\s*[^()]+)?|section:\s*[^()]+)\)")
+MARKER_ANY = re.compile(r"\[(?:s-[a-z0-9][a-z0-9-]*|s\d+)\]")
 DEC_OLD = re.compile(r"Decision for the owner:|\((?:beslut krävs|decision needed)|Beslut krävs:", re.I)
 DEC_NEW = re.compile(r"\*\*Decision needed:\*\*(.*)")
 
@@ -301,7 +303,26 @@ def check_strict(d):
                     out.append(finding("graph", p, f"decision is not listed under '## Decisions' in README: {line.strip()[:60]}"))
             if dm and not re.search(r"\([^()]+\)\s*(?:\[[^\]]+\]\s*)*\.?\s*$", dm.group(1)):
                 out.append(finding("graph", p, f"decision names no owner role in parentheses: {line.strip()[:60]}"))
-        for cm in re.finditer(r"\[(s-[a-z0-9][a-z0-9-]*)\]\s*\(pp?\.\s*(\d+)(?:\s*[-\u2013]\s*(\d+))?\)", body):
+        for m_ in re.finditer(r"\[(?:s-[a-z0-9][a-z0-9-]*|s\d+)\]\s*(\((?:p|sec)[^()]*\))", body):
+            if not CITE_FORM.fullmatch(m_.group(1)):
+                out.append(finding("graph", p, f"citation {m_.group(0)[:50]!r} is not '(p. N)', '(pp. N-M)' or '(section: <label>)'"))
+        in_sources, intro_cited = False, False
+        for n_, line_ in enumerate(body.split("\n"), 1):
+            if line_.startswith("#"):
+                in_sources = bool(re.match(r"#+\s*(Sources|Källor|Never say)\b", line_))
+                intro_cited = False
+                continue
+            if not line_.lstrip().startswith(("- ", "* ")):
+                if line_.strip():
+                    intro_cited = bool(MARKER_ANY.search(line_))   # a list introduced by a cited sentence is covered by it
+                continue
+            if in_sources or intro_cited:
+                continue
+            txt = line_.lstrip()[2:]
+            if len(txt.split()) >= 10 and not MARKER_ANY.search(txt) and not OPEN.search(txt) and not DEC_NEW.search(txt) \
+                    and not re.match(r"(Status of|Owner confirmation|Note:)", txt):
+                out.append(finding("graph", p, f"bullet states something but carries no [s-id] marker: {txt[:50]}", n_))
+        for cm in re.finditer(r"\[(s-[a-z0-9][a-z0-9-]*)\]\s*\(pp?\.\s*(\d+)(?:\s*[-\u2013]\s*(\d+))?[^()]*\)", body):
             n = srcs.get(cm.group(1), {}).get("pages")
             hi = int(cm.group(3) or cm.group(2))
             if n and (hi > n or int(cm.group(2)) < 1):
@@ -373,14 +394,59 @@ def check_items(d, wanted):
     return [finding("coverage", p, f"{len(missing)} required item(s) are not listed as answered, na or open (silent omission): {shown}")]
 
 
+class InputError(Exception):
+    """A file the caller supplied cannot be used; reported as a message, never a traceback."""
+
+
+def load_item_bank(path):
+    """The question set's items from a file in any shape the caller has: a list, {items: [...]}, or a saved
+    JSON-RPC answer ({result: {content: [{text: "<json>"}]}}). Returns a list of item dicts or strings."""
+    p = Path(path).expanduser()
+    if not p.is_file():
+        raise InputError(f"{path}: no such file")
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError as e:
+        raise InputError(f"{path}: not JSON ({e})") from e
+    for _ in range(4):
+        if isinstance(data, dict) and isinstance(data.get("result"), dict):
+            data = data["result"]
+        if isinstance(data, dict) and isinstance(data.get("content"), list):
+            texts = [c.get("text") for c in data["content"] if isinstance(c, dict) and isinstance(c.get("text"), str)]
+            if not texts:
+                break
+            try:
+                data = json.loads(texts[0])
+            except ValueError as e:
+                raise InputError(f"{path}: the answer's text is not JSON ({e})") from e
+        if isinstance(data, dict) and "items" in data:
+            data = data["items"]
+        if isinstance(data, list):
+            break
+    if not isinstance(data, list) or not data:
+        raise InputError(f"{path}: no list of items found (expected a list, {{items: [...]}} or a saved answer)")
+    return data
+
+
 def load_wanted(path):
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    data = data.get("items", data) if isinstance(data, dict) else data
-    return [x if isinstance(x, str) else x["id"] for x in data if isinstance(x, str) or x.get("required", True)]
+    return [x if isinstance(x, str) else x["id"] for x in load_item_bank(path) if isinstance(x, str) or x.get("required", True)]
+
+
+def required_ids(path, level, cfg):
+    """Ids of the items required up to the question set's level that the profile level maps to.
+    Needs company.level_map and company.level_order (the set's own level names, lowest first): the repository ships none."""
+    mapped = cfg.get("level_map", {}).get(level)
+    order = cfg.get("level_order") or []
+    if not mapped:
+        raise InputError(f"company.level_map has no entry for the profile level {level!r}")
+    if mapped not in order:
+        raise InputError(f"company.level_order does not list {mapped!r}; give the set's level names lowest first")
+    ok = set(order[: order.index(mapped) + 1])
+    return [i["id"] for i in load_item_bank(path) if isinstance(i, dict) and i.get("level") in ok and i.get("id")]
 
 
 # ---------------------------------------------------------------- configuration
-CONFIG_DEFAULTS = {"level": "basic", "language": "en", "max_age_days": 365, "template": None, "level_map": {}}
+CONFIG_DEFAULTS = {"level": "basic", "language": "en", "max_age_days": 365, "template": None, "level_map": {}, "level_order": []}
 COVERAGE_RULESET = "company-coverage/3.2"
 
 
@@ -388,7 +454,7 @@ def load_config(org):
     """The `company:` block: the vault's _config/base.yaml (the folder above the organisation), then <org>/_ops.yaml.
     Returns (config, problems). A later source overrides an earlier one key by key."""
     cfg, problems = dict(CONFIG_DEFAULTS), []
-    cfg["level_map"] = {}
+    cfg["level_map"], cfg["level_order"] = {}, []
     for p in (org.parent / "_config" / "base.yaml", org / "_ops.yaml"):
         if not p.is_file():
             continue
@@ -413,12 +479,16 @@ def load_config(org):
     if not isinstance(lm, dict) or any(k not in LEVELS or not isinstance(v, str) or not v for k, v in lm.items()):
         problems.append(f"company.level_map must map profile levels {LEVELS} to the question set's own level names")
         cfg["level_map"] = {}
+    lo = cfg["level_order"]
+    if not isinstance(lo, list) or any(not isinstance(x, str) or not x for x in lo):
+        problems.append("company.level_order must be a list of the question set's level names, lowest first")
+        cfg["level_order"] = []
     return cfg, problems
 
 
 def allowed_levels(cfg):
     """Profile levels plus the names the attached question set uses for them (company.level_map values)."""
-    return LEVELS + [v for v in cfg.get("level_map", {}).values()]
+    return LEVELS + [v for v in cfg.get("level_map", {}).values()] + [v for v in cfg.get("level_order", [])]
 
 
 # ---------------------------------------------------------------- leak and coverage summary
@@ -434,12 +504,8 @@ def _tokens(text):
 def load_questions(path):
     """Question wording from the set's items, as a list of (id, text). The profile repository holds none of it:
     the caller supplies it (for example the server's get_items result)."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    for k in ("items", "result"):
-        if isinstance(data, dict) and k in data:
-            data = data[k]
     out = []
-    for n, it in enumerate(data if isinstance(data, list) else []):
+    for n, it in enumerate(load_item_bank(path)):
         if isinstance(it, dict):
             for k in QUESTION_KEYS:
                 if isinstance(it.get(k), str):
@@ -457,7 +523,9 @@ def check_leak(d, questions):
         for i in range(len(t) - SHINGLE + 1):
             grams.setdefault(tuple(t[i:i + SHINGLE]), qid)
     out = []
-    for p in sorted(d.glob("*.md")):
+    if not grams:
+        return [finding("leak", d, "no question wording was loaded, so nothing was compared (check the --leak-from file)")]
+    for p in sorted(list(d.glob("*.md")) + list(d.glob("*.yaml"))):
         seen = {}
         for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").split("\n"), 1):
             t = _tokens(line)
@@ -582,17 +650,27 @@ def cmd_check(a):
         cfg, problems = load_config(d.parent)
         findings += [finding("config", d, pr) for pr in problems]
         findings += check_dir(d, a.max_age_days or cfg["max_age_days"], today, cfg)
-    if a.leak_from:
-        questions = load_questions(a.leak_from)
+    try:
+        questions = load_questions(a.leak_from) if a.leak_from else None
+        wanted_from = None
+        if a.items_from:
+            wanted_from = {d: required_ids(a.items_from, load_config(d.parent)[0]["level"], load_config(d.parent)[0]) for d in dirs}
+        wanted = load_wanted(a.items) if a.items else None
+    except InputError as e:
+        print(f"refused: {e}", file=sys.stderr)
+        return 2
+    if questions is not None:
         for d in dirs:
             findings += check_leak(d, questions)
     if a.strict:
         for d in dirs:
             findings += check_strict(d)
-    if a.items:
-        wanted = load_wanted(a.items)
+    if wanted is not None:
         for d in dirs:
             findings += check_items(d, wanted)
+    if wanted_from is not None:
+        for d in dirs:
+            findings += check_items(d, wanted_from[d])
     if a.copies:
         findings += check_copies(root, dirs)
     if a.json:
@@ -696,6 +774,34 @@ def _slug(p):
     return re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", p.stem.lower()).encode("ascii", "ignore").decode()).strip("-")
 
 
+def cmd_required_ids(a):
+    org = Path(a.folder).expanduser().resolve()
+    cfg, problems = load_config(org)
+    for pr in problems:
+        print(f"config: {pr}", file=sys.stderr)
+    try:
+        ids = required_ids(a.items_from, a.level or cfg["level"], cfg)
+    except InputError as e:
+        print(f"refused: {e}", file=sys.stderr)
+        return 2
+    text = json.dumps(ids, indent=0)
+    if a.out:
+        Path(a.out).expanduser().write_text(text + "\n", encoding="utf-8")
+        print(f"{len(ids)} required item id(s) for level {a.level or cfg['level']} written to {a.out}")
+    else:
+        print(text)
+    return 0
+
+
+def page_noise(text):
+    """A page that is a vector drawing read as text: very many tokens, most of them one or two characters or bare numbers."""
+    t = text.split()
+    if len(t) < 300:
+        return False
+    junk = sum(1 for w in t if len(w) <= 2 or w.replace(".", "").replace(",", "").replace("-", "").isdigit())
+    return junk / len(t) > 0.55
+
+
 def cmd_extract(a):
     """Plain text with page markers from PDFs and saved web pages, plus a manifest. Read-only on the sources."""
     org = Path(a.folder).expanduser().resolve()
@@ -725,8 +831,11 @@ def cmd_extract(a):
                 pages = pages[:-1]
             body = "".join(f"=== page {i} ===\n{pg.strip()}\n\n" for i, pg in enumerate(pages, 1))
             thin = [i for i, pg in enumerate(pages, 1) if len(pg.split()) < 25]
-            words = len(raw.split())
+            noisy = [i for i, pg in enumerate(pages, 1) if page_noise(pg)]
+            words = sum(len(pg.split()) for i, pg in enumerate(pages, 1) if i not in noisy)
             head = f"source: {rel}\nkind: pdf\npages: {len(pages)}\nsha256: {sha}\n"
+            if noisy:
+                notes.append(f"{rel}: pages that look like drawings read as text (do not trust their text, render them instead; their words are left out of the Words column): {', '.join(map(str, noisy))}")
             if thin:
                 notes.append(f"{rel}: pages with fewer than 25 words, probably mostly images, render them to read them: {', '.join(map(str, thin))}")
             rows.append((str(rel), target.name, "pdf", str(len(pages)), words, sha, ""))
@@ -748,6 +857,7 @@ def cmd_extract(a):
            "the extracted file is a working copy, the original is the source.", "",
            "Not captured: images, diagrams, colour swatches and anything drawn as graphics, and table structure beyond what the layout keeps.", "",
            "| Original | Text | Kind | Pages | Words | sha256 | Address |", "|---|---|---|---|---|---|---|"]
+    man = [m.replace("| Words |", "| Readable words |") for m in man]
     man += [f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | {r[5][:12]} | {r[6]} |" for r in rows]
     if notes:
         man += ["", "## To look at by hand", ""] + [f"- {n}" for n in notes]
@@ -760,13 +870,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("folder")
-    c.add_argument("--items", help="JSON list of required item ids (or {id, required}) from the attached question set; reports silent omissions"); c.add_argument("--leak-from", help="JSON of the question set's items (as the server returns them); reports question wording found in the profile"); c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=None, help="default: company.max_age_days, else 365"); c.add_argument("--json", action="store_true")
+    c.add_argument("--items", help="JSON list of required item ids (or {id, required}) from the attached question set; reports silent omissions"); c.add_argument("--items-from", help="the question set's items (as the server returns them); required ids are derived from company.level_map and company.level_order for the profile level"); c.add_argument("--leak-from", help="JSON of the question set's items (as the server returns them); reports question wording found in the profile"); c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=None, help="default: company.max_age_days, else 365"); c.add_argument("--json", action="store_true")
     c.add_argument("--copies", action="store_true"); c.add_argument("--today")
     c.set_defaults(fn=cmd_check)
     i = sub.add_parser("init"); i.add_argument("folder"); i.add_argument("--vertical", required=True)
     i.add_argument("--level", choices=LEVELS, default=None, help="default: company.level, else basic"); i.add_argument("--language", default=None, help="default: company.language, else en")
     i.add_argument("--display"); i.add_argument("--template", help="default: company.template"); i.add_argument("--today")
     i.set_defaults(fn=cmd_init)
+    r = sub.add_parser("required-ids", help="the ids a profile level requires, from the question set's items and company.level_map/level_order")
+    r.add_argument("folder", help="the organisation folder"); r.add_argument("--items-from", required=True); r.add_argument("--level"); r.add_argument("--out")
+    r.set_defaults(fn=cmd_required_ids)
     e = sub.add_parser("extract", help="text with page markers from PDFs and saved web pages, plus a manifest")
     e.add_argument("folder", help="the organisation folder"); e.add_argument("--source", help="default: <folder>/source-documents")
     e.add_argument("--out", help="default: <folder>/.extracted"); e.add_argument("--today")

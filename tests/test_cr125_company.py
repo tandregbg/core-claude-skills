@@ -470,6 +470,120 @@ class Hygiene(unittest.TestCase):
         self.assertEqual(cov["brands"], {"open": 1})
 
 
+class ItemBank(unittest.TestCase):
+    ITEMS = [{"id": "Z-01", "level": "light", "q": "Describe the one promise the company makes to every customer before anything else"},
+             {"id": "Z-02", "level": "medium", "q": "Which three words would a customer use to describe the company today"},
+             {"id": "Z-03", "level": "full", "q": "What does the company refuse to do even when a customer asks for it politely"},
+             {"id": "Z-04", "level": "optional", "q": "Optional extra question that nobody has to answer for this level at all"}]
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+        self.org, _ = init(self._t.name)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def raw(self):
+        """The server's answer exactly as saved: a JSON-RPC result whose text is JSON."""
+        f = self.tmp / "raw.json"
+        f.write_text(json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": json.dumps({"count": 4, "items": self.ITEMS}, indent=2)}]}}), encoding="utf-8")
+        return f
+
+    def test_a_saved_server_answer_is_unwrapped_for_every_use(self):
+        f = self.raw()
+        self.assertEqual(len(ct.load_questions(f)), 4)
+        self.assertEqual(ct.load_wanted(f), ["Z-01", "Z-02", "Z-03", "Z-04"])
+
+    def test_leak_check_on_the_raw_answer_finds_an_echo_and_never_passes_empty(self):
+        p = self.org / "_company" / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\nWhich three words would a customer use to describe the company today?\n", encoding="utf-8")
+        found = ct.check_leak(self.org / "_company", ct.load_questions(self.raw()))
+        self.assertEqual([f["message"].split()[4] for f in found], ["Z-02"])
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--leak-from", str(self.raw())]), 1)
+        empty = self.tmp / "empty.json"
+        empty.write_text("[]", encoding="utf-8")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--leak-from", str(empty)]), 2)
+
+    def test_leak_check_also_reads_yaml_files(self):
+        y = self.org / "_company" / "coverage.yaml"
+        y.write_text("vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.2\nitems:\n"
+                     "  - {id: A-1, facet: company, status: open, reason: \"What does the company refuse to do even when a customer asks for it politely\", close_with: us}\n", encoding="utf-8")
+        found = ct.check_leak(self.org / "_company", ct.load_questions(self.raw()))
+        self.assertTrue(any(f["file"].endswith("coverage.yaml") for f in found))
+
+    def test_bad_input_files_are_refused_with_a_message(self):
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--items", str(self.tmp / "nope.json")]), 2)
+        bad = self.tmp / "bad.json"
+        bad.write_text("not json", encoding="utf-8")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--items", str(bad)]), 2)
+
+    def test_required_ids_follow_level_map_and_level_order(self):
+        cfg = {"level_map": {"basic": "light", "standard": "medium"}, "level_order": ["public", "light", "medium", "full"]}
+        f = self.raw()
+        self.assertEqual(ct.required_ids(f, "basic", cfg), ["Z-01"])
+        self.assertEqual(ct.required_ids(f, "standard", cfg), ["Z-01", "Z-02"])
+        with self.assertRaises(ct.InputError):
+            ct.required_ids(f, "complete", cfg)
+        with self.assertRaises(ct.InputError):
+            ct.required_ids(f, "basic", {"level_map": {"basic": "light"}, "level_order": []})
+
+    def test_required_ids_command_and_items_from_flag(self):
+        (self.org / "_ops.yaml").write_text("company:\n  level: standard\n  level_map: {standard: medium}\n  level_order: [public, light, medium, full]\n", encoding="utf-8")
+        out = self.tmp / "ids.json"
+        self.assertEqual(ct.main(["required-ids", str(self.org), "--items-from", str(self.raw()), "--out", str(out)]), 0)
+        self.assertEqual(json.loads(out.read_text(encoding="utf-8")), ["Z-01", "Z-02"])
+        cov = self.org / "_company" / "coverage.yaml"
+        cov.write_text("vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.2\nitems:\n"
+                       "  - {id: Z-01, facet: company, status: open, reason: r, close_with: us}\n", encoding="utf-8")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--items-from", str(self.raw())]), 1)
+        cov.write_text(cov.read_text(encoding="utf-8") + "  - {id: Z-02, facet: company, status: open, reason: r, close_with: us}\n", encoding="utf-8")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--items-from", str(self.raw())]), 0)
+
+
+class Citations(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.org, _ = init(self._t.name)
+        self.d = self.org / "_company"
+        (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nsources:\n"
+            "  - {id: s-a, kind: vault, path: x.pdf, authority: current, feeds: [company], curation: original, pages: 20}\n", encoding="utf-8")
+        self.base = (self.d / "company-acme.md").read_text(encoding="utf-8").replace("sources: []", "sources: [s-a]")
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def strict(self, body):
+        (self.d / "company-acme.md").write_text(self.base + body, encoding="utf-8")
+        return [f["message"] for f in ct.check_strict(self.d)]
+
+    def test_citation_forms(self):
+        for ok in ("Fact [s-a] (p. 3).", "Fact [s-a] (pp. 3-5).", "Fact [s-a] (p. 18, specimen).", "Fact [s-a] (section: History).", "Fact [s-a]."):
+            self.assertEqual([m for m in self.strict("\n" + ok + "\n") if "citation" in m], [], ok)
+        for bad in ("Fact [s-a] (page three).", "Fact [s-a] (p3).", "Fact [s-a] (sect History)."):
+            self.assertEqual(len([m for m in self.strict("\n" + bad + "\n") if "citation" in m]), 1, bad)
+
+    def test_page_note_does_not_hide_a_page_beyond_the_count(self):
+        self.assertEqual(len([m for m in self.strict("\nFact [s-a] (p. 25, specimen).\n") if "beyond the 20 pages" in m]), 1)
+
+    def test_bullets_that_state_something_need_a_marker(self):
+        long = "- The company delivers its tours with a crew that speaks several languages and knows the route well."
+        self.assertEqual(len([m for m in self.strict("\n" + long + "\n") if "carries no" in m]), 1)
+        self.assertEqual([m for m in self.strict("\n" + long + " [s-a] (p. 2)\n") if "carries no" in m], [])
+        self.assertEqual([m for m in self.strict("\nThe crew, as stated [s-a] (p. 2):\n\n" + long + "\n") if "carries no" in m], [])
+        self.assertEqual([m for m in self.strict("\n- Short note.\n") if "carries no" in m], [])
+        self.assertEqual([m for m in self.strict("\n- A longer line that is just a gap and nothing else to say here: _Not provided yet._\n") if "carries no" in m], [])
+
+
+class Noise(unittest.TestCase):
+    def test_a_drawing_read_as_text_is_flagged_and_a_page_of_prose_is_not(self):
+        drawing = " ".join(["12", "4", "x", "0.5", "7", "ab", "3", "9"] * 80)
+        prose = " ".join(["The company builds boats and runs tours for guests in several cities every day."] * 40)
+        self.assertTrue(ct.page_noise(drawing))
+        self.assertFalse(ct.page_noise(prose))
+        self.assertFalse(ct.page_noise("12 4 x"))
+
+
 class Extract(unittest.TestCase):
     PDF = (b"%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
            b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 100]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"

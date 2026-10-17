@@ -106,8 +106,12 @@ the company writes it: check the company's own naming rule (spelling, diacritics
     per facet, together with the `_Not provided yet._` lines.
 14. **A source cited by an included source** that is itself excluded (an interview behind a register) is named in
     the cited source's `note`; the excluded one stays unread.
-15. **Cite the page.** A statement drawn from a paged original reads `[s-id] (p. 12)` or `(pp. 12-14)`, with
-    nothing but the id inside the brackets. `check --strict` rejects a page beyond the declared `pages`.
+15. **Cite the page or the section.** A statement drawn from a paged original reads `[s-id] (p. 12)` or
+    `(pp. 12-14)`, optionally followed by a short note after a comma or semicolon (`(p. 18, specimen)`,
+    `(p. 9; read from the page image)`). A statement drawn from a saved web page or any document without page
+    numbers reads `[s-id] (section: <heading or label>)`. Nothing but the id inside the brackets. `check --strict`
+    rejects a malformed citation and a page beyond the declared `pages`, and reports a bullet of ten words or more
+    that states something without any marker (a list introduced by a cited sentence is covered by it).
 16. **A derived statement stricter than any original** ("never", "always", "only") is not a fact. Record it as a
     dated decision with its owner, or soften it to what the original says.
 17. **A curated source's own working rules** (how a tool writes, what it forbids itself) are context. They never

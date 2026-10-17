@@ -57,7 +57,13 @@ nothing behaves as before.
   to formulate something new, and rule 8 no longer moves an item between the gap classes). Version 3 gave 89 % agreement between two independent readers; 3.1 settles the two points
   both readers still raised (authority orders unequal sources, a `draft` source never creates a conflict, rule 8 is a
   last resort that never overrides an earlier rule) and states that a list the profile derived itself is not the
-  company's statement until the owner confirms it. `ruleset` accepts a minor version. An end-to-end run from PDFs found that `company_tool.py` ignored the `company:` config; it now reads it from
+  company's statement until the owner confirms it. `ruleset` accepts a minor version. A second end-to-end run found four more gaps, now closed: `--leak-from` and `--items` read the server's answer as saved
+  (it unpacked nothing before, so the leak check passed on an empty set; an empty set is now an error, and `coverage.yaml`
+  is scanned as well), `check --items-from` and `required-ids` derive the required ids from `company.level_map` and
+  `company.level_order` (no default names shipped), the citation form `(section: <label>)` is defined next to `(p. N)`
+  and `check --strict` rejects a malformed one and a bullet that states something without a marker, and `extract`
+  warns about pages that are vector drawings read as text. Bad input files give a message, not a traceback.
+  An end-to-end run from PDFs found that `company_tool.py` ignored the `company:` config; it now reads it from
   `<org>/_ops.yaml` and the vault's `_config/base.yaml` (`level`, `language`, `max_age_days`, `template`, `level_map`),
   accepts the question set's own level names in frontmatter, and `init` writes a skeleton that passes `check --strict`
   (a Touches column, the reviewer-notes heading, `ruleset` in `coverage.yaml`). New checks: `--leak-from` (question
