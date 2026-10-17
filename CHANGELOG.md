@@ -57,7 +57,14 @@ nothing behaves as before.
   to formulate something new, and rule 8 no longer moves an item between the gap classes). Version 3 gave 89 % agreement between two independent readers; 3.1 settles the two points
   both readers still raised (authority orders unequal sources, a `draft` source never creates a conflict, rule 8 is a
   last resort that never overrides an earlier rule) and states that a list the profile derived itself is not the
-  company's statement until the owner confirms it. `ruleset` accepts a minor version. `company_tool.py extract` starts from the files a company hands over: text
+  company's statement until the owner confirms it. `ruleset` accepts a minor version. An end-to-end run from PDFs found that `company_tool.py` ignored the `company:` config; it now reads it from
+  `<org>/_ops.yaml` and the vault's `_config/base.yaml` (`level`, `language`, `max_age_days`, `template`, `level_map`),
+  accepts the question set's own level names in frontmatter, and `init` writes a skeleton that passes `check --strict`
+  (a Touches column, the reviewer-notes heading, `ruleset` in `coverage.yaml`). New checks: `--leak-from` (question
+  wording found in a profile, reported by item id and line), `where` must point at a line that exists, `ruleset` is
+  required, `Touches:` must be a labelled list of facets, every decision is listed under `## Decisions`, the
+  frontmatter `sources:` list covers what the text cites, and `--summary` reports the counts of `coverage.yaml`.
+  `company_tool.py extract` starts from the files a company hands over: text
   with page markers from PDFs and saved web pages (the address from the page when it has one), sha256 and page
   counts, a manifest, and a list of pages that are mostly images and need rendering. A last round under 3.1 gave 93 %; 3.2 states that the answer role never overrides `workshop`
   and that `close_with: us` needs a supplied document or a public page the profile names. The skill carries **no question set and no method**: an optional template is read

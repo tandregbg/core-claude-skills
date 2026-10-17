@@ -206,7 +206,7 @@ reports every departure (off by default, so older profiles stay clean).
 1. **Conflicts are a register.** In `README.md` under `## Conflicts`, one entry per conflict, written `C<n>`
    (`C1`, `C2`, ...), as a list item or a table row whose first cell is the id. Each entry names both sides as
    `[s-id]` markers (two markers; both may name the same source when it contradicts itself, on different
-   pages) and the facet(s) it touches by name, for example `Touches: company, brand.`
+   pages) and the facet(s) it touches as a labelled list, `Touches: company, brand.` (a facet word elsewhere in the sentence does not count)
 2. **Every local marker names a register id.** A line that defines `[s3]` in a Sources list gives the `s-` id it
    stands for, not only a path or a title. A path alone cannot be linked to the register.
 3. **Decisions use the one form** `**Decision needed:** <the question> (<owner role>)`, in the facet and again
@@ -229,7 +229,7 @@ register ids and notes but never a path to excluded material.
 A question set (template) numbers its items. The profile repository holds none, so the profile records its own side:
 `coverage.yaml` lists **every required item** with the id the question set gave it, its facet, and one status.
 `facet` is one of the nine facets, or the group name the question set uses for items that fit none of them
-(`brands`, `sources`, `layers`): a question set may ask more than the nine facets hold, and every such item still
+(`brands`, `sources`, `layers`, `leverage`): a question set may ask more than the nine facets hold, and every such item still
 needs a line. The
 file carries `ruleset: company-coverage/3.2`, the version of the rules below, so two runs are only compared when
 they used the same rules.

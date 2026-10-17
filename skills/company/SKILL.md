@@ -41,7 +41,8 @@ the facts change; events go to the meeting archive.
 Creates `<org>/_company/` with the plain skeleton for the configured level (`company.level`, default `basic`):
 one file per facet (all nine), `README.md`, `AUDIT-LOG.md`, empty `sources.yaml` and `brands.yaml`, `.intake/`.
 Before `--display`, check how the company itself writes its name (spelling, diacritics, casing) and use that.
-Run `python3 ~/.claude/skills/company/company_tool.py init <org-folder> --vertical <v> [--level L] [--language xx]`.
+Run `python3 ~/.claude/skills/company/company_tool.py init <org-folder> --vertical <v> [--display Name] [--level L] [--language xx] [--template ADDRESS]`.
+Level, language and template default to the `company:` block of `<org>/_ops.yaml` (then the vault's `_config/base.yaml`); a flag wins.
 It never overwrites an existing folder. With `company.template:` set, read the question set from there and say
 which; without it, say that no question set is attached and stop at the skeleton.
 
@@ -102,13 +103,13 @@ What extraction cannot carry (images, diagrams, colour swatches, tables) goes in
 Report only; nothing is rewritten.
 
 ```
-python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--max-age-days N] [--json]
+python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--leak-from items.json] [--max-age-days N] [--json]
 ```
 
 The script reports a stale facet (no review or generation within `company.max_age_days`, default 365, or status
 `stale`), schema errors in the frontmatter and in `sources.yaml` / `brands.yaml`, a facet marked `draft-locked` or
 `final` with no sources, a marker nobody defines, a facet H1 whose display name differs, a **credential-looking value anywhere in a profile**, and with `--copies` any profile
-file outside `_company/`. `--strict` also reports what the overview graph needs (contract section 8): conflicts written `C<n>` with two
+file outside `_company/`. `--leak-from items.json` takes the question wording of the attached set (as the server returns it) and reports every profile file in which that wording appears (item id and line, never the text): a profile holds answers, not questions. `check` reads `company:` from the config, so `max_age_days` and `level_map` (the question set's level names are accepted in frontmatter) apply without flags. `--strict` also reports what the overview graph needs (contract section 8): conflicts written `C<n>` with two
 `[s-id]` sides and their facets, local markers that name a register id, decisions in the one form with an owner
 role, `feeds` that match what a facet cites. Then read the files for what a program cannot decide:
 
@@ -148,6 +149,7 @@ company:
   language: en
   max_age_days: 365       # a facet older than this is reported stale
   template: null          # path or address of an optional private template; null = the plain skeleton
+  level_map: {}           # profile level -> the attached question set's own level name; no default is shipped
   services: {}            # references only: {ranking: {account: acme, key_ref: "env:RANKING_KEY"}}
 ```
 

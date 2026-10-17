@@ -269,8 +269,16 @@ def check_strict(d):
             sides = re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", s)
             if len(sides) < 2:
                 out.append(finding("graph", readme, f"{ident} has {len(sides)} [s-id] marker(s); a conflict needs both sides (two markers, which may name the same source on different pages)"))
-            if not any(re.search(rf"\b{f}\b", s) for f in FACETS):
-                out.append(finding("graph", readme, f"{ident} does not name the facet(s) it touches"))
+            tm = re.search(r"Touches:\s*([A-Za-z, ]+?)\s*\.?\s*$", s) or re.search(r"Touches:\s*([A-Za-z, ]+)", s)
+            touched = [x.strip() for x in tm.group(1).split(",") if x.strip()] if tm else []
+            if not touched:
+                out.append(finding("graph", readme, f"{ident} has no 'Touches: <facet>, <facet>.' naming the facet(s) it touches"))
+            elif any(x not in FACETS for x in touched):
+                out.append(finding("graph", readme, f"{ident}: Touches names {[x for x in touched if x not in FACETS]}, which are not facets"))
+    decisions_section = ""
+    if readme.exists():
+        dm0 = re.search(r"^## Decisions?\b.*?$(.*?)(?=^## |\Z)", readme.read_text(encoding="utf-8", errors="replace"), re.S | re.M)
+        decisions_section = re.sub(r"\W+", " ", dm0.group(1).lower()) if dm0 else ""
     for p in sorted(d.glob("*.md")):
         fm = frontmatter(p) or {}
         facet = fm.get("facet")
@@ -287,6 +295,10 @@ def check_strict(d):
             if DEC_OLD.search(line) and not DEC_NEW.search(line):
                 out.append(finding("graph", p, f"decision not in the form '**Decision needed:** <question> (<owner role>)': {line.strip()[:60]}"))
             dm = DEC_NEW.search(line)
+            if dm:
+                key = re.sub(r"\W+", " ", re.sub(r"\([^()]*\)\s*(?:\[[^\]]+\]\s*)*\.?\s*$", "", dm.group(1)).lower()).strip()[:60]
+                if key and key not in decisions_section:
+                    out.append(finding("graph", p, f"decision is not listed under '## Decisions' in README: {line.strip()[:60]}"))
             if dm and not re.search(r"\([^()]+\)\s*(?:\[[^\]]+\]\s*)*\.?\s*$", dm.group(1)):
                 out.append(finding("graph", p, f"decision names no owner role in parentheses: {line.strip()[:60]}"))
         for cm in re.finditer(r"\[(s-[a-z0-9][a-z0-9-]*)\]\s*\(pp?\.\s*(\d+)(?:\s*[-\u2013]\s*(\d+))?\)", body):
@@ -297,6 +309,10 @@ def check_strict(d):
         cited = set(re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", body))
         for lk in set(re.findall(r"\[(s\d+)\]", body)):
             cited.update(local.get(lk, []))
+        listed = {x for x in (fm.get("sources") or []) if isinstance(x, str) and x.startswith("s-")}
+        if listed:
+            for sid in sorted(cited - listed):
+                out.append(finding("graph", p, f"cites {sid}, which the frontmatter sources: list does not include"))
         for sid in sorted(cited):
             if sid in srcs and facet not in srcs[sid].get("feeds", []):
                 out.append(finding("graph", p, f"cites {sid}, but its feeds in sources.yaml do not include {facet}"))
@@ -318,8 +334,18 @@ def check_coverage_rules(d, data):
         if st in ("na", "open", "decision", "workshop") and not it.get("reason"):
             errs.append(f"{i}: status {st} needs a 'reason'")
         w = it.get("where")
-        if w and not (d / w.split(":")[0]).exists():
-            errs.append(f"{i}: 'where' names {w.split(':')[0]!r}, which is not in _company/")
+        if w:
+            fname, _, spec = w.partition(":")
+            fp = d / fname
+            if not fp.exists():
+                errs.append(f"{i}: 'where' names {fname!r}, which is not in _company/")
+            elif spec:
+                m = re.fullmatch(r"(\d+)(?:-(\d+))?", spec)
+                n_lines = len(fp.read_text(encoding="utf-8", errors="replace").split("\n"))
+                if not m:
+                    errs.append(f"{i}: 'where' line part {spec!r} must be N or N-M")
+                elif int(m.group(1)) < 1 or int(m.group(2) or m.group(1)) > n_lines or int(m.group(2) or m.group(1)) < int(m.group(1)):
+                    errs.append(f"{i}: 'where' {w} is outside the file ({n_lines} lines)")
         if st == "open" and "close_with" not in it:
             errs.append(f"{i}: status open needs close_with (us or customer)")
         if st != "open" and "close_with" in it:
@@ -353,8 +379,116 @@ def load_wanted(path):
     return [x if isinstance(x, str) else x["id"] for x in data if isinstance(x, str) or x.get("required", True)]
 
 
-def check_dir(d, max_age_days, today):
+# ---------------------------------------------------------------- configuration
+CONFIG_DEFAULTS = {"level": "basic", "language": "en", "max_age_days": 365, "template": None, "level_map": {}}
+COVERAGE_RULESET = "company-coverage/3.2"
+
+
+def load_config(org):
+    """The `company:` block: the vault's _config/base.yaml (the folder above the organisation), then <org>/_ops.yaml.
+    Returns (config, problems). A later source overrides an earlier one key by key."""
+    cfg, problems = dict(CONFIG_DEFAULTS), []
+    cfg["level_map"] = {}
+    for p in (org.parent / "_config" / "base.yaml", org / "_ops.yaml"):
+        if not p.is_file():
+            continue
+        try:
+            block = (yaml.safe_load(p.read_text(encoding="utf-8")) or {}).get("company") or {}
+        except Exception as e:  # noqa: BLE001
+            problems.append(f"{p.name}: unreadable: {e}")
+            continue
+        if not isinstance(block, dict):
+            problems.append(f"{p.name}: company: must be a mapping")
+            continue
+        for k, v in block.items():
+            if k in CONFIG_DEFAULTS:
+                cfg[k] = v
+    if cfg["level"] not in LEVELS:
+        problems.append(f"company.level {cfg['level']!r} is not one of {LEVELS}")
+        cfg["level"] = CONFIG_DEFAULTS["level"]
+    if not isinstance(cfg["max_age_days"], int) or isinstance(cfg["max_age_days"], bool) or cfg["max_age_days"] < 1:
+        problems.append(f"company.max_age_days {cfg['max_age_days']!r} must be a whole number of days")
+        cfg["max_age_days"] = CONFIG_DEFAULTS["max_age_days"]
+    lm = cfg["level_map"]
+    if not isinstance(lm, dict) or any(k not in LEVELS or not isinstance(v, str) or not v for k, v in lm.items()):
+        problems.append(f"company.level_map must map profile levels {LEVELS} to the question set's own level names")
+        cfg["level_map"] = {}
+    return cfg, problems
+
+
+def allowed_levels(cfg):
+    """Profile levels plus the names the attached question set uses for them (company.level_map values)."""
+    return LEVELS + [v for v in cfg.get("level_map", {}).values()]
+
+
+# ---------------------------------------------------------------- leak and coverage summary
+COVERAGE_STATUSES = ["answered", "partial", "conflict", "na", "open", "decision", "workshop"]
+SHINGLE = 7
+QUESTION_KEYS = ("q", "q_sv", "question", "text", "prompt")
+
+
+def _tokens(text):
+    return re.findall(r"\w+", text.lower())
+
+
+def load_questions(path):
+    """Question wording from the set's items, as a list of (id, text). The profile repository holds none of it:
+    the caller supplies it (for example the server's get_items result)."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    for k in ("items", "result"):
+        if isinstance(data, dict) and k in data:
+            data = data[k]
     out = []
+    for n, it in enumerate(data if isinstance(data, list) else []):
+        if isinstance(it, dict):
+            for k in QUESTION_KEYS:
+                if isinstance(it.get(k), str):
+                    out.append((str(it.get("id", n)), it[k]))
+        elif isinstance(it, str):
+            out.append((str(n), it))
+    return out
+
+
+def check_leak(d, questions):
+    """Question wording must not appear in a profile: it holds answers, not questions. Reports ids and lines, never the text."""
+    grams = {}
+    for qid, text in questions:
+        t = _tokens(text)
+        for i in range(len(t) - SHINGLE + 1):
+            grams.setdefault(tuple(t[i:i + SHINGLE]), qid)
+    out = []
+    for p in sorted(d.glob("*.md")):
+        seen = {}
+        for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").split("\n"), 1):
+            t = _tokens(line)
+            for i in range(len(t) - SHINGLE + 1):
+                qid = grams.get(tuple(t[i:i + SHINGLE]))
+                if qid is not None:
+                    seen.setdefault(qid, n)
+        for qid, n in seen.items():
+            out.append(finding("leak", p, f"wording of question-set item {qid} appears in the profile (first at line {n}); a profile holds answers, not questions", n))
+    return out
+
+
+def coverage_summary(d):
+    p = d / "coverage.yaml"
+    if not p.exists():
+        return {}
+    try:
+        items = load_yaml_json(p).get("items", [])
+    except Exception:  # noqa: BLE001
+        return {}
+    out = {}
+    for it in items:
+        c = out.setdefault(it.get("facet", "?"), {})
+        c[it.get("status", "?")] = c.get(it.get("status", "?"), 0) + 1
+    return out
+
+
+def check_dir(d, max_age_days, today, cfg=None):
+    out = []
+    cfg = cfg or dict(CONFIG_DEFAULTS, level_map={})
+    levels_ok = allowed_levels(cfg)
     ids_declared = register_ids(d)
     out += check_names(d)
     for p in sorted(d.glob("*.md")):
@@ -369,8 +503,8 @@ def check_dir(d, max_age_days, today):
             out.append(finding("schema", p, f"facet {facet!r} is not one of the nine facets or readme"))
         if fm.get("status") not in STATUSES:
             out.append(finding("schema", p, f"status {fm.get('status')!r} is not one of {STATUSES}"))
-        if fm.get("level") not in LEVELS + [None] and facet != "readme":
-            out.append(finding("schema", p, f"level {fm.get('level')!r} is not one of {LEVELS}"))
+        if fm.get("level") not in levels_ok + [None] and facet != "readme":
+            out.append(finding("schema", p, f"level {fm.get('level')!r} is not one of {levels_ok} (the profile's levels, and the question set's names from company.level_map)"))
         if facet == "readme":
             continue
         if fm.get("status") == "stale":
@@ -445,7 +579,13 @@ def cmd_check(a):
     dirs = find_company_dirs(root)
     findings = []
     for d in dirs:
-        findings += check_dir(d, a.max_age_days, today)
+        cfg, problems = load_config(d.parent)
+        findings += [finding("config", d, pr) for pr in problems]
+        findings += check_dir(d, a.max_age_days or cfg["max_age_days"], today, cfg)
+    if a.leak_from:
+        questions = load_questions(a.leak_from)
+        for d in dirs:
+            findings += check_leak(d, questions)
     if a.strict:
         for d in dirs:
             findings += check_strict(d)
@@ -467,6 +607,12 @@ def cmd_check(a):
                 print(f"\n{d}\n  facet            open items  decisions needed")
                 for facet, n_open, n_dec in summarise(d):
                     print(f"  {facet:<16} {n_open:>10}  {n_dec:>16}")
+                cov = coverage_summary(d)
+                if cov:
+                    print("  (the first column counts lines marked not provided; coverage.yaml, the record of items, says:)")
+                    print("  group            " + "  ".join(f"{k:>9}" for k in COVERAGE_STATUSES))
+                    for grp, counts in cov.items():
+                        print(f"  {grp:<16} " + "  ".join(f"{counts.get(k, 0):>9}" for k in COVERAGE_STATUSES))
     return 1 if findings else 0
 
 
@@ -481,6 +627,12 @@ def cmd_init(a):
         print(f"refused: {org} is not a folder", file=sys.stderr)
         return 2
     v = a.vertical
+    cfg, problems = load_config(org)
+    for pr in problems:
+        print(f"config: {pr}", file=sys.stderr)
+    a.level = a.level or cfg["level"]
+    a.language = a.language or cfg["language"]
+    a.template = a.template or cfg["template"]
     today = a.today or datetime.date.today().isoformat()
     display = a.display or v
     target.mkdir()
@@ -493,13 +645,13 @@ def cmd_init(a):
         f"---\nvertical: {v}\nfacet: readme\nstatus: draft\ngenerated: {today}\nreviewed:\nlanguage: {a.language}\n---\n\n"
         f"# {display} -- profile maintenance\n\n## Sources read\n\n## Synthesis\n\nOwner confirmation: pending\n\n"
         "| Facet | Established | Conflicts | Missing | Decision needed |\n|---|---|---|---|---|\n\n"
-        "## Conflicts\n\n| # | What | Value A (source) | Value B (source) | Used in the text, and why |\n|---|---|---|---|---|\n\n"
-        "## Gaps\n\n## Decisions\n\n## Regenerate when\n", encoding="utf-8")
+        "## Conflicts\n\nOne entry per conflict, written `- C1 <what> [s-id] <value A> versus [s-id] <value B>. Touches: <facet>, <facet>.`\n\n"
+        "## Gaps\n\n## Decisions\n\n## Reviewer notes and extraction losses\n\n## Regenerate when\n", encoding="utf-8")
     (target / "AUDIT-LOG.md").write_text(f"# {display} -- audit log\n\n| Date | By | What was checked | Changed | Next due |\n|---|---|---|---|---|\n", encoding="utf-8")
     (target / "sources.yaml").write_text(f"vertical: {v}\nupdated: {today}\nsources: []\n", encoding="utf-8")
     (target / "brands.yaml").write_text(f"vertical: {v}\nbrands: []\n", encoding="utf-8")
     if a.template:
-        (target / "coverage.yaml").write_text(f"vertical: {v}\nupdated: {today}\nitems: []\n", encoding="utf-8")
+        (target / "coverage.yaml").write_text(f"vertical: {v}\nupdated: {today}\nruleset: {COVERAGE_RULESET}\nitems: []\n", encoding="utf-8")
     note = ("question set: template at " + a.template) if a.template else \
         "no question set attached: the files are the plain skeleton (set company.template: to attach one)"
     print(f"created {target} ({a.level}: {len(FACETS)} facet files); {note}")
@@ -608,12 +760,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("folder")
-    c.add_argument("--items", help="JSON list of required item ids (or {id, required}) from the attached question set; reports silent omissions"); c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
+    c.add_argument("--items", help="JSON list of required item ids (or {id, required}) from the attached question set; reports silent omissions"); c.add_argument("--leak-from", help="JSON of the question set's items (as the server returns them); reports question wording found in the profile"); c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=None, help="default: company.max_age_days, else 365"); c.add_argument("--json", action="store_true")
     c.add_argument("--copies", action="store_true"); c.add_argument("--today")
     c.set_defaults(fn=cmd_check)
     i = sub.add_parser("init"); i.add_argument("folder"); i.add_argument("--vertical", required=True)
-    i.add_argument("--level", choices=LEVELS, default="basic"); i.add_argument("--language", default="en")
-    i.add_argument("--display"); i.add_argument("--template"); i.add_argument("--today")
+    i.add_argument("--level", choices=LEVELS, default=None, help="default: company.level, else basic"); i.add_argument("--language", default=None, help="default: company.language, else en")
+    i.add_argument("--display"); i.add_argument("--template", help="default: company.template"); i.add_argument("--today")
     i.set_defaults(fn=cmd_init)
     e = sub.add_parser("extract", help="text with page markers from PDFs and saved web pages, plus a manifest")
     e.add_argument("folder", help="the organisation folder"); e.add_argument("--source", help="default: <folder>/source-documents")

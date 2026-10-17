@@ -3,7 +3,7 @@
   "$id": "core-skills/company-coverage.schema.json",
   "title": "company coverage.yaml: every required item of an attached question set is answered, marked na, or listed as open (CR-125)",
   "type": "object",
-  "required": ["vertical", "updated", "items"],
+  "required": ["vertical", "updated", "ruleset", "items"],
   "additionalProperties": false,
   "properties": {
     "vertical": {"type": "string", "minLength": 1},

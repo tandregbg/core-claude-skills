@@ -200,8 +200,8 @@ class Check(unittest.TestCase):
         (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nlabels: {Q: open strategy question}\nsources:\n"
             "  - {id: s-a, kind: vault, path: x.md, authority: current, feeds: [company], curation: original}\n"
             "  - {id: s-b, kind: vault, path: y.md, authority: draft, feeds: [offering], curation: original}\n", encoding="utf-8")
-        good_readme = (self.d / "README.md").read_text(encoding="utf-8")
-        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. A [s-a] versus B [s-b], company.\n"), encoding="utf-8")
+        good_readme = (self.d / "README.md").read_text(encoding="utf-8").replace("## Decisions\n", "## Decisions\n\nkeep the name?\n")
+        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. A [s-a] versus B [s-b]. Touches: company.\n"), encoding="utf-8")
         p = self.d / "company-acme.md"
         base = p.read_text(encoding="utf-8")
         p.write_text(base + "\nFact [s1].\n\n## Sources\n\n- [s1] s-a: x.md\n\n**Decision needed:** keep the name? (owner)\n", encoding="utf-8")
@@ -209,9 +209,9 @@ class Check(unittest.TestCase):
         def strict():
             return [f["message"] for f in ct.check_strict(self.d)]
         self.assertEqual(strict(), [])
-        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- 1 Name. A [s-a] versus B [s-b], company.\n"), encoding="utf-8")
+        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- 1 Name. A [s-a] versus B [s-b]. Touches: company.\n"), encoding="utf-8")
         self.assertTrue(any("C<n>" in m for m in strict()))
-        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. only [s-a], company.\n"), encoding="utf-8")
+        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. only [s-a]. Touches: company.\n"), encoding="utf-8")
         self.assertTrue(any("both sides" in m for m in strict()))
         (self.d / "README.md").write_text(good_readme, encoding="utf-8")
         p.write_text(base + "\nFact [s1].\n\n- [s1] x.md\n", encoding="utf-8")
@@ -219,7 +219,7 @@ class Check(unittest.TestCase):
         p.write_text(base + "\nFact [s-b].\n", encoding="utf-8")
         self.assertTrue(any("feeds" in m for m in strict()))
         p.write_text(base + "\n- Decision for the owner: keep the name?\n**Decision needed:** and this one\n", encoding="utf-8")
-        self.assertEqual(sum("decision" in m for m in strict()), 2)
+        self.assertEqual(sum("decision" in m for m in strict()), 3)   # old form, no owner role, not listed in README
 
     def test_provenance_in_strict(self):
         def reg(*rows):
@@ -228,9 +228,12 @@ class Check(unittest.TestCase):
         def msgs():
             return [f["message"] for f in ct.check_strict(self.d) if f["kind"] == "provenance"]
         reg("  - {id: s-a, kind: vault, path: x.pdf, authority: current, feeds: [company], curation: original, pages: 12}\n")
-        self.assertEqual(msgs(), ["paged originals are used, so README needs '## Reviewer notes and extraction losses'"])
         r = self.d / "README.md"
-        r.write_text(r.read_text(encoding="utf-8") + "\n## Reviewer notes and extraction losses\n\nNone found.\n", encoding="utf-8")
+        with_heading = r.read_text(encoding="utf-8")
+        self.assertIn("## Reviewer notes and extraction losses", with_heading)   # the init skeleton carries it
+        r.write_text(with_heading.replace("## Reviewer notes and extraction losses", "## Notes"), encoding="utf-8")
+        self.assertEqual(msgs(), ["paged originals are used, so README needs '## Reviewer notes and extraction losses'"])
+        r.write_text(with_heading, encoding="utf-8")
         self.assertEqual(msgs(), [])
         reg("  - {id: s-a, kind: vault, path: x.pdf, authority: current, feeds: [company]}\n")
         self.assertTrue(any("original, derived or curated" in m for m in msgs()))
@@ -243,7 +246,7 @@ class Check(unittest.TestCase):
         self.assertEqual(sum("beyond the 12 pages" in m for m in msgs()), 1)
 
     def test_coverage_rules(self):
-        base = "vertical: acme\nupdated: 2026-01-05\nitems:\n"
+        base = "vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.2\nitems:\n"
         (self.d / "company-acme.md").write_text((self.d / "company-acme.md").read_text(encoding="utf-8") + "\nFounded 2020.\n", encoding="utf-8")
         (self.d / "coverage.yaml").write_text(base + "  - {id: P-01, facet: company, status: answered, where: \"company-acme.md:12\"}\n"
                                               "  - {id: P-02, facet: company, status: open, reason: \"not in the sources\", close_with: us}\n"
@@ -278,7 +281,7 @@ class Check(unittest.TestCase):
         self.assertEqual(self.kinds(), ["schema"])
 
     def test_coverage_accepts_a_question_sets_extra_groups(self):
-        base = "vertical: acme\nupdated: 2026-01-05\nitems:\n"
+        base = "vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.2\nitems:\n"
         (self.d / "coverage.yaml").write_text(base + "  - {id: D-01, facet: brands, status: open, reason: r, close_with: us}\n"
                                               "  - {id: A-01, facet: sources, status: workshop, reason: r}\n", encoding="utf-8")
         self.assertEqual(self.kinds(), [])
@@ -330,6 +333,141 @@ class Check(unittest.TestCase):
         self.assertEqual(len(ct.find_company_dirs(Path(self._t.name))), 1)
         with tempfile.TemporaryDirectory() as empty:
             self.assertEqual(findings(empty), [])
+
+
+class Config(unittest.TestCase):
+    """The `company:` block is read from <org>/_ops.yaml (and the vault's _config/base.yaml)."""
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.org = Path(self._t.name) / "acme"
+        self.org.mkdir()
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def write_ops(self, text):
+        (self.org / "_ops.yaml").write_text(text, encoding="utf-8")
+
+    def test_defaults_without_a_config(self):
+        cfg, problems = ct.load_config(self.org)
+        self.assertEqual((cfg["level"], cfg["language"], cfg["max_age_days"], cfg["template"], cfg["level_map"]), ("basic", "en", 365, None, {}))
+        self.assertEqual(problems, [])
+
+    def test_org_config_overrides_the_vault_base(self):
+        (Path(self._t.name) / "_config").mkdir()
+        (Path(self._t.name) / "_config" / "base.yaml").write_text("company:\n  level: standard\n  language: sv\n  max_age_days: 90\n", encoding="utf-8")
+        self.write_ops("company:\n  language: en\n")
+        cfg, _ = ct.load_config(self.org)
+        self.assertEqual((cfg["level"], cfg["language"], cfg["max_age_days"]), ("standard", "en", 90))
+
+    def test_bad_values_are_reported_and_fall_back(self):
+        self.write_ops("company:\n  level: light\n  max_age_days: soon\n  level_map: {basic: ''}\n")
+        cfg, problems = ct.load_config(self.org)
+        self.assertEqual(len(problems), 3)
+        self.assertEqual((cfg["level"], cfg["max_age_days"], cfg["level_map"]), ("basic", 365, {}))
+
+    def test_init_takes_level_language_and_template_from_the_config(self):
+        self.write_ops("company:\n  level: standard\n  language: sv\n  template: some/path\n")
+        self.assertEqual(ct.main(["init", str(self.org), "--vertical", "acme", "--today", TODAY]), 0)
+        text = (self.org / "_company" / "company-acme.md").read_text(encoding="utf-8")
+        self.assertIn("level: standard", text)
+        self.assertIn("language: sv", text)
+        self.assertTrue((self.org / "_company" / "coverage.yaml").exists())
+        self.assertIn("ruleset: company-coverage/3.2", (self.org / "_company" / "coverage.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(ct.main(["check", str(self.org), "--strict", "--today", TODAY]), 0)   # the skeleton passes the strict check
+
+    def test_max_age_comes_from_the_config_and_the_flag_wins(self):
+        self.assertEqual(ct.main(["init", str(self.org), "--vertical", "acme", "--today", TODAY]), 0)
+        self.write_ops("company:\n  max_age_days: 10\n")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", "2026-12-01"]), 1)
+        self.assertEqual(ct.main(["check", str(self.org), "--today", "2026-12-01", "--max-age-days", "365"]), 0)
+
+    def test_level_map_names_are_accepted_in_frontmatter(self):
+        self.assertEqual(ct.main(["init", str(self.org), "--vertical", "acme", "--today", TODAY]), 0)
+        p = self.org / "_company" / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8").replace("level: basic", "level: medium"), encoding="utf-8")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY]), 1)
+        self.write_ops("company:\n  level_map: {standard: medium}\n")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY]), 0)
+
+
+class Hygiene(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.org, _ = init(self._t.name)
+        self.d = self.org / "_company"
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def test_question_wording_in_the_profile_is_reported_without_repeating_it(self):
+        q = Path(self._t.name) / "items.json"
+        q.write_text(json.dumps({"items": [{"id": "Z-01", "q": "Describe the one promise the company makes to every customer before anything else"}]}), encoding="utf-8")
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\nDescribe the one promise the company makes to every customer.\nUnrelated sentence about widgets and tea.\n", encoding="utf-8")
+        found = ct.check_leak(self.d, ct.load_questions(q))
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["kind"], "leak")
+        self.assertIn("Z-01", found[0]["message"])
+        self.assertNotIn("promise", found[0]["message"])
+        p.write_text(p.read_text(encoding="utf-8").replace("Describe the one promise the company makes to every customer.", "We promise delivery."), encoding="utf-8")
+        self.assertEqual(ct.check_leak(self.d, ct.load_questions(q)), [])
+
+    def test_leak_flag_runs_from_the_command_line(self):
+        q = Path(self._t.name) / "items.json"
+        q.write_text(json.dumps([{"id": "Z-02", "q": "Which three words would a customer use to describe the company today"}]), encoding="utf-8")
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\nWhich three words would a customer use to describe the company today?\n", encoding="utf-8")
+        self.assertEqual(ct.main(["check", str(self.org), "--today", TODAY, "--leak-from", str(q)]), 1)
+
+    def test_where_must_point_at_a_line_that_exists(self):
+        (self.d / "company-acme.md").write_text((self.d / "company-acme.md").read_text(encoding="utf-8") + "\nFounded 2020.\n", encoding="utf-8")
+        n = len((self.d / "company-acme.md").read_text(encoding="utf-8").split("\n"))
+        base = "vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.2\nitems:\n"
+        for ok in (f"company-acme.md:{n}", "company-acme.md:3-5", "company-acme.md"):
+            (self.d / "coverage.yaml").write_text(base + f"  - {{id: A-1, facet: company, status: answered, where: \"{ok}\"}}\n", encoding="utf-8")
+            self.assertEqual([f["kind"] for f in findings(self.org)], [], ok)
+        for bad in (f"company-acme.md:{n + 50}", "company-acme.md:0", "company-acme.md:x", "company-acme.md:9-3"):
+            (self.d / "coverage.yaml").write_text(base + f"  - {{id: A-1, facet: company, status: answered, where: \"{bad}\"}}\n", encoding="utf-8")
+            self.assertEqual([f["kind"] for f in findings(self.org)], ["schema"], bad)
+
+    def test_ruleset_is_required_in_coverage(self):
+        (self.d / "coverage.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nitems: []\n", encoding="utf-8")
+        self.assertEqual([f["kind"] for f in findings(self.org)], ["schema"])
+
+    def test_touches_must_be_a_labelled_list_of_facets(self):
+        (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nsources:\n"
+            "  - {id: s-a, kind: vault, path: x.md, authority: current, feeds: [company], curation: original}\n", encoding="utf-8")
+        r = self.d / "README.md"
+        good = r.read_text(encoding="utf-8")
+
+        def run(entry):
+            r.write_text(good.replace("## Conflicts\n", "## Conflicts\n\n" + entry + "\n"), encoding="utf-8")
+            return [f["message"] for f in ct.check_strict(self.d) if "C1" in f["message"]]
+        self.assertEqual(run("- C1 Name. A [s-a] versus B [s-a]. Touches: company, brand."), [])
+        self.assertTrue(any("no 'Touches" in m for m in run("- C1 Name. A [s-a] versus B [s-a], and the company is affected.")))
+        self.assertTrue(any("not facets" in m for m in run("- C1 Name. A [s-a] versus B [s-a]. Touches: company, planets.")))
+
+    def test_decision_must_be_listed_in_the_readme_and_sources_in_the_frontmatter(self):
+        (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nsources:\n"
+            "  - {id: s-a, kind: vault, path: x.md, authority: current, feeds: [company], curation: original}\n"
+            "  - {id: s-b, kind: vault, path: y.md, authority: current, feeds: [company], curation: original}\n", encoding="utf-8")
+        p = self.d / "company-acme.md"
+        base = p.read_text(encoding="utf-8")
+        p.write_text(base.replace("sources: []", "sources: [s-a]") + "\nFact [s-a]. Other [s-b].\n**Decision needed:** keep the name? (owner)\n", encoding="utf-8")
+        got = [f["message"] for f in ct.check_strict(self.d)]
+        self.assertTrue(any("not listed under '## Decisions'" in m for m in got), got)
+        self.assertTrue(any("s-b" in m and "frontmatter" in m for m in got), got)
+
+    def test_summary_reports_coverage_counts(self):
+        (self.d / "coverage.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.2\nitems:\n"
+            "  - {id: A-1, facet: company, status: open, reason: r, close_with: us}\n"
+            "  - {id: A-2, facet: company, status: workshop, reason: r}\n"
+            "  - {id: B-1, facet: brands, status: open, reason: r, close_with: customer}\n", encoding="utf-8")
+        cov = ct.coverage_summary(self.d)
+        self.assertEqual(cov["company"], {"open": 1, "workshop": 1})
+        self.assertEqual(cov["brands"], {"open": 1})
 
 
 class Extract(unittest.TestCase):
