@@ -261,7 +261,7 @@ class Check(unittest.TestCase):
         self.assertEqual(self.kinds(), ["schema"])
 
     def test_classification_rules_are_enforced(self):
-        base = "vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3\nitems:\n"
+        base = "vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/3.1\nitems:\n"
         (self.d / "company-acme.md").write_text((self.d / "company-acme.md").read_text(encoding="utf-8") + "\nFounded 2020.\n", encoding="utf-8")
         ok = ("  - {id: A-1, facet: company, status: partial, where: company-acme.md, remainder: decision}\n"
               "  - {id: A-2, facet: company, status: open, reason: r, close_with: customer}\n")
@@ -274,7 +274,7 @@ class Check(unittest.TestCase):
                     "  - {id: A-3, facet: company, status: answered, where: company-acme.md, remainder: open}\n"):
             (self.d / "coverage.yaml").write_text(base + bad, encoding="utf-8")
             self.assertEqual(self.kinds(), ["schema"], bad)
-        (self.d / "coverage.yaml").write_text(base.replace("company-coverage/3", "v1") + ok, encoding="utf-8")
+        (self.d / "coverage.yaml").write_text(base.replace("company-coverage/3.1", "v1") + ok, encoding="utf-8")
         self.assertEqual(self.kinds(), ["schema"])
 
     def test_coverage_accepts_a_question_sets_extra_groups(self):
@@ -283,6 +283,14 @@ class Check(unittest.TestCase):
                                               "  - {id: A-01, facet: sources, status: workshop, reason: r}\n", encoding="utf-8")
         self.assertEqual(self.kinds(), [])
         (self.d / "coverage.yaml").write_text(base + "  - {id: D-01, facet: Brands, status: workshop, reason: r}\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), ["schema"])
+
+    def test_ruleset_may_carry_a_minor_version(self):
+        base = "vertical: acme\nupdated: 2026-01-05\nruleset: %s\nitems: []\n"
+        for ok in ("company-coverage/3", "company-coverage/3.1"):
+            (self.d / "coverage.yaml").write_text(base % ok, encoding="utf-8")
+            self.assertEqual(self.kinds(), [], ok)
+        (self.d / "coverage.yaml").write_text(base % "company-coverage/3.1.2", encoding="utf-8")
         self.assertEqual(self.kinds(), ["schema"])
 
     def test_items_file_finds_silent_omissions(self):

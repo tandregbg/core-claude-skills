@@ -231,7 +231,7 @@ A question set (template) numbers its items. The profile repository holds none, 
 `facet` is one of the nine facets, or the group name the question set uses for items that fit none of them
 (`brands`, `sources`, `layers`): a question set may ask more than the nine facets hold, and every such item still
 needs a line. The
-file carries `ruleset: company-coverage/3`, the version of the rules below, so two runs are only compared when
+file carries `ruleset: company-coverage/3.1`, the version of the rules below, so two runs are only compared when
 they used the same rules.
 
 | Status | Needs | Meaning |
@@ -245,7 +245,7 @@ they used the same rules.
 | `workshop` | `reason` | Nothing stated; the answer has to be formed by people together (an interview or a facilitated session), and no document can hold it yet |
 
 **How to classify (apply in order, stop at the first rule that fits).** The rules exist so that two readers, or
-two runs, reach the same class. They are version `company-coverage/3`.
+two runs, reach the same class. They are version `company-coverage/3.1`.
 
 1. **Judge the profile, never the sources.** An item is classed by what the profile text states. A fact that is
    in the originals but not in the profile is a gap, not an answer.
@@ -256,13 +256,19 @@ two runs, reach the same class. They are version `company-coverage/3`.
    carries its date and definition; every part the item names is covered. **A statement is the company's own only
    if it comes from a source of authority `binding`, `current` or `public`** (the company's decision, document or
    publication). A statement from a `draft` source, candidate wording, a recommendation, a quoted option or a hint
-   is not a stated answer. A `draft` source that answers the whole item makes it `partial` with
-   `remainder: decision` (the company confirms it); a hint that answers no part goes to rule 6.
-4. **`conflict`** only when the sources disagree on the answer to the whole item and the profile records both. A
+   is not a stated answer. A list the profile derived itself (a derived never-say list, claims written as claims)
+   is not a company statement until the owner confirms it. A `draft` source that answers the whole item makes it
+   `partial` with `remainder: decision` (the company confirms it), and rule 8 does not lift it; a hint that
+   answers no part goes to rule 6.
+4. **`conflict`** only when sources **of the same authority** disagree on the answer to the whole item and the
+   profile records both. Authority settles a disagreement between unequal sources, in this order: `binding`,
+   `current`, `public`, `draft`. A `draft` source never settles anything and never creates a conflict with a
+   source above it: the higher source is the answer (rule 3 then decides `answered` or `partial`) and the
+   disagreement is noted in `where`. A
    conflict on one part of a multi-part item makes the item `partial` (with `remainder: decision`), and the
    conflict is named in `where`. A conflict on a neighbouring fact does not change the class: name it in
-   `where`. When an authority rule (section 5) settles the disagreement and the profile uses the winner, the item
-   is `answered`, with the conflict noted.
+   `where`. When authority settles the disagreement and the profile uses the winner, the item is `answered` (or `partial`
+   under rule 3), with the conflict noted.
 5. **`partial`** when at least one sentence in the profile answers a named part of what the item asks. **The test:**
    a reader can answer a named sub-question of the item from that sentence alone. Information that fails the test
    (a hint, a related fact, a pointer to where an answer might be found) is adjacent and makes the item `open`.
@@ -283,9 +289,10 @@ two runs, reach the same class. They are version `company-coverage/3`.
    `close_with: customer` when the owner could answer in one sentence from what they know (whether the company has
    departmental layers, who owns a brand); `workshop` only when the item asks the company to formulate something
    that does not exist yet (a story, pillars, jobs to be done).
-8. **Between `answered`, `partial` and `conflict`, when two classes both fit, take the later one in that order**,
-   and say why in `reason`. Rule 8 never moves an item between the gap classes: rules 6 and 7 decide them. A looser
-   reading is not allowed to raise a class.
+8. **Last resort.** Only when rules 1 to 7, applied in order, still leave two of `answered`, `partial` and
+   `conflict` fitting, take the later one in that order, and say why in `reason`. Rule 8 never overrides a class
+   an earlier rule assigned (a `partial` from rule 3 or 4 stays), and it never moves an item between the gap
+   classes: rules 6 and 7 decide them. A looser reading is not allowed to raise a class.
 9. **Changing a class between runs** is recorded as `profile` (the text changed) or `reading` (the same text read
    differently). A `reading` change with the same `ruleset` is a defect in the rules or in the reader; report it.
 

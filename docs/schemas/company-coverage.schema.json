@@ -8,7 +8,7 @@
   "properties": {
     "vertical": {"type": "string", "minLength": 1},
     "updated": {"type": "string", "format": "date"},
-    "ruleset": {"type": "string", "pattern": "^company-coverage/[0-9]+$", "$comment": "the classification rules the file was written under (contract section 9)"},
+    "ruleset": {"type": "string", "pattern": "^company-coverage/[0-9]+(\\.[0-9]+)?$", "$comment": "the classification rules the file was written under (contract section 9)"},
     "items": {
       "type": "array",
       "items": {
