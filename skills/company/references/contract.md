@@ -231,7 +231,7 @@ A question set (template) numbers its items. The profile repository holds none, 
 `facet` is one of the nine facets, or the group name the question set uses for items that fit none of them
 (`brands`, `sources`, `layers`): a question set may ask more than the nine facets hold, and every such item still
 needs a line. The
-file carries `ruleset: company-coverage/3.1`, the version of the rules below, so two runs are only compared when
+file carries `ruleset: company-coverage/3.2`, the version of the rules below, so two runs are only compared when
 they used the same rules.
 
 | Status | Needs | Meaning |
@@ -245,7 +245,7 @@ they used the same rules.
 | `workshop` | `reason` | Nothing stated; the answer has to be formed by people together (an interview or a facilitated session), and no document can hold it yet |
 
 **How to classify (apply in order, stop at the first rule that fits).** The rules exist so that two readers, or
-two runs, reach the same class. They are version `company-coverage/3.1`.
+two runs, reach the same class. They are version `company-coverage/3.2`.
 
 1. **Judge the profile, never the sources.** An item is classed by what the profile text states. A fact that is
    in the originals but not in the profile is a gap, not an answer.
@@ -281,11 +281,15 @@ two runs, reach the same class. They are version `company-coverage/3.1`.
    - People have to form the answer together (a core story, a distinctive claim, priorities, pillars):
      `workshop`.
    - A fact or a document exists that can be read, fetched or handed over without anyone deciding anything:
-     `open`. `close_with: us` when the answer is visible on a public page or in a supplied document, even if the
-     company would still confirm it; `close_with: customer` when it is not visible anywhere we can read (revenue,
-     headcount, a contract, which companies it counts as competitors).
-7. **The answer role breaks a tie.** Roles are read in the order the question set lists them; the first one
-   decides. `doc`, `data`, `site`: `open`. `decision`: `decision`. `owner` with nothing stated: `open` with
+     `open`. `close_with: us` when the answer can be derived from a supplied document, or sits on a public page
+     the profile names (so it can be fetched), even if the company would still confirm it; naming the page in the
+     profile is what turns a hint into `us`. `close_with: customer` when it is not visible anywhere we can read, or
+     only a page nobody has named would hold it (revenue, headcount, a contract, which companies it counts as
+     competitors).
+7. **The answer role breaks a tie between the classes rule 6 leaves open (`open` and `decision`); it never
+   overrides `workshop`.** An item that asks the company to formulate something that does not exist yet (a story,
+   pillars, jobs to be done, priorities) is `workshop` whatever role is listed first. Otherwise the roles are read
+   in the order the question set lists them, and the first one decides. `doc`, `data`, `site`: `open`. `decision`: `decision`. `owner` with nothing stated: `open` with
    `close_with: customer` when the owner could answer in one sentence from what they know (whether the company has
    departmental layers, who owns a brand); `workshop` only when the item asks the company to formulate something
    that does not exist yet (a story, pillars, jobs to be done).
