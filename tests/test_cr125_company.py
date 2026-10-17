@@ -198,8 +198,8 @@ class Check(unittest.TestCase):
 
     def test_strict_reports_what_the_graph_needs(self):
         (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nlabels: {Q: open strategy question}\nsources:\n"
-            "  - {id: s-a, kind: vault, path: x.md, authority: current, feeds: [company]}\n"
-            "  - {id: s-b, kind: vault, path: y.md, authority: draft, feeds: [offering]}\n", encoding="utf-8")
+            "  - {id: s-a, kind: vault, path: x.md, authority: current, feeds: [company], curation: original}\n"
+            "  - {id: s-b, kind: vault, path: y.md, authority: draft, feeds: [offering], curation: original}\n", encoding="utf-8")
         good_readme = (self.d / "README.md").read_text(encoding="utf-8")
         (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. A [s-a] versus B [s-b], company.\n"), encoding="utf-8")
         p = self.d / "company-acme.md"
@@ -220,6 +220,64 @@ class Check(unittest.TestCase):
         self.assertTrue(any("feeds" in m for m in strict()))
         p.write_text(base + "\n- Decision for the owner: keep the name?\n**Decision needed:** and this one\n", encoding="utf-8")
         self.assertEqual(sum("decision" in m for m in strict()), 2)
+
+    def test_provenance_in_strict(self):
+        def reg(*rows):
+            (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nsources:\n" + "".join(rows), encoding="utf-8")
+
+        def msgs():
+            return [f["message"] for f in ct.check_strict(self.d) if f["kind"] == "provenance"]
+        reg("  - {id: s-a, kind: vault, path: x.pdf, authority: current, feeds: [company], curation: original, pages: 12}\n")
+        self.assertEqual(msgs(), ["paged originals are used, so README needs '## Reviewer notes and extraction losses'"])
+        r = self.d / "README.md"
+        r.write_text(r.read_text(encoding="utf-8") + "\n## Reviewer notes and extraction losses\n\nNone found.\n", encoding="utf-8")
+        self.assertEqual(msgs(), [])
+        reg("  - {id: s-a, kind: vault, path: x.pdf, authority: current, feeds: [company]}\n")
+        self.assertTrue(any("original, derived or curated" in m for m in msgs()))
+        reg("  - {id: s-a, kind: vault, path: x.md, authority: binding, feeds: [company], curation: curated}\n")
+        got = msgs()
+        self.assertTrue(any("derived_from" in m for m in got) and any("decided_by" in m for m in got) and any("cannot be binding" in m for m in got))
+        reg("  - {id: s-a, kind: vault, path: x.pdf, authority: current, feeds: [company], curation: original, pages: 12}\n")
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\nOk [s-a] (p. 12). Too far [s-a] (pp. 11-13).\n", encoding="utf-8")
+        self.assertEqual(sum("beyond the 12 pages" in m for m in msgs()), 1)
+
+    def test_coverage_rules(self):
+        base = "vertical: acme\nupdated: 2026-01-05\nitems:\n"
+        (self.d / "company-acme.md").write_text((self.d / "company-acme.md").read_text(encoding="utf-8") + "\nFounded 2020.\n", encoding="utf-8")
+        (self.d / "coverage.yaml").write_text(base + "  - {id: P-01, facet: company, status: answered, where: \"company-acme.md:12\"}\n"
+                                              "  - {id: P-02, facet: company, status: open, reason: \"not in the sources\"}\n"
+                                              "  - {id: P-03, facet: company, status: na, reason: \"sole trader\"}\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        for bad in ("  - {id: P-04, facet: company, status: answered}\n", "  - {id: P-04, facet: company, status: open}\n",
+                    "  - {id: P-04, facet: company, status: answered, where: ghost.md}\n", "  - {id: P-01, facet: company, status: open, reason: x}\n  - {id: P-01, facet: company, status: open, reason: y}\n",
+                    "  - {id: P-04, facet: nonsense, status: open, reason: x}\n", "  - {id: P-04, facet: company, status: maybe}\n"):
+            (self.d / "coverage.yaml").write_text(base + bad, encoding="utf-8")
+            self.assertEqual(self.kinds(), ["schema"], bad)
+        (self.d / "coverage.yaml").write_text(base + "  - {id: P-04, facet: company, status: partial, where: company-acme.md}\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8").replace("status: draft", "status: final").replace("sources: []", "sources: [\"vault:x.md\"]"), encoding="utf-8")
+        self.assertEqual(self.kinds(), ["schema"])
+
+    def test_items_file_finds_silent_omissions(self):
+        (self.d / "coverage.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nitems:\n"
+            "  - {id: P-01, facet: company, status: open, reason: gap}\n", encoding="utf-8")
+        wanted = ["P-01", "P-02", "P-03"]
+        found = ct.check_items(self.d, wanted)
+        self.assertEqual(len(found), 1)
+        self.assertIn("P-02, P-03", found[0]["message"])
+        self.assertEqual(ct.check_items(self.d, ["P-01"]), [])
+        j = Path(self._t.name) / "items.json"
+        j.write_text(json.dumps([{"id": "P-01"}, {"id": "P-09", "required": False}, "P-02"]), encoding="utf-8")
+        self.assertEqual(ct.load_wanted(j), ["P-01", "P-02"])
+
+    def test_init_with_template_writes_coverage_skeleton(self):
+        org = Path(self._t.name) / "tpl"
+        org.mkdir()
+        self.assertEqual(ct.main(["init", str(org), "--vertical", "tpl", "--template", "some/path", "--today", TODAY]), 0)
+        self.assertTrue((org / "_company" / "coverage.yaml").exists())
+        self.assertEqual(findings(org), [])
 
     def test_strict_is_off_by_default(self):
         p = self.d / "company-acme.md"

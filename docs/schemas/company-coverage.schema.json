@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core-skills/company-coverage.schema.json",
+  "title": "company coverage.yaml: every required item of an attached question set is answered, marked na, or listed as open (CR-125)",
+  "type": "object",
+  "required": ["vertical", "updated", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "vertical": {"type": "string", "minLength": 1},
+    "updated": {"type": "string", "format": "date"},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "facet", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "$comment": "the id the attached question set gives the item; the profile repository holds none"},
+          "facet": {"enum": ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]},
+          "status": {"enum": ["answered", "partial", "conflict", "na", "open", "decision", "workshop"]},
+          "where": {"type": "string", "minLength": 1, "$comment": "<file in _company/>[:line], where the answer is stated; required for answered, partial, conflict"},
+          "reason": {"type": "string", "minLength": 1, "$comment": "required for na, open, decision, workshop"}
+        }
+      }
+    }
+  }
+}

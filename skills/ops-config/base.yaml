@@ -151,6 +151,7 @@ company:
   language: en
   max_age_days: 365                # a facet not reviewed or generated within this is reported stale
   template: null
+  level_map: {}                    # profile level -> the attached question set's own level name; no default
   services: {}
 
 # --- Profiles (CR-123, schema 1.5) ---

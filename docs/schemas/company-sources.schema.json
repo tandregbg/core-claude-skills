@@ -40,6 +40,11 @@
           "as_of": {"type": "string", "format": "date",
                     "$comment": "when a captured copy was taken; with origin_url, lets a public fact cite an internal capture"},
           "origin_url": {"type": "string", "minLength": 1},
+          "curation": {"enum": ["original", "derived", "curated"],
+                       "$comment": "original: the document itself; derived: extracted or summarised from one; curated: a tool or team's own processed layer"},
+          "derived_from": {"type": "string", "minLength": 1, "$comment": "the register id or locator of the original a derived or curated source comes from"},
+          "decided_by": {"type": "string", "minLength": 1, "$comment": "who in the company made the decision a binding source records (a role)"},
+          "pages": {"type": "integer", "minimum": 1, "$comment": "page count of a paged original; bounds the (p. N) citations"},
           "note": {"type": "string"}
         }
       }

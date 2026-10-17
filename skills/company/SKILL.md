@@ -49,6 +49,10 @@ which; without it, say that no question set is attached and stop at the skeleton
 the question set is read by you, the agent, and is never copied into this repository or into a shared place.
 
 - *Path:* read the files the template names, in place.
+- *Items:* when the set numbers its items, record every required one in `coverage.yaml` (contract section 9):
+  answered with `where`, or `na`/`open`/`decision`/`workshop` with a reason. Map the profile's level to the set's
+  with `company.level_map` to know which are required. Run `check --items <ids.json>` so no item goes missing
+  silently.
 - *Address:* the template is a read-only MCP server that needs an account token. The server is registered once in
   the client (for Claude Code: `claude mcp add --transport http <name> <address> --header "Authorization: Bearer <token>"`,
   user scope; the token lives in the client's own configuration, never in a vault, a profile or a repository). If
@@ -84,7 +88,7 @@ the question set is read by you, the agent, and is never copied into this reposi
 Report only; nothing is rewritten.
 
 ```
-python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--max-age-days N] [--json]
+python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--max-age-days N] [--json]
 ```
 
 The script reports a stale facet (no review or generation within `company.max_age_days`, default 365, or status

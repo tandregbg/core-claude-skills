@@ -14,6 +14,7 @@ One folder per organisation, at the top of that organisation's area:
   <facet>-<vertical>.md     one file per facet (names below); <vertical> is the organisation's folder name
   sources.yaml              where the facts live and what is off-limits       (schema: docs/schemas/company-sources.schema.json)
   brands.yaml               brand architecture and web domains                (schema: docs/schemas/company-brands.schema.json)
+  coverage.yaml             only with a question set attached: every required item answered, na or open (section 9)
   layers/<department>.md    optional department layers (section 6)
   exports/<target>/         derived files for other systems; regenerated, never edited
   README.md                 sources read, conflicts, gaps, confidence, when to regenerate
@@ -105,6 +106,15 @@ the company writes it: check the company's own naming rule (spelling, diacritics
     per facet, together with the `_Not provided yet._` lines.
 14. **A source cited by an included source** that is itself excluded (an interview behind a register) is named in
     the cited source's `note`; the excluded one stays unread.
+15. **Cite the page.** A statement drawn from a paged original reads `[s-id] (p. 12)` or `(pp. 12-14)`, with
+    nothing but the id inside the brackets. `check --strict` rejects a page beyond the declared `pages`.
+16. **A derived statement stricter than any original** ("never", "always", "only") is not a fact. Record it as a
+    dated decision with its owner, or soften it to what the original says.
+17. **A curated source's own working rules** (how a tool writes, what it forbids itself) are context. They never
+    enter the never-say list or the voice rules unless the company adopts them in a decision.
+18. **Reviewer notes and extraction losses.** Margin notes, "to update" remarks and anything the extraction could
+    not carry (images, diagrams, colours drawn as graphics, tables) are listed in the README under
+    `## Reviewer notes and extraction losses`, with the page, and the facets they touch name the gap.
 
 ## 5. Machine files
 
@@ -126,7 +136,15 @@ fact can cite the capture and still be traced to the page.
 | `public` | Published by the company itself. Evidence of what it says, not proof that it is so |
 | `draft` | Thinking, undecided, dated, or known to contain an error. Never wins; use it to find questions |
 
-A document that looks ratified but carries no sign-off is `current`, not `binding`.
+A document that looks ratified but carries no sign-off is `current`, not `binding`. `binding` records a decision
+by the company: name who made it in `decided_by` (a role). A tool's or a consultancy's own rules are not a
+decision by the company, whatever they call themselves.
+
+**Provenance of a source.** `curation` says what kind of thing the source is: `original` (the document itself),
+`derived` (extracted or summarised from one) or `curated` (a tool's or team's own processed layer). A derived or
+curated source names `derived_from` (a register id or a locator). `pages` gives the page count of a paged
+original and bounds the `(p. N)` citations. When a derived or curated source disagrees with its original, the
+original wins, whatever authority either carries; a derived or curated source is never `binding`.
 
 **Source references** are one chain, not three systems. `sources.yaml` is the register and its `s-` ids are the
 names. In a facet text a fact is marked with the register id (`[s-site]`) or with a local number (`[s1]`) whose
@@ -204,4 +222,29 @@ The derived `graph.json` (`schema: company-graph/0.1`) holds nodes and edges for
 overview and never edited. The stakeholder variant of the overview shows sources only as numbered entries, with no
 paths, no excluded material, no internal cross-references and no personal names; the contributor variant shows
 register ids and notes but never a path to excluded material.
+
+## 9. Coverage of an attached question set
+
+A question set (template) numbers its items. The profile repository holds none, so the profile records its own side:
+`coverage.yaml` lists **every required item** with the id the question set gave it, its facet, and one status:
+
+| Status | Needs | Meaning |
+|---|---|---|
+| `answered` | `where` | Stated in the profile, at `<file>[:line]` |
+| `partial` | `where` | Some of it is stated; the file names what is missing |
+| `conflict` | `where` | Sources disagree and the profile records both |
+| `na` | `reason` | Does not apply to this company |
+| `open` | `reason` | Not provided; why |
+| `decision` | `reason` | Waits for an owner's decision (the question is in the facet) |
+| `workshop` | `reason` | Needs a facilitated conversation, not a lookup |
+
+Nothing is left out: an item missing from `coverage.yaml` is a silent omission, and the gaps nobody wrote down
+are the ones that make a profile look finished when it is not. `check` validates the file. `check --items
+<file.json>` takes the required ids from the question set (a list of ids, or of `{id, required}`) and reports every
+one that `coverage.yaml` lacks. A facet that has left `draft` has no `partial` items.
+
+**Levels of the profile and of the question set.** The profile's levels are `public`, `basic`, `standard`,
+`complete`. A question set may name its own; map them in `company.level_map` (profile level to the set's level,
+for example `{basic: <name>}`). The skill ships no default map, so it carries no name from any question set. The
+agent uses the map to decide which items are required for the profile's level and passes those ids to `--items`.
 

@@ -45,7 +45,7 @@ SECRET = [
 # ---------------------------------------------------------------- small JSON-schema subset
 def _types(v, t):
     return {"string": isinstance(v, str), "boolean": isinstance(v, bool), "array": isinstance(v, list),
-            "object": isinstance(v, dict)}[t]
+            "object": isinstance(v, dict), "integer": isinstance(v, int) and not isinstance(v, bool)}[t]
 
 
 def validate(value, schema, root, path="", out=None):
@@ -76,6 +76,8 @@ def validate(value, schema, root, path="", out=None):
     if t and not _types(value, t):
         out.append(f"{where}: {value!r} is not of type {t}")
         return out
+    if t == "integer" and "minimum" in schema and value < schema["minimum"]:
+        out.append(f"{where}: {value!r} is below {schema['minimum']}")
     if t == "string":
         if "minLength" in schema and len(value) < schema["minLength"]:
             out.append(f"{where}: empty")
@@ -233,9 +235,23 @@ def check_strict(d):
             srcs[x["id"]] = x
     except Exception:  # noqa: BLE001 - the schema check reports an unreadable register
         return out
+    for sid, x in srcs.items():
+        p = d / "sources.yaml"
+        if "curation" not in x:
+            out.append(finding("provenance", p, f"{sid} does not say whether it is an original, derived or curated (curation:)"))
+        elif x["curation"] != "original" and not x.get("derived_from"):
+            out.append(finding("provenance", p, f"{sid} is {x['curation']} but names no derived_from"))
+        if x.get("derived_from", "").startswith("s-") and x["derived_from"] not in srcs:
+            out.append(finding("provenance", p, f"{sid}: derived_from {x['derived_from']} is not declared in sources.yaml"))
+        if x.get("authority") == "binding" and not x.get("decided_by"):
+            out.append(finding("provenance", p, f"{sid} is binding but names no decided_by (a binding source records a decision by the company)"))
+        if x.get("authority") == "binding" and x.get("curation") in ("derived", "curated"):
+            out.append(finding("provenance", p, f"{sid} is {x['curation']} and cannot be binding; the original or the company's own decision is"))
     readme = d / "README.md"
     if readme.exists():
         text = readme.read_text(encoding="utf-8", errors="replace")
+        if any(x.get("pages") for x in srcs.values()) and not re.search(r"^## Reviewer notes and extraction losses", text, re.M):
+            out.append(finding("provenance", readme, "paged originals are used, so README needs '## Reviewer notes and extraction losses'"))
         m = re.search(r"^## Conflicts?\b.*?$(.*?)(?=^## |\Z)", text, re.S | re.M)
         for line in (m.group(1).split("\n") if m else []):
             s = line.strip()
@@ -272,6 +288,11 @@ def check_strict(d):
             dm = DEC_NEW.search(line)
             if dm and not re.search(r"\([^()]+\)\s*(?:\[[^\]]+\]\s*)*\.?\s*$", dm.group(1)):
                 out.append(finding("graph", p, f"decision names no owner role in parentheses: {line.strip()[:60]}"))
+        for cm in re.finditer(r"\[(s-[a-z0-9][a-z0-9-]*)\]\s*\(pp?\.\s*(\d+)(?:\s*[-\u2013]\s*(\d+))?\)", body):
+            n = srcs.get(cm.group(1), {}).get("pages")
+            hi = int(cm.group(3) or cm.group(2))
+            if n and (hi > n or int(cm.group(2)) < 1):
+                out.append(finding("provenance", p, f"{cm.group(0)} cites a page beyond the {n} pages declared for {cm.group(1)}"))
         cited = set(re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", body))
         for lk in set(re.findall(r"\[(s\d+)\]", body)):
             cited.update(local.get(lk, []))
@@ -279,6 +300,48 @@ def check_strict(d):
             if sid in srcs and facet not in srcs[sid].get("feeds", []):
                 out.append(finding("graph", p, f"cites {sid}, but its feeds in sources.yaml do not include {facet}"))
     return out
+
+
+def check_coverage_rules(d, data):
+    """Each item is answered, marked na, or listed as open with a reason; a facet that left draft has no partial items."""
+    errs = []
+    left_draft = set()
+    for p in d.glob("*.md"):
+        fm = frontmatter(p) or {}
+        if fm.get("facet") in FACETS and fm.get("status") in ("synthesis-locked", "draft-locked", "final"):
+            left_draft.add(fm["facet"])
+    for it in data.get("items", []):
+        st, i = it["status"], it["id"]
+        if st in ("answered", "partial", "conflict") and not it.get("where"):
+            errs.append(f"{i}: status {st} needs 'where' (file[:line] in _company/)")
+        if st in ("na", "open", "decision", "workshop") and not it.get("reason"):
+            errs.append(f"{i}: status {st} needs a 'reason'")
+        w = it.get("where")
+        if w and not (d / w.split(":")[0]).exists():
+            errs.append(f"{i}: 'where' names {w.split(':')[0]!r}, which is not in _company/")
+        if st == "partial" and it["facet"] in left_draft:
+            errs.append(f"{i}: facet {it['facet']} has left draft but this item is only partial")
+    return errs
+
+
+def check_items(d, wanted):
+    """Silent omissions: required item ids from an attached question set that coverage.yaml does not list."""
+    p = d / "coverage.yaml"
+    try:
+        have = {x["id"] for x in load_yaml_json(p).get("items", [])} if p.exists() else set()
+    except Exception:  # noqa: BLE001 - the schema check reports an unreadable file
+        return []
+    missing = sorted(w for w in wanted if w not in have)
+    if not missing:
+        return []
+    shown = ", ".join(missing[:8]) + (f" and {len(missing) - 8} more" if len(missing) > 8 else "")
+    return [finding("coverage", p, f"{len(missing)} required item(s) are not listed as answered, na or open (silent omission): {shown}")]
+
+
+def load_wanted(path):
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data = data.get("items", data) if isinstance(data, dict) else data
+    return [x if isinstance(x, str) else x["id"] for x in data if isinstance(x, str) or x.get("required", True)]
 
 
 def check_dir(d, max_age_days, today):
@@ -313,10 +376,12 @@ def check_dir(d, max_age_days, today):
         out += check_markers(p, fm, ids_declared)
         if fm.get("status") in ("draft-locked", "final") and not fm.get("sources"):
             out.append(finding("unsourced", p, f"status {fm.get('status')} but no sources listed"))
-    for name, schema_file in (("sources.yaml", "company-sources.schema.json"), ("brands.yaml", "company-brands.schema.json")):
+    for name, schema_file in (("sources.yaml", "company-sources.schema.json"), ("brands.yaml", "company-brands.schema.json"),
+                              ("coverage.yaml", "company-coverage.schema.json")):
         p = d / name
         if not p.exists():
-            out.append(finding("schema", p, "missing"))
+            if name != "coverage.yaml":        # coverage.yaml exists only where a question set is attached
+                out.append(finding("schema", p, "missing"))
             continue
         try:
             data = load_yaml_json(p)
@@ -326,7 +391,7 @@ def check_dir(d, max_age_days, today):
             continue
         errs = validate(data, schema, schema)
         if not errs:
-            key = "sources" if name == "sources.yaml" else "brands"
+            key = {"sources.yaml": "sources", "brands.yaml": "brands", "coverage.yaml": "items"}[name]
             ids = [x.get("id") for x in data.get(key, [])]
             errs += [f"duplicate id {i}" for i in sorted({i for i in ids if ids.count(i) > 1})]
             if key == "brands":
@@ -334,6 +399,8 @@ def check_dir(d, max_age_days, today):
                     r = b["relation"]
                     if r.startswith("sub-brand-of:") and r.split(":", 1)[1] not in ids:
                         errs.append(f"{b['id']}: relation points at unknown brand {r.split(':', 1)[1]!r}")
+            if key == "items":
+                errs += check_coverage_rules(d, data)
         out += [finding("schema", p, e) for e in errs]
     for p in sorted(d.rglob("*")):
         if not p.is_file() or p.suffix not in (".md", ".yaml", ".json", ".sh") or any(s.startswith(".") for s in p.relative_to(d).parts):
@@ -373,6 +440,10 @@ def cmd_check(a):
     if a.strict:
         for d in dirs:
             findings += check_strict(d)
+    if a.items:
+        wanted = load_wanted(a.items)
+        for d in dirs:
+            findings += check_items(d, wanted)
     if a.copies:
         findings += check_copies(root, dirs)
     if a.json:
@@ -418,6 +489,8 @@ def cmd_init(a):
     (target / "AUDIT-LOG.md").write_text(f"# {display} -- audit log\n\n| Date | By | What was checked | Changed | Next due |\n|---|---|---|---|---|\n", encoding="utf-8")
     (target / "sources.yaml").write_text(f"vertical: {v}\nupdated: {today}\nsources: []\n", encoding="utf-8")
     (target / "brands.yaml").write_text(f"vertical: {v}\nbrands: []\n", encoding="utf-8")
+    if a.template:
+        (target / "coverage.yaml").write_text(f"vertical: {v}\nupdated: {today}\nitems: []\n", encoding="utf-8")
     note = ("question set: template at " + a.template) if a.template else \
         "no question set attached: the files are the plain skeleton (set company.template: to attach one)"
     print(f"created {target} ({a.level}: {len(FACETS)} facet files); {note}")
@@ -428,7 +501,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("folder")
-    c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
+    c.add_argument("--items", help="JSON list of required item ids (or {id, required}) from the attached question set; reports silent omissions"); c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
     c.add_argument("--copies", action="store_true"); c.add_argument("--today")
     c.set_defaults(fn=cmd_check)
     i = sub.add_parser("init"); i.add_argument("folder"); i.add_argument("--vertical", required=True)

@@ -36,7 +36,13 @@ nothing behaves as before.
   `origin_url` and `as_of` for captured pages, and `check --summary` (open items and decisions per facet) and an
   H1 display-name check. Contract section 8 lists what an overview graph needs (a `C<n>` conflict register with
   `[s-id]` sides and facets, local markers that name a register id, one decision form with an owner role, `feeds`
-  that match the text, a `labels:` block for id prefixes); `check --strict` reports departures and is off by default. The skill carries **no question set and no method**: an optional template is read
+  that match the text, a `labels:` block for id prefixes); `check --strict` reports departures and is off by default.
+  A second blank-paper run, from original PDFs, added: `coverage.yaml` (every required item of an attached question
+  set answered, `na` or open, with `check --items` finding silent omissions and `company.level_map` for the set's own
+  level names, no default shipped); source provenance (`curation`, `derived_from`, `decided_by`, `pages`) with the
+  rules that an original beats what is derived from it, `binding` records a decision by the company, a derived
+  statement stricter than any original is a dated decision, a curated tool's own rules are context, a page is cited
+  as `[s-id] (p. N)` and checked against `pages`, and reviewer notes and extraction losses are listed in the README. The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
   `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;
