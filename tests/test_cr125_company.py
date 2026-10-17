@@ -196,6 +196,36 @@ class Check(unittest.TestCase):
             "origin_url: \"https://example.com/about\", as_of: 2026-01-04}\n", encoding="utf-8")
         self.assertEqual(self.kinds(), [])
 
+    def test_strict_reports_what_the_graph_needs(self):
+        (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nlabels: {Q: open strategy question}\nsources:\n"
+            "  - {id: s-a, kind: vault, path: x.md, authority: current, feeds: [company]}\n"
+            "  - {id: s-b, kind: vault, path: y.md, authority: draft, feeds: [offering]}\n", encoding="utf-8")
+        good_readme = (self.d / "README.md").read_text(encoding="utf-8")
+        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. A [s-a] versus B [s-b], company.\n"), encoding="utf-8")
+        p = self.d / "company-acme.md"
+        base = p.read_text(encoding="utf-8")
+        p.write_text(base + "\nFact [s1].\n\n## Sources\n\n- [s1] s-a: x.md\n\n**Decision needed:** keep the name? (owner)\n", encoding="utf-8")
+
+        def strict():
+            return [f["message"] for f in ct.check_strict(self.d)]
+        self.assertEqual(strict(), [])
+        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- 1 Name. A [s-a] versus B [s-b], company.\n"), encoding="utf-8")
+        self.assertTrue(any("C<n>" in m for m in strict()))
+        (self.d / "README.md").write_text(good_readme.replace("## Conflicts\n","## Conflicts\n\n- C1 Name. only [s-a], company.\n"), encoding="utf-8")
+        self.assertTrue(any("both sides" in m for m in strict()))
+        (self.d / "README.md").write_text(good_readme, encoding="utf-8")
+        p.write_text(base + "\nFact [s1].\n\n- [s1] x.md\n", encoding="utf-8")
+        self.assertTrue(any("names no register id" in m for m in strict()))
+        p.write_text(base + "\nFact [s-b].\n", encoding="utf-8")
+        self.assertTrue(any("feeds" in m for m in strict()))
+        p.write_text(base + "\n- Decision for the owner: keep the name?\n**Decision needed:** and this one\n", encoding="utf-8")
+        self.assertEqual(sum("decision" in m for m in strict()), 2)
+
+    def test_strict_is_off_by_default(self):
+        p = self.d / "company-acme.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\n- Decision for the owner: x\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+
     def test_copy_outside_company_folder(self):
         (self.org / "positioning-acme.md").write_text(
             "---\nvertical: acme\nfacet: positioning\nstatus: draft\n---\n\n# copy\n", encoding="utf-8")

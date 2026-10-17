@@ -219,6 +219,68 @@ def check_names(d):
     return out
 
 
+SID = re.compile(r"s-[a-z0-9][a-z0-9-]*")
+DEC_OLD = re.compile(r"Decision for the owner:|\((?:beslut krävs|decision needed)|Beslut krävs:", re.I)
+DEC_NEW = re.compile(r"\*\*Decision needed:\*\*(.*)")
+
+
+def check_strict(d):
+    """The structure the overview graph needs (contract section 8). Off by default: `check --strict`."""
+    out = []
+    srcs, feeds = {}, {}
+    try:
+        for x in load_yaml_json(d / "sources.yaml").get("sources", []):
+            srcs[x["id"]] = x
+    except Exception:  # noqa: BLE001 - the schema check reports an unreadable register
+        return out
+    readme = d / "README.md"
+    if readme.exists():
+        text = readme.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r"^## Conflicts?\b.*?$(.*?)(?=^## |\Z)", text, re.S | re.M)
+        for line in (m.group(1).split("\n") if m else []):
+            s = line.strip()
+            cell = re.match(r"^\|\s*([^|]*?)\s*\|", s)
+            first = cell.group(1) if cell else None
+            if first is not None and not re.fullmatch(r"C?\d+", first):
+                continue                       # table header, separator or a row that is not a register entry
+            if first is None and not s.startswith("- "):
+                continue
+            ident = first if first is not None else (re.match(r"^- (\S+)", s).group(1) if re.match(r"^- (\S+)", s) else "")
+            if not re.fullmatch(r"C\d+", ident):
+                out.append(finding("graph", readme, f"conflict {ident!r} is not written C<n>: {s[:60]}"))
+                continue
+            ids = set(re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", s))
+            if len(ids) < 2:
+                out.append(finding("graph", readme, f"{ident} names {len(ids)} register id(s) in [s-id] form; a conflict needs both sides"))
+            if not any(re.search(rf"\b{f}\b", s) for f in FACETS):
+                out.append(finding("graph", readme, f"{ident} does not name the facet(s) it touches"))
+    for p in sorted(d.glob("*.md")):
+        fm = frontmatter(p) or {}
+        facet = fm.get("facet")
+        if facet not in FACETS:
+            continue
+        body = p.read_text(encoding="utf-8", errors="replace")
+        local = {}
+        for line in body.split("\n"):
+            for lm in re.finditer(r"(?:^|;)\s*(?:[-*]\s*)?\[(s\d+)\]\s+(.*?)(?=;\s*\[s\d+\]|$)", line):
+                ids = SID.findall(lm.group(2))
+                if not ids:
+                    out.append(finding("graph", p, f"[{lm.group(1)}] is defined by a path or text but names no register id (s-...)"))
+                local[lm.group(1)] = ids
+            if DEC_OLD.search(line) and not DEC_NEW.search(line):
+                out.append(finding("graph", p, f"decision not in the form '**Decision needed:** <question> (<owner role>)': {line.strip()[:60]}"))
+            dm = DEC_NEW.search(line)
+            if dm and not re.search(r"\([^()]+\)\s*(?:\[[^\]]+\]\s*)*\.?\s*$", dm.group(1)):
+                out.append(finding("graph", p, f"decision names no owner role in parentheses: {line.strip()[:60]}"))
+        cited = set(re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", body))
+        for lk in set(re.findall(r"\[(s\d+)\]", body)):
+            cited.update(local.get(lk, []))
+        for sid in sorted(cited):
+            if sid in srcs and facet not in srcs[sid].get("feeds", []):
+                out.append(finding("graph", p, f"cites {sid}, but its feeds in sources.yaml do not include {facet}"))
+    return out
+
+
 def check_dir(d, max_age_days, today):
     out = []
     ids_declared = register_ids(d)
@@ -308,6 +370,9 @@ def cmd_check(a):
     findings = []
     for d in dirs:
         findings += check_dir(d, a.max_age_days, today)
+    if a.strict:
+        for d in dirs:
+            findings += check_strict(d)
     if a.copies:
         findings += check_copies(root, dirs)
     if a.json:
@@ -363,7 +428,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("folder")
-    c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
+    c.add_argument("--strict", action="store_true", help="also require the structure the overview graph needs (contract section 8)"); c.add_argument("--summary", action="store_true", help="also count open items and decisions per facet"); c.add_argument("--max-age-days", type=int, default=365); c.add_argument("--json", action="store_true")
     c.add_argument("--copies", action="store_true"); c.add_argument("--today")
     c.set_defaults(fn=cmd_check)
     i = sub.add_parser("init"); i.add_argument("folder"); i.add_argument("--vertical", required=True)

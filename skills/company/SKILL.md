@@ -84,13 +84,15 @@ the question set is read by you, the agent, and is never copied into this reposi
 Report only; nothing is rewritten.
 
 ```
-python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--max-age-days N] [--json]
+python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--max-age-days N] [--json]
 ```
 
 The script reports a stale facet (no review or generation within `company.max_age_days`, default 365, or status
 `stale`), schema errors in the frontmatter and in `sources.yaml` / `brands.yaml`, a facet marked `draft-locked` or
 `final` with no sources, a marker nobody defines, a facet H1 whose display name differs, a **credential-looking value anywhere in a profile**, and with `--copies` any profile
-file outside `_company/`. Then read the files for what a program cannot decide:
+file outside `_company/`. `--strict` also reports what the overview graph needs (contract section 8): conflicts written `C<n>` with two
+`[s-id]` sides and their facets, local markers that name a register id, decisions in the one form with an owner
+role, `feeds` that match what a facet cites. Then read the files for what a program cannot decide:
 
 - a **status claim** ("active", "live") with no recent evidence, or a paused business written as running;
 - a **fact without a source marker**, or a number without a date and a definition;

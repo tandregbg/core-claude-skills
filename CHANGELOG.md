@@ -34,7 +34,9 @@ nothing behaves as before.
   (`## Never say` in `messaging`), how decisions are marked, which facet is the home of which fact, what a claim
   may be before it is reconciled, how an absent owner is handled, `kind: system` and `status: planned|legacy`,
   `origin_url` and `as_of` for captured pages, and `check --summary` (open items and decisions per facet) and an
-  H1 display-name check. The skill carries **no question set and no method**: an optional template is read
+  H1 display-name check. Contract section 8 lists what an overview graph needs (a `C<n>` conflict register with
+  `[s-id]` sides and facets, local markers that name a register id, one decision form with an owner role, `feeds`
+  that match the text, a `labels:` block for id prefixes); `check --strict` reports departures and is off by default. The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
   `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;

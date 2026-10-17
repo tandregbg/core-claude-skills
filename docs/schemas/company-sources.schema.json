@@ -8,6 +8,8 @@
   "properties": {
     "vertical": {"type": "string", "minLength": 1},
     "updated": {"type": "string", "format": "date"},
+    "labels": {"type": "object",
+               "$comment": "meaning of the id prefixes the profile uses in its text, e.g. {Q: open strategy question, D: decision in the register}"},
     "exclude": {
       "type": "array",
       "items": {

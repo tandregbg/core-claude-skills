@@ -177,3 +177,31 @@ An agent for a department loads its layer plus the facets in `reads`, nothing el
 `exports/<target>/` holds files derived for another system. They are regenerated from the profile and never
 edited. The first target is an external search-visibility tracker: the subject, the buying category, named
 competitors, buying situations and a context line per market. Search data, when it exists, beats the profile.
+
+## 8. Structure the overview needs
+
+`export overview` (a map of how facets, sources, conflicts, decisions and open items relate, with jumps between
+them) is derived from the profile and nothing else. It works on any profile, but only draws the links the
+profile states. A profile that wants the whole map follows these requirements; `company_tool.py check --strict`
+reports every departure (off by default, so older profiles stay clean).
+
+1. **Conflicts are a register.** In `README.md` under `## Conflicts`, one entry per conflict, written `C<n>`
+   (`C1`, `C2`, ...), as a list item or a table row whose first cell is the id. Each entry names both sides as
+   `[s-id]` markers (at least two register ids) and the facet(s) it touches by name.
+2. **Every local marker names a register id.** A line that defines `[s3]` in a Sources list gives the `s-` id it
+   stands for, not only a path or a title. A path alone cannot be linked to the register.
+3. **Decisions use the one form** `**Decision needed:** <the question> (<owner role>)`, in the facet and again
+   under `## Decisions` in the README. The owner role is what the overview groups by.
+4. **`feeds` matches the text.** A facet that cites a source is listed in that source's `feeds`. A source that
+   feeds a facet but is never cited there is fine (context); the reverse is a defect.
+5. **Id prefixes are declared.** When the text uses prefixes of its own (`Q` for the open strategy questions the
+   sources number, `D` for decisions in a source's register, `F` for audit findings), `sources.yaml` carries a
+   `labels:` mapping saying what each prefix means. The overview shows the label; it never guesses one.
+6. **Ids.** `C<n>` and the source ids are stable. A decision or an open item may carry its own short id; without
+   one the overview derives it from the wording, and the derived id changes when the wording does.
+
+The derived `graph.json` (`schema: company-graph/0.1`) holds nodes and edges for tools. It is regenerated with the
+overview and never edited. The stakeholder variant of the overview shows sources only as numbered entries, with no
+paths, no excluded material, no internal cross-references and no personal names; the contributor variant shows
+register ids and notes but never a path to excluded material.
+
