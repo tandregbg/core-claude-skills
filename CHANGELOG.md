@@ -51,7 +51,10 @@ nothing behaves as before.
   87 % of items under version 1 of the rules (73 % without rules); version 2 settles the six points both readers
   found ambiguous (what makes a statement the company's own, adjacent information is not partial, the first listed
   answer role decides, a fixed order of completeness, `na` needs a stated fact, the choice of `remainder` and
-  `close_with`). The skill carries **no question set and no method**: an optional template is read
+  `close_with`). A retest under version 2 stayed at 87 %, with the disagreements concentrated in three places;
+  version 3 settles them (a conflict on one part of a multi-part item is `partial`, a sentence is partial only when it
+  answers a named sub-question on its own, an owner-first item with nothing stated is `open` unless the company has
+  to formulate something new, and rule 8 no longer moves an item between the gap classes). The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
   `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;
