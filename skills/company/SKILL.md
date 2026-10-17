@@ -44,12 +44,27 @@ Run `python3 ~/.claude/skills/company/company_tool.py init <org-folder> --vertic
 It never overwrites an existing folder. With `company.template:` set, read the question set from there and say
 which; without it, say that no question set is attached and stop at the skeleton.
 
+**Reading a template.** `company.template:` is either a folder path or an MCP address. The script only records it;
+the question set is read by you, the agent, and is never copied into this repository or into a shared place.
+
+- *Path:* read the files the template names, in place.
+- *Address:* the template is a read-only MCP server that needs an account token. The server is registered once in
+  the client (for Claude Code: `claude mcp add --transport http <name> <address> --header "Authorization: Bearer <token>"`,
+  user scope; the token lives in the client's own configuration, never in a vault, a profile or a repository). If
+  its tools are available in this session, start with the one that lists the template's levels and attribution,
+  then fetch only what the facet in hand needs. If they are not available, or the server answers 401, say so,
+  name `company.template:` as the cause, and continue with the plain skeleton. Do not guess a question set.
+- Keep any attribution the template states and show it to the owner with the first fetched material.
+- Fetched questions are working material: use them to interview the owner and to judge what is missing, write
+  only the answers (with source markers) into the facet files, and put nothing from the template in
+  `.intake/`, `README.md` or `AUDIT-LOG.md` beyond item identifiers.
+
 ### `intake <org>`
 
 1. **Sources first.** Fill `sources.yaml`: every place a fact may come from (vault paths, hosts, repositories,
    URLs, dropped material in `.intake/`), each with `authority` and the facets it `feeds`; and an `exclude` list
    of what is off-limits, with a reason. Read sources in place and never edit them.
-2. **Synthesis.** For each facet in play, list per item: what is established (with source markers), what
+2. **Synthesis.** If `company.template:` is set, read it as described under `init` before this step. For each facet in play, list per item: what is established (with source markers), what
    conflicts (both values, both sources, never resolved silently), what is missing, what needs a decision.
    Summarise the understanding for the owner to confirm before writing facet text.
 3. **Write each facet** from its sources, one facet at a time, within its own scope; link to other facets
