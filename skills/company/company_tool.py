@@ -265,9 +265,9 @@ def check_strict(d):
             if not re.fullmatch(r"C\d+", ident):
                 out.append(finding("graph", readme, f"conflict {ident!r} is not written C<n>: {s[:60]}"))
                 continue
-            ids = set(re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", s))
-            if len(ids) < 2:
-                out.append(finding("graph", readme, f"{ident} names {len(ids)} register id(s) in [s-id] form; a conflict needs both sides"))
+            sides = re.findall(r"\[(s-[a-z0-9][a-z0-9-]*)\]", s)
+            if len(sides) < 2:
+                out.append(finding("graph", readme, f"{ident} has {len(sides)} [s-id] marker(s); a conflict needs both sides (two markers, which may name the same source on different pages)"))
             if not any(re.search(rf"\b{f}\b", s) for f in FACETS):
                 out.append(finding("graph", readme, f"{ident} does not name the facet(s) it touches"))
     for p in sorted(d.glob("*.md")):

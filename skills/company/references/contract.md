@@ -205,7 +205,8 @@ reports every departure (off by default, so older profiles stay clean).
 
 1. **Conflicts are a register.** In `README.md` under `## Conflicts`, one entry per conflict, written `C<n>`
    (`C1`, `C2`, ...), as a list item or a table row whose first cell is the id. Each entry names both sides as
-   `[s-id]` markers (at least two register ids) and the facet(s) it touches by name.
+   `[s-id]` markers (two markers; both may name the same source when it contradicts itself, on different
+   pages) and the facet(s) it touches by name, for example `Touches: company, brand.`
 2. **Every local marker names a register id.** A line that defines `[s3]` in a Sources list gives the `s-` id it
    stands for, not only a path or a title. A path alone cannot be linked to the register.
 3. **Decisions use the one form** `**Decision needed:** <the question> (<owner role>)`, in the facet and again
