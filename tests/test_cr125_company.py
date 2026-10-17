@@ -332,6 +332,57 @@ class Check(unittest.TestCase):
             self.assertEqual(findings(empty), [])
 
 
+class Extract(unittest.TestCase):
+    PDF = (b"%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+           b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 100]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+           b"4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 10 50 Td (Hello Acme page one) Tj ET\nendstream endobj\n"
+           b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R/Size 6>>\n%%EOF\n")
+    HTML = ("<html><head><title>About Acme</title><link rel=\"canonical\" href=\"https://acme.example/about\">"
+            "<style>x{}</style></head><body><nav>Menu</nav><h1>We build widgets</h1><p>Founded 2020.</p><script>var x=1;</script></body></html>")
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.org = Path(self._t.name) / "acme"
+        (self.org / "source-documents").mkdir(parents=True)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def test_html_text_title_and_address(self):
+        (self.org / "source-documents" / "about.html").write_text(self.HTML, encoding="utf-8")
+        self.assertEqual(ct.main(["extract", str(self.org), "--today", TODAY]), 0)
+        txt = (self.org / ".extracted" / "about.txt").read_text(encoding="utf-8")
+        self.assertIn("We build widgets", txt)
+        self.assertIn("origin_url: https://acme.example/about", txt)
+        self.assertNotIn("var x", txt)
+        man = (self.org / ".extracted" / "_manifest.md").read_text(encoding="utf-8")
+        self.assertIn("https://acme.example/about", man)
+        self.assertIn("never edited", man)
+
+    def test_missing_source_folder_is_refused(self):
+        (self.org / "source-documents").rmdir()
+        self.assertEqual(ct.main(["extract", str(self.org)]), 2)
+
+    def test_pdf_pages_and_thin_page_note(self):
+        if not ct.shutil.which("pdftotext"):
+            self.skipTest("pdftotext not installed")
+        (self.org / "source-documents" / "deck.pdf").write_bytes(self.PDF)
+        self.assertEqual(ct.main(["extract", str(self.org), "--today", TODAY]), 0)
+        txt = (self.org / ".extracted" / "deck.txt").read_text(encoding="utf-8")
+        self.assertIn("=== page 1 ===", txt)
+        self.assertIn("Hello Acme page one", txt)
+        self.assertIn("pages: 1", txt)
+        self.assertIn("fewer than 25 words", (self.org / ".extracted" / "_manifest.md").read_text(encoding="utf-8"))
+
+    def test_extracted_folder_is_not_a_profile_and_sources_untouched(self):
+        p = self.org / "source-documents" / "about.html"
+        p.write_text(self.HTML, encoding="utf-8")
+        before = p.read_bytes()
+        ct.main(["extract", str(self.org)])
+        self.assertEqual(p.read_bytes(), before)
+        self.assertEqual(ct.find_company_dirs(Path(self._t.name)), [])
+
+
 class Contract(unittest.TestCase):
     """The repository side: the contract names what the skill implements, and carries no template."""
 

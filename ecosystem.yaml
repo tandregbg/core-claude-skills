@@ -426,7 +426,7 @@ skills:
     - name: company
       description: "The company profile: a current, source-backed picture of an organisation in `<org>/_company/`, with an open contract. Any question set is an optional template read from config; this repository carries none."
       badge: Context
-      subcommands: [init, intake, check, build, export, help]
+      subcommands: [init, extract, intake, check, build, export, help]
     - name: transcript
       description: "The config-free form of /ops process: a summary from a transcript of a call, meeting or voice recording."
       badge: Lightweight

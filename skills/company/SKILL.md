@@ -65,6 +65,19 @@ the question set is read by you, the agent, and is never copied into this reposi
   only the answers (with source markers) into the facet files, and put nothing from the template in
   `.intake/`, `README.md` or `AUDIT-LOG.md` beyond item identifiers.
 
+### `extract <org>`
+
+Starts from the files the company handed over (PDFs, saved web pages) and turns them into text you can read and
+cite. `python3 ~/.claude/skills/company/company_tool.py extract <org-folder> [--source DIR] [--out DIR]` reads
+`<org>/source-documents/` (or `--source`), writes one text file per document into `<org>/.extracted/` with
+`=== page N ===` markers, the page count, the sha256 and, for a web page, its address when the page carries one,
+and a `_manifest.md`. It lists the pages that are mostly images (fewer than 25 words): render those to read them
+(`pdftoppm -r 70 -f N -l N -png file.pdf prefix`) and say in the facet that a fact comes from a page image. It
+never changes a source and needs `pdftotext` (poppler) for PDFs. The original is the source in `sources.yaml`
+(`curation: original`, `pages: N`, `origin_url` and `as_of` for a saved page); the extracted file is a working copy.
+What extraction cannot carry (images, diagrams, colour swatches, tables) goes in the README under
+`## Reviewer notes and extraction losses`.
+
 ### `intake <org>`
 
 1. **Sources first.** Fill `sources.yaml`: every place a fact may come from (vault paths, hosts, repositories,

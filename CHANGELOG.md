@@ -57,7 +57,9 @@ nothing behaves as before.
   to formulate something new, and rule 8 no longer moves an item between the gap classes). Version 3 gave 89 % agreement between two independent readers; 3.1 settles the two points
   both readers still raised (authority orders unequal sources, a `draft` source never creates a conflict, rule 8 is a
   last resort that never overrides an earlier rule) and states that a list the profile derived itself is not the
-  company's statement until the owner confirms it. `ruleset` accepts a minor version. A last round under 3.1 gave 93 %; 3.2 states that the answer role never overrides `workshop`
+  company's statement until the owner confirms it. `ruleset` accepts a minor version. `company_tool.py extract` starts from the files a company hands over: text
+  with page markers from PDFs and saved web pages (the address from the page when it has one), sha256 and page
+  counts, a manifest, and a list of pages that are mostly images and need rendering. A last round under 3.1 gave 93 %; 3.2 states that the answer role never overrides `workshop`
   and that `close_with: us` needs a supplied document or a public page the profile names. The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
