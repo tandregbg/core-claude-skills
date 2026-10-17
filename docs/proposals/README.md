@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-129**
+Next available CR number: **CR-130**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-129**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-129 | packaging and distribution; `ecosystem.yaml` (a possible `distribution:` block), `scripts/`, `docs/` | Low | **Placeholder** (2026-10-17). Distributing skills to an organisation through a plugin: Claude first, then OpenAI/ChatGPT and GitHub Copilot. Scope and open questions only; taken up after 2026-10-27. |
 | CR-128 | `ops-base` (RAW SOURCE ARCHIVE), `transcript`, `inbox`, `ops` (`check`), `docs/schemas/inbox.md` | Medium | **Proposed** (2026-10-17). A raw transcript archived by a client at delivery (`written_by:`, empty `summary`) is adopted -- renamed to the summary stem and filled, body untouched -- not written again; the inbox item's new keys (`dt_filename`, `recorded_at`, ...) feed the summary. Client side: record-me-macos MAC-CR-011 part 4 |
 | CR-127 | `tasks` (v2 schema + writers), `ops-config` (`milestone:`, schema 1.7), `ops` (`prepare` config review, `check`, `config_checks()`), `ecosystem.yaml` (`schemas`) | **High** | **Proposed** (2026-10-15). The ledger and the milestone record *when*, not just *what*: `closed:` for a finished task (`completed:` accepted as a read alias, no migration) and `set_on:` + append-only `history:` under `milestone:`, appended by the CR-119 config review when a decision moves the date. Two report-only checks: a finished task with no closing day, a milestone date with no provenance. Makes throughput and schedule slip computable; both are unrecoverable for every day they are not written. Additive, contract 43 to 44 |
 | CR-126 | `company` (`export deep-thought`), contract section 7, `ops-config` (`company.deep_thought`, schema 1.7), two export schemas | Medium | **Proposed** (2026-10-14). The company profile becomes Deep Thought's tag and account context, opt-in per organisation (one deliberately not synced), reviewed facets only, no strategy or gtm; record-me for Mac sends it (MAC-CR-007); Deep Thought side DT-CR-745. **Full spec with the vault evidence tracked outside this repository** |
