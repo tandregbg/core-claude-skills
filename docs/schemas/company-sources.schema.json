@@ -32,7 +32,8 @@
           "kind": {"enum": ["vault", "host", "repo", "url", "intake", "interview"]},
           "path": {"type": "string", "minLength": 1},
           "authority": {"enum": ["binding", "current", "public", "draft"]},
-          "feeds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+          "feeds": {"type": "array", "uniqueItems": true,
+                    "items": {"enum": ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]},
                     "$comment": "facet names; empty = declared for context only"},
           "note": {"type": "string"}
         }

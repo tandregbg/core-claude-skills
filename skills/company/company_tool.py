@@ -60,6 +60,9 @@ def validate(value, schema, root, path="", out=None):
     where = path or "<root>"
     if "oneOf" in schema:
         if sum(1 for s in schema["oneOf"] if not validate(value, s, root, path, [])) != 1:
+            if isinstance(value, list) and any(isinstance(x, bool) for x in value):
+                out.append(f"{where}: {value!r} holds a YAML boolean; quote the codes (unquoted no, on, off, yes, y, n become booleans)")
+                return out
             out.append(f"{where}: {value!r} is not one of the allowed forms")
         return out
     if "const" in schema and value != schema["const"]:
@@ -67,6 +70,9 @@ def validate(value, schema, root, path="", out=None):
     if "enum" in schema and value not in schema["enum"]:
         out.append(f"{where}: {value!r} is not one of {schema['enum']}")
     t = schema.get("type")
+    if t == "string" and isinstance(value, bool):
+        out.append(f"{where}: {value!r} is a YAML boolean, not a string; quote it (unquoted no, on, off, yes, y, n become booleans)")
+        return out
     if t and not _types(value, t):
         out.append(f"{where}: {value!r} is not of type {t}")
         return out
@@ -147,8 +153,39 @@ def find_company_dirs(root):
 
 
 # ---------------------------------------------------------------- checks
+LOCAL_MARK = re.compile(r"\[(s\d+)\]")
+REG_MARK = re.compile(r"\[(s-[a-z0-9][a-z0-9-]*)\]")
+LOCAL_DEF = re.compile(r"(?:^|;)\s*(?:[-*]\s*)?\[(s\d+)\]\s+\S", re.M)
+
+
+def register_ids(d):
+    """Ids declared in sources.yaml, or None when it cannot be read (the schema check reports that)."""
+    try:
+        return {x.get("id") for x in load_yaml_json(d / "sources.yaml").get("sources", [])}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def check_markers(p, fm, ids):
+    """A local [sN] needs a line in the same file that defines it; [s-id] and frontmatter s- entries need the register."""
+    text = p.read_text(encoding="utf-8", errors="replace")
+    body = text[FM.match(text).end():] if FM.match(text) else text
+    out = []
+    defined = set(LOCAL_DEF.findall(body))
+    for m in sorted(set(LOCAL_MARK.findall(body)) - defined, key=lambda x: int(x[1:])):
+        out.append(finding("marker", p, f"[{m}] is used but no line in the file defines it (a Sources list entry starting [{m}])"))
+    if ids is not None:
+        for m in sorted(set(REG_MARK.findall(body)) - ids):
+            out.append(finding("marker", p, f"[{m}] is not declared in sources.yaml"))
+        for s in fm.get("sources") or []:
+            if isinstance(s, str) and re.fullmatch(r"s-[a-z0-9][a-z0-9-]*", s) and s not in ids:
+                out.append(finding("marker", p, f"frontmatter source {s} is not declared in sources.yaml"))
+    return out
+
+
 def check_dir(d, max_age_days, today):
     out = []
+    ids_declared = register_ids(d)
     for p in sorted(d.glob("*.md")):
         if p.name in ("AUDIT-LOG.md",):
             continue
@@ -174,6 +211,7 @@ def check_dir(d, max_age_days, today):
             elif (today - when).days > max_age_days:
                 out.append(finding("stale", p, f"last {'reviewed' if as_date(fm.get('reviewed')) else 'generated'} {when}, "
                                                f"{(today - when).days} days ago (limit {max_age_days})"))
+        out += check_markers(p, fm, ids_declared)
         if fm.get("status") in ("draft-locked", "final") and not fm.get("sources"):
             out.append(finding("unsourced", p, f"status {fm.get('status')} but no sources listed"))
     for name, schema_file in (("sources.yaml", "company-sources.schema.json"), ("brands.yaml", "company-brands.schema.json")):

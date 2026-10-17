@@ -84,9 +84,31 @@ required at its level is answered, marked `na`, or listed as open with a reason.
 
 `sources.yaml` and `brands.yaml` follow the two schemas in `docs/schemas/`. `unknown` is a valid value wherever a
 fact is not established; `null` and omission are not. A source has `id` (`s-...`, unique), `kind`
-(`vault|host|repo|url|intake|interview`), `path`, `authority` (`binding|current|public|draft`), `feeds` (facet
-names; empty means context only) and an optional `note`. `exclude` lists off-limits paths with a reason and
-optional exceptions.
+(`vault|host|repo|url|intake|interview`), `path`, `authority`, `feeds` (facet names, each one of the nine;
+empty means context only) and an optional `note`. `exclude` lists off-limits paths with a reason and optional
+exceptions.
+
+**`authority`** says how much a source weighs when sources disagree:
+
+| Value | Meaning |
+|---|---|
+| `binding` | The designated source of truth: a decision, a standard, a register. It wins a conflict |
+| `current` | Maintained, and read as true for what it covers. Loses to a `binding` source |
+| `public` | Published by the company itself. Evidence of what it says, not proof that it is so |
+| `draft` | Thinking, undecided, dated, or known to contain an error. Never wins; use it to find questions |
+
+A document that looks ratified but carries no sign-off is `current`, not `binding`.
+
+**Source references** are one chain, not three systems. `sources.yaml` is the register and its `s-` ids are the
+names. In a facet text a fact is marked with the register id (`[s-site]`) or with a local number (`[s1]`) whose
+entry in the file's Sources list names the register id or a locator. The frontmatter `sources:` lists the register
+ids the file draws on; a locator (`vault:`, `host:`, `url:`, `interview:<date>`) is allowed where no register
+entry exists yet. A `vault:` path resolves against the organisation folder (the parent of `_company/`).
+`/company check` reports a marker nobody defines and an `s-` id the register does not declare.
+
+**`brands.yaml` is complete or `unknown`.** Every field the schema lists as required is present; where a fact is
+not established the value is `unknown` (for `languages`, the string `unknown` instead of a list). Quote language
+codes: an unquoted `no`, `on`, `off`, `yes` is a YAML boolean, and `/company check` says so.
 
 **Service accounts** are declared in `<org>/_ops.yaml` under `company.services` by reference, never by value:
 

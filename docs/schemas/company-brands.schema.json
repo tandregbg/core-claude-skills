@@ -14,7 +14,7 @@
     "text": {"type": "string", "minLength": 1},
     "brand": {
       "type": "object",
-      "required": ["id", "name", "kind", "relation", "status", "domains", "source"],
+      "required": ["id", "name", "kind", "relation", "status", "ip_owner", "operator", "voice", "tokens", "images", "design", "domains", "source"],
       "additionalProperties": false,
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
@@ -34,13 +34,14 @@
     },
     "domain": {
       "type": "object",
-      "required": ["domain", "role", "public"],
+      "required": ["domain", "role", "public", "languages", "hosting", "dns", "search_console", "analytics"],
       "additionalProperties": false,
       "properties": {
         "domain": {"type": "string", "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"},
         "role": {"enum": ["site", "app", "api", "docs", "mail", "redirect", "staging"]},
         "public": {"$ref": "#/$defs/tri"},
-        "languages": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}},
+        "languages": {"oneOf": [{"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}}, {"const": "unknown"}],
+                      "$comment": "quote the codes: unquoted no, on, off and yes are YAML booleans"},
         "hosting": {"$ref": "#/$defs/text"},
         "dns": {"$ref": "#/$defs/text"},
         "search_console": {"$ref": "#/$defs/tri"},

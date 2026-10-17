@@ -114,14 +114,63 @@ class Check(unittest.TestCase):
 
     def test_brands_schema_and_unknown(self):
         good = ("vertical: acme\nbrands:\n  - id: acme\n    name: Acme\n    kind: company\n    relation: masterbrand\n"
-                "    status: unknown\n    source: \"owner, 2026-01-05\"\n    domains:\n"
-                "      - {domain: example.com, role: site, public: unknown, search_console: unknown, llm_visibility: {tracked: false}}\n")
+                "    status: unknown\n    ip_owner: unknown\n    operator: unknown\n    voice: unknown\n    tokens: unknown\n"
+                "    images: unknown\n    design: unknown\n    source: \"owner, 2026-01-05\"\n    domains:\n"
+                "      - {domain: example.com, role: site, public: unknown, languages: unknown, hosting: unknown, dns: unknown,"
+                " search_console: unknown, analytics: unknown, llm_visibility: {tracked: false}}\n")
         (self.d / "brands.yaml").write_text(good, encoding="utf-8")
         self.assertEqual(self.kinds(), [])
         for bad in (good.replace("status: unknown", "status: sort-of"), good.replace("relation: masterbrand", "relation: sub-brand-of:ghost"),
                     good.replace("public: unknown", "public: null"), good.replace("kind: company", "kind: firm")):
             (self.d / "brands.yaml").write_text(bad, encoding="utf-8")
             self.assertEqual(self.kinds(), ["schema"], bad)
+
+    def test_unknown_is_required_not_optional(self):
+        good = ("vertical: acme\nbrands:\n  - id: acme\n    name: Acme\n    kind: company\n    relation: masterbrand\n"
+                "    status: unknown\n    ip_owner: unknown\n    operator: unknown\n    voice: unknown\n    tokens: unknown\n"
+                "    images: unknown\n    design: unknown\n    source: \"owner, 2026-01-05\"\n    domains:\n"
+                "      - {domain: example.com, role: site, public: unknown, languages: [en, sv], hosting: unknown, dns: unknown,"
+                " search_console: unknown, analytics: unknown}\n")
+        (self.d / "brands.yaml").write_text(good, encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        for omitted in ("    design: unknown\n", "    voice: unknown\n"):
+            (self.d / "brands.yaml").write_text(good.replace(omitted, ""), encoding="utf-8")
+            self.assertEqual(self.kinds(), ["schema"], omitted)
+        (self.d / "brands.yaml").write_text(good.replace(" dns: unknown,", ""), encoding="utf-8")
+        self.assertEqual(self.kinds(), ["schema"])
+
+    def test_unquoted_no_gets_a_hint(self):
+        good = ("vertical: acme\nbrands:\n  - id: acme\n    name: Acme\n    kind: company\n    relation: masterbrand\n"
+                "    status: unknown\n    ip_owner: unknown\n    operator: unknown\n    voice: unknown\n    tokens: unknown\n"
+                "    images: unknown\n    design: unknown\n    source: x\n    domains:\n"
+                "      - {domain: example.no, role: site, public: true, languages: [no, sv], hosting: unknown, dns: unknown,"
+                " search_console: unknown, analytics: unknown}\n")
+        (self.d / "brands.yaml").write_text(good, encoding="utf-8")
+        msgs = [f["message"] for f in findings(self.org)]
+        self.assertTrue(any("YAML boolean" in m and "quote" in m for m in msgs), msgs)
+        (self.d / "brands.yaml").write_text(good.replace("[no, sv]", '["no", sv]'), encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+
+    def test_feeds_must_be_facets(self):
+        base = ("vertical: acme\nupdated: 2026-01-05\nsources:\n"
+                "  - {id: s-site, kind: url, path: \"https://example.com\", authority: public, feeds: [FEEDS]}\n")
+        (self.d / "sources.yaml").write_text(base.replace("FEEDS", "public, essence"), encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        (self.d / "sources.yaml").write_text(base.replace("FEEDS", "bogus"), encoding="utf-8")
+        self.assertEqual(self.kinds(), ["schema"])
+
+    def test_source_markers_resolve(self):
+        (self.d / "sources.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nsources:\n"
+            "  - {id: s-site, kind: url, path: \"https://example.com\", authority: public, feeds: [company]}\n", encoding="utf-8")
+        p = self.d / "company-acme.md"
+        base = p.read_text(encoding="utf-8")
+        p.write_text(base + "\nFounded 2020 [s1]. Sells widgets [s-site].\n\n## Sources\n\n- [s1] vault:notes/history.md\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        p.write_text(base + "\nFounded 2020 [s1]. Sells widgets [s-nope].\n", encoding="utf-8")
+        msgs = sorted(f["message"] for f in findings(self.org) if f["kind"] == "marker")
+        self.assertEqual(len(msgs), 2, msgs)
+        p.write_text(base.replace("sources: []", "sources: [s-ghost]"), encoding="utf-8")
+        self.assertEqual(self.kinds(), ["marker"])
 
     def test_copy_outside_company_folder(self):
         (self.org / "positioning-acme.md").write_text(
