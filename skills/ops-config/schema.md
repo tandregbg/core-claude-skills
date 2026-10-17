@@ -16,7 +16,7 @@ schema_version: "1.6"           # Required: Schema version
 organization: string            # Required: Organization name
 profile: string                 # Optional (CR-123, v1.5): meeting (default) | podcast
 company:                        # Optional (CR-125, v1.6): the company profile, read by /company
-  level: light                  #   public | light | medium | full
+  level: basic                    #   public | basic | standard | complete
   language: en
   max_age_days: 365             #   a facet older than this is reported stale
   template: null                #   path or address of an optional private question set; null = plain skeleton

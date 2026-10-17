@@ -55,7 +55,7 @@ subject the company must be able to state. The names and one-line purposes are t
 | `brand` | How it sounds and looks: voice, rules, vocabulary, visual rules, images |
 | `public` | Only what outsiders can already see |
 
-Each file carries frontmatter: `vertical`, `facet`, `level` (`public` | `light` | `medium` | `full`), `status` (`draft` |
+Each file carries frontmatter: `vertical`, `facet`, `level` (`public` | `basic` | `standard` | `complete`), `status` (`draft` |
 `synthesis-locked` | `draft-locked` | `final` | `stale`), `generated`, `reviewed`, `language`, `sources`. Every fact in the body
 carries a source marker. Numbers carry a date and a definition. Open items are listed with a reason, never
 guessed.
@@ -80,7 +80,7 @@ answered*, not *what is asked*. No question text.
 
 ```yaml
 company:
-  level: light            # light | medium | full
+  level: basic              # basic | standard | complete
   language: en
   max_age_days: 365       # a facet older than this is reported stale
   template: null          # path or address of an optional private template; null = built-in skeleton
@@ -154,3 +154,4 @@ say nothing when it does not. A reader never writes to a profile.
   repositories read the same folder under the same contract.
 - Examples and tests use invented companies. Real profiles were only ever read, never copied, to test the
   checker.
+- Levels are `public` < `basic` < `standard` < `complete` and name the depth reached, not which facets exist: `init` writes all nine at every level (changed 2026-10-17; the first build used other names and a level-to-facet table).

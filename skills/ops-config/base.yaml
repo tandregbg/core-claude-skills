@@ -147,7 +147,7 @@ workflows:
 # private question set (a path or an address); null means the plain skeleton, and the skill says so.
 # `services` holds references to keys, never key values.
 company:
-  level: light                     # public | light | medium | full
+  level: basic                       # public | basic | standard | complete
   language: en
   max_age_days: 365                # a facet not reviewed or generated within this is reported stale
   template: null

@@ -40,20 +40,21 @@ A facet is a subject the company must be able to state. The names and one-line p
 | `brand` | How it sounds and looks: voice, rules, vocabulary, visual rules, images |
 | `public` | Only what outsiders can already see |
 
-**Levels** say how much must be answered, not what is asked: `public` < `light` < `medium` < `full`.
+**Levels** say how much must be answered, not what is asked: `public` < `basic` < `standard` < `complete`. All nine facets exist at every level; the level is the depth the profile has reached.
 
-| Level | Facets in play |
+| Level | Meaning |
 |---|---|
-| public | company, offering, public |
-| light | + essence, positioning, messaging, strategy, brand |
-| medium, full | + gtm (all nine); `full` also expects every required item answered or explicitly open |
+| public | Only what outsiders can already see |
+| basic | Facts stated with a source; gaps listed |
+| standard | Conflicts between sources resolved or recorded; numbers dated and defined |
+| complete | Every required item answered or explicitly open, and a person has reviewed it |
 
 ## 3. Frontmatter (every profile file)
 
 ```yaml
 vertical: acme
 facet: positioning            # one of the nine, or: readme
-level: medium                 # public | light | medium | full
+level: standard               # public | basic | standard | complete
 status: draft                 # draft | synthesis-locked | draft-locked | final | stale
 generated: 2026-01-05         # when the text was written
 reviewed:                     # date and who; empty until a person has read it

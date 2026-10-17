@@ -38,8 +38,8 @@ the facts change; events go to the meeting archive.
 
 ### `init <org>`
 
-Creates `<org>/_company/` with the plain skeleton for the configured level (`company.level`, default `light`):
-one file per facet in play, `README.md`, `AUDIT-LOG.md`, empty `sources.yaml` and `brands.yaml`, `.intake/`.
+Creates `<org>/_company/` with the plain skeleton for the configured level (`company.level`, default `basic`):
+one file per facet (all nine), `README.md`, `AUDIT-LOG.md`, empty `sources.yaml` and `brands.yaml`, `.intake/`.
 Run `python3 ~/.claude/skills/company/company_tool.py init <org-folder> --vertical <v> [--level L] [--language xx]`.
 It never overwrites an existing folder. With `company.template:` set, read the question set from there and say
 which; without it, say that no question set is attached and stop at the skeleton.
@@ -102,7 +102,7 @@ Print this skill's subcommands, the contract's location (`references/contract.md
 
 ```yaml
 company:
-  level: light            # public | light | medium | full
+  level: basic              # public | basic | standard | complete
   language: en
   max_age_days: 365       # a facet older than this is reported stale
   template: null          # path or address of an optional private template; null = the plain skeleton

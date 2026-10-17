@@ -16,7 +16,7 @@ import company_tool as ct  # noqa: E402
 TODAY = "2026-10-14"
 
 
-def init(tmp, level="light", name="acme"):
+def init(tmp, level="basic", name="acme"):
     org = Path(tmp) / name
     org.mkdir()
     rc = ct.main(["init", str(org), "--vertical", name, "--level", level, "--today", TODAY])
@@ -31,8 +31,8 @@ def findings(root, **kw):
 
 
 class Init(unittest.TestCase):
-    def test_skeleton_per_level_and_clean_check(self):
-        for level, n in (("public", 3), ("light", 8), ("medium", 9), ("full", 9)):
+    def test_all_nine_facets_at_every_level_and_clean_check(self):
+        for level, n in (("public", 9), ("basic", 9), ("standard", 9), ("complete", 9)):
             with tempfile.TemporaryDirectory() as tmp:
                 org, rc = init(tmp, level)
                 self.assertEqual(rc, 0)
@@ -50,7 +50,7 @@ class Init(unittest.TestCase):
 
     def test_no_question_text_in_skeleton(self):
         with tempfile.TemporaryDirectory() as tmp:
-            org, _ = init(tmp, "full")
+            org, _ = init(tmp, "complete")
             for p in (org / "_company").glob("*.md"):
                 self.assertNotIn("?", p.read_text(encoding="utf-8"), p.name)
 

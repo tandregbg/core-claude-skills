@@ -22,7 +22,7 @@ nothing behaves as before.
   off-limits, each with its authority and the facets it feeds), `brands.yaml` (brand architecture and web
   domains; `unknown` is valid, `null` and omission are not), `AUDIT-LOG.md`, `README.md`, `exports/<target>/`
   and optional department layers. The contract is `skills/company/references/contract.md`; the two machine
-  files have JSON Schemas in `docs/schemas/`. Subcommands: `init` (the plain skeleton per level, never
+  files have JSON Schemas in `docs/schemas/`. Subcommands: `init` (the plain skeleton, all nine facet files, never
   overwrites), `intake`, `check`, `build`, `export` (first target: an external search-visibility tracker).
   `company_tool.py` does the mechanical part and reports, never rewrites: stale facets, schema errors,
   locked facets without sources, credential-looking values, and with `--copies` profile files outside

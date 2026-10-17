@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mechanical parts of /company (CR-125): create the skeleton, check a profile. Report only.
 
-    python3 company_tool.py init <org-folder> --vertical <v> [--level light] [--language en] [--display Name]
+    python3 company_tool.py init <org-folder> --vertical <v> [--level basic] [--language en] [--display Name]
     python3 company_tool.py check <vault-or-org-folder> [--max-age-days 365] [--json] [--copies]
 
 `init` writes `<org>/_company/` with the plain skeleton for the level and refuses to touch an existing
@@ -31,13 +31,7 @@ HERE = Path(__file__).resolve().parent
 SCHEMAS = HERE.parents[1] / "docs" / "schemas"
 
 FACETS = ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]
-LEVELS = ["public", "light", "medium", "full"]
-LEVEL_FACETS = {
-    "public": ["company", "offering", "public"],
-    "light": ["company", "offering", "public", "essence", "positioning", "messaging", "strategy", "brand"],
-    "medium": FACETS,
-    "full": FACETS,
-}
+LEVELS = ["public", "basic", "standard", "complete"]
 STATUSES = ["draft", "synthesis-locked", "draft-locked", "final", "stale"]
 FM = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 SECRET = [
@@ -266,7 +260,7 @@ def cmd_init(a):
     display = a.display or v
     target.mkdir()
     (target / ".intake").mkdir()
-    for facet in LEVEL_FACETS[a.level]:
+    for facet in FACETS:
         (target / f"{facet}-{v}.md").write_text(
             f"---\nvertical: {v}\nfacet: {facet}\nlevel: {a.level}\nstatus: draft\ngenerated: {today}\nreviewed:\n"
             f"language: {a.language}\nsources: []\n---\n\n# {display} -- {facet}\n\n_Not provided yet._\n", encoding="utf-8")
@@ -278,7 +272,7 @@ def cmd_init(a):
     (target / "brands.yaml").write_text(f"vertical: {v}\nbrands: []\n", encoding="utf-8")
     note = ("question set: template at " + a.template) if a.template else \
         "no question set attached: the files are the plain skeleton (set company.template: to attach one)"
-    print(f"created {target} ({a.level}: {len(LEVEL_FACETS[a.level])} facet files); {note}")
+    print(f"created {target} ({a.level}: {len(FACETS)} facet files); {note}")
     return 0
 
 
@@ -290,7 +284,7 @@ def main(argv=None):
     c.add_argument("--copies", action="store_true"); c.add_argument("--today")
     c.set_defaults(fn=cmd_check)
     i = sub.add_parser("init"); i.add_argument("folder"); i.add_argument("--vertical", required=True)
-    i.add_argument("--level", choices=LEVELS, default="light"); i.add_argument("--language", default="en")
+    i.add_argument("--level", choices=LEVELS, default="basic"); i.add_argument("--language", default="en")
     i.add_argument("--display"); i.add_argument("--template"); i.add_argument("--today")
     i.set_defaults(fn=cmd_init)
     a = ap.parse_args(argv)
