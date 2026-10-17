@@ -47,7 +47,11 @@ nothing behaves as before.
   section 9 now carries nine ordered classification rules (judge the profile not the sources; what counts as
   answered; partial carries a `remainder`; nothing stated is `decision`, `workshop` or `open` with `close_with: us`
   or `customer`; the item's answer role breaks ties; when two classes fit take the less complete one), a
-  `ruleset: company-coverage/1` stamp, and `check` enforces `close_with` and `remainder`. The skill carries **no question set and no method**: an optional template is read
+  `ruleset` stamp, and `check` enforces `close_with` and `remainder`. Two independent readers then agreed on
+  87 % of items under version 1 of the rules (73 % without rules); version 2 settles the six points both readers
+  found ambiguous (what makes a statement the company's own, adjacent information is not partial, the first listed
+  answer role decides, a fixed order of completeness, `na` needs a stated fact, the choice of `remainder` and
+  `close_with`). The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
   `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;

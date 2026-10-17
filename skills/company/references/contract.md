@@ -231,7 +231,7 @@ A question set (template) numbers its items. The profile repository holds none, 
 `facet` is one of the nine facets, or the group name the question set uses for items that fit none of them
 (`brands`, `sources`, `layers`): a question set may ask more than the nine facets hold, and every such item still
 needs a line. The
-file carries `ruleset: company-coverage/1`, the version of the rules below, so two runs are only compared when
+file carries `ruleset: company-coverage/2`, the version of the rules below, so two runs are only compared when
 they used the same rules.
 
 | Status | Needs | Meaning |
@@ -245,33 +245,41 @@ they used the same rules.
 | `workshop` | `reason` | Nothing stated; the answer has to be formed by people together (an interview or a facilitated session), and no document can hold it yet |
 
 **How to classify (apply in order, stop at the first rule that fits).** The rules exist so that two readers, or
-two runs, reach the same class.
+two runs, reach the same class. They are version `company-coverage/2`.
 
 1. **Judge the profile, never the sources.** An item is classed by what the profile text states. A fact that is
    in the originals but not in the profile is a gap, not an answer.
-2. **`na`** only when the item does not apply to this kind of company (a sole trader has no board). Never because
-   nothing was found.
+2. **`na`** only when the profile itself states a fact that rules the item out (a sole trader has no board; the
+   company is not listed), and the `reason` quotes it. If the profile is silent about whether the item applies,
+   the item is `open`.
 3. **`answered`** needs all of: the answer is stated in the profile; it has a source marker; a number or status
-   carries its date and definition; every part the item names is covered. Candidate wording, a recommendation, a
-   quoted option, or a hint is not a stated answer. A statement the company has not made its own is `partial`
-   (or `decision` when only the choice is missing).
+   carries its date and definition; every part the item names is covered. **A statement is the company's own only
+   if it comes from a source of authority `binding`, `current` or `public`** (the company's decision, document or
+   publication). A statement from a `draft` source, candidate wording, a recommendation, a quoted option or a hint
+   is not a stated answer: if it answers part of the item the item is `partial`, otherwise rule 6 applies.
 4. **`conflict`** only when the sources disagree on the answer to this very item and the profile records both. A
    conflict on a neighbouring fact does not change the class of the item: name it in `where`. When an authority
    rule (section 5) settles the disagreement and the profile uses the winner, the item is `answered`, with the
    conflict noted.
-5. **`partial`** when some part of the answer is stated. Name the part still missing in the facet and give its
-   `remainder`. Do not move a partly stated item into a gap class.
+5. **`partial`** needs at least one sentence in the profile that answers a named part of what the item asks.
+   Information that is only adjacent (a hint, a related fact, a pointer to where an answer might be found) does
+   not make an item partial; it is `open`. Name the part still missing in the facet and give its `remainder`;
+   when the missing part needs several things, take the most demanding (`workshop` before `decision` before
+   `open`). Do not move a partly stated item into a gap class.
 6. **Nothing stated.** Choose by what closing it takes:
    - The company has to choose between visible options: `decision`.
    - People have to form the answer together (a core story, a distinctive claim, priorities, pillars):
      `workshop`.
    - A fact or a document exists that can be read, fetched or handed over without anyone deciding anything:
-     `open`, with `close_with: us` when the material is public or supplied, `close_with: customer` when only the
-     company has it (revenue, headcount, contracts).
-7. **The item's answer role breaks a tie.** `doc`, `data`, `site`: `open`. `decision`: `decision`. `owner`: an
-   existing fact the owner knows is `open` with `close_with: customer`; something still to be formed is `workshop`.
-8. **When two adjacent classes both fit, take the less complete one** (`answered` before `partial`, `partial`
-   before a gap class) and say why in `reason`. A looser reading is not allowed to raise a class.
+     `open`. `close_with: us` when a public or supplied source can answer without the company's help;
+     `close_with: customer` when the answer is the company's own view, figure, contract or choice of what to
+     disclose (revenue, headcount, which companies it counts as competitors).
+7. **The answer role breaks a tie.** Roles are read in the order the question set lists them; the first one
+   decides. `doc`, `data`, `site`: `open`. `decision`: `decision`. `owner`: an existing fact the owner knows is
+   `open` with `close_with: customer`; something still to be formed is `workshop`.
+8. **When two classes both fit, take the later one in this order of completeness:** `answered`, `partial`,
+   `conflict`, `open`, `decision`, `workshop`. Say why in `reason`. A looser reading is not allowed to raise a
+   class.
 9. **Changing a class between runs** is recorded as `profile` (the text changed) or `reading` (the same text read
    differently). A `reading` change with the same `ruleset` is a defect in the rules or in the reader; report it.
 
