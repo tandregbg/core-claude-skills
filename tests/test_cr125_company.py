@@ -251,7 +251,7 @@ class Check(unittest.TestCase):
         self.assertEqual(self.kinds(), [])
         for bad in ("  - {id: P-04, facet: company, status: answered}\n", "  - {id: P-04, facet: company, status: open}\n",
                     "  - {id: P-04, facet: company, status: answered, where: ghost.md}\n", "  - {id: P-01, facet: company, status: open, reason: x, close_with: us}\n  - {id: P-01, facet: company, status: open, reason: y, close_with: us}\n",
-                    "  - {id: P-04, facet: nonsense, status: open, reason: x, close_with: us}\n", "  - {id: P-04, facet: company, status: maybe}\n"):
+                    "  - {id: P-04, facet: Not-A-Group, status: open, reason: x, close_with: us}\n", "  - {id: P-04, facet: company, status: maybe}\n"):
             (self.d / "coverage.yaml").write_text(base + bad, encoding="utf-8")
             self.assertEqual(self.kinds(), ["schema"], bad)
         (self.d / "coverage.yaml").write_text(base + "  - {id: P-04, facet: company, status: partial, where: company-acme.md, remainder: workshop}\n", encoding="utf-8")
@@ -275,6 +275,14 @@ class Check(unittest.TestCase):
             (self.d / "coverage.yaml").write_text(base + bad, encoding="utf-8")
             self.assertEqual(self.kinds(), ["schema"], bad)
         (self.d / "coverage.yaml").write_text(base.replace("company-coverage/1", "v1") + ok, encoding="utf-8")
+        self.assertEqual(self.kinds(), ["schema"])
+
+    def test_coverage_accepts_a_question_sets_extra_groups(self):
+        base = "vertical: acme\nupdated: 2026-01-05\nitems:\n"
+        (self.d / "coverage.yaml").write_text(base + "  - {id: D-01, facet: brands, status: open, reason: r, close_with: us}\n"
+                                              "  - {id: A-01, facet: sources, status: workshop, reason: r}\n", encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        (self.d / "coverage.yaml").write_text(base + "  - {id: D-01, facet: Brands, status: workshop, reason: r}\n", encoding="utf-8")
         self.assertEqual(self.kinds(), ["schema"])
 
     def test_items_file_finds_silent_omissions(self):

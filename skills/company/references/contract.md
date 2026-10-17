@@ -227,7 +227,10 @@ register ids and notes but never a path to excluded material.
 ## 9. Coverage of an attached question set
 
 A question set (template) numbers its items. The profile repository holds none, so the profile records its own side:
-`coverage.yaml` lists **every required item** with the id the question set gave it, its facet, and one status. The
+`coverage.yaml` lists **every required item** with the id the question set gave it, its facet, and one status.
+`facet` is one of the nine facets, or the group name the question set uses for items that fit none of them
+(`brands`, `sources`, `layers`): a question set may ask more than the nine facets hold, and every such item still
+needs a line. The
 file carries `ruleset: company-coverage/1`, the version of the rules below, so two runs are only compared when
 they used the same rules.
 

@@ -17,7 +17,8 @@
         "additionalProperties": false,
         "properties": {
           "id": {"type": "string", "minLength": 1, "$comment": "the id the attached question set gives the item; the profile repository holds none"},
-          "facet": {"enum": ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]},
+          "facet": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$",
+                    "$comment": "one of the nine facets, or the group name a question set uses for items that belong to none (for example brands, sources, layers)"},
           "status": {"enum": ["answered", "partial", "conflict", "na", "open", "decision", "workshop"]},
           "where": {"type": "string", "minLength": 1, "$comment": "<file in _company/>[:line], where the answer is stated; required for answered, partial, conflict"},
           "reason": {"type": "string", "minLength": 1, "$comment": "required for na, open, decision, workshop; and for any item classed below the one a looser reader would choose"},
