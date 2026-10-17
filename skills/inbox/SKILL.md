@@ -15,7 +15,7 @@ Universal capture and classification for unstructured content. Accepts voice mem
 vault/_inbox/
   _inbox.yaml           # Derived index (rebuilt from frontmatter)
   YYMMDD-HHMMSS[-slug].md   # Active items (frontmatter is canonical)
-  .audio/               # Raw audio captured by Trillian, paired by basename
+  .audio/               # Raw audio captured by record-me for Mac, paired by basename
     YYMMDD-HHMMSS[-slug].m4a
   .files/               # File drops: input files with a vault destiny (CR-024)
     YYMMDD-HHMMSS[-slug].<ext>
@@ -27,7 +27,7 @@ vault/_inbox/
 **Schema**: see [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) for
 the canonical `<id>.md` frontmatter shape, `.audio/` convention, and
 lifecycle states. The schema is the source of truth; this SKILL.md
-documents skill behaviour. Other tools (Trillian, Deep Thought, Marvin,
+documents skill behaviour. Other tools (record-me for Mac, Deep Thought, Marvin,
 external skills) write directly to `_inbox/` against the schema; `/inbox`
 is one of several producers.
 
@@ -325,7 +325,7 @@ target_folder, confidence) when the item is classified.
 - **Reads** `_contacts/` folder structure for participant matching
 - **Executes** downstream skills (`/transcript`, `/ops`, `/tasks`) -- not just suggestions
 - **Marvin** (formerly core-skills-visualisation) provides a web UI for the same data (create, view, classify, archive)
-- **Trillian** (vault-pulse) writes raw audio to `_inbox/.audio/` and frontmatter-only stub markdown to `_inbox/<id>.md`; the matching transcript arrives later from Deep Thought
+- **record-me for Mac** (formerly Trillian) writes raw audio to `_inbox/.audio/` and frontmatter-only stub markdown to `_inbox/<id>.md`; the matching transcript arrives later from Deep Thought
 - **Deep Thought** writes transcript markdown back to `_inbox/<id>.md` with `source.external_id` set to the DT job id
 
 ## Archive Policy
@@ -346,5 +346,5 @@ Follows the core-skills archive pattern: never delete, always archive.
 - **Frontmatter is canonical**; `_inbox.yaml` is a derived index. If they disagree, frontmatter wins.
 - Use the `YYMMDD-HHMMSS[-slug]` identifier format (per [schema](../../docs/schemas/inbox.md))
 - One content file per inbox item; pair with `.audio/<id>.m4a` if audio captured
-- Items created via Marvin web UI, Trillian, or Deep Thought follow the same schema
+- Items created via Marvin web UI, record-me for Mac, or Deep Thought follow the same schema
 - After downstream skill completes, archive the inbox item automatically (and its paired audio)

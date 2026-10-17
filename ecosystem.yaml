@@ -546,8 +546,8 @@ vault_conventions:
     - path: "_inbox/"
       purpose: "Capture: unprocessed input awaiting classification"
       schema: "docs/schemas/inbox.md"
-      writers: ["/inbox", "trillian", "deep-thought", "marvin"]
-      readers: ["/inbox", "trillian", "marvin"]
+      writers: ["/inbox", "record-me-mac", "deep-thought", "marvin"]
+      readers: ["/inbox", "record-me-mac", "marvin"]
       lifecycle: "append; items move to .archive/ after processing"
 
     - path: "CONTEXT.md"
@@ -600,10 +600,10 @@ vault_conventions:
       lifecycle: "regenerated from _tasks.yaml"
 
     - path: "_inbox/.audio/"
-      purpose: "Raw audio captured by Trillian, paired by basename with _inbox/<id>.md"
+      purpose: "Raw audio captured by record-me for Mac, paired by basename with _inbox/<id>.md"
       schema: "docs/schemas/inbox.md"
-      writers: ["trillian"]
-      readers: ["trillian", "deep-thought", "user (manual)"]
+      writers: ["record-me-mac"]
+      readers: ["record-me-mac", "deep-thought", "user (manual)"]
       lifecycle: "kept indefinitely by default; user-configurable retention; archived to .archive/.audio/ alongside transcript"
 
     - path: "_inbox/.files/"
@@ -657,7 +657,7 @@ vault_conventions:
       purpose: "Staging for outgoing material (CR-047). One folder per send event, or a loose .md for a single message. Each folder carries a _manifest.md declaring status, channel, contact and canonical source — that manifest is the contract any dispatcher reads. Those are the FIELD NAMES; the label each is written under follows the vault language (a Swedish vault writes Status, Kanal, Kontakt, Kanonisk källa) and belongs in a dispatcher's vocabulary file, not in its code"
       schema: null  # filesystem layout, not YAML
       writers: ["/ops", "user (manual)", "any tool that writes a manifest per this contract"]
-      readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "vaultpulse/trillian", "the local mail client", "user"]
+      readers: ["/outbox", "a dispatching surface (see outbound_dispatch.tools)", "record-me for Mac", "the local mail client", "user"]
       lifecycle: "staged -> sent -> closed by /outbox into the contact or project folder; nothing auto-deletes. An item decided against is marked withdrawn (avskriven, CR-047) and closed by `close --all-resolved` (CR-103); a superseded draft goes to the contact or project folder's .archive/"
 
     - path: "_outbox/<item>/_manifest.md"
