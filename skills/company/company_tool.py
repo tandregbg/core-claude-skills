@@ -319,6 +319,14 @@ def check_coverage_rules(d, data):
         w = it.get("where")
         if w and not (d / w.split(":")[0]).exists():
             errs.append(f"{i}: 'where' names {w.split(':')[0]!r}, which is not in _company/")
+        if st == "open" and "close_with" not in it:
+            errs.append(f"{i}: status open needs close_with (us or customer)")
+        if st != "open" and "close_with" in it:
+            errs.append(f"{i}: close_with belongs to status open only")
+        if st == "partial" and "remainder" not in it:
+            errs.append(f"{i}: status partial needs remainder (open, decision or workshop)")
+        if st != "partial" and "remainder" in it:
+            errs.append(f"{i}: remainder belongs to status partial only")
         if st == "partial" and it["facet"] in left_draft:
             errs.append(f"{i}: facet {it['facet']} has left draft but this item is only partial")
     return errs

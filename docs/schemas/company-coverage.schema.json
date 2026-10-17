@@ -8,6 +8,7 @@
   "properties": {
     "vertical": {"type": "string", "minLength": 1},
     "updated": {"type": "string", "format": "date"},
+    "ruleset": {"type": "string", "pattern": "^company-coverage/[0-9]+$", "$comment": "the classification rules the file was written under (contract section 9)"},
     "items": {
       "type": "array",
       "items": {
@@ -19,7 +20,9 @@
           "facet": {"enum": ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]},
           "status": {"enum": ["answered", "partial", "conflict", "na", "open", "decision", "workshop"]},
           "where": {"type": "string", "minLength": 1, "$comment": "<file in _company/>[:line], where the answer is stated; required for answered, partial, conflict"},
-          "reason": {"type": "string", "minLength": 1, "$comment": "required for na, open, decision, workshop"}
+          "reason": {"type": "string", "minLength": 1, "$comment": "required for na, open, decision, workshop; and for any item classed below the one a looser reader would choose"},
+          "close_with": {"enum": ["us", "customer"], "$comment": "required for open: us = material we can read or fetch; customer = a fact only the company holds"},
+          "remainder": {"enum": ["open", "decision", "workshop"], "$comment": "required for partial: what the missing part needs"}
         }
       }
     }

@@ -50,7 +50,8 @@ the question set is read by you, the agent, and is never copied into this reposi
 
 - *Path:* read the files the template names, in place.
 - *Items:* when the set numbers its items, record every required one in `coverage.yaml` (contract section 9):
-  answered with `where`, or `na`/`open`/`decision`/`workshop` with a reason. Map the profile's level to the set's
+  answered with `where`, or `na`/`open`/`decision`/`workshop` with a reason. Classify with the ordered rules in contract section 9 (the same text
+  must give the same class on every run). Map the profile's level to the set's
   with `company.level_map` to know which are required. Run `check --items <ids.json>` so no item goes missing
   silently.
 - *Address:* the template is a read-only MCP server that needs an account token. The server is registered once in

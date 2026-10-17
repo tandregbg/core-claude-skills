@@ -246,23 +246,40 @@ class Check(unittest.TestCase):
         base = "vertical: acme\nupdated: 2026-01-05\nitems:\n"
         (self.d / "company-acme.md").write_text((self.d / "company-acme.md").read_text(encoding="utf-8") + "\nFounded 2020.\n", encoding="utf-8")
         (self.d / "coverage.yaml").write_text(base + "  - {id: P-01, facet: company, status: answered, where: \"company-acme.md:12\"}\n"
-                                              "  - {id: P-02, facet: company, status: open, reason: \"not in the sources\"}\n"
+                                              "  - {id: P-02, facet: company, status: open, reason: \"not in the sources\", close_with: us}\n"
                                               "  - {id: P-03, facet: company, status: na, reason: \"sole trader\"}\n", encoding="utf-8")
         self.assertEqual(self.kinds(), [])
         for bad in ("  - {id: P-04, facet: company, status: answered}\n", "  - {id: P-04, facet: company, status: open}\n",
-                    "  - {id: P-04, facet: company, status: answered, where: ghost.md}\n", "  - {id: P-01, facet: company, status: open, reason: x}\n  - {id: P-01, facet: company, status: open, reason: y}\n",
-                    "  - {id: P-04, facet: nonsense, status: open, reason: x}\n", "  - {id: P-04, facet: company, status: maybe}\n"):
+                    "  - {id: P-04, facet: company, status: answered, where: ghost.md}\n", "  - {id: P-01, facet: company, status: open, reason: x, close_with: us}\n  - {id: P-01, facet: company, status: open, reason: y, close_with: us}\n",
+                    "  - {id: P-04, facet: nonsense, status: open, reason: x, close_with: us}\n", "  - {id: P-04, facet: company, status: maybe}\n"):
             (self.d / "coverage.yaml").write_text(base + bad, encoding="utf-8")
             self.assertEqual(self.kinds(), ["schema"], bad)
-        (self.d / "coverage.yaml").write_text(base + "  - {id: P-04, facet: company, status: partial, where: company-acme.md}\n", encoding="utf-8")
+        (self.d / "coverage.yaml").write_text(base + "  - {id: P-04, facet: company, status: partial, where: company-acme.md, remainder: workshop}\n", encoding="utf-8")
         self.assertEqual(self.kinds(), [])
         p = self.d / "company-acme.md"
         p.write_text(p.read_text(encoding="utf-8").replace("status: draft", "status: final").replace("sources: []", "sources: [\"vault:x.md\"]"), encoding="utf-8")
         self.assertEqual(self.kinds(), ["schema"])
 
+    def test_classification_rules_are_enforced(self):
+        base = "vertical: acme\nupdated: 2026-01-05\nruleset: company-coverage/1\nitems:\n"
+        (self.d / "company-acme.md").write_text((self.d / "company-acme.md").read_text(encoding="utf-8") + "\nFounded 2020.\n", encoding="utf-8")
+        ok = ("  - {id: A-1, facet: company, status: partial, where: company-acme.md, remainder: decision}\n"
+              "  - {id: A-2, facet: company, status: open, reason: r, close_with: customer}\n")
+        (self.d / "coverage.yaml").write_text(base + ok, encoding="utf-8")
+        self.assertEqual(self.kinds(), [])
+        for bad in ("  - {id: A-3, facet: company, status: partial, where: company-acme.md}\n",
+                    "  - {id: A-3, facet: company, status: open, reason: r}\n",
+                    "  - {id: A-3, facet: company, status: open, reason: r, close_with: nobody}\n",
+                    "  - {id: A-3, facet: company, status: decision, reason: r, close_with: us}\n",
+                    "  - {id: A-3, facet: company, status: answered, where: company-acme.md, remainder: open}\n"):
+            (self.d / "coverage.yaml").write_text(base + bad, encoding="utf-8")
+            self.assertEqual(self.kinds(), ["schema"], bad)
+        (self.d / "coverage.yaml").write_text(base.replace("company-coverage/1", "v1") + ok, encoding="utf-8")
+        self.assertEqual(self.kinds(), ["schema"])
+
     def test_items_file_finds_silent_omissions(self):
         (self.d / "coverage.yaml").write_text("vertical: acme\nupdated: 2026-01-05\nitems:\n"
-            "  - {id: P-01, facet: company, status: open, reason: gap}\n", encoding="utf-8")
+            "  - {id: P-01, facet: company, status: open, reason: gap, close_with: customer}\n", encoding="utf-8")
         wanted = ["P-01", "P-02", "P-03"]
         found = ct.check_items(self.d, wanted)
         self.assertEqual(len(found), 1)

@@ -42,7 +42,12 @@ nothing behaves as before.
   level names, no default shipped); source provenance (`curation`, `derived_from`, `decided_by`, `pages`) with the
   rules that an original beats what is derived from it, `binding` records a decision by the company, a derived
   statement stricter than any original is a dated decision, a curated tool's own rules are context, a page is cited
-  as `[s-id] (p. N)` and checked against `pages`, and reviewer notes and extraction losses are listed in the README. The skill carries **no question set and no method**: an optional template is read
+  as `[s-id] (p. N)` and checked against `pages`, and reviewer notes and extraction losses are listed in the README.
+  A re-run of the gap analysis showed 27 % of items changing class between two independent readings, so contract
+  section 9 now carries nine ordered classification rules (judge the profile not the sources; what counts as
+  answered; partial carries a `remainder`; nothing stated is `decision`, `workshop` or `open` with `close_with: us`
+  or `customer`; the item's answer role breaks ties; when two classes fit take the less complete one), a
+  `ruleset: company-coverage/1` stamp, and `check` enforces `close_with` and `remainder`. The skill carries **no question set and no method**: an optional template is read
   from `company.template:` (a path or an address), and without one the skill says so and stops at the
   skeleton. `ops-config` gains a `company:` block (`level`, `language`, `max_age_days`, `template`,
   `services` as key references only). `/ops check` runs the profile checks per folder and vault-wide;

@@ -227,17 +227,53 @@ register ids and notes but never a path to excluded material.
 ## 9. Coverage of an attached question set
 
 A question set (template) numbers its items. The profile repository holds none, so the profile records its own side:
-`coverage.yaml` lists **every required item** with the id the question set gave it, its facet, and one status:
+`coverage.yaml` lists **every required item** with the id the question set gave it, its facet, and one status. The
+file carries `ruleset: company-coverage/1`, the version of the rules below, so two runs are only compared when
+they used the same rules.
 
 | Status | Needs | Meaning |
 |---|---|---|
-| `answered` | `where` | Stated in the profile, at `<file>[:line]` |
-| `partial` | `where` | Some of it is stated; the file names what is missing |
-| `conflict` | `where` | Sources disagree and the profile records both |
-| `na` | `reason` | Does not apply to this company |
-| `open` | `reason` | Not provided; why |
-| `decision` | `reason` | Waits for an owner's decision (the question is in the facet) |
-| `workshop` | `reason` | Needs a facilitated conversation, not a lookup |
+| `answered` | `where` | The profile states the whole answer, with a source |
+| `partial` | `where`, `remainder` | Part of it is stated; `remainder` (`open`, `decision` or `workshop`) says what the missing part needs |
+| `conflict` | `where` | Sources disagree on the answer itself and the profile records both |
+| `na` | `reason` | The item does not apply to this company |
+| `open` | `reason`, `close_with` | Nothing stated; a fact or a document exists that can be read or handed over. `close_with: us` = material we can read or fetch; `close_with: customer` = a fact only the company holds |
+| `decision` | `reason` | Nothing stated; the company has to choose, and the options are visible in the sources or the profile |
+| `workshop` | `reason` | Nothing stated; the answer has to be formed by people together (an interview or a facilitated session), and no document can hold it yet |
+
+**How to classify (apply in order, stop at the first rule that fits).** The rules exist so that two readers, or
+two runs, reach the same class.
+
+1. **Judge the profile, never the sources.** An item is classed by what the profile text states. A fact that is
+   in the originals but not in the profile is a gap, not an answer.
+2. **`na`** only when the item does not apply to this kind of company (a sole trader has no board). Never because
+   nothing was found.
+3. **`answered`** needs all of: the answer is stated in the profile; it has a source marker; a number or status
+   carries its date and definition; every part the item names is covered. Candidate wording, a recommendation, a
+   quoted option, or a hint is not a stated answer. A statement the company has not made its own is `partial`
+   (or `decision` when only the choice is missing).
+4. **`conflict`** only when the sources disagree on the answer to this very item and the profile records both. A
+   conflict on a neighbouring fact does not change the class of the item: name it in `where`. When an authority
+   rule (section 5) settles the disagreement and the profile uses the winner, the item is `answered`, with the
+   conflict noted.
+5. **`partial`** when some part of the answer is stated. Name the part still missing in the facet and give its
+   `remainder`. Do not move a partly stated item into a gap class.
+6. **Nothing stated.** Choose by what closing it takes:
+   - The company has to choose between visible options: `decision`.
+   - People have to form the answer together (a core story, a distinctive claim, priorities, pillars):
+     `workshop`.
+   - A fact or a document exists that can be read, fetched or handed over without anyone deciding anything:
+     `open`, with `close_with: us` when the material is public or supplied, `close_with: customer` when only the
+     company has it (revenue, headcount, contracts).
+7. **The item's answer role breaks a tie.** `doc`, `data`, `site`: `open`. `decision`: `decision`. `owner`: an
+   existing fact the owner knows is `open` with `close_with: customer`; something still to be formed is `workshop`.
+8. **When two adjacent classes both fit, take the less complete one** (`answered` before `partial`, `partial`
+   before a gap class) and say why in `reason`. A looser reading is not allowed to raise a class.
+9. **Changing a class between runs** is recorded as `profile` (the text changed) or `reading` (the same text read
+   differently). A `reading` change with the same `ruleset` is a defect in the rules or in the reader; report it.
+
+For a gap analysis that uses other names: `GAP-SOURCE` is `open` with `close_with: us`; a fact only the
+company holds is `open` with `close_with: customer`; `GAP-DECISION` is `decision`; `GAP-WORKSHOP` is `workshop`.
 
 Nothing is left out: an item missing from `coverage.yaml` is a silent omission, and the gaps nobody wrote down
 are the ones that make a profile look finished when it is not. `check` validates the file. `check --items
@@ -248,4 +284,3 @@ one that `coverage.yaml` lacks. A facet that has left `draft` has no `partial` i
 `complete`. A question set may name its own; map them in `company.level_map` (profile level to the set's level,
 for example `{basic: <name>}`). The skill ships no default map, so it carries no name from any question set. The
 agent uses the map to decide which items are required for the profile's level and passes those ids to `--items`.
-
