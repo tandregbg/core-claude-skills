@@ -56,15 +56,24 @@ The detailed reading is kept outside this repository. The lessons that apply to 
 
 1. **Check delivery, not existence.** Fields and hook output that are valid can still reach nobody. A delivery check that
    runs each mechanism for real (the skill loads, a hook speaks, nothing blocks by accident) is worth more than a linter.
-2. **Ship no tool-server declaration inside the plugin.** A bundled declaration loads for everyone who enables the plugin.
-   Offer the connection (a skill, or a hook that suggests it) and decide the scope in code. Never put a literal secret in a
-   project file; keep the address and the credential in the user's own configuration, by reference.
-3. **A hook must never block by accident.** End every command with `|| true`, decide through the structured decision output
-   rather than exit codes, remember that only some events inject plain output into the model, never emit an empty
-   context, and give every unprompted hook a budget and an off switch.
-4. **Updating is two steps and every release needs a new version.** Refresh the marketplace, then update the plugin, then
-   restart; the first alone is documented as not enough in practice. A rename silently breaks installs unless a rename map
-   or a migration note exists.
+2. **Think twice before bundling a tool-server declaration in the plugin.** A bundled declaration is offered to everyone who
+   enables the plugin (documentation read 2026-10-18: a user can switch a single server off per project, so it is not
+   unconditional). Prefer offering the connection (a skill, or a hook that suggests it) or a separate plugin that carries
+   only the connection. Never put a literal secret in a project file or in the package. A plugin option marked sensitive is
+   kept outside the package and the settings files, but its value is reachable from hooks and tool-server configuration,
+   not from the skill text, so a skill cannot read a credential that way.
+3. **A hook must never block by accident.** Keep infrastructure failures harmless (`|| true`) and block only on purpose,
+   through the structured decision output (a deliberate "deny"), not through exit codes. Remember that only some events
+   inject plain output into the model, never emit an empty context, and give every unprompted hook a budget and an off
+   switch. A user who starts the assistant in its minimal mode does not run plugin hooks, so a guard is no protection
+   against that.
+4. **Updating is two steps and every release needs a new version.** Refreshing the marketplace changes only the catalogue;
+   the user then updates the plugin and restarts (or reloads plugins). A change is detected when the computed version
+   changes: the `version` in the manifest if set, otherwise the first characters of the commit hash. A rename silently
+   breaks installs unless a rename map or a migration note exists.
+   **Organisation sync** (the web settings route) needs a private or internal repository on the code host, so a public
+   package cannot be synced that way; and a push to the default branch syncs, so a CI check is not enough without branch
+   protection.
 5. **A guard against publishing sensitive content must be a tested check** that looks at the content and the destination,
    with "ask" as the default, not only at the account.
 6. **A report-a-gap skill** that masks data, records provenance and deduplicates is a cheap feedback loop.
