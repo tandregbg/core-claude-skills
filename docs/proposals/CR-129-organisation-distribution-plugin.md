@@ -50,24 +50,33 @@ organisation): one installable unit and the same update path.
 7. Does an organisation want a private feed (its own repository or registry) or the public one?
 8. What does the landing page promise, and when? Nothing is promised for steps 2 and 3 until step 1 works.
 
-## What an existing organisation plugin for Claude suggests (input, not detail; unverified)
+## What an existing, mature organisation plugin for Claude shows (input; checked against the vendor's documentation 2026-10-18 where noted)
 
-An internal plugin for one organisation (read as a user guide, not as source) points to questions that apply here:
+The detailed reading is kept outside this repository. The lessons that apply to any distribution of skills:
 
-- It is delivered as a repository that works as a marketplace, with the plugin installed from it. Two install paths
-  exist: one through the assistant's web settings with the organisation's account (no terminal, synced to the desktop and
-  command-line clients) and one through the command line (once per computer, works under any account).
-- Updating differs by path: one updates by itself; the other needs two commands and a restart, and the first alone is
-  not enough.
-- A plugin can carry a rule of its own, for example blocking publication of artifacts and documents from an account that
-  is not the organisation's. For a profile that holds customer data this is a model for a guard.
-- A plugin can ship a skill that reports a missing answer as an issue with customer data masked.
-- Installation can be per user or per project folder, which matters for people who use two accounts.
+1. **Check delivery, not existence.** Fields and hook output that are valid can still reach nobody. A delivery check that
+   runs each mechanism for real (the skill loads, a hook speaks, nothing blocks by accident) is worth more than a linter.
+2. **Ship no tool-server declaration inside the plugin.** A bundled declaration loads for everyone who enables the plugin.
+   Offer the connection (a skill, or a hook that suggests it) and decide the scope in code. Never put a literal secret in a
+   project file; keep the address and the credential in the user's own configuration, by reference.
+3. **A hook must never block by accident.** End every command with `|| true`, decide through the structured decision output
+   rather than exit codes, remember that only some events inject plain output into the model, never emit an empty
+   context, and give every unprompted hook a budget and an off switch.
+4. **Updating is two steps and every release needs a new version.** Refresh the marketplace, then update the plugin, then
+   restart; the first alone is documented as not enough in practice. A rename silently breaks installs unless a rename map
+   or a migration note exists.
+5. **A guard against publishing sensitive content must be a tested check** that looks at the content and the destination,
+   with "ask" as the default, not only at the account.
+6. **A report-a-gap skill** that masks data, records provenance and deduplicates is a cheap feedback loop.
 
-Open questions that follow (to answer before a design): how a plugin and its marketplace are structured and which parts a
-plugin can carry (skills, commands, hooks, tool connections); how organisation settings survive an update; how the two
-install paths behave when the account changes; how a publication guard works technically; whether the issue-reporting
-skill is reusable for gap reports.
+Items the reading could not confirm (to settle before a design): that a plugin's tool-server entries cannot be declined per
+project; how an organisation-synced install behaves when the account changes; whether a refresh alone leaves a stale
+version installed; limits on skill front matter.
+
+Proposed staging (no files written yet): stage 0, verify the claims above against the vendor's documentation; stage 1, a
+local marketplace with the open skill only; stage 2, a delivery check (the question set is absent, no credential in any
+file, hooks never block, the skill loads); stage 3, a connect skill with the address and credential by reference; stage 4,
+a private marketplace only if it has something to carry.
 
 ## Not in scope
 
