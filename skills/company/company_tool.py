@@ -29,7 +29,15 @@ except ImportError:
     sys.exit("needs pyyaml -- run with a python that has it")
 
 HERE = Path(__file__).resolve().parent
-SCHEMAS = HERE.parents[1] / "docs" / "schemas"
+
+
+def schemas_dir():
+    """The folder with the company JSON schemas: next to the skill (a packaged skill or plugin), else the repository's
+    docs/schemas (a checkout). Looked up on use, so a missing folder is a clear message and not an import error."""
+    for d in (HERE / "schemas", HERE.parents[1] / "docs" / "schemas"):
+        if (d / "company-sources.schema.json").is_file():
+            return d
+    raise InputError("the company schemas were not found next to the skill (schemas/) nor in the repository (docs/schemas/)")
 
 FACETS = ["essence", "company", "offering", "positioning", "messaging", "gtm", "strategy", "brand", "public"]
 LEVELS = ["public", "basic", "standard", "complete"]
@@ -596,7 +604,7 @@ def check_dir(d, max_age_days, today, cfg=None):
             continue
         try:
             data = load_yaml_json(p)
-            schema = json.loads((SCHEMAS / schema_file).read_text(encoding="utf-8"))
+            schema = json.loads((schemas_dir() / schema_file).read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001 - report, don't crash a vault-wide check
             out.append(finding("schema", p, f"unreadable: {e}"))
             continue

@@ -63,6 +63,10 @@ nothing behaves as before.
   `company.level_order` (no default names shipped), the citation form `(section: <label>)` is defined next to `(p. N)`
   and `check --strict` rejects a malformed one and a bullet that states something without a marker, and `extract`
   warns about pages that are vector drawings read as text. Bad input files give a message, not a traceback.
+  Packaging the skill as a plugin found three things, now fixed: `SKILL.md` calls the script through
+  `${CLAUDE_SKILL_DIR}/company_tool.py` (it was a hard-coded `~/.claude/skills/...` path; where an assistant does not
+  substitute the variable the script is in the same folder), the tool looks for its schemas beside the skill (`schemas/`) before
+  the repository's `docs/schemas/` and says so clearly when neither exists, and `argument-hint` lists `extract`.
   An end-to-end run from PDFs found that `company_tool.py` ignored the `company:` config; it now reads it from
   `<org>/_ops.yaml` and the vault's `_config/base.yaml` (`level`, `language`, `max_age_days`, `template`, `level_map`),
   accepts the question set's own level names in frontmatter, and `init` writes a skeleton that passes `check --strict`

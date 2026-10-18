@@ -2,7 +2,7 @@
 name: company
 description: A company profile with an open contract and an optional private template. Keeps a current, source-backed picture of an organisation in `<org>/_company/` that people and agents can act on: create the skeleton, collect sources, check for drift, build one readable profile, export derived files. The structure is open; a question set, if you have one, is read from `company.template:` and is not part of this repository.
 user-invocable: true
-argument-hint: <init | intake | check | build | export> [org] [| help]
+argument-hint: <init | extract | intake | check | build | export> [org] [| help]
 ---
 
 # /company -- the company profile (CR-125)
@@ -41,8 +41,9 @@ the facts change; events go to the meeting archive.
 Creates `<org>/_company/` with the plain skeleton for the configured level (`company.level`, default `basic`):
 one file per facet (all nine), `README.md`, `AUDIT-LOG.md`, empty `sources.yaml` and `brands.yaml`, `.intake/`.
 Before `--display`, check how the company itself writes its name (spelling, diacritics, casing) and use that.
-Run `python3 ~/.claude/skills/company/company_tool.py init <org-folder> --vertical <v> [--display Name] [--level L] [--language xx] [--template ADDRESS]`.
+Run `python3 "${CLAUDE_SKILL_DIR}/company_tool.py" init <org-folder> --vertical <v> [--display Name] [--level L] [--language xx] [--template ADDRESS]`.
 Level, language and template default to the `company:` block of `<org>/_ops.yaml` (then the vault's `_config/base.yaml`); a flag wins.
+`${CLAUDE_SKILL_DIR}` is this skill's own folder; where an assistant does not substitute it, `company_tool.py` sits in the same folder as this file.
 It never overwrites an existing folder. With `company.template:` set, read the question set from there and say
 which; without it, say that no question set is attached and stop at the skeleton.
 
@@ -69,7 +70,7 @@ the question set is read by you, the agent, and is never copied into this reposi
 ### `extract <org>`
 
 Starts from the files the company handed over (PDFs, saved web pages) and turns them into text you can read and
-cite. `python3 ~/.claude/skills/company/company_tool.py extract <org-folder> [--source DIR] [--out DIR]` reads
+cite. `python3 "${CLAUDE_SKILL_DIR}/company_tool.py" extract <org-folder> [--source DIR] [--out DIR]` reads
 `<org>/source-documents/` (or `--source`), writes one text file per document into `<org>/.extracted/` with
 `=== page N ===` markers, the page count, the sha256 and, for a web page, its address when the page carries one,
 and a `_manifest.md`. It lists the pages that are mostly images (fewer than 25 words): render those to read them
@@ -103,7 +104,7 @@ What extraction cannot carry (images, diagrams, colour swatches, tables) goes in
 Report only; nothing is rewritten.
 
 ```
-python3 ~/.claude/skills/company/company_tool.py check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--items-from items.json] [--leak-from items.json] [--max-age-days N] [--json]
+python3 "${CLAUDE_SKILL_DIR}/company_tool.py" check <vault-or-org-folder> [--copies] [--summary] [--strict] [--items ids.json] [--items-from items.json] [--leak-from items.json] [--max-age-days N] [--json]
 ```
 
 The script reports a stale facet (no review or generation within `company.max_age_days`, default 365, or status

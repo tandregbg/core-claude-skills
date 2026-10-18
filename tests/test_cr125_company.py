@@ -584,6 +584,61 @@ class Noise(unittest.TestCase):
         self.assertFalse(ct.page_noise("12 4 x"))
 
 
+class Packaging(unittest.TestCase):
+    """The skill must work from a packaged copy (a plugin, a copied folder), not only from a repository checkout."""
+
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def package(self, with_schemas=True):
+        skill = self.tmp / "pkg" / "skills" / "company"
+        skill.mkdir(parents=True)
+        (skill / "company_tool.py").write_text((ROOT / "skills" / "company" / "company_tool.py").read_text(encoding="utf-8"), encoding="utf-8")
+        if with_schemas:
+            (skill / "schemas").mkdir()
+            for f in (ROOT / "docs" / "schemas").glob("company-*.schema.json"):
+                (skill / "schemas" / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        return skill
+
+    def run_tool(self, skill, *args):
+        import subprocess
+        return subprocess.run([sys.executable, str(skill / "company_tool.py"), *args], capture_output=True, text=True)
+
+    def test_a_packaged_copy_with_schemas_beside_it_runs(self):
+        skill = self.package()
+        org = self.tmp / "org"
+        org.mkdir()
+        self.assertEqual(self.run_tool(skill, "init", str(org), "--vertical", "acme", "--today", TODAY).returncode, 0)
+        r = self.run_tool(skill, "check", str(org), "--strict", "--today", TODAY)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("0 finding(s)", r.stdout)
+
+    def test_missing_schemas_give_a_message_not_a_crash(self):
+        skill = self.package(with_schemas=False)
+        org = self.tmp / "org"
+        org.mkdir()
+        self.run_tool(skill, "init", str(org), "--vertical", "acme", "--today", TODAY)
+        r = self.run_tool(skill, "check", str(org), "--today", TODAY)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("schemas were not found", r.stdout)
+        self.assertNotIn("Traceback", r.stdout + r.stderr)
+
+    def test_repository_layout_still_finds_docs_schemas(self):
+        self.assertEqual(ct.schemas_dir(), ROOT / "docs" / "schemas")
+
+    def test_skill_text_uses_its_own_folder_and_lists_every_subcommand(self):
+        text = (ROOT / "skills" / "company" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("~/.claude/skills/company", text)
+        self.assertIn("${CLAUDE_SKILL_DIR}/company_tool.py", text)
+        hint = next(l for l in text.split("\n") if l.startswith("argument-hint:"))
+        for sub in ("init", "extract", "intake", "check", "build", "export"):
+            self.assertIn(sub, hint)
+
+
 class Extract(unittest.TestCase):
     PDF = (b"%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
            b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 100]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
