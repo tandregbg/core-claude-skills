@@ -50,6 +50,25 @@ organisation): one installable unit and the same update path.
 7. Does an organisation want a private feed (its own repository or registry) or the public one?
 8. What does the landing page promise, and when? Nothing is promised for steps 2 and 3 until step 1 works.
 
+## What an existing organisation plugin for Claude suggests (input, not detail; unverified)
+
+An internal plugin for one organisation (read as a user guide, not as source) points to questions that apply here:
+
+- It is delivered as a repository that works as a marketplace, with the plugin installed from it. Two install paths
+  exist: one through the assistant's web settings with the organisation's account (no terminal, synced to the desktop and
+  command-line clients) and one through the command line (once per computer, works under any account).
+- Updating differs by path: one updates by itself; the other needs two commands and a restart, and the first alone is
+  not enough.
+- A plugin can carry a rule of its own, for example blocking publication of artifacts and documents from an account that
+  is not the organisation's. For a profile that holds customer data this is a model for a guard.
+- A plugin can ship a skill that reports a missing answer as an issue with customer data masked.
+- Installation can be per user or per project folder, which matters for people who use two accounts.
+
+Open questions that follow (to answer before a design): how a plugin and its marketplace are structured and which parts a
+plugin can carry (skills, commands, hooks, tool connections); how organisation settings survive an update; how the two
+install paths behave when the account changes; how a publication guard works technically; whether the issue-reporting
+skill is reusable for gap reports.
+
 ## Not in scope
 
 - Building any of it before the research notes exist.
