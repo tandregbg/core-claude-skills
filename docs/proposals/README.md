@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-130**
+Next available CR number: **CR-131**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-130**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-130 | `skills/company` (`export`), contract section 7, `ops-config` (`company.agent_core`), `docs/schemas/` | Low | **Placeholder** (2026-10-18). `/company export agent-core`: a compressed core of a profile for an agent with a character budget, plus the whole profile as files for a knowledge library. Scope and open questions only; taken up after 2026-10-27. |
 | CR-129 | packaging and distribution; `ecosystem.yaml` (a possible `distribution:` block), `scripts/`, `docs/` | Low | **Placeholder** (2026-10-17). Distributing skills to an organisation through a plugin: Claude first, then OpenAI/ChatGPT, GitHub Copilot and a custom agent for Microsoft 365 Copilot. Scope and open questions only; taken up after 2026-10-27. |
 | CR-128 | `ops-base` (RAW SOURCE ARCHIVE), `transcript`, `inbox`, `ops` (`check`), `docs/schemas/inbox.md` | Medium | **Proposed** (2026-10-17). A raw transcript archived by a client at delivery (`written_by:`, empty `summary`) is adopted -- renamed to the summary stem and filled, body untouched -- not written again; the inbox item's new keys (`dt_filename`, `recorded_at`, ...) feed the summary. Client side: record-me-macos MAC-CR-011 part 4 |
 | CR-127 | `tasks` (v2 schema + writers), `ops-config` (`milestone:`, schema 1.7), `ops` (`prepare` config review, `check`, `config_checks()`), `ecosystem.yaml` (`schemas`) | **High** | **Proposed** (2026-10-15). The ledger and the milestone record *when*, not just *what*: `closed:` for a finished task (`completed:` accepted as a read alias, no migration) and `set_on:` + append-only `history:` under `milestone:`, appended by the CR-119 config review when a decision moves the date. Two report-only checks: a finished task with no closing day, a milestone date with no provenance. Makes throughput and schedule slip computable; both are unrecoverable for every day they are not written. Additive, contract 43 to 44 |
