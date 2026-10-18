@@ -21,11 +21,19 @@ instruction files and small scripts; how they reach a person depends on the assi
    organisation's own configuration (`ops-config`, `company:`) that is not part of the package.
 2. **Then OpenAI / ChatGPT.** Find the closest supported way to give an organisation the same instructions and
    tools (custom assistants, shared instructions, tool or app integrations, or an MCP connection).
-3. **Then GitHub Copilot.** The same question for Copilot (repository or organisation instructions, agents,
-   MCP).
+3. **Then GitHub Copilot.** The same question for Copilot in the developer tools (repository or organisation
+   instructions, agents, MCP).
+4. **Then Microsoft 365 Copilot (a custom agent for people who work in Office 365).** A different product from
+   step 3, with its own way of building a custom agent: what the agent is told (the instructions), what it may
+   read (knowledge sources such as the organisation's own document libraries, where a company profile folder
+   could live), what it may do (actions or tool connections, for example a read-only connection to a template
+   service), who may use it (identity and licences) and how the organisation publishes it. The open questions
+   below apply, plus: where the profile files live for such an agent, how an agent without a local runtime
+   runs the checks (it cannot run `company_tool.py`), and what the organisation's tenant policies allow.
 
 Each step starts with research and ends with a short note on what is possible, what is not, and what a user
-loses compared with step 1.
+loses compared with step 1. Step 1 is also the reference for a user of Claude who installs the skill alone (no
+organisation): one installable unit and the same update path.
 
 ## Open questions (to answer before a design)
 
