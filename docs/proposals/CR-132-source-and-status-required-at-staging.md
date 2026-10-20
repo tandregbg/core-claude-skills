@@ -73,3 +73,13 @@ is **unverifiable, not broken**.
   rather than defaulting the source.
 - `/ops check` is unchanged: it still reports and never rewrites.
 - Tests: `tests/test_cr132_staging_gate.py`. No contract change.
+
+### Review fixes (2026-10-20)
+
+- Status: a declared word, optionally followed by a date or a note after `(`, `-`, `:` or `;`; further free
+  words (`skickad inte`) are refused.
+- `Kanonisk källa`: a path (a slash or a file extension) or exactly `ingen (originalet bor här)`; `ingen`,
+  `n/a`, `<path>`, `…` and emphasis-wrapped values are refused.
+- Both fields are read from the first 60 lines outside code fences; bulleted or `**Status** :` forms get the
+  colon-placement message.
+- `--validate` reports an unreadable or non-UTF-8 manifest as JSON `{ok:false,problems}`, exit 1.

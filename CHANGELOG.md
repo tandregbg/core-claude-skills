@@ -11,6 +11,14 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-132 -- review fixes to the staging gate.** `resolved.py --validate` now accepts only a declared status
+  word, optionally followed by a date or a delimited note (`skickad 2026-10-01`, `avskriven (...)`), so
+  `draft men inte klar` and `skickad inte` are refused; `Kanonisk källa` must be a path or exactly
+  `ingen (originalet bor här)` (ASCII `bor har` accepted), so `ingen`, `n/a`, `<path>` and `…` are refused;
+  `Status` and the source are read from the same scope (first 60 lines, outside code fences); a bulleted or
+  space-before-colon Status gets the colon-placement message; an unreadable manifest or non-UTF-8 input
+  returns the JSON `{ok:false,problems}` instead of a traceback.
+
 - **CR-127 review fixes.** `milestone.history` that is not a list is one finding ("must be a list"), not one
   per character or key. A closing day is missing only when `closed:` and `completed:` are both null or blank.
   `/tasks cancel` documented as the writer for the second finished state (`status: cancelled` + `closed:`).

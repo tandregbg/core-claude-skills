@@ -51,6 +51,59 @@ class StagingGate(unittest.TestCase):
         [p] = rs.staging_problems(manifest(status=None))
         self.assertIn("Status", p)
 
+    def test_free_phrase_with_declared_leading_word_is_refused(self):
+        for st in ("draft men inte klar", "skickad inte", "klar-att-skicka kanske", "draft, men inte klar"):
+            self.assertTrue(rs.staging_problems(manifest(status=st)), st)
+
+    def test_declared_word_with_date_or_note_passes(self):
+        for st in ("skickad 2026-10-01", "avskriven (ersatt av 261001-x)", "skickad - 2026-10-01", "utkast"):
+            self.assertEqual(rs.staging_problems(manifest(status=st)), [], st)
+
+    def test_non_canonical_source_is_refused(self):
+        for src in ("ingen", "ingen (originalet finns inte)", "n/a", "<path>", "…", "**x**", "none"):
+            self.assertTrue(rs.staging_problems(manifest(source=src)), src)
+
+    def test_path_and_ascii_no_source_pass(self):
+        for src in ("ingen (originalet bor har)", "Ingen (originalet bor här)", "`_contacts/bob/x.md`",
+                    "~/repos/other/README.md", "_contacts/bob/leverans/"):
+            self.assertEqual(rs.staging_problems(manifest(source=src)), [], src)
+
+    def test_ascii_source_label_is_read(self):
+        text = "# t\n\n**Status:** draft\n**Kanonisk kalla:** ingen (originalet bor har)\n"
+        self.assertEqual(rs.staging_problems(text), [])
+
+    def test_status_in_code_fence_or_body_does_not_count(self):
+        text = "# t\n\n```\n**Status:** draft\n```\n**Kanonisk källa:** a/b.md\n"
+        [p] = rs.staging_problems(text)
+        self.assertIn("no `**Status:**", p)
+        late = "# t\n" + "x\n" * 70 + "**Status:** draft\n**Kanonisk källa:** a/b.md\n"
+        self.assertTrue(rs.staging_problems(late))
+
+    def test_source_after_header_block_is_refused(self):
+        text = "# t\n**Status:** draft\n" + "x\n" * 70 + "**Kanonisk källa:** a/b.md\n"
+        [p] = rs.staging_problems(text)
+        self.assertIn("Kanonisk källa", p)
+
+    def test_misplaced_status_forms_get_the_colon_message(self):
+        for line in ("**Status** : draft", "- **Status:** draft", "**Status : draft**"):
+            text = f"# t\n\n{line}\n**Kanonisk källa:** a/b.md\n"
+            [p] = rs.staging_problems(text)
+            self.assertIn("colon outside the bold", p, line)
+
+    def test_cli_missing_file_and_stdin(self):
+        script = str(HERE / "resolved.py")
+        r = subprocess.run([sys.executable, script, "--validate", "/nonexistent/m.md"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertFalse(json.loads(r.stdout)["ok"])
+        r = subprocess.run([sys.executable, script, "--validate", "-"], input=manifest(),
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0)
+        r = subprocess.run([sys.executable, script, "--validate", "-"], input=b"\xff\xfe",
+                           capture_output=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertFalse(json.loads(r.stdout)["ok"])
+
     def test_cli_exit_codes(self):
         with tempfile.TemporaryDirectory() as d:
             good, bad = Path(d, "good.md"), Path(d, "bad.md")
