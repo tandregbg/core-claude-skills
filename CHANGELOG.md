@@ -11,6 +11,12 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-128 review fixes.** `raw_archive.py`: merged bodies are compared per slot byte for byte; a merged file
+  stays findable by each of its source ids; mixed pending and adopted inputs are both handled; frontmatter at
+  end of file and CRLF files parse; paths with `: ` or ` #` are YAML-quoted; `summary: ""`/`null`/comment
+  count as pending, shared with `/ops check`, which now reads only the head of each raw file; no `external_id`
+  fallback. Tests extended.
+
 - **CR-132 -- review fixes to the staging gate.** `resolved.py --validate` now accepts only a declared status
   word, optionally followed by a date or a delimited note (`skickad 2026-10-01`, `avskriven (...)`), so
   `draft men inte klar` and `skickad inte` are refused; `Kanonisk källa` must be a path or exactly

@@ -24,9 +24,11 @@ or rename the file, map a status or cancel the task), so it stays with a person.
   themes   the CR-124 registry checks, when the project enables themes.
   raw      a raw file in `<root>/.transcripts/` with `written_by:` and an empty `summary`,
            older than 14 days: archived by a client, never filed (CR-128). Names the inbox item
-           it points to. The one check that reads `.transcripts/`, by name, frontmatter only.
+           it points to. The one check that reads `.transcripts/` (read-locked in a vault): by name, and only the
+           first 64 KiB of each raw file, never its body. The lock exemption is written in CR-128.
 
-Dot-folders (.archive/, .transcripts/, .knowledge/ ...) are never walked.
+Dot-folders (.archive/, .transcripts/, .knowledge/ ...) are never walked; the one exception is
+the `raw` check, which opens `.transcripts/*-raw.md` by name and reads the head only.
 """
 import argparse, datetime, json, os, re, sys
 from pathlib import Path
@@ -42,6 +44,8 @@ sys.path.insert(0, str(HERE.parent / "ops-config"))
 sys.path.insert(0, str(HERE))
 import profiles  # noqa: E402
 import themes as themes_mod  # noqa: E402
+sys.path.insert(0, str(HERE.parent / "ops-base"))
+import raw_archive  # noqa: E402
 
 ECOSYSTEM = HERE.parents[1] / "ecosystem.yaml"
 LINKED = re.compile(r"^(\d{6}-.*|README|CHANGELOG)\.md$")
@@ -259,21 +263,20 @@ def check_raw(root: Path, today=None) -> list:
     today = today or datetime.date.today()
     found = []
     for p in sorted(tdir.glob("*-raw.md")):
-        try:
-            head = p.read_text(encoding="utf-8").split("\n---\n", 1)[0]
-        except (OSError, UnicodeDecodeError):
-            continue
-        fm = {m.group(1): m.group(2).strip() for m in re.finditer(r"^(\w+):[ \t]*(.*)$", head, re.M)}
-        if not fm.get("written_by") or fm.get("summary"):
+        fm = raw_archive.read_head(p)  # the head only: the body of a raw file is never read
+        if fm is None or not raw_archive.get(fm, "written_by") or not raw_archive.is_pending(fm):
             continue
         try:
-            d = fm.get("date", "")
-            age = (today - datetime.date(2000 + int(d[:2]), int(d[2:4]), int(d[4:6]))).days
+            d = raw_archive.get(fm, "date")
+            filed = datetime.date(2000 + int(d[:2]), int(d[2:4]), int(d[4:6]))
         except (ValueError, IndexError):
-            continue
+            # no usable date: fall back on the file's own age
+            filed = datetime.date.fromtimestamp(p.stat().st_mtime)
+        age = (today - filed).days
+        written_by = raw_archive.get(fm, "written_by")
         if age > RAW_PENDING_DAYS:
-            found.append(_finding("raw", p, None, f"archived by {fm['written_by']} {age} days ago, never filed"
-                                  f" (inbox item: {fm.get('inbox') or 'unknown'})", root))
+            found.append(_finding("raw", p, None, f"archived by {written_by} {age} days ago, never filed"
+                                  f" (inbox item: {raw_archive.get(fm, 'inbox') or 'unknown'})", root))
     return found
 
 
