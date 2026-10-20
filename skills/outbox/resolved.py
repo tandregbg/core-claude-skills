@@ -178,11 +178,15 @@ def open_replies(text: str) -> int | None:
 
     None and 0 are different answers and must stay so: None means no reply was
     ever expected (the item is finished when it goes out), 0 means every
-    expectation was met.
+    expectation was met. A heading that is present but empty or still a
+    placeholder (`*(fylls i)*`) is not "absent": nobody has said nothing was
+    expected, so it answers 0, never None.
     """
+    if not re.search(r"^##\s+Svar förväntas på\s*$", text, re.M):
+        return None
     body = section(text, "Svar förväntas på")
     if not body:
-        return None
+        return 0
     return len(re.findall(r"^\s*-\s*\[ \]", body, re.M))
 
 
@@ -250,8 +254,9 @@ def offered_outcome(text: str, name: str, today: datetime.date,
         return None
     if open_replies(text) is None:
         return f"Skickat {sent.isoformat()}. Inget svar förväntades."
+    # All boxes ticked (0) means every reply came in: "no reply" would be false.
     days = (today - sent).days
-    if days >= stale_days:
+    if open_replies(text) > 0 and days >= stale_days:
         return f"Skickat {sent.isoformat()}. Inget svar inkom inom {days} dagar."
     return None
 
@@ -293,6 +298,8 @@ def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30
                 "closable": is_closable(text) if text else False,
                 "offered_outcome": offered_outcome(text, d.name, today, stale_days) if text else None,
                 "outcome_defers": outcome_defers(text) if text else False,
+                # CR-133: a written outcome outranks the boxes; the unticked ones are reported, not blocking.
+                "unticked_reported": (open_replies(text) or None) if text and has_outcome(text) else None,
                 "source": fields.get("canonical_source") or None,
                 "age_days": age,
                 "stale": bool(age is not None and age >= stale_days
@@ -315,7 +322,8 @@ def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30
             "undeclared": sum(1 for i in items if not i["declared"]),
             "closable": sum(1 for i in items if i["closable"]),
             "ages_out": sum(1 for i in items if i["place"] == "queue" and i["offered_outcome"]
-                            and i["open_replies"] is not None),
+                            and i["open_replies"]),
+            "unticked_with_outcome": sum(1 for i in items if i["unticked_reported"]),
             "stale": sum(1 for i in items if i["stale"]),
             "no_source": sum(1 for i in items if not i["source"]),
             "loose_files": len(loose),
@@ -372,9 +380,52 @@ def closest_declared(status: str) -> str | None:
 # clean-up time nobody does.
 
 NO_SOURCE = "ingen (originalet bor här)"
+# Same scope as read_fields: the header block, outside code fences. A `**Status:**` in body prose
+# or an example must not satisfy the gate while a source in the same place is not read.
+HEADER_LINES = 60
 STATUS_LINE = re.compile(r"^\*\*Status:\*\*[ \t]+(\S.*?)\s*$", re.M)
-STATUS_MISPLACED_COLON = re.compile(r"^\*\*Status\s*:[^*\n]+\*\*", re.M | re.IGNORECASE)
+# Anything that reads as a Status line but is not the declared form: colon inside the bold,
+# space before the colon, a bullet in front.
+STATUS_LOOSE = re.compile(r"^\s*(?:[-*+]\s+)?\*\*Status\b[^\n]*", re.M | re.IGNORECASE)
 PLACEHOLDER = re.compile(r"^\[.*\]$|^(tbd|todo|\?+|-)$", re.IGNORECASE)
+# After a declared word only a date or a delimited note may follow ("skickad 2026-10-01",
+# "avskriven (ersatt av ...)"), never more free words: "skickad inte" reads as the opposite.
+STATUS_TAIL = re.compile(r"^(\s+\d{4}-\d{2}-\d{2}\b.*|\s*[(\-–—:;].*)?$")
+NO_SOURCE_FORM = re.compile(r"^ingen\s*\(originalet bor h(ä|a)r\)$", re.IGNORECASE)
+# A path names a folder or a file: a slash, or a file extension. Placeholders do neither.
+PATH_FORM = re.compile(r"^[^<>*\s][^<>*]*(/|\.[A-Za-z0-9]{1,8})$")
+
+
+def header_text(text: str) -> str:
+    """The first block of the manifest with fenced code removed: what the readers actually scan."""
+    out, fenced = [], False
+    for line in text.split("\n")[:HEADER_LINES]:
+        if line.strip().startswith(("```", "~~~")):
+            fenced = not fenced
+            continue
+        if not fenced:
+            out.append(line)
+    return "\n".join(out)
+
+
+def declared_exactly(status: str) -> bool:
+    """A declared word, optionally followed by a date or a delimited note; no free phrase."""
+    value = status.strip().lower()
+    if value.startswith(("*", "_", "`")):
+        return False
+    for words in DECLARED_STATUS.values():
+        for word in words:
+            if value.startswith(word) and STATUS_TAIL.match(value[len(word):]):
+                return True
+    return False
+
+
+def source_problem(source: str) -> bool:
+    """True when the source is not a path and not the one declared 'original lives here' answer."""
+    value = source.strip().strip("`").strip()
+    if NO_SOURCE_FORM.match(value):
+        return False
+    return not value or bool(PLACEHOLDER.match(value)) or not PATH_FORM.match(value)
 
 
 def staging_problems(text: str) -> list[str]:
@@ -385,20 +436,23 @@ def staging_problems(text: str) -> list[str]:
     repository is unverifiable, not broken).
     """
     problems = []
-    if STATUS_MISPLACED_COLON.search(text) and not STATUS_LINE.search(text):
-        problems.append("Status must be written `**Status:** <value>`, colon outside the bold; "
-                        "any other form reads as statusless")
-    else:
-        m = STATUS_LINE.search(text)
-        if not m:
-            problems.append("no `**Status:** <value>` line")
-        elif status_kind(m.group(1)) is None or m.group(1).lstrip().startswith(("*", "_", "`")):
-            hint = closest_declared(m.group(1))
-            problems.append(f"status `{m.group(1)}` is not a declared form"
-                            + (f" (closest: {hint})" if hint else ""))
+    head = header_text(text)
+    m = STATUS_LINE.search(head)
+    if not m:
+        if STATUS_LOOSE.search(head):
+            problems.append("Status must be written `**Status:** <value>` at the start of the line, "
+                            "colon outside the bold; any other form reads as statusless")
+        else:
+            problems.append(f"no `**Status:** <value>` line in the first {HEADER_LINES} lines")
+    elif not declared_exactly(m.group(1)):
+        hint = closest_declared(m.group(1))
+        problems.append(f"status `{m.group(1)}` is not a declared form (a declared word, "
+                        "optionally followed by a date or a note in parentheses or after a dash)"
+                        + (f" (closest: {hint})" if hint else ""))
     source = read_fields(text).get("canonical_source", "").strip()
-    if not source or PLACEHOLDER.match(source):
-        problems.append(f"`Kanonisk källa` is required: a path, or `{NO_SOURCE}` -- ask the author")
+    if source_problem(source):
+        problems.append(f"`Kanonisk källa` is required in the first {HEADER_LINES} lines: a path, "
+                        f"or `{NO_SOURCE}` -- ask the author")
     return problems
 
 
@@ -522,7 +576,7 @@ def plan(vault: Path, outbox: Path, today: datetime.date) -> dict:
             "contact": fields.get("contact"),
             "project": fields.get("project"),
             "destinations": destination_candidates(vault, fields.get("project"), fields.get("contact")),
-            "outcome_present": bool(section(text, "Utfall")),
+            "outcome_present": has_outcome(text),
             "kind": "withdrawn",
             "problems": [],
         }
@@ -698,9 +752,12 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.validate:
-        text = (sys.stdin.read() if args.validate == "-"
-                else Path(args.validate).expanduser().read_text(encoding="utf-8"))
-        problems = staging_problems(text)
+        try:
+            text = (sys.stdin.buffer.read().decode("utf-8") if args.validate == "-"
+                    else Path(args.validate).expanduser().read_text(encoding="utf-8"))
+            problems = staging_problems(text)
+        except (OSError, UnicodeDecodeError) as e:
+            problems = [f"cannot read manifest: {e}"]
         print(json.dumps({"ok": not problems, "problems": problems}, ensure_ascii=False, indent=2))
         return 1 if problems else 0
 

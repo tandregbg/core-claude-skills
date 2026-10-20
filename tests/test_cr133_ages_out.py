@@ -48,6 +48,38 @@ class AgesOut(unittest.TestCase):
                          "Skickat 2026-09-01. Inget svar förväntades.")
         self.assertIsNone(self.offer(manifest("draft")))
 
+    def test_all_ticked_without_outcome_is_not_aged_out(self):
+        text = manifest(replies=["- [x] svar"])
+        self.assertIsNone(self.offer(text))
+
+    def test_placeholder_reply_section_is_not_nothing_expected(self):
+        text = manifest(replies=["*(fylls i)*"])
+        self.assertIsNone(self.offer(text))
+        self.assertFalse(rs.is_closable(text))
+
+    def test_malformed_status_date_falls_back_to_folder_date(self):
+        self.assertEqual(self.offer(manifest("skickad 2026-13-45"), "260901-åsa_recap"),
+                         "Skickat 2026-09-01. Inget svar förväntades.")
+
+    def test_undated_item_gets_no_offer(self):
+        self.assertIsNone(self.offer(manifest("skickad"), "recap-utan-datum"))
+
+    def test_future_sent_date_is_not_aged_out(self):
+        self.assertIsNone(self.offer(manifest("skickad 2026-12-01", ["- [ ] svar"])))
+
+    def test_unticked_boxes_with_outcome_are_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            vault = Path(d)
+            f = vault / "_outbox" / "260801-örjan_recap"
+            f.mkdir(parents=True)
+            (f / "_manifest.md").write_text(
+                manifest(replies=["- [ ] a", "- [ ] b"], outcome="Svar per telefon."),
+                encoding="utf-8")
+            sv = rs.survey(vault, vault / "_outbox", TODAY)
+            self.assertEqual(sv["items"][0]["unticked_reported"], 2)
+            self.assertTrue(sv["items"][0]["closable"])
+            self.assertEqual(sv["counts"]["unticked_with_outcome"], 1)
+
     def test_survey_counts_aged_out(self):
         with tempfile.TemporaryDirectory() as d:
             vault = Path(d)

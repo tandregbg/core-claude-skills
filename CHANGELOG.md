@@ -11,6 +11,14 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-127 review fixes.** `milestone.history` that is not a list is one finding ("must be a list"), not one
+  per character or key. A closing day is missing only when `closed:` and `completed:` are both null or blank.
+  `/tasks cancel` documented as the writer for the second finished state (`status: cancelled` + `closed:`).
+  Tests for a dateless milestone, non-list or empty `history`, blank `closed:`, and å/ä/ö task text.
+- **CR-131 -- review fixes.** The `avskriven` vs `hanterad` table in `outbox/SKILL.md` no longer says a reason is
+  required. `resolved.py` now judges an existing outcome with `has_outcome()`, so a `## Utfall` holding only `---`
+  is empty and gets `Skickades inte.`. Close step 1 re-wrapped. Edge-case tests added; CR-103/CR-120 note that
+  CR-131 narrows their wording. No contract change.
 - **CR-128 -- A raw transcript archived at delivery is adopted, not written again.** A client may write
   `.transcripts/<capture id>-raw.md` at delivery (`written_by:`, `inbox:`, empty `summary`). The RAW SOURCE
   ARCHIVE step now adopts it: renamed to the summary stem and filled with the body untouched (several
@@ -35,6 +43,9 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   `Skickat <date>. Inget svar inkom inom <n> dagar.` for a sent item with an unanswered expectation older than
   `--stale-days` (30). `--survey` counts these as `ages_out`. `outbox` and `ops` SKILL.md say `/ops check`
   reports and offers, never closes. No contract change.
+  Review fixes: the "no reply" offer needs at least one unticked box (all ticked is not aged out); a present
+  but empty or placeholder `Svar förväntas på` section is no longer read as "nothing expected"; `--survey`
+  reports `unticked_reported` per item and `unticked_with_outcome` in the counts.
 
 - **CR-132 -- `Kanonisk källa` and a declared status are required when a manifest is staged.** The two
   existing requirements (CR-032, CR-103) move from report-time to write-time. New `resolved.py --validate

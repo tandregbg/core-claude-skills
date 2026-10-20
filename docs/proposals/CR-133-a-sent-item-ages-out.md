@@ -5,7 +5,7 @@
 | **Status** | **Implemented** (2026-10-20) |
 | **Contract** | additive — one new aging finding, one new offered outcome text; no new fields, no new status forms |
 | **Date** | 2026-10-20 |
-| **Area** | `outbox` (SKILL.md `close`, `close --all-sent`, `resolved.py`), `ops` (`check` outbox aging), `ecosystem.yaml` (threshold) |
+| **Area** | `outbox` (SKILL.md `close`, `close --all-sent`, `resolved.py`), `ops` (`check` outbox aging) |
 | **Related CRs** | CR-019 (`close --all-sent`), CR-047 (`avskriven` requires an outcome), CR-120 (aging of staged items; `hanterad`), CR-131 (a *not sent* outcome needs no reason) |
 
 ## What happened
@@ -78,3 +78,7 @@ repository. This CR makes the queue drain without it.
   offer. Never applied automatically.
 - Threshold: the existing `--stale-days` default of 30; no new `ecosystem.yaml` key.
 - Tests: `tests/test_cr133_ages_out.py`.
+- Review fixes: an aged-out offer needs at least one unticked box (all ticked is not "no reply"); a reply
+  section that is present but empty or a placeholder is no longer read as "nothing expected" (`open_replies`
+  returns 0, not None); `--survey` carries `unticked_reported` per item and `unticked_with_outcome` in the
+  counts, which is where point 2's "reports them" is produced; the Area row no longer lists `ecosystem.yaml`.
