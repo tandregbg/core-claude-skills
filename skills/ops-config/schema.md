@@ -712,7 +712,7 @@ meeting_types:
     preparation_mode: single
     facilitator: Carol
 
-  tomas_henrik_1on1:
+  bob_ravi_1on1:
     preparation_mode: single
 ```
 
