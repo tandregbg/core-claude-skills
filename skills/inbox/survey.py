@@ -329,6 +329,60 @@ ORDER = ["FÖRFALLNA", "ODATERADE MED PRIO", "UTAN DATUM OCH UTAN ÅLDER", "ODAT
          "DATERADE FRAMÅT"]
 
 
+def venture_map(vault):
+    """The operator's decided context -> venture map, if the vault declares one.
+
+    `_config/verksamhet-karta.yaml`: the eight ventures of `_INDEX-verksamheter.md`
+    plus three working states (`per-post`, `oklart`, `ej-namngiven`). Declared in
+    the vault rather than in this code, because the ventures are the operator's and
+    this tool only reports them.
+    """
+    import yaml
+    f = vault / "_config" / "verksamhet-karta.yaml"
+    if not f.is_file():
+        return {}
+    d = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+    return {str(k).strip().lower(): v for k, v in (d.get("karta") or {}).items()}
+
+
+def portfolio_projects(vault):
+    """Project names from the portfolio table, for validating `projekt:`."""
+    f = vault / "_INDEX-projekt.md"
+    if not f.is_file():
+        return {}
+    s = f.read_text(encoding="utf-8")
+    try:
+        sec = s[s.index("## PORTFÖLJEN"):s.index("### Sammanräkning")]
+    except ValueError:
+        sec = s
+    out = {}
+    for line in sec.split("\n"):
+        if not (line.startswith("| ") and line.count("|") >= 7 and "---" not in line):
+            continue
+        cells = [c.strip() for c in line.split("|")]
+        name = re.sub(r"[*└_ ]", "", cells[1]).strip()
+        if not name or name == "Projekt":
+            continue
+        out[re.sub(r"[^a-z0-9åäö]", "", name.lower())] = cells[1].strip(" *└")
+    return out
+
+
+def match_project(ctx, projects):
+    """A context matches a portfolio row when one is a prefix of the other.
+
+    Prefix rather than equality: a context reads `goa` where the portfolio row is
+    `Goa 2026`. Equality matched 2 of 50 values on one vault; prefix is what makes
+    the field checkable in both directions.
+    """
+    key = re.sub(r"[^a-z0-9åäö]", "", (ctx or "").lower())
+    if not key or len(key) < 3:
+        return None
+    for pkey, name in projects.items():
+        if pkey == key or pkey.startswith(key) or key.startswith(pkey):
+            return name
+    return None
+
+
 def render_table(sv: dict, states: dict, today: date) -> str:
     l = sv["ledger"]
     props = {}
@@ -531,12 +585,97 @@ def undated_detail(vault, today):
     return {k: v for k, v in sorted(rows.items(), key=lambda kv: (-len(kv[1]), kv[0]))}
 
 
+def render_migration(vault, today, states) -> str:
+    """The context migration worksheet, ordered venture first.
+
+    Column order is the operator's: **venture, then context, then project.** The
+    venture is the attribute that decides where a thing belongs; the context is
+    what the ledger happens to say today; the project is optional and only exists
+    when the portfolio has a row. Ordering it any other way put the least decided
+    column first and read as noise (the maintainer, 2026-10-20).
+    """
+    vmap = venture_map(vault)
+    projects = portfolio_projects(vault)
+    OBJ = {"rutin": "Löpande ansvar", "väntar": "Löpande ansvar (bevakning)", "idé": "Idé",
+           "reflektion": "Note / logg", "uppföljning": "ärendetyp", "samtal": "ärendetyp",
+           "möte": "ärendetyp", "kontakt": "ärendetyp", "kolla": "ärendetyp",
+           "uppföljningspunkter": "ärendetyp", "att kategorisera": "okategoriserad"}
+    rows = {}
+    for st, items in states.items():
+        for r in items:
+            first = re.split(r"\s*·\s*", (r.get("context_full") or "").strip())[0].lower() or "(tomt)"
+            rows.setdefault(first, []).append(r)
+    # Personligt sist bland verksamheterna ("livet, inte affären" — _INDEX-verksamheter.md),
+    # sedan de kontextstyrda, sedan det obeslutade.
+    STATE_ORDER = {"Personligt": 1, "kontextstyrd": 2, "oklart": 3, "ej-namngiven": 3}
+    def sort_key(kv):
+        ctx, items = kv
+        v = vmap.get(ctx, "")
+        return (STATE_ORDER.get(v, 0), -len(items), ctx)
+    body, groups = [], {}
+    for ctx, items in sorted(rows.items(), key=sort_key):
+        v = vmap.get(ctx) or "**?**"
+        groups.setdefault(v, []).append((ctx, items))
+    out = [f"# Migrering: kontext → verksamhet · projekt — {today.isoformat()}", "",
+           "> **Genererad** ur `_inbox/_tasks.yaml`, `_config/verksamhet-karta.yaml` och",
+           "> PORTFÖLJEN i `_INDEX-projekt.md`. Besluten bor i kartan, inte här: ändra där och",
+           "> kör om. Normkällor: `_INDEX-objektmodell.md` (sju objekttyper),",
+           "> `_INDEX-verksamheter.md` (åtta verksamheter).", "",
+           "**Kolumnordning:** verksamhet först, sedan kontext, sedan projekt. Verksamheten är",
+           "det attribut som avgör var en sak hör; kontexten är vad registret råkar säga i dag.", ""]
+    tot = sum(len(i) for _, i in rows.items())
+    UNSET = ("kontextstyrd", "oklart", "ej-namngiven", "**?**")
+    decided = sum(len(i) for v, gs in groups.items() for _, i in gs if v not in UNSET)
+    ctxled = sum(len(i) for _, i in groups.get("kontextstyrd", []))
+    out += [f"**{len(rows)} kontextvärden över {tot} öppna poster.** "
+            f"{decided} har en verksamhet, {ctxled} är kontextstyrda "
+            f"(ärendetypen är det primära — verksamhet kan saknas och det är korrekt), "
+            f"{tot - decided - ctxled} är obeslutade.", ""]
+    for v in sorted(set(groups), key=lambda x: (STATE_ORDER.get(x, 0), x)):
+        gs = groups[v]
+        n = sum(len(i) for _, i in gs)
+        label = {"kontextstyrd": "Kontextstyrda — ärendetypen är det primära attributet",
+                 "oklart": "Obeslutade",
+                 "ej-namngiven": "Kom inte upp i genomgången"}.get(v, v)
+        out += [f"## {label} — {n} poster", ""]
+        if v == "kontextstyrd":
+            out += ["*Dessa hör inte till någon affär. Att verksamhetskolumnen är tom är ett",
+                    "svar, inte en lucka — `_INDEX-verksamheter.md` binder en verksamhet till",
+                    "*vems affär*, och en uppföljning eller en bevakning är ingens.*", ""]
+        elif v == "Fria projekt":
+            out += ["*Byggt för egen räkning, ingen såld produkt — beslutstestets steg 7 i",
+                    "`_INDEX-verksamheter.md`. Skilt från Personligt, som är livet utan affär.*", ""]
+        out += ["| Verksamhet | Kontext | Projekt | Poster | Objekttyp | Id |",
+                "|---|---|---|---|---|---|"]
+        for ctx, items in sorted(gs, key=lambda kv: -len(kv[1])):
+            pr = match_project(ctx, projects) or "—"
+            ot = OBJ.get(ctx, "")
+            ids = " ".join(f"`#{r['id']}`" for r in sorted(items, key=lambda r: r["id"]))
+            shown = "—" if v == "kontextstyrd" else (v if v in UNSET else f"**{v}**")
+            out.append(f"| {shown} | `{ctx}` | {pr} | {len(items)} | {ot} | {ids} |")
+        out += [""]
+    objrows = [c for c in rows if c in OBJ]
+    out += ["---", "",
+            "## Vad kartan visar", "",
+            f"- **{len(rows)} kontextvärden** över {tot} öppna poster.",
+            f"- **{decided} poster** har en avgjord verksamhet, **{tot - decided}** väntar.",
+            f"- **{sum(1 for c in rows if match_project(c, projects))} av {len(rows)}** värden "
+            "matchar en rad i PORTFÖLJEN och kan därmed bära ett `projekt:`.",
+            f"- **{len(objrows)} värden är inte kategorier** utan andra objekttyper eller "
+            "ärendetyper, och bryter järnregel 1: "
+            + ", ".join(f"`{c}`" for c in sorted(objrows)) + ".", "",
+            "Järnregel 2 säger att de märks om och flyttas — aldrig raderas.", ""]
+    return "\n".join(out)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--vault", help="vault root (default: $VAULT_ROOT or cwd)")
     ap.add_argument("--today", help="YYYY-MM-DD (default: today)")
     ap.add_argument("--markdown", action="store_true", help="situation half of an audit")
     ap.add_argument("--stale-days", type=int, default=30)
+    ap.add_argument("--migration", action="store_true",
+                    help="the context -> venture worksheet, venture column first")
     ap.add_argument("--table", action="store_true",
                     help="the undated entries as one row each, with a proposed bucket")
     ap.add_argument("--undated", action="store_true",
@@ -548,6 +687,10 @@ def main(argv=None) -> int:
         return 2
     today = date.fromisoformat(a.today) if a.today else date.today()
     sv = survey(root, today, a.stale_days)
+    if a.migration:
+        states = all_open(root, today)
+        print(render_migration(root, today, states))
+        return 0
     if a.table:
         states = all_open(root, today)
         print(render_table(sv, states, today) if a.markdown

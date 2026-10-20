@@ -72,9 +72,26 @@ is one each writer re-invents.
 
 | Field | Values | Validation |
 |---|---|---|
-| `verksamhet:` | the eight from `_INDEX-verksamheter.md` | declared enum; anything else is a finding |
+| `verksamhet:` | **optional** — one of the eight from `_INDEX-verksamheter.md`, or absent | declared enum; an undeclared value is a finding, **an absent one is not** |
 | `projekt:` | optional | **must match a row in `_INDEX-projekt.md`** — an entry naming a project the portfolio does not have is a finding, in either direction |
 | `objekttyp:` | only when the entry is **not** an Uppgift | the seven from `_INDEX-objektmodell.md`; makes järnregel 2 executable |
+
+**`verksamhet:` is optional, and that is a finding of the review rather than a concession.**
+The first draft of this CR made it required, on the assumption that everything belongs to some
+business. It does not. `_INDEX-verksamheter.md` binds the attribute to *whose business a thing is*,
+and a follow-up, a watch or a loose contact is nobody's: on the measured vault **20 of 199 entries**
+are defined by their activity type and correctly carry no venture. Requiring the field would have
+forced twenty entries into a venture they do not have, and the register would read as decided where
+it is simply not applicable.
+
+So three states, not two, and they must stay distinguishable: **a venture**, **deliberately none**
+(the activity type is the primary attribute), and **undecided**. Collapsing the last two is what made
+the first worksheet unreadable — it reported twenty correctly-classified entries as open questions.
+
+**[E] And the ventures already answer "bound to me, not to a business".** The decision test's step 7
+reads *"bygger du det annars för egen räkning, utan att det är en produkt som säljs? → Fria projekt"*.
+Seven entries covering the operator's own tooling were sitting as undecided until the test was read;
+they are Fria projekt, which is explicitly **not** Personligt (*"livet, inte affären"*).
 
 `context:` narrows to the subject line, or is dropped.
 
@@ -100,6 +117,20 @@ Generated, not hand-written: a map from each of the 126 values to a proposed `ve
 the first element matches a portfolio row, a `projekt`. On the measured vault **12 values have no
 obvious venture** and need the operator, and **ten carry the object-type remark** above. The map is
 the operator's worksheet; the migration is a batch they confirm, not an inference.
+
+## What the first pass of the worksheet exposed
+
+**[E] The thing the operator works on most had no portfolio row.** `core-skills` itself -- five CRs
+in one day, a contract version, a landing page, an undecided release number -- was absent from
+`_INDEX-projekt.md`, together with the vault tooling and the assistant configuration. So
+`projekt: core-skills` could not have validated against the register in either direction. A row was
+added on 2026-10-20, typed `löpande` because the object model's test is decisive: it has no finish
+line.
+
+**[E] Prefix matching, not equality.** A ledger context reads `goa` where the portfolio row is
+`Goa 2026`. Equality matched **2 of 50** context values; prefix matching took it to **8 of 50**. The
+remaining 42 are categories that exist only in the ledger -- which is the measure of how far the two
+registers had drifted apart.
 
 ## Not in scope
 
