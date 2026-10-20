@@ -78,7 +78,12 @@ SYNONYMS = {
 }
 
 # The superseded form of a withdrawn item's status note, and the lines written when filing it.
-SUPERSEDED_NOTE = re.compile(r"^\s*ersatt av\s+`?([0-9]{6}[A-Za-z0-9._-]*)`?", re.IGNORECASE)
+# `\w` och inte [A-Za-z0-9]: slug-kontraktet (CR-021) behaller a/a/o i mappnamn, sa en
+# ASCII-klass kapper namnet vid forsta svenska tecknet. "a-loggning-
+# ljud-betygsfragan" blev "...betygsfr", uppslagningen missade, och posten planerades
+# som vanlig withdrawn i stallet for superseded -- dvs filad bredvid korrespondensen
+# i stallet for i .archive/. Traffade fyra poster 261020.
+SUPERSEDED_NOTE = re.compile(r"^\s*ersatt av\s+`?([0-9]{6}[\w.\-]*)`?", re.IGNORECASE)
 OUTCOME_LINE = "Ersatt av {item} ({status})"
 TIMELINE_LINE = "- {date}: Ersätter {draft} ({draft_status})"
 ARCHIVE_SUFFIX = "superseded"
