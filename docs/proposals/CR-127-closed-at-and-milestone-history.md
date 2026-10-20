@@ -145,3 +145,12 @@ the one series nobody can reconstruct.
 - Existing tests that built a clean milestone now carry `set_on:`; that is the intended consequence of the
   finding, not a regression.
 - The append step is prose in `ops/SKILL.md` (the CR-119 config review). No script writes `history:`.
+
+### Review fixes (2026-10-20)
+
+- `config_checks()` reports a non-list `milestone.history` once ("must be a list") instead of iterating it.
+- Closing day: missing means `None` or blank on both `closed:` and `completed:`; any other value counts.
+- `skills/tasks/SKILL.md` gains `/tasks cancel`, so `status: cancelled` + `closed:` has a documented writer
+  beside `/tasks done`. No other writer of a finished status was found in `skills/`.
+- Tests cover a dateless milestone, non-list and empty `history`, blank `closed:`, and å/ä/ö task text.
+- No contract change; contract stays at the 44 the CR already declared.

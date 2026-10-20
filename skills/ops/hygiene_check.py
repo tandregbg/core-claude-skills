@@ -210,7 +210,7 @@ def check_tasks(root: Path) -> list:
             kind = t.get("kind")
             if kind is not None and kinds and kind not in kinds:
                 note("kind", kind, tid)
-            if st in finished and not (t.get("closed") or t.get("completed")):
+            if st in finished and all(t.get(k) in (None, "") for k in ("closed", "completed")):
                 unclosed.append(tid)
         legal = {"status": statuses, "priority": PRIORITIES, "source.type": SOURCE_TYPES, "kind": kinds}
         for (field, value), ids in groups.items():

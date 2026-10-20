@@ -42,6 +42,17 @@ class Closed(unittest.TestCase):
             "tasks:\n  - {id: 1, task: a, status: completed, closed: 261001}\n"
             "  - {id: 2, task: b, status: cancelled, completed: 260901}\n"), [])
 
+    def test_empty_and_null_closing_values_count_as_missing(self):
+        msgs = self.findings(
+            "tasks:\n"
+            "  - {id: 1, task: åtgärd, status: completed, closed: null}\n"
+            "  - {id: 2, task: ärende, status: cancelled, closed: ''}\n"
+            "  - {id: 3, task: över, status: completed, closed: null, completed: 260901}\n"
+            "  - {id: 4, task: ö, status: completed, closed: 261001, completed: null}\n")
+        self.assertEqual(len(msgs), 1)
+        self.assertIn("2 finished task(s) with no closing day", msgs[0])
+        self.assertIn("1, 2", msgs[0])
+
 
 class Provenance(unittest.TestCase):
     def check(self, ms):
@@ -63,6 +74,33 @@ class Provenance(unittest.TestCase):
 
     def test_no_history_behaves_as_before(self):
         self.assertEqual(self.check({"name": "Beta", "set_on": "2026-09-01"}), [])
+
+    def test_milestone_without_date_raises_no_provenance_finding(self):
+        self.assertEqual(self.check({"name": "Beta"}), [])
+        self.assertEqual(self.check({"name": "Beta", "history": [
+            {"date": "2026-12-01", "reason": "moved", "source": "a.md"}]}), [])
+
+    def test_history_that_is_not_a_list_is_one_finding(self):
+        for bad in ("oops", {"a": 1, "b": 2}):
+            out = self.check({"name": "Beta", "date": "2027-01-01", "set_on": "2026-09-01", "history": bad})
+            self.assertEqual(len(out), 1, out)
+            self.assertIn("must be a list", out[0])
+
+    def test_empty_history_is_clean(self):
+        for empty in (None, []):
+            self.assertEqual(self.check({"name": "Beta", "date": "2027-01-01",
+                                         "set_on": "2026-09-01", "history": empty}), [])
+
+    def test_empty_set_on_is_a_finding(self):
+        out = self.check({"name": "Beta", "date": "2027-01-01", "set_on": ""})
+        self.assertTrue(any("no `set_on`" in o for o in out))
+
+
+class TasksSkill(unittest.TestCase):
+    def test_both_finished_states_have_a_documented_writer(self):
+        t = (ROOT / "skills" / "tasks" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("`/tasks cancel", t)
+        self.assertIn("status: cancelled", t)
 
 
 class Contract(unittest.TestCase):

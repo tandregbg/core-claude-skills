@@ -224,6 +224,14 @@ Task #3 marked complete.
 Remaining active tasks: 11
 ```
 
+### `/tasks cancel <id>` or `/tasks cancel <id> <id> ...`
+
+Mark task(s) as cancelled in the local `_tasks.yaml` (CR-127: the second finished state has its own writer).
+
+1. Set `status: cancelled` and `closed: YYMMDD` in the same edit (never `completed:`)
+2. Append entry to root `_tasks-history.md`, marked cancelled
+3. Report remaining active task count
+
 ### `/tasks import <file.md>`
 
 Import tasks from a meeting summary. **Target = folder where source file lives.**

@@ -847,10 +847,14 @@ def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -
         # CR-127: a date nobody can trace is a date that cannot be shown to have slipped.
         if ms.get("date") and not ms.get("set_on"):
             out.append("milestone date has no `set_on`: when was it set? (CR-127)")
-        for i, h in enumerate(ms.get("history") or [], 1):
-            miss = [k for k in ("reason", "source") if not (isinstance(h, dict) and h.get(k))]
-            if miss:
-                out.append(f"milestone history entry {i} has no {' or '.join(f'`{k}`' for k in miss)}")
+        hist_ = ms.get("history")
+        if hist_ and not isinstance(hist_, list):
+            out.append("milestone `history` must be a list of entries (CR-127)")
+        else:
+            for i, h in enumerate(hist_ or [], 1):
+                miss = [k for k in ("reason", "source") if not (isinstance(h, dict) and h.get(k))]
+                if miss:
+                    out.append(f"milestone history entry {i} has no {' or '.join(f'`{k}`' for k in miss)}")
     elif cf.get("layout") == "card":
         out.append("card layout without a milestone: the card has nothing to run toward")
     for lab in ((mv_x or {}).get("missing_labels") or []):
