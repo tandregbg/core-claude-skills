@@ -38,6 +38,11 @@
 #   - A `company:` block in ops-config (ops_config schema 1.6). The skill carries no question set:
 #     an optional template is read from `company.template:`.
 #   - `/ops check` runs the profile checks; `/ops` and `/preparation` read the facets when present.
+#   - Grown after the first bump, before any push (so no client was served the shorter 43): `extract`,
+#     `coverage.yaml` with the classification rules `company-coverage/3.2` (schema docs/schemas/company-coverage.schema.json),
+#     source provenance (`curation`, `derived_from`, `decided_by`, `pages`, `origin_url`, `as_of`, `labels`),
+#     `check --strict`, `--items`, `--items-from`, `--leak-from`, and the config keys `company.level_map` and
+#     `company.level_order`. All additive and optional; a vault that sets none of them behaves as before.
 #
 # contract_version 42 (CR-122 + CR-123 + CR-124, 2026-10-13, v1.90.0): profiles, insights
 #   schema 3 and a themes registry. Additive: a vault that sets nothing behaves as before.
