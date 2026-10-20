@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-133**
+Next available CR number: **CR-134**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-133**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-133 | `outbox` (`close`, `close --all-sent`, `resolved.py`, SKILL.md), `ops` (`check`), `ecosystem.yaml` (threshold) | **High** | **Proposed** (2026-10-20). A sent item ages out. `close` gates on ticked reply boxes and a populated `Utfall`; measured on one vault, **1 of 77 sent items was closable**, so `close --all-sent` would have skipped 76. A send is an observation a dispatcher writes correctly every time; a resolution is a return visit nothing triggers. Three changes: no reply expectation means closable now, a populated outcome outranks unticked boxes, and past 30 days `/ops check` offers closing with a stated fact. Report and offer, never automatic — 34 of 77 became closable with no judgement call |
 | CR-132 | `ops` (staging), `outbox` (SKILL.md, `resolved.py`), `ops` (`check`), any surface that creates a manifest (CR-115) | Medium | **Proposed** (2026-10-20). `Kanonisk källa` and a declared status word are written **at staging**, not reported afterwards. Measured 2026-10-20, 26 months after CR-032: 36 of 127 manifests had no source field and 8 carried undeclared status words, one with the colon inside the bold so no reader saw a status at all. Resolving them needed a mechanical probe because the authors' knowledge was gone — and 4 of 36 turned out to be copies whose original lives elsewhere, which a bulk default would have mislabelled. Additive enforcement |
 | CR-131 | `outbox` (SKILL.md `avskriven`, `resolved.py`), `ops` (`check`) | Medium | **Proposed** (2026-10-20). A *not sent* outcome needs no documented reason: `Skickades inte.` is a complete `Utfall`. CR-047 required a reason, which on one vault left 16 of 37 withdrawn items unfileable, the oldest from 2026-06-15 — 13 of them with no recoverable reason, because never getting sent is the absence of a decision, not one with a motive. `Utfall` stays required; what satisfies it narrows |
 | CR-130 | `skills/company` (`export`), contract section 7, `ops-config` (`company.agent_core`), `docs/schemas/` | Low | **Placeholder** (2026-10-18). `/company export agent-core`: a compressed core of a profile for an agent with a character budget, plus the whole profile as files for a knowledge library. Scope and open questions only; taken up after 2026-10-27. |
