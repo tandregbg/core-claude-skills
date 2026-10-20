@@ -1,0 +1,566 @@
+#!/usr/bin/env python3
+"""What is in the inbox: the register, the ledger and the folder, reconciled.
+
+The companion to `skills/outbox/resolved.py --survey`, and written for the same
+reason (CR-134): every check that existed asked whether a single item was well
+formed, and nothing asked what the whole population looked like or whether it had
+moved. On one vault that let 215 of 253 register entries point at files that did
+not exist -- 85 % drift -- while the register reported them as waiting to be
+processed.
+
+The inbox has one failure mode the outbox cannot have. An outbox manifest lives
+*inside* its folder, so the record and the material cannot come apart. The inbox
+register is a separate file from the content it describes, so it can drift
+silently and did. Hence the three-way reconciliation here: entry, file, outcome.
+
+Read-only. Prints JSON, or `--markdown` for the situation half of an audit.
+"""
+import argparse
+import json
+import os
+import re
+import sys
+from datetime import date
+from pathlib import Path
+
+# docs/schemas/inbox.md. `new`, `archived`, `filed`, `keep` and `cancelled` are
+# in live use and none of them is declared -- which is the point of listing the
+# enum in code rather than in prose (CR-132).
+DECLARED = ("pending", "processing", "processed", "skipped")
+
+DATE = re.compile(r"^(\d{2})(\d{2})(\d{2})")
+
+
+def as_date(v):
+    m = DATE.match(str(v or ""))
+    if not m:
+        return None
+    try:
+        return date(2000 + int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return None
+
+
+def age(v, today):
+    d = as_date(v)
+    return None if d is None else (today - d).days
+
+
+def is_open_task(task, status_mod):
+    return status_mod.is_open(task) if status_mod else task.get("status") == "pending"
+
+
+def movement(vault, today):
+    """What closed today, so a living document shows it moving rather than only its size.
+
+    Counted from `completed:` for finished entries and from a note carrying today's
+    stamp for withdrawn ones -- the ledger has no closing date for the latter
+    (CR-127 proposes one). Honest about that: a withdrawal without a dated note is
+    not counted.
+    """
+    import yaml
+    led = yaml.safe_load((vault / "_inbox" / "_tasks.yaml").read_text(encoding="utf-8"))
+    stamp = today.strftime("%y%m%d")
+    done = cancelled = 0
+    for t in led.get("tasks", []):
+        st = str(t.get("status") or "")
+        if st == "completed" and str(t.get("completed") or "") == stamp:
+            done += 1
+        elif st == "cancelled" and any(stamp in str(n) for n in (t.get("notes") or [])):
+            cancelled += 1
+    return {"closed_today": done, "cancelled_today": cancelled}
+
+
+def survey(vault: Path, today: date, stale_days: int = 30) -> dict:
+    import yaml
+    inbox = vault / "_inbox"
+    reg = yaml.safe_load((inbox / "_inbox.yaml").read_text(encoding="utf-8"))
+    items = reg.get("items", [])
+
+    # --- the register, reconciled three ways -------------------------------
+    def locate(i):
+        f = str(i.get("file") or "")
+        if not f:
+            return None
+        for base in (inbox, inbox / ".archive"):
+            if (base / f).exists():
+                return str(base.relative_to(vault))
+        at = i.get("archived_to")
+        if at and (vault / str(at).lstrip("./")).exists():
+            return "archived_to"
+        return None
+
+    def has_outcome(i):
+        p = i.get("processed") or {}
+        return bool(i.get("output_file") or p.get("output_file") or i.get("archived_to"))
+
+    entries = []
+    for i in items:
+        st = i.get("status")
+        entries.append({
+            "id": i.get("id"),
+            "title": i.get("title"),
+            "file": i.get("file"),
+            "status": st,
+            "declared": st in DECLARED,
+            "where": locate(i),
+            "outcome": has_outcome(i),
+            "age_days": age(i.get("created"), today),
+        })
+    waiting = [e for e in entries if e["status"] in ("pending", "new", "processing")]
+
+    # --- the task ledger ---------------------------------------------------
+    led = yaml.safe_load((inbox / "_tasks.yaml").read_text(encoding="utf-8"))
+    try:                                     # the ledger's own status module, if reachable
+        sys.path.insert(0, os.path.expanduser("~/repos/vault-tools/todoist-task-pipeline"))
+        import task_status
+    except Exception:
+        task_status = None
+    tasks = [t for t in led.get("tasks", []) if is_open_task(t, task_status)]
+    undated = [t for t in tasks if not t.get("due")]
+    unaged = [t for t in tasks if not t.get("created")]
+    orphans = [t for t in undated if not t.get("created")]   # neither date nor age
+
+    def ctx(t):
+        c = (t.get("context") or "").lower()
+        c = re.split(r"[·—–\-]| \(", c)[0].strip()
+        return c or "(ingen kontext)"
+
+    groups = {}
+    for t in orphans:
+        groups.setdefault(ctx(t), []).append(
+            {"id": t["id"], "task": t.get("task", ""), "priority": t.get("priority")})
+
+    # --- the folder: a door, not a dwelling --------------------------------
+    resident = {"_capture.md", "_frame.md", "_ideas.md", "_inbox.yaml", "_tasks.yaml",
+                "CLAUDE.md", "daglig-triage.md"}
+    files = sorted(p.name for p in inbox.iterdir()
+                   if p.is_file() and not p.name.startswith("."))
+    return {
+        "vault": str(vault), "today": today.isoformat(), "stale_days": stale_days,
+        "register": {
+            "entries": len(entries),
+            "waiting": len(waiting),
+            "undeclared_status": sorted({e["status"] for e in entries if not e["declared"]}),
+            "undeclared_count": sum(1 for e in entries if not e["declared"]),
+            "file_missing": sum(1 for e in entries if e["file"] and not e["where"]),
+            "no_outcome": sum(1 for e in entries if not e["outcome"]),
+            "by_status": {s: sum(1 for e in entries if e["status"] == s)
+                          for s in sorted({str(e["status"]) for e in entries})},
+            "waiting_items": sorted(waiting, key=lambda e: -(e["age_days"] or 0)),
+        },
+        "ledger": {
+            "open": len(tasks),
+            "overdue": sum(1 for t in tasks
+                           if as_date(t.get("due")) and as_date(t["due"]) < today),
+            "undated": len(undated),
+            "no_created": len(unaged),
+            "unsortable": len(orphans),
+            "groups": {k: v for k, v in sorted(groups.items(), key=lambda kv: -len(kv[1]))},
+        },
+        "folder": {
+            "files": files,
+            "unexpected": [f for f in files if f not in resident],
+        },
+        "movement": movement(vault, today),
+    }
+
+
+def render(sv: dict) -> str:
+    r, l, f = sv["register"], sv["ledger"], sv["folder"]
+    out = [f"# Inkorgen — läget {sv['today']}", "",
+           "> **Genererad** ur `_inbox/` av `skills/inbox/survey.py --markdown`. Redigera inte",
+           "> här: lägesdelen skrivs över vid nästa körning. Besluten hör i auditens `→`-rader.", ""]
+    out += ["## Registret (`_inbox.yaml`)", "",
+            "| Mått | Antal |", "|---|---|",
+            f"| poster | {r['entries']} |",
+            f"| **väntar på bearbetning** | **{r['waiting']}** |",
+            f"| odeklarerat statusord | **{r['undeclared_count']}** |",
+            f"| pekar på en fil som inte finns | **{r['file_missing']}** |",
+            f"| utan registrerat utfall | {r['no_outcome']} |", ""]
+    if r["undeclared_status"]:
+        words = ", ".join(f"`{w}`" for w in r["undeclared_status"])
+        out += [f"Odeklarerade ord i bruk: {words}. Enumet i `docs/schemas/inbox.md` är "
+                "`pending | processing | processed | skipped`.", ""]
+    out += ["| Status | Antal |", "|---|---|"]
+    out += [f"| `{k}` | {v} |" for k, v in sorted(r["by_status"].items(), key=lambda kv: -kv[1])]
+    out += [""]
+    if r["waiting_items"]:
+        out += ["### Väntar", "", "| Ålder | Post | Fil |", "|---|---|---|"]
+        for e in r["waiting_items"]:
+            a = f"{e['age_days']} dgr" if e["age_days"] is not None else "—"
+            out.append(f"| {a} | {e['title'] or e['id']} | "
+                       f"{'`'+str(e['file'])+'`' if e['file'] else '—'}"
+                       f"{'' if e['where'] else ' **saknas**'} |")
+        out += [""]
+    out += ["## Uppgiftsregistret (`_tasks.yaml`)", "",
+            "| Mått | Antal |", "|---|---|",
+            f"| öppna | {l['open']} |",
+            f"| **förfallna** | **{l['overdue']}** |",
+            f"| utan datum | {l['undated']} |",
+            f"| utan `created` | {l['no_created']} |",
+            f"| **varken datum eller `created`** | **{l['unsortable']}** |", "",
+            "De sista går inte att åldersbedöma, sortera eller skriva av — de syns bara för den",
+            "som läser hela listan. Grupperade per kontext, störst först:", "",
+            "| Kontext | Poster | Id |", "|---|---|---|"]
+    for k, v in l["groups"].items():
+        ids = " ".join(f"`#{x['id']}`" for x in sorted(v, key=lambda x: x["id"]))
+        out.append(f"| **{k}** | {len(v)} | {ids} |")
+    out += [""]
+    if f["unexpected"]:
+        out += ["## Filer i `_inbox/`", "",
+                "*Regeln: en dörr, inte en bostad. Arbetsdokument flyttas ut till sitt riktiga hem.*",
+                ""]
+        out += [f"- `{x}`" for x in f["unexpected"]] + [""]
+    return "\n".join(out)
+
+
+# --- Proposing a bucket -----------------------------------------------------
+# A prose heuristic, and labelled as one. It exists so a 129-row list can be
+# scanned and accepted in blocks instead of read one entry at a time; the
+# operator overrides any row. `sure` marks the rows where the signal is in the
+# text itself rather than inferred from its shape.
+
+DONE_MARKS = re.compile(
+    r"\b(återkopplade|genomfört|genomförd|hölls|skickad|skickat|signerat|klart|klar|"
+    r"avbockad|avklarad|startad|infört|löst|fixat|beslutat|lanserad|redan gjort|"
+    r"är gjort|gjordes|blev )", re.IGNORECASE)
+IMPERATIVE = re.compile(
+    r"^(ring|ringa|messa|mejla|maila|skicka|boka|köp|köpa|kolla|hämta|fråga|följ|"
+    r"följa|gå igenom|gå|sätt|sätta|skriv|skriva|ta |ta\b|få |få\b|bestäm|bestämma|"
+    r"förbered|förbereda|avgör|avgöra|lägg|lägga|flytta|rätta|rensa|städa|uppdatera|"
+    r"verifiera|kontrollera|stäm|stämma|hör |höra|svara|planera|undersök|undersöka|"
+    r"installera|committa|pusha|avaktivera|arkivera|signera|slutför|slutföra|bevaka|"
+    r"bygg|bygga|dema|exportera|kvantifiera|normalisera|peka|konvertera|döp|byt|byta)",
+    re.IGNORECASE)
+TOPIC = re.compile(r"^[A-ZÅÄÖ][\wåäöÅÄÖ\-/ ]{0,40}$")
+
+
+def propose(row: dict, context: str, today: date) -> tuple[str, bool, str]:
+    """(bucket, sure, why) for one ledger entry."""
+    text = (row.get("task") or "").strip()
+    first = text.split("\n")[0]
+
+    # A context that names a date the world has passed.
+    m = re.search(r"(\d{1,2})/(\d{1,2})\b", context or "")
+    if m:
+        try:
+            d = date(today.year, int(m.group(2)), int(m.group(1)))
+            if (today - d).days > 14:
+                return ("ÖVERSPELAD", True,
+                        f"kontexten pekar på {m.group(0)}, {(today - d).days} dagar sedan")
+        except ValueError:
+            pass
+
+    hit = DONE_MARKS.search(text)
+    if hit:
+        return ("ÖVERSPELAD", True, f"texten säger ”{hit.group(0).strip()}” — formulerad i dåtid")
+
+    if IMPERATIVE.match(first):
+        return ("GÖRA", True, "börjar med en handling")
+
+    if len(first) <= 45 and TOPIC.match(first) and not first.endswith(("?", ":")):
+        return ("REFERENS", True, "ämne utan handling")
+
+    if row.get("priority"):
+        return ("GÖRA", False, f"har prio {row['priority']} men ingen tydlig handling")
+
+    if "?" in first:
+        return ("REFERENS", False, "en fråga, inte en uppgift")
+
+    return ("GÖRA", False, "ingen tydlig signal — läs raden")
+
+
+def propose_for(state: str, row: dict, today: date) -> tuple[str, bool, str]:
+    """The bucket to offer, which depends on the state the entry is in."""
+    text = (row.get("task") or "").strip()
+    first = text.split("\n")[0]
+    hit = DONE_MARKS.search(text)
+    imp = bool(IMPERATIVE.match(first))
+
+    if state == "FÖRFALLNA":
+        if hit:
+            return ("AVSKRIV", True, f"texten säger ”{hit.group(0).strip()}”")
+        if (row["age_days"] or 0) > 30:
+            return ("NYTT DATUM", False, f"{row['age_days']} dagar sen — datumet är inte sant längre")
+        return ("NYTT DATUM", False, "förfallen; sätt om eller avskriv")
+
+    if state == "DATERADE FRAMÅT":
+        return ("LÅT STÅ", True, "daterad framåt")
+
+    if state == "ODATERADE MED PRIO":
+        if hit:
+            return ("AVSKRIV", True, f"texten säger ”{hit.group(0).strip()}”")
+        if row.get("priority") in ("P0", "P1"):
+            return ("SÄTT DATUM", True, "P0/P1 utan datum bryter mot _config/priority.md")
+        return ("SÄTT DATUM", False, f"{row['priority']} utan datum — syns inte i vyn")
+
+    # ODATERADE och UTAN DATUM OCH UTAN ÅLDER
+    m = re.search(r"(\d{1,2})/(\d{1,2})\b", row.get("context_full") or "")
+    if m:
+        try:
+            d = date(today.year, int(m.group(2)), int(m.group(1)))
+            if (today - d).days > 14:
+                return ("AVSKRIV", True,
+                        f"kontexten pekar på {m.group(0)}, {(today - d).days} dagar sedan")
+        except ValueError:
+            pass
+    if hit:
+        return ("AVSKRIV", True, f"texten säger ”{hit.group(0).strip()}”")
+    if imp:
+        return ("SÄTT DATUM", True, "börjar med en handling")
+    if len(first) <= 45 and TOPIC.match(first) and not first.endswith(("?", ":")):
+        return ("REFERENS", True, "ämne utan handling")
+    if "?" in first:
+        return ("REFERENS", False, "en fråga, inte en uppgift")
+    return ("SÄTT DATUM", False, "ingen tydlig signal — läs raden")
+
+
+STATE_NOTE = {
+    "FÖRFALLNA": "Datumet har passerat. Antingen är uppgiften gjord, eller är datumet inte sant längre.",
+    "ODATERADE MED PRIO": "Prio satt men inget datum. En post utan datum kan aldrig vara P0/P1 "
+                          "(`_config/priority.md`), och utan datum syns den inte i triagen.",
+    "ODATERADE": "Har `created` men inget datum — går att åldersbedöma, men driver inget.",
+    "UTAN DATUM OCH UTAN ÅLDER": "Varken datum eller `created`. Går inte att sortera, påminna om "
+                                 "eller skriva av. Den svåraste gruppen.",
+    "DATERADE FRAMÅT": "Ligger rätt. Listade för fullständighetens skull.",
+}
+ORDER = ["FÖRFALLNA", "ODATERADE MED PRIO", "UTAN DATUM OCH UTAN ÅLDER", "ODATERADE",
+         "DATERADE FRAMÅT"]
+
+
+def render_table(sv: dict, states: dict, today: date) -> str:
+    l = sv["ledger"]
+    props = {}
+    for st, rows in states.items():
+        for r in rows:
+            props[(st, r["id"])] = propose_for(st, r, today)
+    tally = {}
+    for b, _s, _w in props.values():
+        tally[b] = tally.get(b, 0) + 1
+    sure = sum(1 for b, s_, w in props.values() if s_)
+
+    mv = sv.get("movement") or {}
+    moved = mv.get("closed_today", 0) + mv.get("cancelled_today", 0)
+    out = [f"# Uppgifter — levande vy, {sv['today']}", "",
+           "> **Genererad** ur `_inbox/_tasks.yaml`. Samma filnamn varje gång: håll den öppen,",
+           "> den speglar registret efter varje pass. Kör om med",
+           "> `python3 ~/repos/core-skills/skills/inbox/survey.py --vault \"$VAULT\" --table --markdown`.",
+           "> Förslagen är en läsning av texten, inte ett beslut.", ""]
+    if moved:
+        out += [f"**I dag: {mv.get('closed_today',0)} avbockade, "
+                f"{mv.get('cancelled_today',0)} avskrivna — {moved} poster ur registret.**", ""]
+    out += [
+           f"**{l['open']} öppna poster.** Förslagen: "
+           + " · ".join(f"**{v} {k}**" for k, v in sorted(tally.items(), key=lambda kv: -kv[1]))
+           + f". **{sure}** har signalen i texten (✓), {len(props)-sure} är gissningar på formen (?).",
+           "",
+           "**Godta-kolumnen:** tom = förslaget gäller. Skriv ett **datum** (`261027`) för att datera, "
+           "`R` för referens (ut ur registret), `Ö` för avskriv, `S` för låt stå.", ""]
+    r = sv["register"]
+    small = []
+    if r["undeclared_count"]:
+        words = ", ".join(f"`{w}` ({r['by_status'].get(w, 0)})" for w in r["undeclared_status"])
+        small.append((f"Odeklarerade statusord i `_inbox.yaml`: {words}. Enumet är "
+                      "`pending \\| processing \\| processed \\| skipped`",
+                      "normalisera dem"))
+    for e in r["waiting_items"]:
+        if e["file"] == "CLAUDE.md":
+            small.append(("`CLAUDE.md` står som registerpost — det är inkorgens instruktionsfil",
+                          "ta den ur registret"))
+        else:
+            a = f"**{e['age_days']} dgr**" if e["age_days"] is not None else "—"
+            small.append((f"`{e['file']}` väntar sedan {a}", "bearbeta eller skriv av"))
+    if small:
+        out += ["### Utanför tabellen", "", "| | Att avgöra | Förslag | Godta |", "|---|---|---|---|"]
+        for n, (what, prop) in enumerate(small, 1):
+            out.append(f"| {n} | {what} | {prop} | |")
+        out += ["", "---", ""]
+    out += ["| Grupp | Poster | Förslagets tyngdpunkt |", "|---|---|---|"]
+    for st in ORDER:
+        if st not in states:
+            continue
+        rows = states[st]
+        t = {}
+        for r in rows:
+            b = props[(st, r["id"])][0]
+            t[b] = t.get(b, 0) + 1
+        out.append(f"| **{st}** | {len(rows)} | "
+                   + ", ".join(f"{v}× {k}" for k, v in sorted(t.items(), key=lambda kv: -kv[1])) + " |")
+    out += ["", "---", ""]
+
+    for st in ORDER:
+        if st not in states:
+            continue
+        rows = states[st]
+        s_here = sum(1 for r in rows if props[(st, r["id"])][1])
+        out += [f"## {st} — {len(rows)} poster *({s_here} säkra, {len(rows)-s_here} att läsa)*", "",
+                f"*{STATE_NOTE[st]}*", ""]
+        if st == "DATERADE FRAMÅT":
+            out += ["| # | Datum | Uppgift |", "|---|---|---|"]
+            for r in sorted(rows, key=lambda r: str(r["due"])):
+                t = " ".join((r.get("task") or "").split())
+                t = t[:74].rsplit(" ", 1)[0] + "…" if len(t) > 74 else t
+                pri = f" `{r['priority']}`" if r.get("priority") else ""
+                out.append(f"| `#{r['id']}`{pri} | {r['due']} | {t} |")
+            out += [""]
+            continue
+        by_ctx = {}
+        for r in rows:
+            by_ctx.setdefault(ctx_of(r), []).append(r)
+        for ctx, crows in sorted(by_ctx.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            s_c = sum(1 for r in crows if props[(st, r["id"])][1])
+            out += [f"### {ctx} — {len(crows)} "
+                    f"*({s_c} säkra, {len(crows)-s_c} att läsa)*", "",
+                    "| # | Ålder | Uppgift | Förslag | | Godta |",
+                    "|---|---|---|---|---|---|"]
+            for r in sorted(crows, key=lambda r: (-(r["age_days"] or 0), r["id"])):
+                b, s_, _w = props[(st, r["id"])]
+                t = " ".join((r.get("task") or "").split())
+                t = t[:80].rsplit(" ", 1)[0] + "…" if len(t) > 80 else t
+                pri = f" `{r['priority']}`" if r.get("priority") else ""
+                a = f"{r['age_days']} d" if r.get("age_days") else (r.get("due") or "—")
+                out.append(f"| `#{r['id']}`{pri} | {a} | {t} | **{b}** | "
+                           f"{'✓' if s_ else '?'} | |")
+            out += [""]
+    return "\n".join(out)
+
+
+def render_undated(sv: dict, detail: dict) -> str:
+    """The full, working list of ledger entries that carry neither a date nor an age.
+
+    Replaces a hand-written file that had to be re-verified by hand each time it
+    was opened: on 2026-10-20 the counts in its header were thirteen days old and
+    seven of the entries it listed had been closed since. The grouping, the test
+    and the three buckets are its own -- only the measuring is new.
+    """
+    l = sv["ledger"]
+    out = [f"# Odaterade poster — {sv['today']}", "",
+           "> **Genererad** ur `_inbox/_tasks.yaml` av `skills/inbox/survey.py --undated --markdown`.",
+           "> Sortera i filen om du vill, men skriv besluten i",
+           "> [`261020-audit-inkorg.md`](261020-audit-inkorg.md) — den här skrivs över vid nästa körning.",
+           "",
+           f"**{l['unsortable']} poster** har varken `due` eller `created`. Av {l['open']} öppna är",
+           f"{l['undated']} odaterade och {l['no_created']} saknar `created`; det är skärningen som",
+           "listas här.", "",
+           "**Felet är inte att de är många.** Utan `created` kan ingen åldersregel tillämpas, ingen",
+           "vy sortera dem och ingen påminnelse utlösas. De syns bara för den som läser hela listan,",
+           "vilket ingen gör. Städningen är engångsarbete; att fältet kan utelämnas vid skapandet är",
+           "det som bygger upp högen igen.", "",
+           "---", "",
+           "## Så här går genomgången", "",
+           "Tre hinkar per post. Ta dem gruppvis, inte i id-ordning.", "",
+           "| Hink | Innebär | Vad som händer |", "|---|---|---|",
+           "| **GÖRA** | Ska faktiskt göras | Får **datum** och prioritet. Utan datum hamnar den här igen |",
+           "| **REFERENS** | Värt att minnas, ingen åtgärd | Flyttas **ut ur `_tasks.yaml`** till `_ideas.md` eller rätt projektmapp |",
+           "| **ÖVERSPELAD** | Gjord, obsolet eller tappad | Avskrivs med skäl |", "",
+           "**Testet för REFERENS:** finns det en handling med ett slut? *\"Messa Ola Gravenfors\"* är",
+           "en handling. *\"Bolagen, bolagsstrukturen och tankar framåt\"* är ett ämne — det hör inte i",
+           "ett uppgiftsregister.", "", "---", ""]
+    for ctx, rows in detail.items():
+        out += [f"## {ctx} — {len(rows)} poster", ""]
+        for r in rows:
+            pri = f" `{r['priority']}`" if r.get("priority") else ""
+            out.append(f"### `#{r['id']}`{pri}")
+            out.append("")
+            out.append(r["task"].strip())
+            if r.get("context_full") and r["context_full"].lower() != ctx:
+                out.append("")
+                out.append(f"*Kontext: {r['context_full']}*")
+            if r.get("notes"):
+                out.append("")
+                out.append(f"*{len(r['notes'])} not{'' if len(r['notes'])==1 else 'er'} i registret.*")
+            out += ["", "- [ ] GÖRA — datum: ______  prio: ____", "- [ ] REFERENS — till: ______",
+                    "- [ ] ÖVERSPELAD — skäl: ______", ""]
+    return "\n".join(out)
+
+
+def all_open(vault, today):
+    """Every open ledger entry, bucketed by the state it is actually in.
+
+    `undated_detail` covered only the entries with neither date nor age -- the
+    hardest group, but 129 of 292. A sweep of the register needs all of them, and
+    the proposal differs by state: an overdue entry needs a new date or a reason,
+    a dateless one needs a date or a different home.
+    """
+    import yaml, os, sys as _s
+    led = yaml.safe_load((vault / "_inbox" / "_tasks.yaml").read_text(encoding="utf-8"))
+    try:
+        _s.path.insert(0, os.path.expanduser("~/repos/vault-tools/todoist-task-pipeline"))
+        import task_status
+    except Exception:
+        task_status = None
+    states = {"FÖRFALLNA": [], "DATERADE FRAMÅT": [], "ODATERADE MED PRIO": [],
+              "ODATERADE": [], "UTAN DATUM OCH UTAN ÅLDER": []}
+    for t in led.get("tasks", []):
+        if not is_open_task(t, task_status):
+            continue
+        d = as_date(t.get("due"))
+        row = {"id": t["id"], "task": t.get("task", ""), "priority": t.get("priority"),
+               "context_full": t.get("context"), "notes": t.get("notes") or [],
+               "due": t.get("due"), "created": t.get("created"),
+               "age_days": (today - d).days if d and d < today else None}
+        if d and d < today:
+            states["FÖRFALLNA"].append(row)
+        elif d:
+            states["DATERADE FRAMÅT"].append(row)
+        elif not t.get("created"):
+            states["UTAN DATUM OCH UTAN ÅLDER"].append(row)
+        elif t.get("priority"):
+            states["ODATERADE MED PRIO"].append(row)
+        else:
+            states["ODATERADE"].append(row)
+    for k in states:
+        states[k].sort(key=lambda r: (-(r["age_days"] or 0), r["id"]))
+    return {k: v for k, v in states.items() if v}
+
+
+def ctx_of(row):
+    c = (row.get("context_full") or "").lower()
+    c = re.split(r"[·—–\-]| \(", c)[0].strip()
+    return c or "(ingen kontext)"
+
+
+def undated_detail(vault, today):
+    """Kept for `--undated`: only the entries with neither date nor age."""
+    rows = {}
+    for r in all_open(vault, today).get("UTAN DATUM OCH UTAN ÅLDER", []):
+        rows.setdefault(ctx_of(r), []).append(r)
+    for c in rows:
+        rows[c].sort(key=lambda r: r["id"])
+    return {k: v for k, v in sorted(rows.items(), key=lambda kv: (-len(kv[1]), kv[0]))}
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--vault", help="vault root (default: $VAULT_ROOT or cwd)")
+    ap.add_argument("--today", help="YYYY-MM-DD (default: today)")
+    ap.add_argument("--markdown", action="store_true", help="situation half of an audit")
+    ap.add_argument("--stale-days", type=int, default=30)
+    ap.add_argument("--table", action="store_true",
+                    help="the undated entries as one row each, with a proposed bucket")
+    ap.add_argument("--undated", action="store_true",
+                    help="the full working list of entries with neither date nor age")
+    a = ap.parse_args(argv)
+    root = Path(a.vault or os.environ.get("VAULT_ROOT") or ".").expanduser().resolve()
+    if not (root / "_inbox").is_dir():
+        print(f"no _inbox at {root}", file=sys.stderr)
+        return 2
+    today = date.fromisoformat(a.today) if a.today else date.today()
+    sv = survey(root, today, a.stale_days)
+    if a.table:
+        states = all_open(root, today)
+        print(render_table(sv, states, today) if a.markdown
+              else json.dumps(states, ensure_ascii=False, indent=2))
+        return 0
+    if a.undated:
+        detail = undated_detail(root, today)
+        print(render_undated(sv, detail) if a.markdown
+              else json.dumps(detail, ensure_ascii=False, indent=2))
+        return 0
+    print(render(sv) if a.markdown else json.dumps(sv, ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
