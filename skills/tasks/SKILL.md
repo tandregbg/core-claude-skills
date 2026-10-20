@@ -71,6 +71,8 @@ tasks:
     status: pending              # pending | in_progress | blocked | completed | cancelled
     closed: null                 # optional (CR-127): the day status became completed or cancelled
     blocked_reason: null
+    verksamhet: null             # optional (CR-135): a venture the vault declares; absent is valid
+    projekt: null                # optional (CR-135): a portfolio row, matched by prefix
     private: false
     notes:
       - date: 260303
@@ -87,6 +89,16 @@ next_id: 2
   profile declares `episode_idea | guest_lead | housekeeping | publication`, because its ledger is the
   host's **editorial backlog**: announcements in a summary's Follow-up section (a guest's own plans,
   calls to action to listeners) never become tasks. A profile that declares no kinds writes no `kind`.
+- **`verksamhet`, `projekt`, `objekttyp` (optional, CR-135):** `context:` used to carry venture,
+  project, activity type and subject in one free-text slot. The three fields split it. `verksamhet` is
+  one of the ventures the vault declares in `_config/task-attributes.yaml`, **or absent**: a follow-up
+  or a watch belongs to no business, so an absent venture is a valid answer and never a finding (keep
+  *a venture*, *deliberately none* and *undecided* apart when migrating). `projekt` must match a row of
+  the portfolio table in `_INDEX-projekt.md`, by prefix (`goa` matches `Goa 2026`). `objekttyp` is written
+  only when the entry is **not** an Uppgift (Idé, Projekt, Löpande ansvar, KPI, Länk, Note/logg): such an
+  entry is re-marked and moved, never deleted. `context:` narrows to the subject line. All three are
+  validated where the entry is written (`python3 task_attributes.py --validate '<json>' --root <folder>`),
+  because only the author knows the venture then; `/ops check` reports the rest and never rewrites.
 - **The enums are checked (CR-122):** `/ops check` reports a missing `task` (often written as `title`), a
   `status`, `priority`, `source.type`, `scope` or `kind` outside the declared values. Report only.
 
@@ -195,6 +207,9 @@ Tags? (comma-separated)
 
 Source? (meeting file or "manual")
 > manual
+
+Venture? [none] <declared ventures>     # optional; validated at once (CR-135)
+> none
 
 Private? [no] yes
 > no
@@ -370,6 +385,9 @@ properties:
         completed: { type: [string, integer, "null"] }   # legacy alias of closed (read only)
         private: { type: boolean }
         kind: { type: string }   # optional (CR-123); legal values = the profile's task_kinds
+        verksamhet: { type: [string, "null"] }  # optional (CR-135); a declared venture, or absent
+        projekt: { type: [string, "null"] }     # optional (CR-135); matches a portfolio row by prefix
+        objekttyp: { type: string }             # optional (CR-135); only when not an Uppgift
         notes:
           type: array
           items:

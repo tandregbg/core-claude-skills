@@ -12,6 +12,18 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 46 (CR-135, 2026-10-20): the ledger uses the object model. Additive: a ledger
+#   that sets nothing behaves as before, and nothing needs migrating to be read.
+#   - tasks v2 (still schema 2): three optional fields, `verksamhet:` (a venture the vault declares, or
+#     absent: absent is valid, not a gap), `projekt:` (a portfolio row, matched by prefix) and `objekttyp:`
+#     (only when the entry is not an Uppgift; the seven in `task_attributes.objekttyp`). `context:` narrows
+#     to the subject line; it stays free text and is no longer where venture or project is written.
+#   - the vocabulary is the vault's: `_config/task-attributes.yaml` (`verksamhet: [...]`, optional
+#     `objekttyp: [...]`) and the portfolio table. A part a vault does not declare is not checked.
+#   - `/ops check` (hygiene_check `tasks`) reports an undeclared venture, a `projekt:` with no portfolio
+#     row, a portfolio row no entry names, and an `objekttyp:` other than Uppgift filed as a task.
+#     Report only. Writers validate at staging (`skills/tasks/task_attributes.py --validate`).
+#
 # contract_version 45 (CR-128, 2026-10-20): a raw transcript archived at delivery is adopted. Additive:
 #   - a raw file may carry `inbox:` and `written_by:` (a client wrote it at delivery, `summary` empty);
 #     an inbox item may carry `raw_transcript`, `dt_filename`, `recorded_at`, `duration_sec`, `language`,
@@ -337,7 +349,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 45
+contract_version: 46
 core_skills_version: "1.91.0"
 
 # --- Schema versions ---
@@ -360,6 +372,7 @@ core_skills_version: "1.91.0"
 # (CR-124). Declared in skills/ops-config/schema.md.
 # tasks: optional `kind` (CR-123), legal values from the profile's task_kinds;
 # still schema 2.
+# tasks: optional `verksamhet`, `projekt`, `objekttyp` (CR-135); still schema 2.
 schemas:
   ops_config: "1.7"
   contact_meta: "1.1"
@@ -381,6 +394,21 @@ task_statuses:
     - completed
     - cancelled
   note: "A reader should tolerate an unknown status rather than treat it as active; a writer should emit only these."
+
+# --- Task attribute vocabulary (CR-135) ---
+# The object types a ledger entry may declare with `objekttyp:` when it is not an Uppgift.
+# The ventures and the project names are the vault's own and are NOT declared here: they
+# come from `_config/task-attributes.yaml` and the portfolio table (see skills/tasks).
+task_attributes:
+  objekttyp:
+    - Idé
+    - Projekt
+    - Löpande ansvar
+    - Uppgift
+    - KPI
+    - Länk
+    - Note/logg
+  note: "verksamhet is optional: absent means the entry is nobody's business, which is a valid answer and not a gap."
 
 # --- Insight type enums ---
 insight_types:

@@ -18,7 +18,10 @@ or rename the file, map a status or cancel the task), so it stays with a person.
   tasks    _tasks.yaml against the declared enums: `task` present, status,
            priority, source.type, file-level scope, and `kind` when the profile
            declares task_kinds (CR-123); a finished task with neither `closed:` nor
-           the legacy `completed:` (CR-127). One finding per file, field and value,
+           the legacy `completed:` (CR-127); `verksamhet:` outside the vault's declared
+           ventures, `projekt:` with no portfolio row, a portfolio row no entry names,
+           and an `objekttyp:` other than Uppgift still filed as a task (CR-135; absent
+           fields are never findings). One finding per file, field and value,
            with the task ids, so a ledger with one habit gives one line, not eighty.
   profile  an unknown `profile:` name (CR-123).
   themes   the CR-124 registry checks, when the project enables themes.
@@ -46,6 +49,8 @@ import profiles  # noqa: E402
 import themes as themes_mod  # noqa: E402
 sys.path.insert(0, str(HERE.parent / "ops-base"))
 import raw_archive  # noqa: E402
+sys.path.insert(0, str(HERE.parent / "tasks"))
+import task_attributes  # noqa: E402
 
 ECOSYSTEM = HERE.parents[1] / "ecosystem.yaml"
 LINKED = re.compile(r"^(\d{6}-.*|README|CHANGELOG)\.md$")
@@ -177,6 +182,8 @@ def task_finished() -> tuple:
 def check_tasks(root: Path) -> list:
     found, statuses = [], task_statuses()
     finished = task_finished()
+    attrs = task_attributes.load(root)      # CR-135: the vault's declared vocabulary
+    used_projects = []
     for p in walk(root):
         if p.name != "_tasks.yaml":
             continue
@@ -191,6 +198,7 @@ def check_tasks(root: Path) -> list:
             found.append(_finding("tasks", p, None, f"scope '{scope}' is not one of {', '.join(SCOPES)}", root))
         groups = {}                     # (field, value) -> [task ids]
         unclosed = []                   # finished, with no closing day (CR-127)
+        attr_groups = {}                # (field, message) -> [task ids] (CR-135)
 
         def note(field, value, tid):
             groups.setdefault((field, value), []).append(tid)
@@ -216,6 +224,10 @@ def check_tasks(root: Path) -> list:
                 note("kind", kind, tid)
             if st in finished and all(t.get(k) in (None, "") for k in ("closed", "completed")):
                 unclosed.append(tid)
+            if t.get("projekt"):
+                used_projects.append(t["projekt"])
+            for fld, _val, msg in task_attributes.validate(t, attrs):
+                attr_groups.setdefault((fld, msg), []).append(tid)
         legal = {"status": statuses, "priority": PRIORITIES, "source.type": SOURCE_TYPES, "kind": kinds}
         for (field, value), ids in groups.items():
             shown = ", ".join(str(i) for i in ids[:5]) + (f" and {len(ids) - 5} more" if len(ids) > 5 else "")
@@ -226,10 +238,18 @@ def check_tasks(root: Path) -> list:
                 msg = (f"{field} '{value}' on {len(ids)} task(s) is not one of "
                        f"{', '.join(legal[field])}: {shown}")
             found.append(_finding("tasks", p, None, msg, root))
+        for (fld, msg), ids in attr_groups.items():
+            shown = ", ".join(str(i) for i in ids[:5]) + (f" and {len(ids) - 5} more" if len(ids) > 5 else "")
+            found.append(_finding("tasks", p, None, f"{msg}, on {len(ids)} task(s): {shown}", root))
         if unclosed:
             shown = ", ".join(str(i) for i in unclosed[:5]) + (f" and {len(unclosed) - 5} more" if len(unclosed) > 5 else "")
             found.append(_finding("tasks", p, None,
                                   f"{len(unclosed)} finished task(s) with no closing day (`closed:`): {shown}", root))
+    # A row is "unused" only over the whole vault; a sub-folder run sees a slice of the ledger.
+    whole = attrs["root"] is not None and Path(attrs["root"]).resolve() == Path(root).resolve()
+    for name in (task_attributes.unused_projects(attrs, used_projects) if whole else ()):
+        found.append(_finding("tasks", (attrs["root"] or root) / task_attributes.PORTFOLIO_FILE, None,
+                              f"portfolio row '{name}' has no ledger entries (`projekt:`)", root))
     return found
 
 

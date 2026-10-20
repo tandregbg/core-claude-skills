@@ -9,6 +9,18 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Added
+
+- **CR-135 -- the ledger uses the object model (contract 46, additive).** Three optional task fields replace
+  the overloaded `context:` slot: `verksamhet:` (a venture the vault declares, or absent, which is valid),
+  `projekt:` (a portfolio row, prefix match) and `objekttyp:` (only when the entry is not an Uppgift).
+  New `skills/tasks/task_attributes.py` validates at staging (`--validate`) and from the command line;
+  `/ops check` (`hygiene_check.py`, `tasks`) reports an undeclared venture, a project with no portfolio row,
+  a portfolio row no entry names and a non-Uppgift filed as a task. Vocabulary is the vault's
+  (`_config/task-attributes.yaml` plus the portfolio table); the seven object types are declared in
+  `ecosystem.yaml` (`task_attributes`). Report only, nothing is rewritten. The `survey.py --migration`
+  worksheet from the earlier CR-135 commit is unchanged apart from a comment that now names a role.
+
 ### Changed
 
 - **CR-128 review fixes.** `raw_archive.py`: merged bodies are compared per slot byte for byte; a merged file

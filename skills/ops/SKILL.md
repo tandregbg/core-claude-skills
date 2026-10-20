@@ -1101,7 +1101,10 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    profile name) and `themes` (the registry checks, when themes are enabled: registry, summary line and
    insights disagreeing in any direction, unknown or merged ids, too many primary themes, a missing
    synthesis page). Under `tasks` it also reports a finished task with neither `closed:` nor the
-   legacy `completed:` (CR-127: count and ids; the day is never guessed). **Report only**: the fix is a
+   legacy `completed:` (CR-127: count and ids; the day is never guessed), and, when the vault declares a
+   vocabulary (CR-135), a `verksamhet:` outside it, a `projekt:` with no portfolio row, a portfolio
+   row no entry names (whole-vault runs only) and an `objekttyp:` other than Uppgift filed as a task;
+   an absent field is never a finding. **Report only**: the fix is a
    judgement each time.
 2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
    `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:

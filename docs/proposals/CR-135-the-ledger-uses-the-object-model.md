@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-20) |
+| **Status** | **Implemented** (2026-10-20) |
 | **Contract** | additive — two declared fields on the task schema, one existing field narrowed to free text; no migration required to read |
 | **Date** | 2026-10-20 |
 | **Area** | `tasks` (v2 schema + writers), `ops` (`check`), `inbox` (`survey.py`), the vault's own `_INDEX-objektmodell.md` as the norm source |
@@ -136,3 +136,20 @@ registers had drifted apart.
 
 The KPI layer. `_INDEX-objektmodell.md` already notes that the register holds zero KPIs while
 Dashbox visualises them, and proposes its own `_INDEX-kpi.md`. That gap is real but separate.
+
+## As built
+
+Contract 46, additive; `core_skills_version` unchanged.
+
+- `skills/tasks/task_attributes.py`: validates `verksamhet:`, `projekt:` and `objekttyp:` against the
+  vault's vocabulary (`_config/task-attributes.yaml` for the ventures, the portfolio table for projects;
+  prefix matching shared with `survey.py`). `--validate '<json>'` is the staging check for writers.
+  A part the vault does not declare is not checked, and an absent field is never a finding.
+- `hygiene_check.py` (`/ops check`, kind `tasks`): an undeclared venture, a `projekt:` with no portfolio
+  row, a portfolio row no entry names (whole-vault run only, and only once some entry names a project)
+  and an `objekttyp:` other than Uppgift filed as a task. Report only.
+- `ecosystem.yaml`: `task_attributes.objekttyp` (the seven types), contract comment block, `schemas.tasks`
+  note. `skills/tasks/SKILL.md`: fields, schema and the `add` flow; `skills/ops/SKILL.md`: the check.
+- `survey.py --migration` (worksheet, venture first) was built in the earlier commit of this CR.
+- Not built here: the vault's actual venture list and the migration batch itself, which are the
+  operator's decisions and live in the vault.
