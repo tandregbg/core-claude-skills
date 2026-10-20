@@ -50,6 +50,9 @@ FIELD_LABELS = {
     "contact": ["Kontakt", "Contact"],
     "project": ["Projekt", "Project"],
     "subject": ["Ämne", "Subject"],
+    # CR-032's field. Read here so the survey can report what the field checks
+    # could only report one folder at a time.
+    "canonical_source": ["Kanonisk källa", "Kanonisk kalla", "Canonical source"],
 }
 
 # Declared status forms (the /outbox schema). Logical name -> accepted leading words.
@@ -118,6 +121,143 @@ def section(text: str, heading: str) -> str:
     if re.fullmatch(r"\*?\(?[^)]*(filled in|fylls i)[^)]*\)?\*?", body, re.IGNORECASE):
         return ""
     return body
+
+
+# --- The measures ----------------------------------------------------------
+# One definition each, read by this tool and by anything that reports on the
+# outbox. They lived in prose until 2026-10-20, and every pass that needed them
+# wrote its own probe: the same question -- "how many withdrawn items have no
+# outcome?" -- was answered 17, 16 and 20 on one day, because two of the three
+# counted an empty `## Utfall` heading as an outcome. A measure that is not code
+# is re-invented per reader.
+
+ITEM_DATE = re.compile(r"^(\d{2})(\d{2})(\d{2})[a-z]?-")
+
+
+def item_date(name: str) -> datetime.date | None:
+    """The date in the folder name, or None when the name does not carry one."""
+    m = ITEM_DATE.match(name)
+    if not m:
+        return None
+    try:
+        return datetime.date(2000 + int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return None
+
+
+def age_days(name: str, today: datetime.date) -> int | None:
+    d = item_date(name)
+    return None if d is None else (today - d).days
+
+
+def has_outcome(text: str) -> bool:
+    """True when `## Utfall` carries something. An empty heading is not an outcome.
+
+    A body that is only a horizontal rule is empty too. `section()` returns the
+    text between headings, so a manifest whose outcome section holds just `---`
+    came back truthy -- and two probes over the same vault on 2026-10-20
+    disagreed about `260830-erik-lindgren_bravo` for
+    exactly that reason, one counting it as resolved and one as waiting.
+    """
+    body = section(text, "Utfall")
+    return bool(re.sub(r"^\s*-{3,}\s*$", "", body, flags=re.M).strip())
+
+
+def open_replies(text: str) -> int | None:
+    """Unticked boxes under `Svar förväntas på`; None when the section is absent.
+
+    None and 0 are different answers and must stay so: None means no reply was
+    ever expected (the item is finished when it goes out), 0 means every
+    expectation was met.
+    """
+    body = section(text, "Svar förväntas på")
+    if not body:
+        return None
+    return len(re.findall(r"^\s*-\s*\[ \]", body, re.M))
+
+
+def is_closable(text: str) -> bool:
+    """True when `close` can file the item without asking anything.
+
+    Deliberately permissive about the checkboxes when an outcome exists: the
+    outcome is the record, the boxes are its checklist, and on one vault nine
+    items had the outcome written and the boxes untouched against four the other
+    way round. Requiring both held back the items whose resolution *was*
+    recorded.
+    """
+    kind = status_kind(read_fields(text).get("status", ""))
+    if kind not in {"sent", "withdrawn", "handled", "archived"}:
+        return False
+    if kind == "handled":
+        return True                      # CR-120: no outcome required
+    if has_outcome(text):
+        return True
+    return open_replies(text) is None    # nothing was ever expected back
+
+
+def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30) -> dict:
+    """Every item in the outbox AND in its `.archive/`, with age and state.
+
+    `plan()` answers "what can I act on"; this answers "what is there". The
+    difference is the gap this function exists to close: `/outbox list` is
+    specified to walk `_outbox/*` excluding `.archive/`, and `close --all-sent`
+    reports what it skipped rather than what is stuck. On one vault that left 44
+    folders invisible by specification -- 22 of them finished work filed in the
+    wrong place since April -- and 47 sent items that had never appeared in any
+    listing by name, the oldest sent 52 days earlier.
+
+    `stale` is the flow measure none of the field checks could express: an item
+    can be perfectly well formed and completely motionless.
+    """
+    items = []
+    for place, root in (("queue", outbox), ("archive", outbox / ".archive")):
+        if not root.is_dir():
+            continue
+        for d in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")):
+            manifest = d / "_manifest.md"
+            text = _read(manifest) if manifest.exists() else ""
+            fields = read_fields(text)
+            status = clean(fields.get("status", ""))
+            kind = status_kind(status)
+            age = age_days(d.name, today)
+            items.append({
+                "name": d.name,
+                "place": place,
+                "status": status or None,
+                "kind": kind,
+                "declared": kind is not None,
+                "manifest": manifest.exists(),
+                "outcome": has_outcome(text) if text else False,
+                "open_replies": open_replies(text) if text else None,
+                "closable": is_closable(text) if text else False,
+                "source": fields.get("canonical_source") or None,
+                "age_days": age,
+                "stale": bool(age is not None and age >= stale_days
+                              and kind in {"sent", "draft", "ready"}),
+            })
+    # A folder's own documentation is not a stray item.
+    KEEP = {"README.md", "CLAUDE.md"}
+    loose = sorted(p.name for p in outbox.iterdir()
+                   if p.is_file() and not p.name.startswith(".")
+                   and p.name not in KEEP) if outbox.is_dir() else []
+    return {
+        "outbox": str(outbox),
+        "today": today.isoformat(),
+        "stale_days": stale_days,
+        "counts": {
+            "items": len(items),
+            "queue": sum(1 for i in items if i["place"] == "queue"),
+            "archive": sum(1 for i in items if i["place"] == "archive"),
+            "no_manifest": sum(1 for i in items if not i["manifest"]),
+            "undeclared": sum(1 for i in items if not i["declared"]),
+            "closable": sum(1 for i in items if i["closable"]),
+            "stale": sum(1 for i in items if i["stale"]),
+            "no_source": sum(1 for i in items if not i["source"]),
+            "loose_files": len(loose),
+        },
+        "loose_files": loose,
+        "items": items,
+    }
 
 
 def clean(status: str) -> str:
@@ -317,6 +457,91 @@ def plan(vault: Path, outbox: Path, today: datetime.date) -> dict:
 
 # --- entry point --------------------------------------------------------------------------------
 
+def render_survey_markdown(sv: dict) -> str:
+    """The situation half of an outbox audit, generated.
+
+    Written because four audit files were produced by hand in one day, each one
+    stale within hours, and the only thing that made any of them usable was
+    measuring again. The vault already has the pattern elsewhere: the ledger is
+    the truth and the daily view is rendered from it. This is the outbox's view.
+    The decisions stay hand-written; nothing here is a decision.
+    """
+    c = sv["counts"]
+    out: list[str] = []
+    head = f"**{c['queue']} mappar i kön**, {c['archive']} i `_outbox/.archive/`"
+    if c["loose_files"]:
+        n = c["loose_files"]
+        head += f", {n} lös fil i roten" if n == 1 else f", {n} lösa filer i roten"
+    out += [
+        f"# Outbox — läget {sv['today']}", "",
+        "> **Genererad** ur `_outbox/` av `resolved.py --survey --markdown`. Redigera inte här:",
+        "> lägesdelen skrivs över vid nästa körning. Besluten hör i auditens `→`-rader.", "",
+        head + ".", "",
+        "| Mått | Antal |", "|---|---|",
+        f"| stängningsbara nu | **{c['closable']}** |",
+        f"| orörliga ≥ {sv['stale_days']} dgr | **{c['stale']}** |",
+        f"| utan `Kanonisk källa` | {c['no_source']} |",
+        f"| odeklarerat statusord | {c['undeclared']} |",
+        f"| utan manifest | {c['no_manifest']} |", "",
+    ]
+    kinds: dict[str, int] = {}
+    for i in sv["items"]:
+        if i["place"] == "queue":
+            key = i["kind"] or "odeklarerat"
+            kinds[key] = kinds.get(key, 0) + 1
+    if kinds:
+        out += ["| Status i kön | Antal |", "|---|---|"]
+        out += [f"| {k} | {v} |" for k, v in sorted(kinds.items(), key=lambda kv: -kv[1])]
+        out += [""]
+
+    def state_of(i: dict) -> str:
+        bits = [i["status"] or "ingen status"]
+        if i["open_replies"]:
+            bits.append(f"{i['open_replies']} obockade")
+        elif i["open_replies"] == 0:
+            bits.append("alla bockade")
+        else:
+            bits.append("ingen svarsförväntan")
+        if i["outcome"]:
+            bits.append("utfall skrivet")
+        return " · ".join(bits)
+
+    def table(rows: list[dict], title: str, note: str = "") -> None:
+        if not rows:
+            return
+        out.append(f"## {title}")
+        out.append("")
+        if note:
+            out.append(note)
+            out.append("")
+        out.append("| Ålder | Post | Läge |")
+        out.append("|---|---|---|")
+        for i in rows:
+            age = f"{i['age_days']} dgr" if i["age_days"] is not None else "—"
+            out.append(f"| {age} | `{i['name']}` | {state_of(i)} |")
+        out.append("")
+
+    by_age = sorted(sv["items"], key=lambda i: -(i["age_days"] or 0))
+    q = [i for i in by_age if i["place"] == "queue"]
+    table([i for i in q if i["closable"]], "Stängningsbara nu",
+          "*Inget beslut behövs — `close` kan fila dem.*")
+    table([i for i in q if i["stale"] and not i["closable"]],
+          f"Orörliga ≥ {sv['stale_days']} dagar",
+          "*Välformade och stillastående. Det är den enda frågan fältkontrollerna inte kan ställa.*")
+    table([i for i in q if not i["closable"] and not i["stale"]], "Övriga i kön",
+          "*Väntar på svar, eller är utkast. Listade för att en siffra inte är en rapport: som"
+          " enbart ett antal syntes de aldrig.*")
+    table([i for i in by_age if i["place"] == "archive"], "I `_outbox/.archive/`",
+          "*`/outbox list` utesluter den här mappen per specifikation. Avslutade ärenden hör hos"
+          " mottagaren, inte i ett delat arkiv under utkorgen.*")
+    if sv["loose_files"]:
+        out += ["## Lösa filer i utkorgens rot", "",
+                "*En post är en mapp: en lös fil kan inte bära ett manifest och kan aldrig stängas.*",
+                ""]
+        out += [f"- `{f}`" for f in sv["loose_files"]] + [""]
+    return "\n".join(out)
+
+
 def find_vault(start: Path) -> Path | None:
     for candidate in [start, *start.parents]:
         if (candidate / "_outbox").is_dir():
@@ -357,6 +582,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--outbox", help="the _outbox folder, if not <vault>/_outbox")
     ap.add_argument("--today", help="YYYY-MM-DD for the timeline line (default: today)")
     ap.add_argument("--text", action="store_true", help="readable listing instead of JSON")
+    ap.add_argument("--survey", action="store_true",
+                    help="every item incl. .archive/, with age and state (what is there, "
+                         "not what can be acted on)")
+    ap.add_argument("--markdown", action="store_true",
+                    help="with --survey: the situation half of an audit, as markdown")
+    ap.add_argument("--stale-days", type=int, default=30,
+                    help="an item motionless this long is reported (default 30, CR-120)")
     args = ap.parse_args(argv)
 
     if args.outbox:
@@ -375,6 +607,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     today = (datetime.date.fromisoformat(args.today) if args.today else datetime.date.today())
+    if args.survey:
+        sv = survey(vault, outbox, today, args.stale_days)
+        if args.markdown:
+            print(render_survey_markdown(sv))
+        else:
+            print(json.dumps(sv, ensure_ascii=False, indent=2))
+        return 0
+
     result = plan(vault, outbox, today)
     print(render_text(result) if args.text else json.dumps(result, ensure_ascii=False, indent=2))
     return 0
