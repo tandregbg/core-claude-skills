@@ -312,6 +312,26 @@ said. With it, the raw file points back at the recording it came from.
 Several recordings merged into one summary go in **one** file with clear separators, each keeping
 its own metadata line.
 
+### Adopt before you write (CR-128)
+
+A client (a recorder app) may already have archived the input at delivery: `.transcripts/<capture id>-raw.md`
+with `written_by:`, an `inbox:` pointer and an **empty `summary`**. Before writing a raw file, look for one:
+the inbox item's `raw_transcript:`, else a file in `.transcripts/` with the same `source_id`
+(`python3 ~/.claude/skills/ops-base/raw_archive.py find <vault> --inbox <item>`). Found with an empty `summary`:
+
+- **One recording, one summary:** rename it to `<summary stem>-raw.md` and fill `summary`, `summaries`,
+  `disposition` and `created_files`. Keep `written_by` and `source_id`. **The body is never edited**; the
+  verbatim rule binds adopted text exactly as written text.
+- **Several recordings, one summary:** write the one merged file (above) with each adopted body unchanged under
+  its own separator and metadata line; remove each adopted file only after the merged file is written and the
+  bodies compare byte for byte.
+- **A filled `summary` (already adopted):** a second summary from the same recording appends to `summaries` and
+  `created_files`; nothing is renamed.
+- **Nothing pending (a pasted transcript):** write as above, unchanged.
+
+`raw_archive.py adopt` does all three mechanically (frontmatter edited line by line, never re-dumped).
+`/ops check` reports a pending file older than 14 days (hygiene check `raw`); report only.
+
 ### One input, several destinations
 
 One session can cover separable subjects belonging in different folders.

@@ -1225,7 +1225,9 @@ declared form** (report the item, the word, and the closest declared form from
 9. **Structure conformance (CR-025)** -- enforce the CR-010 single-inbox/outbox rule with a **fuzzy matcher**, because reality drifts through variants that exact-name checks miss: scan for directories matching `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*`, and localized forms (`inkorg*`/`utkorg*`), case-insensitive. Everything except the vault-root `_inbox/` + `_outbox/` pair is a finding -- **including empty scaffolds** (they re-seed the habit). Paths in `workflows.sweep.structure_exemptions` are skipped with a one-line `(exempt: <path> -- <reason>)` note: deliberate exceptions are recorded once and respected. Offered fixes (never auto-applied): merge pending items into the central folder *via the normal `/inbox`/`/outbox` flows* so manifests and indexes stay true; archive already-resolved material to its destination folder; delete empty scaffolds; or add a `structure_exemptions` entry if the exception is deliberate. Rationale worth repeating in the report: a second outbox means the central pending list lies.
 
 11. **Hygiene (CR-122)** -- the folder check's `hygiene_check.py` run over the whole scope: link targets,
-re-dumped YAML, task ledgers outside their enums, unknown profiles, theme consistency. Report only.
+re-dumped YAML, task ledgers outside their enums, unknown profiles, theme consistency, and (CR-128) raw
+files in `.transcripts/` archived by a client (`written_by:`) with an empty `summary` for more than 14 days
+("archived, never filed", with the inbox item each points to). Report only.
 
 12. **Company profiles (CR-125)** -- `company_tool.py check <vault> --copies` over the whole vault: stale
 facets, schema errors in `sources.yaml` and `brands.yaml`, locked facets without sources, credential-looking

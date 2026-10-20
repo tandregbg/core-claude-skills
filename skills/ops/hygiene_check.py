@@ -22,10 +22,13 @@ or rename the file, map a status or cancel the task), so it stays with a person.
            with the task ids, so a ledger with one habit gives one line, not eighty.
   profile  an unknown `profile:` name (CR-123).
   themes   the CR-124 registry checks, when the project enables themes.
+  raw      a raw file in `<root>/.transcripts/` with `written_by:` and an empty `summary`,
+           older than 14 days: archived by a client, never filed (CR-128). Names the inbox item
+           it points to. The one check that reads `.transcripts/`, by name, frontmatter only.
 
 Dot-folders (.archive/, .transcripts/, .knowledge/ ...) are never walked.
 """
-import argparse, json, os, re, sys
+import argparse, datetime, json, os, re, sys
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -48,7 +51,8 @@ ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
 SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence")
 SCOPES = ("root", "org", "project", "personal")
 PRIORITIES = ("P0", "P1", "P2", "P3")
-CHECKS = ("links", "yaml", "tasks", "profile", "themes")
+CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw")
+RAW_PENDING_DAYS = 14
 
 
 def walk(root: Path):
@@ -248,12 +252,37 @@ def check_themes(root: Path) -> list:
     return found
 
 
+def check_raw(root: Path, today=None) -> list:
+    tdir = root / ".transcripts"
+    if not tdir.is_dir():
+        return []
+    today = today or datetime.date.today()
+    found = []
+    for p in sorted(tdir.glob("*-raw.md")):
+        try:
+            head = p.read_text(encoding="utf-8").split("\n---\n", 1)[0]
+        except (OSError, UnicodeDecodeError):
+            continue
+        fm = {m.group(1): m.group(2).strip() for m in re.finditer(r"^(\w+):[ \t]*(.*)$", head, re.M)}
+        if not fm.get("written_by") or fm.get("summary"):
+            continue
+        try:
+            d = fm.get("date", "")
+            age = (today - datetime.date(2000 + int(d[:2]), int(d[2:4]), int(d[4:6]))).days
+        except (ValueError, IndexError):
+            continue
+        if age > RAW_PENDING_DAYS:
+            found.append(_finding("raw", p, None, f"archived by {fm['written_by']} {age} days ago, never filed"
+                                  f" (inbox item: {fm.get('inbox') or 'unknown'})", root))
+    return found
+
+
 def run(root, only=CHECKS) -> list:
     root = Path(root).expanduser()
     out = []
     for name in only:
         out += {"links": check_links, "yaml": check_yaml, "tasks": check_tasks,
-                "profile": check_profile, "themes": check_themes}[name](root)
+                "profile": check_profile, "themes": check_themes, "raw": check_raw}[name](root)
     return out
 
 

@@ -97,6 +97,15 @@ source:
   ingestion_tool: trillian            # str: trillian|deep-thought|user|web_ui|...
   external_id: dt_abc123              # str: identifier in upstream system
 
+# Optional -- raw transcript archived by a client at delivery (CR-128)
+raw_transcript: .transcripts/250423-142214-meeting-notes-raw.md  # str: vault-relative; adopted by /transcript, not rewritten
+dt_filename: 250423-meeting-notes.md  # str: the store's suggested name; /transcript maps it to YYMMDD-summary-<description>.md
+recorded_at: 2025-04-23T14:22:14+02:00  # str: ISO 8601
+duration_sec: 142                     # int
+language: sv                          # str
+speakers: [Anna, Bo]                  # list of str
+dt_tags: [board-prep]                 # list of str
+
 # Optional -- routing intent (suggested by /inbox classifier; may be overridden)
 target_skill: /transcript             # str: /transcript|/ops|/tasks|null
 target_folder: _contacts/david-ekberg # str: vault-relative folder hint

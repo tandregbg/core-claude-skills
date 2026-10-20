@@ -11,6 +11,15 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-128 -- A raw transcript archived at delivery is adopted, not written again.** A client may write
+  `.transcripts/<capture id>-raw.md` at delivery (`written_by:`, `inbox:`, empty `summary`). The RAW SOURCE
+  ARCHIVE step now adopts it: renamed to the summary stem and filled with the body untouched (several
+  recordings, one summary: one merged file, originals removed after a byte-for-byte comparison; an already
+  adopted file appends to `summaries`). New `ops-base/raw_archive.py` (`find`, `adopt`). The inbox schema gains
+  `raw_transcript`, `dt_filename`, `recorded_at`, `duration_sec`, `language`, `speakers`, `dt_tags`;
+  `/transcript` names the summary from `dt_filename`. New report-only hygiene check `raw` in `/ops check`:
+  a pending raw file older than 14 days. Contract 44 to 45.
+
 - **CR-127 -- The ledger and the milestone record *when*.** Tasks v2 gains an optional `closed:` (the day a
   task became completed or cancelled, written in the same edit as the status; `completed:` is read as a legacy
   alias and never written; no migration). `milestone:` gains `set_on:` and an append-only `history:`

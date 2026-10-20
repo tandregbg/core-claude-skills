@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 45 (CR-128, 2026-10-20): a raw transcript archived at delivery is adopted. Additive:
+#   - a raw file may carry `inbox:` and `written_by:` (a client wrote it at delivery, `summary` empty);
+#     an inbox item may carry `raw_transcript`, `dt_filename`, `recorded_at`, `duration_sec`, `language`,
+#     `speakers`, `dt_tags`. A vault without them behaves as before.
+#   - RAW SOURCE ARCHIVE adopts a pending raw file (rename to the summary stem, fill the fields, body
+#     untouched) instead of writing a second one; `/ops check` reports one pending for over 14 days.
+#
 # contract_version 44 (CR-127, 2026-10-20): the ledger and the milestone record when. Additive:
 #   - tasks v2 (still schema 2): optional `closed:` (YYMMDD), the day status became completed or
 #     cancelled, set in the same edit as the status. `completed:` is a legacy alias, read and never
@@ -325,7 +332,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 44
+contract_version: 45
 core_skills_version: "1.91.0"
 
 # --- Schema versions ---

@@ -335,6 +335,12 @@ If NO `CHANGELOG.md` exists in the target location, create one automatically. Th
 location, filename, frontmatter, back-link, the one confirmation line, the read-back lock, the skip
 conditions, and the shape for one input feeding several summaries.
 
+If a client already archived the recording (the inbox item's `raw_transcript:`), that step adopts the file
+instead of writing a second one (CR-128). When the user has not named the summary, name it from the inbox item's
+`dt_filename` mapped to `YYMMDD-summary-<description>.md` (its date prefix replaced by the recording's `YYMMDD`);
+`recorded_at`, `duration_sec`, `language` and `speakers` fill the summary header instead of being re-derived.
+Missing keys: as before.
+
 **Do not restate it here.** This step used to hold the contract itself, and `/ops` — documented as a
 superset of this skill — was built without ever inheriting it, because there was no single definition
 to inherit. One definition, two callers.
