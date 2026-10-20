@@ -459,7 +459,7 @@ skills:
     - name: tasks
       description: "Personal task tracker with cross-project correlation."
       badge: Tracking
-      subcommands: [list, add, done, import, weekly, archive, help]
+      subcommands: [list, add, done, cancel, import, weekly, archive, help]
     - name: handoff
       description: "Frozen, self-contained context documents in `.handoff/` — bounded subjects a different work session can pick up cold. Human-actioned only; no skill reads them."
       badge: Utility
