@@ -352,7 +352,7 @@ Alias for `list`.
    - `Status:` is `skickad ...`, `avskriven ...` or `hanterad ...` (warn if `draft`, abort if
      missing). An `avskriven` item needs an `Utfall` (CR-047), but no reason (CR-131). When it is
      empty, write it from the status note and show it before moving: `Skickades inte: <note>`,
-     `Skickades inte.` when the note is empty, or `Ersatt av <item> (<its status>)` for a
+     `Skickades inte.` when the status line carries no text, or `Ersatt av <item> (<its status>)` for a
      superseded draft. A `hanterad` item needs **no** `Utfall` (CR-120)
      -- there was no decision to record
    - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm) --
