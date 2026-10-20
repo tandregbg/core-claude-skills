@@ -11,6 +11,14 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-133 -- A sent item ages out.** `close` no longer needs a field nobody fills: a sent item with no
+  `Svar förväntas på` section is closable with the offered outcome `Skickat <date>. Inget svar förväntades.`,
+  and a populated `Utfall` outranks unticked boxes (reported, not a blocker; `is_closable()` already
+  encoded this). New `offered_outcome()` in `resolved.py`, exposed per item in `--survey`, offers
+  `Skickat <date>. Inget svar inkom inom <n> dagar.` for a sent item with an unanswered expectation older than
+  `--stale-days` (30). `--survey` counts these as `ages_out`. `outbox` and `ops` SKILL.md say `/ops check`
+  reports and offers, never closes. No contract change.
+
 - **CR-132 -- `Kanonisk källa` and a declared status are required when a manifest is staged.** The two
   existing requirements (CR-032, CR-103) move from report-time to write-time. New `resolved.py --validate
   <manifest|->` (and `staging_problems()`) refuses a manifest with no `Kanonisk källa` (a path or

@@ -354,8 +354,15 @@ Alias for `list`.
      from the status note (`Skickades inte: <note>`, `Skickades inte.` when the status note is empty, or `Ersatt av <item> (<its status>)` for a
      superseded draft) and show it before moving. A `hanterad` item needs **no** `Utfall` (CR-120)
      -- there was no decision to record
-   - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm)
-   - `Utfall` section populated (warn if empty)
+   - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm) --
+     **unless `Utfall` is populated (CR-133):** the outcome is the record and the boxes are its
+     checklist, so unticked boxes are then reported, not a blocker
+   - `Utfall` section populated (warn if empty). **A sent item with none gets an offered outcome
+     (CR-133)**, a fact and no invented reason: `Skickat <date>. Inget svar förväntades.` when the
+     manifest has no `Svar förväntas på` section (nothing was expected, so it is finished when it
+     goes out), or `Skickat <date>. Inget svar inkom inom <n> dagar.` when an expectation is still
+     unticked after 30 days. Show it before moving; deciding a thread is over stays the operator's
+     call. `resolved.py --survey` reports it per item as `offered_outcome`
 
 2. **Determine destination:**
    - **`Destination:` in the manifest wins when present (CR-120)** -- it was written by whoever staged
@@ -413,7 +420,7 @@ Batch mode over the single-folder `close` flow, so a backlog of sent items can b
 1. Run the `list` logic and collect every folder whose manifest `Status:` is `skickad ...`.
 2. Present the candidate list up front (folder, destination guess, proposed new name) and let the user confirm all / select / abort.
 3. For each confirmed folder, run the standard `close <folder-name>` steps 1-9. Per-folder judgement calls (destination for multi-contact items, folder rename) are still asked individually -- batch mode batches the *selection*, not the decisions.
-4. Final report: one summary table (archived → destination), plus the items skipped and why (unchecked "Svar förväntas på", empty Utfall, missing manifest).
+4. Final report: one summary table (archived → destination), plus the items skipped and why (unchecked "Svar förväntas på" with no Utfall, empty Utfall, missing manifest). Items with a populated Utfall are not skipped for unticked boxes, and the offered outcomes above count as populated once the operator accepts them (CR-133).
 
 ### `close --all-resolved` (CR-103; proposed in CR-047)
 

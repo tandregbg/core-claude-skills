@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-20) |
+| **Status** | **Implemented** (2026-10-20) |
 | **Contract** | additive — one new aging finding, one new offered outcome text; no new fields, no new status forms |
 | **Date** | 2026-10-20 |
 | **Area** | `outbox` (SKILL.md `close`, `close --all-sent`, `resolved.py`), `ops` (`check` outbox aging), `ecosystem.yaml` (threshold) |
@@ -68,3 +68,13 @@ the date is already in the manifest, and the threshold reads it.
 
 Watching for replies. That is a mail-integration question and belongs to a dispatching surface, not to this
 repository. This CR makes the queue drain without it.
+
+## As built
+
+- `resolved.py`: `offered_outcome()` (+ `sent_date()`) returns the two outcome texts; `--survey` carries it as
+  `offered_outcome` per item and `ages_out` in the counts and the generated markdown. Points 1 and 2 were
+  already in `is_closable()` (no reply section, or a written outcome that does not defer) and are unchanged.
+- `outbox` SKILL.md (`close`, `close --all-sent`) and `ops` SKILL.md (`check` outbox finding) describe the
+  offer. Never applied automatically.
+- Threshold: the existing `--stale-days` default of 30; no new `ecosystem.yaml` key.
+- Tests: `tests/test_cr133_ages_out.py`.

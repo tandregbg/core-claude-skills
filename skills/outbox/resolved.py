@@ -17,6 +17,10 @@ What it reports:
   `Skickades inte.` when it does not -- the reason is never required (CR-131).
   A superseded draft whose replacing item cannot be found is planned as `withdrawn` and the
   missing reference is reported -- never guessed.
+- **--survey** items carry `offered_outcome` (CR-133): for a sent item with no `## Utfall`,
+  `Skickat <date>. Inget svar förväntades.` when it has no `Svar förväntas på` section, and
+  `Skickat <date>. Inget svar inkom inom <n> dagar.` once an unanswered expectation is older than
+  `--stale-days`. An offer for `close`, never applied.
 - **undeclared_status** -- every manifest whose status is not one of the declared forms, with the
   closest declared one (`redo att skicka` -> `klar-att-skicka`). A report, never a rewrite.
 
@@ -216,6 +220,42 @@ def is_closable(text: str) -> bool:
     return open_replies(text) is None    # nothing was ever expected back
 
 
+SENT_DATE = re.compile(r"^skickad\s+(\d{4})-(\d{2})-(\d{2})", re.IGNORECASE)
+
+
+def sent_date(text: str, name: str) -> datetime.date | None:
+    """The date the item went out: `skickad <date>` in the status, else the folder's own date."""
+    m = SENT_DATE.match(clean(read_fields(text).get("status", "")))
+    if m:
+        try:
+            return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            pass
+    return item_date(name)
+
+
+def offered_outcome(text: str, name: str, today: datetime.date,
+                    stale_days: int = 30) -> str | None:
+    """The outcome `close` offers for a sent item that has none (CR-133), else None.
+
+    Both texts state a fact and invent no reason (the shape CR-131 settled):
+    no reply section means nothing was expected, so the item is finished when it
+    goes out; an expectation still unticked past the threshold has aged out. The
+    second is an offer only -- deciding a thread is over is the operator's call.
+    """
+    if status_kind(read_fields(text).get("status", "")) != "sent" or has_outcome(text):
+        return None
+    sent = sent_date(text, name)
+    if sent is None:
+        return None
+    if open_replies(text) is None:
+        return f"Skickat {sent.isoformat()}. Inget svar förväntades."
+    days = (today - sent).days
+    if days >= stale_days:
+        return f"Skickat {sent.isoformat()}. Inget svar inkom inom {days} dagar."
+    return None
+
+
 def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30) -> dict:
     """Every item in the outbox AND in its `.archive/`, with age and state.
 
@@ -251,6 +291,7 @@ def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30
                 "outcome": has_outcome(text) if text else False,
                 "open_replies": open_replies(text) if text else None,
                 "closable": is_closable(text) if text else False,
+                "offered_outcome": offered_outcome(text, d.name, today, stale_days) if text else None,
                 "outcome_defers": outcome_defers(text) if text else False,
                 "source": fields.get("canonical_source") or None,
                 "age_days": age,
@@ -273,6 +314,8 @@ def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30
             "no_manifest": sum(1 for i in items if not i["manifest"]),
             "undeclared": sum(1 for i in items if not i["declared"]),
             "closable": sum(1 for i in items if i["closable"]),
+            "ages_out": sum(1 for i in items if i["place"] == "queue" and i["offered_outcome"]
+                            and i["open_replies"] is not None),
             "stale": sum(1 for i in items if i["stale"]),
             "no_source": sum(1 for i in items if not i["source"]),
             "loose_files": len(loose),
@@ -539,6 +582,7 @@ def render_survey_markdown(sv: dict) -> str:
         "| Mått | Antal |", "|---|---|",
         f"| stängningsbara nu | **{c['closable']}** |",
         f"| orörliga ≥ {sv['stale_days']} dgr | **{c['stale']}** |",
+        f"| skickade som åldrats ut (erbjud `close`) | **{c['ages_out']}** |",
         f"| utan `Kanonisk källa` | {c['no_source']} |",
         f"| odeklarerat statusord | {c['undeclared']} |",
         f"| utan manifest | {c['no_manifest']} |", "",
