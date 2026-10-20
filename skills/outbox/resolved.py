@@ -176,6 +176,21 @@ def open_replies(text: str) -> int | None:
     return len(re.findall(r"^\s*-\s*\[ \]", body, re.M))
 
 
+# An outcome can be written and still say the item is not finished. These are the
+# phrasings that actually occurred on one vault: "Arkiveras inte än -- de fyra
+# svarspunkterna ovan är öppna", "Väntar på svar om formuläret", "Väntar på
+# Ravis svar". A prose sniff is a backstop, not an authority -- it is here so
+# `is_closable` stops proposing three items whose own outcome says to wait, and the
+# human gate in `close` remains the decision.
+OUTCOME_HOLDS = re.compile(
+    r"arkiveras\s+inte|inte\s+än|väntar\s+på|avvaktar|not\s+yet|awaiting", re.IGNORECASE)
+
+
+def outcome_defers(text: str) -> bool:
+    """True when the written outcome itself says the item is not finished."""
+    return bool(OUTCOME_HOLDS.search(section(text, "Utfall")))
+
+
 def is_closable(text: str) -> bool:
     """True when `close` can file the item without asking anything.
 
@@ -191,7 +206,7 @@ def is_closable(text: str) -> bool:
     if kind == "handled":
         return True                      # CR-120: no outcome required
     if has_outcome(text):
-        return True
+        return not outcome_defers(text)
     return open_replies(text) is None    # nothing was ever expected back
 
 
@@ -230,6 +245,7 @@ def survey(vault: Path, outbox: Path, today: datetime.date, stale_days: int = 30
                 "outcome": has_outcome(text) if text else False,
                 "open_replies": open_replies(text) if text else None,
                 "closable": is_closable(text) if text else False,
+                "outcome_defers": outcome_defers(text) if text else False,
                 "source": fields.get("canonical_source") or None,
                 "age_days": age,
                 "stale": bool(age is not None and age >= stale_days
