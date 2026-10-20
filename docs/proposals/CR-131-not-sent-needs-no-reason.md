@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-20) |
+| **Status** | **Implemented** (2026-10-20) |
 | **Contract** | narrowing of one requirement — `avskriven` keeps requiring `## Utfall`, but the outcome `Skickades inte` is sufficient on its own |
 | **Date** | 2026-10-20 |
 | **Area** | `outbox` (SKILL.md `avskriven` section, `resolved.py` plan text), `ops` (`check` outbox findings) |
@@ -61,3 +61,12 @@ having been filed in violation of it.
 
 Whether an item *should* be withdrawn. That is the operator's call, and CR-047's warning stands: absence is
 never evidence that something was done.
+
+## As built
+
+- `skills/outbox/resolved.py`: `plan()` writes `Skickades inte.` when a withdrawn item has no outcome and no
+  status note; the "cannot say why" problem is gone. A note is still written as `Skickades inte: <note>`.
+- `skills/outbox/SKILL.md`: `avskriven` section (with the three-state table) and `close` step 1 updated.
+- Tests: `tests/test_cr131_not_sent.py`; `test_cr103_resolved.py` expectation changed accordingly.
+- `ops check`: its outbox finding text only points at `/outbox close --all-resolved` and states no reason
+  requirement, so no change was needed. No contract bump.

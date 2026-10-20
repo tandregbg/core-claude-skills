@@ -110,8 +110,22 @@ indefinitely, looking unfinished while actually being done.
 ```
 
 **Archivable on the same terms as `skickad`, with one addition: `## Utfall`
-must say why.** "Not sent, because X" is an outcome, and an item filed without
-one is indistinguishable later from an item that was abandoned.
+must be present (CR-047).** An item filed without one is indistinguishable
+later from an item that was abandoned. **A reason is not required (CR-131):**
+`Skickades inte.` is a complete outcome. "Never got sent" is the absence of a
+decision, not a decision with a motive, and demanding a reason for an absence
+invents a record (on one vault it left 16 of 37 withdrawn items unfileable).
+
+| Written | Means |
+|---|---|
+| `Skickades inte: <reason>` | declined, and the reason was known |
+| `Skickades inte.` | never sent; no decision with a motive was taken |
+| *(no `Utfall`)* | not filed -- still an open item |
+
+When the status note says why, `close` writes `Skickades inte: <note>`; a
+reason that exists is never discarded. When the status note is empty, `close` writes
+`Skickades inte.` without prompting. A superseded draft is unaffected
+(`Ersatt av <item>`).
 
 `list` shows these under **RESOLVED, NOT SENT** rather than among the pending,
 because a pending list that includes resolved items is a list nobody trusts.
@@ -320,8 +334,8 @@ Alias for `list`.
    - Folder exists in `<vault>/_outbox/<folder-name>/`
    - `_manifest.md` exists and parses
    - `Status:` is `skickad ...`, `avskriven ...` or `hanterad ...` (warn if `draft`, abort if
-     missing). An `avskriven` item needs `Utfall` to say why (CR-047); when it is empty, write it
-     from the status note (`Skickades inte: <note>`, or `Ersatt av <item> (<its status>)` for a
+     missing). An `avskriven` item needs an `Utfall` (CR-047), but no reason (CR-131); when it is empty, write it
+     from the status note (`Skickades inte: <note>`, `Skickades inte.` when the status note is empty, or `Ersatt av <item> (<its status>)` for a
      superseded draft) and show it before moving. A `hanterad` item needs **no** `Utfall` (CR-120)
      -- there was no decision to record
    - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm)

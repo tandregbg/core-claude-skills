@@ -13,6 +13,8 @@ What it reports:
     then among closed items in the vault. A superseded draft is filed to the contact or project
     folder's `.archive/<YYMMDD>-<subject>-superseded/`, not beside the correspondence.
   - `withdrawn` otherwise: closed as today, into the contact or project folder.
+  A withdrawn item with no outcome gets `Skickades inte: <note>` when the status note says why and
+  `Skickades inte.` when it does not -- the reason is never required (CR-131).
   A superseded draft whose replacing item cannot be found is planned as `withdrawn` and the
   missing reference is reported -- never guessed.
 - **undeclared_status** -- every manifest whose status is not one of the declared forms, with the
@@ -462,9 +464,9 @@ def plan(vault: Path, outbox: Path, today: datetime.date) -> dict:
                     f"ersatt av {replacing_name}: not in _outbox/ and no closed item records it; "
                     "filed as an ordinary withdrawn item")
         if entry["kind"] == "withdrawn" and not entry["outcome_present"]:
-            entry["outcome"] = f"Skickades inte: {note}" if note else None
-            if not note:
-                entry["problems"].append("no status note and no outcome: cannot say why (CR-047)")
+            # CR-131: a reason that exists is kept; none is invented and none is demanded.
+            # `Skickades inte.` is a complete outcome ("never sent" is no decision with a motive).
+            entry["outcome"] = f"Skickades inte: {note}" if note else "Skickades inte."
         resolved.append(entry)
 
     return {"outbox": str(outbox), "today": today.isoformat(), "counts": counts,

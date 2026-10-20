@@ -114,10 +114,12 @@ class Plan(unittest.TestCase):
         [u] = self.run_plan()["undeclared_status"]
         self.assertIsNone(u["closest"])
 
-    def test_no_note_and_no_outcome_is_a_problem(self):
+    def test_no_note_and_no_outcome_is_complete_without_a_reason(self):
+        """CR-131: `Skickades inte.` is a full outcome; no reason is demanded or invented."""
         self.item("260928-person-f_y", manifest("avskriven 2026-09-28"))
         [entry] = self.run_plan()["resolved"]
-        self.assertTrue(any("cannot say why" in p for p in entry["problems"]))
+        self.assertEqual(entry["outcome"], "Skickades inte.")
+        self.assertEqual(entry["problems"], [])
 
     def test_an_existing_outcome_is_not_replaced(self):
         self.item("260928-person-f_z", manifest("avskriven 2026-09-28", "no longer needed",

@@ -9,6 +9,13 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ## [Unreleased]
 
+### Changed
+
+- **CR-131 -- A *not sent* outcome needs no documented reason.** `avskriven` still requires `## Utfall`,
+  but `Skickades inte.` is now a complete outcome. `resolved.py` writes `Skickades inte: <note>` when the
+  status note says why and `Skickades inte.` when it does not, instead of flagging "cannot say why"; the
+  `outbox` SKILL.md `avskriven` and `close` sections say the same. No contract change.
+
 ## [1.91.0] - 2026-10-14
 
 The company profile. `contract_version` 42 -> 43, `ops_config` 1.5 -> 1.6. Additive: a vault that sets
