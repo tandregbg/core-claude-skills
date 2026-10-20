@@ -279,6 +279,22 @@ the author knows the answer, instead of to clean-up time, where nobody does.
 - When `/ops` (or anything else) stages new outbox material it must write the field. Leaving it
   blank is the same defect as leaving `Status:` blank.
 
+**Required at staging, not reported afterwards (CR-132).** On one vault 36 of 127 manifests still
+had no source 26 months after this section was written, and 8 carried undeclared status words; a
+report does not stop the thirty-seventh. So every surface that creates a manifest (`/ops`, `/outbox`,
+a dispatcher under CR-115) checks before writing, with `resolved.py --validate <manifest|->`:
+
+1. `Kanonisk källa` is written -- a path or `ingen (originalet bor här)`. If the author has not said,
+   **the manifest is not written and the author is asked**; the author is the one who knows. Do not
+   default it: on that vault 4 of 36 had their original elsewhere, and a defaulted
+   `ingen (originalet bor här)` on a copy tells the next clean-up to keep the copy and drop the original.
+2. `Status` is one of the declared forms above. A free phrase is refused at write time.
+3. It is written `**Status:** <value>`, colon outside the bold. `**Status: SKICKAD**` reads as
+   statusless to every tool and so falls out of every count.
+
+`/ops check` keeps reporting and never rewrites (CR-103); it is now the backstop for legacy items.
+Whether a `Kanonisk källa` path resolves is not checked (CR-120).
+
 ## SUBCOMMANDS
 
 **Renamed in v1.79.0 (CR-089); `/outbox archive` was removed in v1.81.0.** An old name is not recognised: say that it is now `/outbox close`, and do not run it.

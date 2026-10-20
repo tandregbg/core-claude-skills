@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-20) |
+| **Status** | **Implemented** (2026-10-20) |
 | **Contract** | additive enforcement — no new fields; two existing requirements move from report-time to write-time |
 | **Date** | 2026-10-20 |
 | **Area** | `ops` (staging), `outbox` (SKILL.md, `resolved.py`), `ops` (`check`), any dispatching surface that creates a manifest (CR-115) |
@@ -62,3 +62,14 @@ about the thirty-seventh.
 
 Validating that a `Kanonisk källa` path resolves. CR-120 already settled that a path into another repository
 is **unverifiable, not broken**.
+
+## As built
+
+- `skills/outbox/resolved.py`: `staging_problems(text)` and `--validate <manifest|->` (exit 1 plus JSON
+  problems; writes nothing). It refuses a missing or placeholder `Kanonisk källa`, an undeclared status
+  (naming the closest declared form), and a `Status` not written `**Status:** <value>`.
+- `skills/outbox/SKILL.md` (section on `Kanonisk källa`) and `skills/ops/SKILL.md` (Staging): surfaces
+  that create a manifest, including CR-115 dispatchers, run the check before writing and ask the author
+  rather than defaulting the source.
+- `/ops check` is unchanged: it still reports and never rewrites.
+- Tests: `tests/test_cr132_staging_gate.py`. No contract change.

@@ -1931,6 +1931,12 @@ itself: an item staged unfinished may carry `draft`, and one staged ready may ca
 -- **those two words exactly, and nothing else** (CR-103). "redo att skicka" or "ready" is an
 undeclared status that each reader interprets differently; `/ops check` reports it.
 
+**The manifest is checked before it is written (CR-132).** `Kanonisk källa` (a path, or
+`ingen (originalet bor här)`) must be filled in -- ask the author if unknown, never default it -- and
+`Status` is written `**Status:** <declared form>` with the colon outside the bold. Run
+`skills/outbox/resolved.py --validate <manifest>`; do not write while it reports problems. `/ops check`
+remains the backstop for legacy items and still never rewrites.
+
 **A new version is a new item, and the old one is retired by a person.** When a draft is rewritten
 and restaged, the earlier item stays in `_outbox/` until someone marks it `avskriven` with the status note
 `ersatt av <new-item>` (the dispatching surface offers this). Do not mark it yourself and do not

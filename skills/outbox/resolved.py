@@ -25,7 +25,11 @@ contact and project fields are passed through as hints, and `/outbox close` reso
 it always has. What is decided here is only what can be decided from the files: the kind, the
 archive sub-path, the outcome line and the timeline line for the replacing item.
 
+- **--validate MANIFEST** -- the staging gate (CR-132): `Kanonisk källa` present and a declared
+  `**Status:** <value>` with the colon outside the bold. Exit 1 with the problems; writes nothing.
+
 Usage:
+    resolved.py --validate MANIFEST|-
     resolved.py [--vault DIR | --outbox DIR] [--today YYYY-MM-DD] [--text]
 
 The vault is found from --vault, else $VAULT_ROOT, else by walking up from the working directory
@@ -318,6 +322,43 @@ def closest_declared(status: str) -> str | None:
     return None
 
 
+# --- staging gate (CR-132) ---------------------------------------------------------------
+# The two requirements CR-032 and CR-103 state were only ever reported afterwards. This is the
+# write-time check: run it on the manifest text BEFORE writing, and do not write while it returns
+# problems. At staging the author knows whether the folder is a rendering or the original; at
+# clean-up time nobody does.
+
+NO_SOURCE = "ingen (originalet bor här)"
+STATUS_LINE = re.compile(r"^\*\*Status:\*\*[ \t]+(\S.*?)\s*$", re.M)
+STATUS_MISPLACED_COLON = re.compile(r"^\*\*Status\s*:[^*\n]+\*\*", re.M | re.IGNORECASE)
+PLACEHOLDER = re.compile(r"^\[.*\]$|^(tbd|todo|\?+|-)$", re.IGNORECASE)
+
+
+def staging_problems(text: str) -> list[str]:
+    """What stops a manifest being written as staged; empty means it may be written.
+
+    Never rewrites anything (CR-103 stands): it names the problem and the author fixes it.
+    A `Kanonisk källa` path is not checked for resolving (CR-120: a path into another
+    repository is unverifiable, not broken).
+    """
+    problems = []
+    if STATUS_MISPLACED_COLON.search(text) and not STATUS_LINE.search(text):
+        problems.append("Status must be written `**Status:** <value>`, colon outside the bold; "
+                        "any other form reads as statusless")
+    else:
+        m = STATUS_LINE.search(text)
+        if not m:
+            problems.append("no `**Status:** <value>` line")
+        elif status_kind(m.group(1)) is None or m.group(1).lstrip().startswith(("*", "_", "`")):
+            hint = closest_declared(m.group(1))
+            problems.append(f"status `{m.group(1)}` is not a declared form"
+                            + (f" (closest: {hint})" if hint else ""))
+    source = read_fields(text).get("canonical_source", "").strip()
+    if not source or PLACEHOLDER.match(source):
+        problems.append(f"`Kanonisk källa` is required: a path, or `{NO_SOURCE}` -- ask the author")
+    return problems
+
+
 def _slug_of_project(text: str | None) -> str | None:
     """The folder-name part of a free-text Projekt field: `rollout-2026 (note); more` -> `rollout-2026`."""
     m = re.match(r"\s*`?([A-Za-z0-9][A-Za-z0-9._-]*)", text or "")
@@ -605,9 +646,19 @@ def main(argv: list[str] | None = None) -> int:
                          "not what can be acted on)")
     ap.add_argument("--markdown", action="store_true",
                     help="with --survey: the situation half of an audit, as markdown")
+    ap.add_argument("--validate", metavar="MANIFEST",
+                    help="staging gate (CR-132): check a manifest before it is written; "
+                         "'-' reads stdin; exit 1 and list problems if it may not be written")
     ap.add_argument("--stale-days", type=int, default=30,
                     help="an item motionless this long is reported (default 30, CR-120)")
     args = ap.parse_args(argv)
+
+    if args.validate:
+        text = (sys.stdin.read() if args.validate == "-"
+                else Path(args.validate).expanduser().read_text(encoding="utf-8"))
+        problems = staging_problems(text)
+        print(json.dumps({"ok": not problems, "problems": problems}, ensure_ascii=False, indent=2))
+        return 1 if problems else 0
 
     if args.outbox:
         outbox = Path(args.outbox).expanduser()

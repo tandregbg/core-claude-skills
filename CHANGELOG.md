@@ -11,6 +11,13 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-132 -- `Kanonisk källa` and a declared status are required when a manifest is staged.** The two
+  existing requirements (CR-032, CR-103) move from report-time to write-time. New `resolved.py --validate
+  <manifest|->` (and `staging_problems()`) refuses a manifest with no `Kanonisk källa` (a path or
+  `ingen (originalet bor här)`; the author is asked, never defaulted), an undeclared status word (with the
+  closest declared form), or `Status` not written `**Status:** <value>` with the colon outside the bold.
+  `outbox` and `ops` SKILL.md say surfaces check before writing; `/ops check` keeps reporting and never
+  rewrites. Path resolution is not checked (CR-120). No contract change.
 - **CR-131 -- A *not sent* outcome needs no documented reason.** `avskriven` still requires `## Utfall`,
   but `Skickades inte.` is now a complete outcome. `resolved.py` writes `Skickades inte: <note>` when the
   status note says why and `Skickades inte.` when it does not, instead of flagging "cannot say why"; the
