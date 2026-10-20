@@ -7,7 +7,7 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
-## [Unreleased]
+## [1.92.0] - 2026-10-20
 
 ### Added
 
