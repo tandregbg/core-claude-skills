@@ -36,3 +36,7 @@ display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Li
 # Invented contact folder and staged-item names in the CR-120 outbox examples
 # (handled status / Destination). No relation to any real person in this vault.
 (_contacts/cai-nilsson|26[0-9]{4}-alex_weekend-checklist)
+# --- invented test-fixture names (CR-128, CR-133 tests; all synthetic) ---
+26[0-9]{4}[a-z]?-(bob|örjan|åsa)_(a|b|recap|other)
+-(Anna-Bo|Åsa-Örjan|Åke)
+_contacts/åsa
