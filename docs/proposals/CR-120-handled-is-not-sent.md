@@ -22,7 +22,7 @@ meeting preparations. None of them can be closed, because `close` requires `skic
 
 - `skickad` is false. Nothing was sent.
 - `avskriven` means *resolved without being sent* and requires an outcome saying **why it was not sent**
-  (CR-047). A preparation that was read and used in the meeting was not *declined*; it was **used up**.
+  (CR-047); *superseded by CR-131: no reason is required*). A preparation that was read and used in the meeting was not *declined*; it was **used up**.
   Filing it as withdrawn records a decision that was never taken.
 
 So they sit in the queue indefinitely, looking unfinished while being done — the exact failure CR-047 was

@@ -70,3 +70,9 @@ never evidence that something was done.
 - Tests: `tests/test_cr131_not_sent.py`; `test_cr103_resolved.py` expectation changed accordingly.
 - `ops check`: its outbox finding text only points at `/outbox close --all-resolved` and states no reason
   requirement, so no change was needed. No contract bump.
+- Review fixes: the `avskriven` vs `hanterad` comparison table in `SKILL.md` no longer says the reason is required.
+  `plan()` now uses `has_outcome()` for `outcome_present`, so a `## Utfall` holding only `---` counts as empty
+  (it previously counted as present and no outcome was written). Edge-case tests added. CR-103 and CR-120 carry a
+  note that CR-131 narrows their wording.
+- `ops check` verified, not just asserted: `git grep -n -i "why it was not sent\|must say why" skills/ops` finds
+  nothing, and the check's outbox finding only offers `/outbox close --all-resolved`.

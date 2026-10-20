@@ -167,7 +167,7 @@ and both are wrong:
 | | `avskriven` (CR-047) | `hanterad` |
 |---|---|---|
 | Means | Resolved **without** being sent | Worked from; **sending was never the point** |
-| `## Utfall` | **Required** -- must say why it was not sent | Optional -- no decision was taken |
+| `## Utfall` | **Required** -- but no reason needed; `Skickades inte.` suffices (CR-131) | Optional -- no decision was taken |
 | Typical | A recap the meeting made unnecessary | A preparation, a checklist, an inventory |
 
 ```markdown
@@ -350,9 +350,10 @@ Alias for `list`.
    - Folder exists in `<vault>/_outbox/<folder-name>/`
    - `_manifest.md` exists and parses
    - `Status:` is `skickad ...`, `avskriven ...` or `hanterad ...` (warn if `draft`, abort if
-     missing). An `avskriven` item needs an `Utfall` (CR-047), but no reason (CR-131); when it is empty, write it
-     from the status note (`Skickades inte: <note>`, `Skickades inte.` when the status note is empty, or `Ersatt av <item> (<its status>)` for a
-     superseded draft) and show it before moving. A `hanterad` item needs **no** `Utfall` (CR-120)
+     missing). An `avskriven` item needs an `Utfall` (CR-047), but no reason (CR-131). When it is
+     empty, write it from the status note and show it before moving: `Skickades inte: <note>`,
+     `Skickades inte.` when the note is empty, or `Ersatt av <item> (<its status>)` for a
+     superseded draft. A `hanterad` item needs **no** `Utfall` (CR-120)
      -- there was no decision to record
    - All `Svar förväntas på` items checked (warn if any unchecked, ask user to confirm) --
      **unless `Utfall` is populated (CR-133):** the outcome is the record and the boxes are its

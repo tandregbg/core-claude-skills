@@ -44,6 +44,28 @@ class NotSentOutcome(unittest.TestCase):
         self.assertTrue(e["outcome_present"])
         self.assertNotIn("outcome", e)
 
+    def test_rule_only_outcome_counts_as_empty(self):
+        e = self.plan(manifest("avskriven 2026-10-01", None, "---"))
+        self.assertFalse(e["outcome_present"])
+        self.assertEqual(e["outcome"], "Skickades inte.")
+
+    def test_empty_heading_counts_as_empty(self):
+        e = self.plan(manifest("avskriven 2026-10-01"))
+        self.assertFalse(e["outcome_present"])
+
+    def test_whitespace_only_note_gives_bare_outcome(self):
+        e = self.plan(manifest("avskriven 2026-10-01", "   "))
+        self.assertEqual(e["outcome"], "Skickades inte.")
+
+    def test_swedish_note_round_trips(self):
+        e = self.plan(manifest("avskriven 2026-10-01", "löstes på mötet, åtgärd i närheten"))
+        self.assertEqual(e["outcome"], "Skickades inte: löstes på mötet, åtgärd i närheten")
+
+    def test_superseded_without_replacement_is_ordinary_withdrawn(self):
+        e = self.plan(manifest("avskriven 2026-10-01", "ersatt av 261002-bob_other"))
+        self.assertEqual(e["kind"], "withdrawn")
+        self.assertTrue(e["problems"])
+
 
 if __name__ == "__main__":
     unittest.main()

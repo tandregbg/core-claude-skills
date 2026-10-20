@@ -29,7 +29,7 @@ a dispatching surface — the correct status — and then there was nothing more
 ### 1. `close --all-resolved`
 
 Closes every item whose status is `avskriven …`, on the same terms as `close <item>` (CR-047: `##
-Utfall` must say why — written by the skill from the status note when it is absent). Reports each
+Utfall` must say why — written by the skill from the status note when it is absent; *narrowed by CR-131: a reason is no longer required*). Reports each
 item and where it went. `--all-sent` is unchanged; `close --all` runs both.
 
 ### 2. Superseded drafts go to the contact's `.archive/`
