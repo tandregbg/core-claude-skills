@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-131**
+Next available CR number: **CR-133**
 
 ---
 
@@ -12,6 +12,8 @@ Next available CR number: **CR-131**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-132 | `ops` (staging), `outbox` (SKILL.md, `resolved.py`), `ops` (`check`), any surface that creates a manifest (CR-115) | Medium | **Proposed** (2026-10-20). `Kanonisk källa` and a declared status word are written **at staging**, not reported afterwards. Measured 2026-10-20, 26 months after CR-032: 36 of 127 manifests had no source field and 8 carried undeclared status words, one with the colon inside the bold so no reader saw a status at all. Resolving them needed a mechanical probe because the authors' knowledge was gone — and 4 of 36 turned out to be copies whose original lives elsewhere, which a bulk default would have mislabelled. Additive enforcement |
+| CR-131 | `outbox` (SKILL.md `avskriven`, `resolved.py`), `ops` (`check`) | Medium | **Proposed** (2026-10-20). A *not sent* outcome needs no documented reason: `Skickades inte.` is a complete `Utfall`. CR-047 required a reason, which on one vault left 16 of 37 withdrawn items unfileable, the oldest from 2026-06-15 — 13 of them with no recoverable reason, because never getting sent is the absence of a decision, not one with a motive. `Utfall` stays required; what satisfies it narrows |
 | CR-130 | `skills/company` (`export`), contract section 7, `ops-config` (`company.agent_core`), `docs/schemas/` | Low | **Placeholder** (2026-10-18). `/company export agent-core`: a compressed core of a profile for an agent with a character budget, plus the whole profile as files for a knowledge library. Scope and open questions only; taken up after 2026-10-27. |
 | CR-129 | packaging and distribution; `ecosystem.yaml` (a possible `distribution:` block), `scripts/`, `docs/` | Low | **Placeholder** (2026-10-17). Distributing skills to an organisation through a plugin: Claude first, then OpenAI/ChatGPT, GitHub Copilot and a custom agent for Microsoft 365 Copilot. Scope and open questions only; taken up after 2026-10-27. |
 | CR-128 | `ops-base` (RAW SOURCE ARCHIVE), `transcript`, `inbox`, `ops` (`check`), `docs/schemas/inbox.md` | Medium | **Proposed** (2026-10-17). A raw transcript archived by a client at delivery (`written_by:`, empty `summary`) is adopted -- renamed to the summary stem and filled, body untouched -- not written again; the inbox item's new keys (`dt_filename`, `recorded_at`, ...) feed the summary. Client side: record-me-macos MAC-CR-011 part 4 |
