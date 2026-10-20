@@ -69,6 +69,7 @@ tasks:
     due: 260307
     created: 260303
     status: pending              # pending | in_progress | blocked | completed | cancelled
+    closed: null                 # optional (CR-127): the day status became completed or cancelled
     blocked_reason: null
     private: false
     notes:
@@ -207,7 +208,7 @@ Task #15 created:
 
 Mark task(s) as completed in the local `_tasks.yaml`.
 
-1. Set `status: completed` and `completed: YYMMDD`
+1. Set `status: completed` and `closed: YYMMDD` (CR-127: the same edit; a cancelled task gets `closed:` too. `completed:` is a legacy alias, accepted on read and never written; rows with an unknown closing day stay unknown, no backfill)
 2. Append entry to root `_tasks-history.md`
 3. Report remaining active task count
 
@@ -357,7 +358,8 @@ properties:
         created: { type: [string, integer] }
         status: { enum: [pending, in_progress, blocked, completed, cancelled] }
         blocked_reason: { type: [string, "null"] }
-        completed: { type: [string, integer, "null"] }
+        closed: { type: [string, integer, "null"] }      # CR-127: day it became completed or cancelled
+        completed: { type: [string, integer, "null"] }   # legacy alias of closed (read only)
         private: { type: boolean }
         kind: { type: string }   # optional (CR-123); legal values = the profile's task_kinds
         notes:

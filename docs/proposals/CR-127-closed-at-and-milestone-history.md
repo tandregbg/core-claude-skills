@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-15) |
+| **Status** | **Implemented** (2026-10-20, Unreleased) |
 | **Contract** | `contract_version` 43 → 44, `ops_config` 1.6 → 1.7 (**additive** — two optional fields; `tasks` stays schema 2 and every existing file remains valid). CR-126 also claims `ops_config` 1.7; whichever implements first takes it |
 | **Date** | 2026-10-15 |
 | **Area** | `tasks` (schema + every writer that sets a finished status), `ops-config` (`schema.md`, `milestone:`), `ops` (`prepare` config review, `check`, `build_agenda.py` `config_checks()`), `ecosystem.yaml` (`schemas`) |
@@ -132,3 +132,16 @@ the one series nobody can reconstruct.
 | `ecosystem.yaml` | `schemas.ops_config` 1.6 → 1.7; `contract_version` 43 → 44 with its comment block |
 | `CHANGELOG.md` | the release entry, `(CR-127)` |
 | `docs/proposals/README.md` | row moved from Proposed to Implemented in the same commit (CR-020) |
+
+## As built (2026-10-20)
+
+- Everything in the proposal, as written. `tasks` stays schema 2; `ecosystem.yaml` declares contract 44 and
+  `ops_config` 1.7 (CR-126 also names 1.7; one declaration serves both, the field lists are disjoint).
+- The closing-day finding is in `hygiene_check.py` (`tasks` kind), so it runs in the folder pass beside
+  the CR-122 enum checks: one line per ledger, count and first five ids. A finished status is read from
+  `ecosystem.yaml` `task_statuses.finished`.
+- The provenance findings are in `config_checks()` and so appear on the card's *Config* line and in
+  the sources block. A milestone with no `date:` raises none.
+- Existing tests that built a clean milestone now carry `set_on:`; that is the intended consequence of the
+  finding, not a regression.
+- The append step is prose in `ops/SKILL.md` (the CR-119 config review). No script writes `history:`.

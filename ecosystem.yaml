@@ -12,6 +12,15 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 44 (CR-127, 2026-10-20): the ledger and the milestone record when. Additive:
+#   - tasks v2 (still schema 2): optional `closed:` (YYMMDD), the day status became completed or
+#     cancelled, set in the same edit as the status. `completed:` is a legacy alias, read and never
+#     written. No migration.
+#   - ops_config schema 1.7: optional `milestone.set_on` and append-only `milestone.history`
+#     (date, set_on, reason, source), appended by the CR-119 config review when a decision moves the date.
+#   - `/ops check` reports a finished task with no closing day; the card's Config line reports a
+#     milestone date with no provenance. Both report only.
+#
 # contract_version 43 (CR-125, 2026-10-14, v1.91.0): the company profile. Additive: a vault that
 #   sets nothing behaves as before.
 #   - A new optional folder `<org>/_company/`: one file per facet (nine named facets), `sources.yaml`,
@@ -316,7 +325,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 43
+contract_version: 44
 core_skills_version: "1.91.0"
 
 # --- Schema versions ---
@@ -333,13 +342,14 @@ core_skills_version: "1.91.0"
 # instruction. Under the podcast profile the owner voice (the host) chooses the
 # other voices, so consensus means "recurring among guests", not "generally
 # accepted". Declared in skills/insights/SKILL.md.
+# ops_config schema 1.7 (CR-127, 2026-10-20): `milestone.set_on`, `milestone.history`.
 # ops_config schema 1.6 (CR-125, v1.91.0): `company:`.
 # ops_config schema 1.5 (CR-123, v1.90.0): `profile:` and `profiles:`; `themes:`
 # (CR-124). Declared in skills/ops-config/schema.md.
 # tasks: optional `kind` (CR-123), legal values from the profile's task_kinds;
 # still schema 2.
 schemas:
-  ops_config: "1.6"
+  ops_config: "1.7"
   contact_meta: "1.1"
   tasks: 2
   insights: 3

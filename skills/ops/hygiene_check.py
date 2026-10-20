@@ -17,7 +17,8 @@ or rename the file, map a status or cancel the task), so it stays with a person.
            an agent that loaded and re-dumped the whole file (CR-122 section 2).
   tasks    _tasks.yaml against the declared enums: `task` present, status,
            priority, source.type, file-level scope, and `kind` when the profile
-           declares task_kinds (CR-123). One finding per file, field and value,
+           declares task_kinds (CR-123); a finished task with neither `closed:` nor
+           the legacy `completed:` (CR-127). One finding per file, field and value,
            with the task ids, so a ledger with one habit gives one line, not eighty.
   profile  an unknown `profile:` name (CR-123).
   themes   the CR-124 registry checks, when the project enables themes.
@@ -157,8 +158,17 @@ def task_statuses() -> tuple:
         return ("pending", "in_progress", "blocked", "completed", "cancelled")
 
 
+def task_finished() -> tuple:
+    try:
+        ts = (yaml.safe_load(ECOSYSTEM.read_text(encoding="utf-8")) or {}).get("task_statuses") or {}
+        return tuple(ts.get("finished") or ()) or ("completed", "cancelled")
+    except (OSError, yaml.YAMLError):
+        return ("completed", "cancelled")
+
+
 def check_tasks(root: Path) -> list:
     found, statuses = [], task_statuses()
+    finished = task_finished()
     for p in walk(root):
         if p.name != "_tasks.yaml":
             continue
@@ -172,6 +182,7 @@ def check_tasks(root: Path) -> list:
         if scope is not None and scope not in SCOPES:
             found.append(_finding("tasks", p, None, f"scope '{scope}' is not one of {', '.join(SCOPES)}", root))
         groups = {}                     # (field, value) -> [task ids]
+        unclosed = []                   # finished, with no closing day (CR-127)
 
         def note(field, value, tid):
             groups.setdefault((field, value), []).append(tid)
@@ -195,6 +206,8 @@ def check_tasks(root: Path) -> list:
             kind = t.get("kind")
             if kind is not None and kinds and kind not in kinds:
                 note("kind", kind, tid)
+            if st in finished and not (t.get("closed") or t.get("completed")):
+                unclosed.append(tid)
         legal = {"status": statuses, "priority": PRIORITIES, "source.type": SOURCE_TYPES, "kind": kinds}
         for (field, value), ids in groups.items():
             shown = ", ".join(str(i) for i in ids[:5]) + (f" and {len(ids) - 5} more" if len(ids) > 5 else "")
@@ -205,6 +218,10 @@ def check_tasks(root: Path) -> list:
                 msg = (f"{field} '{value}' on {len(ids)} task(s) is not one of "
                        f"{', '.join(legal[field])}: {shown}")
             found.append(_finding("tasks", p, None, msg, root))
+        if unclosed:
+            shown = ", ".join(str(i) for i in unclosed[:5]) + (f" and {len(unclosed) - 5} more" if len(unclosed) > 5 else "")
+            found.append(_finding("tasks", p, None,
+                                  f"{len(unclosed)} finished task(s) with no closing day (`closed:`): {shown}", root))
     return found
 
 

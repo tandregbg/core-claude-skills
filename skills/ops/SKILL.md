@@ -348,10 +348,14 @@ project and nobody notices until a number looks wrong in the room.
    on the card under *Built from* as **Config: N finding(s)**: the milestone date passed, or undecided past its
    decide-by; a card without a milestone; a declared label the repo does not have; a declared report not found or
    three days old or more; a roster name absent from the last three rounds; an unknown kind in the last note; terms
-   without a status in the project's definitions file. Nothing is changed by the script.
+   without a status in the project's definitions file; a milestone `date:` with no `set_on:`, or a `history:`
+   entry missing `reason` or `source` (CR-127). Nothing is changed by the script.
 2. **Prepare checks what needs judgement.** Read the decisions since the last agenda and ask of each: *does this
    change the config?* A source added or retired, a milestone confirmed or moved, a definition, someone joining or
    leaving the meeting. **Propose the edit out loud before generating**, make it, then regenerate.
+   **When a decision moves the milestone (CR-127), append the outgoing `date:` to `milestone.history:` with
+   its `set_on`, a `reason` and a `source` before writing the new `date:` and `set_on:`** (a targeted edit,
+   never a re-dump). The generator itself edits nothing.
 3. **State it.** The generator leaves a slot, `<!-- CONFIG-REVIEW: … -->`; prepare replaces it with *Config
    reviewed against <decisions>*. `/ops orient` reports an agenda still carrying it as *generated, config review
    not stated*, after the digest (CR-101).
@@ -1096,7 +1100,9 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    outside its declared enums, including a `kind` the profile does not declare), `profile` (an unknown
    profile name) and `themes` (the registry checks, when themes are enabled: registry, summary line and
    insights disagreeing in any direction, unknown or merged ids, too many primary themes, a missing
-   synthesis page). **Report only**: the fix is a judgement each time.
+   synthesis page). Under `tasks` it also reports a finished task with neither `closed:` nor the
+   legacy `completed:` (CR-127: count and ids; the day is never guessed). **Report only**: the fix is a
+   judgement each time.
 2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
    `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:
    `stale`, `schema` (frontmatter, `sources.yaml`, `brands.yaml`), `unsourced`, `credential` (a key value in

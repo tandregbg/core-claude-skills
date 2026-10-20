@@ -11,6 +11,14 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 
 ### Changed
 
+- **CR-127 -- The ledger and the milestone record *when*.** Tasks v2 gains an optional `closed:` (the day a
+  task became completed or cancelled, written in the same edit as the status; `completed:` is read as a legacy
+  alias and never written; no migration). `milestone:` gains `set_on:` and an append-only `history:`
+  (date, set_on, reason, source), appended by the CR-119 config review when a decision moves the date.
+  Two report-only checks: `hygiene_check.py` (`/ops check`) counts finished tasks with no closing day, and
+  `config_checks()` reports a milestone date with no `set_on:` or a history entry missing `reason`/`source`.
+  Contract 43 to 44, `ops_config` 1.6 to 1.7, `tasks` stays schema 2.
+
 - **CR-133 -- A sent item ages out.** `close` no longer needs a field nobody fills: a sent item with no
   `Svar förväntas på` section is closable with the offered outcome `Skickat <date>. Inget svar förväntades.`,
   and a populated `Utfall` outranks unticked boxes (reported, not a blocker; `is_closable()` already

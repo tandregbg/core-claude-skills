@@ -28,12 +28,12 @@ class Checks(unittest.TestCase):
         self.assertIn("card layout without a milestone", agenda)
 
     def test_unknown_kind_is_a_finding(self):
-        agenda, _ = build(BASE + "milestone:\n  name: Beta\n  date: 2027-01-01\n",
+        agenda, _ = build(BASE + "milestone:\n  name: Beta\n  date: 2027-01-01\n  set_on: 2026-09-01\n",
                           note_items="- [urgent] **Thing** — #1 · **Ann**\n")
         self.assertIn("unknown kind(s) in the last note: [urgent]", agenda)
 
     def test_clean_config_says_passed_and_leaves_the_review_slot(self):
-        agenda, _ = build(BASE + "milestone:\n  name: Beta\n  date: 2027-01-01\n",
+        agenda, _ = build(BASE + "milestone:\n  name: Beta\n  date: 2027-01-01\n  set_on: 2026-09-01\n",
                           note_items="- **Thing** — #1 · **Ann**\n")
         details = (Path(build.last_meetings) / "260924-agenda-details-daily-standup.md").read_text(encoding="utf-8")
         self.assertNotIn("**Config:", agenda)

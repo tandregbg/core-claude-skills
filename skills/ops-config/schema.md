@@ -1,4 +1,4 @@
-# Configuration Schema v1.6
+# Configuration Schema v1.7
 
 ## Overview
 
@@ -372,8 +372,14 @@ workflows:
 milestone:                         # project-wide, beside `tracks:`
   name: string                     # what the next milestone is
   date: YYYY-MM-DD                 # optional; absent = "date not set"
+  set_on: YYYY-MM-DD               # optional (CR-127): when this date was set
   decide_by: YYYY-MM-DD            # optional; when the date itself must be decided
   criteria: string                 # optional; where the exit criteria live
+  history:                         # optional (CR-127); newest last, append only
+    - date: YYYY-MM-DD             # the target that was in force
+      set_on: YYYY-MM-DD
+      reason: string
+      source: string               # file or decision the move came from
 workflows:
   post_processing:
     carry_forward:

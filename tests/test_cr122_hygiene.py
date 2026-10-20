@@ -92,7 +92,7 @@ class Tasks(unittest.TestCase):
             d = Path(tmp)
             (d / "_tasks.yaml").write_text(
                 "version: 2\ncontext: acme\nscope: project\nnext_id: 2\ntasks:\n"
-                "  - {id: 1, task: x, status: completed, priority: P1, created: 260101,"
+                "  - {id: 1, task: x, status: completed, priority: P1, created: 260101, closed: 260102,"
                 " source: {type: meeting}}\n", encoding="utf-8")
             self.assertEqual(hc.run(d), [])
 
