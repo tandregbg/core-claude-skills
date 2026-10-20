@@ -97,8 +97,10 @@ next_id: 2
   the portfolio table in `_INDEX-projekt.md`, by prefix (`goa` matches `Goa 2026`). `objekttyp` is written
   only when the entry is **not** an Uppgift (Idé, Projekt, Löpande ansvar, KPI, Länk, Note/logg): such an
   entry is re-marked and moved, never deleted. `context:` narrows to the subject line. All three are
-  validated where the entry is written (`python3 task_attributes.py --validate '<json>' --root <folder>`),
-  because only the author knows the venture then; `/ops check` reports the rest and never rewrites.
+  validated where the entry is written: **before** appending, run `python3 task_attributes.py --validate '<json>' --root <folder>`
+  and do not write the entry if it exits 1 (it prints `[REFUSED]` lines; ask for a corrected value instead).
+  The check is a script, not an instruction to remember: any writer (the add flow, transcript task extraction, an inbox importer) calls it.
+  Only the author knows the venture then; `/ops check` reports the rest and never rewrites.
 - **The enums are checked (CR-122):** `/ops check` reports a missing `task` (often written as `title`), a
   `status`, `priority`, `source.type`, `scope` or `kind` outside the declared values. Report only.
 
@@ -208,7 +210,7 @@ Tags? (comma-separated)
 Source? (meeting file or "manual")
 > manual
 
-Venture? [none] <declared ventures>     # optional; validated at once (CR-135)
+Venture? [none] <declared ventures>     # optional; run --validate before writing, refuse on exit 1 (CR-135)
 > none
 
 Private? [no] yes

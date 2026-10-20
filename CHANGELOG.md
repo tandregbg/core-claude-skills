@@ -85,6 +85,10 @@ CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
   status note says why and `Skickades inte.` when it does not, instead of flagging "cannot say why"; the
   `outbox` SKILL.md `avskriven` and `close` sections say the same. No contract change.
 
+### Fixed
+
+- **CR-135 review fixes.** A portfolio row of one or two characters now matches itself instead of never; `objekttyp` is matched case-insensitively; a non-string `verksamhet`, `projekt` or `objekttyp` is reported as a wrong type; `README.md` and the ops status page say contract 46; the tasks skill makes `--validate` a precondition of writing an entry.
+
 ## [1.91.0] - 2026-10-14
 
 The company profile. `contract_version` 42 -> 43, `ops_config` 1.5 -> 1.6. Additive: a vault that sets

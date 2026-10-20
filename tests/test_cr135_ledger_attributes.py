@@ -102,6 +102,53 @@ class Attributes(unittest.TestCase):
         self.assertEqual(tuple(eco["task_attributes"]["objekttyp"]), ta.DEFAULT_OBJEKTTYP)
         self.assertEqual(len(ta.DEFAULT_OBJEKTTYP), 7)
 
+    def test_objekttyp_is_case_insensitive_and_names_the_declared_form(self):
+        tmp, d = vault("tasks: []\n")
+        with tmp:
+            vocab = ta.load(d)
+            self.assertEqual(ta.validate({"objekttyp": "uppgift"}, vocab), [])
+            r = ta.validate({"objekttyp": "löpande ansvar"}, vocab)
+            self.assertEqual(len(r), 1)
+            self.assertIn("Löpande ansvar is filed as a task", r[0][2])
+
+    def test_non_string_values_are_a_type_finding(self):
+        tmp, d = vault("tasks: []\n")
+        with tmp:
+            vocab = ta.load(d)
+            r = ta.validate({"verksamhet": ["Acme"], "projekt": 7, "objekttyp": {"a": 1}}, vocab)
+            self.assertEqual([x[0] for x in r], ["verksamhet", "projekt", "objekttyp"])
+            self.assertTrue(all("must be a string" in x[2] for x in r))
+
+    def test_swedish_letters_and_middle_dot_values(self):
+        pf = PORTFOLIO + ""
+        pf = pf.replace("| Bravo Tooling |", "| └ Ål |  projekt | Åre·Bolag | aktiv | Ravi | m1 | |\n| Bravo Tooling |", 1)
+        tmp, d = vault("tasks: []\n", vocab="verksamhet: [Åre·Bolag, Ödla, Acme]\n", portfolio=pf)
+        with tmp:
+            vocab = ta.load(d)
+            self.assertEqual(ta.validate({"verksamhet": "Åre·Bolag", "projekt": "Ål"}, vocab), [])
+            self.assertEqual(ta.validate({"verksamhet": "Ödla"}, vocab), [])
+            self.assertEqual(len(ta.validate({"verksamhet": "Odla"}, vocab)), 1)
+
+    def test_short_project_name_matches_itself_not_as_a_prefix(self):
+        projects = {"ål": "Ål", "goa2026": "Goa 2026"}
+        self.assertEqual(ta.survey.match_project("Ål", projects), "Ål")
+        self.assertIsNone(ta.survey.match_project("Å", projects))
+        self.assertIsNone(ta.survey.match_project("go", projects))
+        self.assertEqual(ta.survey.match_project("goa", projects), "Goa 2026")
+
+    def test_ledger_mixing_old_and_new_entries(self):
+        m = msgs("tasks:\n"
+                 "  - {id: 1, task: old, status: pending, context: legacy text}\n"
+                 "  - {id: 2, task: new, status: pending, verksamhet: Acme, projekt: Acme Launch, objekttyp: Uppgift}\n"
+                 "  - {id: 3, task: bad, status: pending, verksamhet: Nowhere}\n"
+                 "  - {id: 4, task: new, status: pending, projekt: Bravo}\n")
+        self.assertEqual(len(m), 1)
+        self.assertIn("'Nowhere'", m[0])
+
+    def test_skill_makes_validation_a_precondition_of_writing(self):
+        t = (ROOT / "skills" / "tasks" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("do not write the entry if it exits 1", t)
+
 
 if __name__ == "__main__":
     unittest.main()

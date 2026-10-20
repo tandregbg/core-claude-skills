@@ -375,8 +375,11 @@ def match_project(ctx, projects):
     the field checkable in both directions.
     """
     key = re.sub(r"[^a-z0-9åäö]", "", (ctx or "").lower())
-    if not key or len(key) < 3:
+    if not key:
         return None
+    if len(key) < 3:
+        # Too short to be a prefix of anything, but a row that short ('Ål') matches itself.
+        return next((n for k, n in projects.items() if k == key), None)
     for pkey, name in projects.items():
         if pkey == key or pkey.startswith(key) or key.startswith(pkey):
             return name

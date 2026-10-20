@@ -87,18 +87,23 @@ def load(start) -> dict:
 def validate(entry: dict, vocab: dict) -> list:
     """Problems with one entry, as (field, value, message). Empty = fine."""
     out = []
-    v = entry.get("verksamhet")
-    if v not in (None, "") and vocab["verksamhet"] and v not in vocab["verksamhet"]:
+    for fld in ("verksamhet", "projekt", "objekttyp"):
+        x = entry.get(fld)
+        if x not in (None, "") and not isinstance(x, str):
+            out.append((fld, x, f"{fld} must be a string, got {type(x).__name__}"))
+    str_ = lambda f: entry.get(f) if isinstance(entry.get(f), str) else None
+    v, p, o = str_("verksamhet"), str_("projekt"), str_("objekttyp")
+    if v and vocab["verksamhet"] and v not in vocab["verksamhet"]:
         out.append(("verksamhet", v, f"verksamhet '{v}' is not one of the declared ventures"))
-    p = entry.get("projekt")
-    if p not in (None, "") and vocab["projects"] and not survey.match_project(str(p), vocab["projects"]):
+    if p and vocab["projects"] and not survey.match_project(p, vocab["projects"]):
         out.append(("projekt", p, f"projekt '{p}' matches no row in the portfolio"))
-    o = entry.get("objekttyp")
-    if o not in (None, ""):
-        if o not in vocab["objekttyp"]:
+    if o:
+        known = {t.casefold(): t for t in vocab["objekttyp"]}
+        t = known.get(o.casefold())
+        if t is None:
             out.append(("objekttyp", o, f"objekttyp '{o}' is not one of {', '.join(vocab['objekttyp'])}"))
-        elif o != TASK:
-            out.append(("objekttyp", o, f"a {o} is filed as a task: re-mark and move it, never delete (järnregel 2)"))
+        elif t != TASK:
+            out.append(("objekttyp", o, f"a {t} is filed as a task: re-mark and move it, never delete (järnregel 2)"))
     return out
 
 
@@ -135,7 +140,7 @@ def main(argv=None) -> int:
         for e in doc.get("tasks") or []:
             if not isinstance(e, dict):
                 continue
-            if e.get("projekt"):
+            if e.get("projekt") and isinstance(e["projekt"], str):
                 used.append(e["projekt"])
             for _fld, _val, msg in validate(e, vocab):
                 n += 1
