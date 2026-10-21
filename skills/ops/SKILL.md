@@ -349,7 +349,9 @@ project and nobody notices until a number looks wrong in the room.
    decide-by; a card without a milestone; a declared label the repo does not have; a declared report not found or
    three days old or more; a roster name absent from the last three rounds; an unknown kind in the last note; terms
    without a status in the project's definitions file; a milestone `date:` with no `set_on:`, or a `history:`
-   entry missing `reason` or `source` (CR-127). Nothing is changed by the script.
+   entry missing `reason` or `source` (CR-127); and, over `milestones:` (CR-149), a `proposed` date that passed
+   without being confirmed or moved, an entry marked `confirmed` with no `source`, two entries on the same date,
+   and a `done` date in the future. Nothing is changed by the script.
 2. **Prepare checks what needs judgement.** Read the decisions since the last agenda and ask of each: *does this
    change the config?* A source added or retired, a milestone confirmed or moved, a definition, someone joining or
    leaving the meeting. **Propose the edit out loud before generating**, make it, then regenerate.
@@ -370,7 +372,7 @@ what is waited on, what must be decided, the round question.
 
 | In the agenda (talked about) | In the details file (appendix) |
 |---|---|
-| The milestone and days left (`milestone:`), or *date not set; decide by …* | Sources and fetch status, declared reports and their age |
+| The milestone and days left (`milestone:`), or *date not set; decide by …*; with `milestones:` (CR-149) a table sorted by date, the state on every row and the days left on the next date after today | Sources and fetch status, declared reports and their age |
 | The movement block, with its checks (`build_movement.py`, live from the repo) | The full carried list with session counts |
 | Carried `[blocker]`, `[dependency]`, `[decision]` items | *Probably closed* |
 | Tasks carried past the escalation threshold, as *Stuck?* | The digest slot (prepare fills it **there**) |
@@ -378,6 +380,23 @@ what is waited on, what must be decided, the round question.
 
 The default (`layout` absent) is unchanged. In card layout the digest marker lives in the details file,
 and `/ops orient` reads both files.
+
+**More than one date matters: `milestones:` (CR-149).** The card ran toward one date while the project
+it served had several -- a backend release landing, a go/no-go, three rollout steps after it. `milestones:`
+is a list beside `tracks:`; each entry declares `name`, `date`, `state`, `source`, `set_on`, and CR-127's
+optional `decide_by`, `criteria` and `history`. A lone `milestone:` is read as a list of one, so a project
+that declares only it renders exactly as before.
+
+- **`state:` tells a commitment from a proposal** -- `confirmed`, `proposed`, `target`, `done`, defaulting
+  to `proposed`. The dates that prompted this lived in a plan document whose own header said every date in
+  it was an unconfirmed proposal, and a reader meeting a bare date on the card could not tell which it was.
+- **`confirmed` needs a `source:`** -- a decision id, a plan section or a named confirmer. Without one the
+  entry is shown as `proposed` and the config check says so: a commitment nobody signed is a proposal.
+- **The card renders a table, the post a short list**, both sorted by date, the state on every line, the
+  days left on the next date after today, and a dates-only *Sequence* line under it. The post is pasted
+  into a chat, which is why it is a list and not a table there.
+- **Deciding the dates is not the skill's.** It shows what has been set and by what; confirming a plan's
+  dates is the team's.
 
 **Refined after the first meeting run on it (CR-114):**
 
@@ -402,6 +421,66 @@ and `/ops orient` reads both files.
   declared store is checked.
 - **The card is a draft its owners correct.** Kinds are assigned by `process` from a transcript; the
   first minutes of a meeting confirm or fix them, and the next note records the correction.
+
+**The card fits the project and the session (CR-121).** The second project on the card layout moves
+improvements one at a time from a request sheet to staging to production, and nothing in it is a release.
+Its first card still opened by asking the room to confirm the release blockers, over a section reading
+*None carried*, and the session was that project's first demo day -- the thing the card itself named --
+with no place for what the meeting was for. Both are now configurable, and both default to unchanged.
+
+- **`card: {release_blockers: false}`** (under `carry_forward`, default `true`) drops the *Release
+  blockers* section and the word *release* from the lead, which then reads *Raise what you wait on, then
+  one minute each.* Carried `[blocker]` lines still appear, under **Blockers**. The repo-label table is
+  **not** affected: that list exists because the repo declares the label, and hiding repo data on a config
+  key would be the wrong direction -- `check` flags the contradiction instead.
+- **A milestone `kind:`** -- `demo`, `release` or `review`, default none. With `kind: demo` **on the
+  entry's own date**, a **Demo** section sits directly under the milestone: *Item | Shown by | State*,
+  built from the carried lines and the repo's gap-label issues **that are fixed and waiting for a test**
+  -- "on staging or done", which is what there is to show -- and the lead becomes the demo one. A
+  gap-label issue nobody has fixed yet is not a demo row; it stays on the card under *Release blockers*.
+  After the date the card asks *demo held? record it and set the next milestone*.
+- **On `layout: compact` the Demo section is in the post, not the agenda.** CR-121 puts Demo directly
+  under the milestone and the compact agenda has no milestone to put it under, because CR-148 makes that
+  agenda the decisions and the round and nothing else. So compact keeps the demo list in the post, which
+  is where CR-121 puts it for the post anyway. The card is unaffected.
+- **_Shown by_ is read or blank, never guessed.** The demo convention is that the person who raised an
+  idea shows it, so a carried line's owner is the raiser; an issue nobody raised gets an empty cell for
+  the room to fill. A plausible name against work nobody offered to present is the defect, not the blank.
+- **`check` reports the contradictions, and only reports them.** A card with no repo `labels:` and a
+  milestone kind other than `release` is suggested `release_blockers: false`; `release_blockers: false`
+  against a repo that declares a gap label is named as one of the two being wrong. Which is right is the
+  team's to say.
+
+**A shorter shape for a meeting that costs a working week: `layout: compact` (CR-148).** The day's
+generated post ran about 660 words of markdown into a chat whose own rule is three to five lines of plain
+text -- where the asterisks show as asterisks -- and the 1,880-word agenda was walked row by row with the
+dependencies appearing twice, once as a section and again in every person's cell of the round. Compact
+redistributes what the card already computes across **four** outputs. Nothing is removed, only moved.
+
+| Output | What it carries |
+|---|---|
+| **The post**, plain text in a `.txt` | The milestones as a dated list with a state each, the blockers one per line grouped *to fix* and *waiting for a test*, and the ask. No round, no dependencies, no markdown |
+| **The agenda**, screen-shared | The decisions needed and the one-minute round with each person's open items. Nothing else, plus the link to the details |
+| **The facilitator document** | Time boxes, the dependencies with every line read against its own source (CR-147) and the closed ones listed as closed, and what to watch |
+| **The details file** | Unchanged and complete, linked from the agenda |
+
+- **`compact.max_words`** (default 150) is a ceiling that **holds**, and the blocker list is the part that
+  gives way. Over the limit the generator warns on stdout and names the longest part, and the post keeps as
+  many whole blocker lines as fit, closing the list with one counted line -- *and 3 more, in
+  `<agenda>`* -- so the reader is never shown a short list as if it were the whole one. The milestones and
+  the ask are never what is dropped: the milestones are declared by the project and the ask is the reason
+  the post exists. The full list is in the agenda and the details. `max_words: 0` means *always warn* and
+  is read as 0, not as unset.
+- **The compact lead never asks the room to confirm the release blockers.** That agenda carries no blockers
+  section of either id, so `card: {release_blockers: ...}` is inert for the compact lead by design; it still
+  governs the heading the post's blockers get.
+- **`compact.facilitator_suffix`** names the facilitator document; by default it is derived from
+  `agenda_suffix` exactly as the details file is (`agenda-x` -> `agenda-facilitator-x`).
+- **No per-person figures in the facilitator document** (CR-150). The round's per-person cells stay in the
+  **agenda**, where they belong to the person rather than to whoever leads. The dependencies are ordered by
+  age, never by owner, and an owner appears only beside the one item they own.
+- **`layout: card` stays the default.** A project declaring neither `card:`, nor `layout: compact`, nor a
+  milestone `kind:` renders byte for byte as before.
 
 It writes `YYMMDD-<agenda_suffix>.md` and the chat post, carrying what the transcript cannot:
 the carried-forward block with session counts, the round from the declared roster, and the
@@ -1118,6 +1197,35 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    example of the convention and not a decision, and a `#` comment line inside a fence is not a
    heading that ends the section -- it used to end it, and the real inference below the fence was
    then missed.
+
+   **`persons` (CR-150): work counted per person in a team-facing file.** A table whose rows are
+   people and whose columns are counts, or a line pairing a person with a count of issues, pull
+   requests, commits or lines. Counts of work per person belong in ONE owner-only document --
+   `metrics_document:` in the config, which is exempt -- and never in the files the team reads or
+   that the person leading the meeting reads aloud. The reasons are the rule: the numbers mislead
+   (lines reward volume, closures reward splitting one job into three, and part of the code is
+   written in agent sessions), and the person leading is often one of the people counted.
+   **The finding names the file and the line and does not repeat the figure** -- a report quoting
+   it would have copied the number into one more file, which is the one place the rule exists to
+   keep it out of. **A name beside an ITEM is never a finding:** an owner, an assignee, a *Shown
+   by* is accountability for a task and is most of what an agenda is, and a lint firing on every
+   owner column is one somebody switches off within a week -- after which nothing is checked at
+   all. **The subject has to be a person the project DECLARED** -- a name or alias in the
+   governing `people:` roster, nearest declaration winning. The shape of a name is also the shape
+   of every team, area and grand total a standup writes, so a check reading the shape reports
+   `Mobile: 7 PRs merged` and `Total: 40 PRs merged` as work counted per person, which is the
+   opposite answer: counts per area are what a standup is for. **With no `people:` roster the
+   check finds nothing**, and `--check` says so once rather than guessing per line. A fenced
+   block is skipped, as in `links` and `inferred`. Report only: whether a figure moves to the
+   metrics document or goes is a person's judgement.
+
+   The generator itself emits none of this (CR-150, proposal 1), in any layout: the agenda, the
+   details file, the chat post, the compact layout's facilitator document. The appendix lists the
+   author of every moved issue and pull request for traceability, with **no count per author** --
+   that listing is one `GROUP BY` away from a leaderboard, which is why the lint exists at all.
+   A declared source that already carries per-person figures gets **one line** in the digest
+   section (*per-person figures present in the source, not copied*) and none of its figures: the
+   note is what stops `prepare` copying them when it fills the digest slot.
 2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
    `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:
    `stale`, `schema` (frontmatter, `sources.yaml`, `brands.yaml`), `unsourced`, `credential` (a key value in
@@ -1257,7 +1365,10 @@ declared form** (report the item, the word, and the closest declared form from
     raw file it was built from is the vault's own provenance convention.
 re-dumped YAML, task ledgers outside their enums, unknown profiles, theme consistency, and (CR-128) raw
 files in `.transcripts/` archived by a client (`written_by:`) with an empty `summary` for more than 14 days
-("archived, never filed", with the inbox item each points to). Report only.
+("archived, never filed", with the inbox item each points to), and (CR-150) a team-facing file counting work
+per person -- a people-by-counts table, or a line pairing a person with a count of issues, pull requests,
+commits or lines -- naming the file and the line and **never the figure**, with the declared
+`metrics_document:` exempt and a name beside an item never a finding. Report only.
 
 12. **Company profiles (CR-125)** -- `company_tool.py check <vault> --copies` over the whole vault: stale
 facets, schema errors in `sources.yaml` and `brands.yaml`, locked facets without sources, credential-looking
@@ -1287,11 +1398,19 @@ is carrying and what is unowned, how stale the archives are, what is staged and 
 ```
 <the chat archiver>     ->  <venture>/.teamschats/        (CR-047)
 <the repo archiver>     ->  <venture>/.githubmeta/   (CR-055)
+<the repo archiver>     ->  <venture>/.movementmeta/ (optional; CR-121/CR-148)
 ```
 
 Both are local CLIs run on demand, each authenticated in its own right. **No skill fetches.** A skill
 reads what an archiver wrote, which is why an agenda can be generated with no credential and no
 connectivity — see Step 9, Pre-Meeting Retrieval.
+
+**`.movementmeta/` is the one exception made good.** The movement block (the release gap, the repo
+blocker table, the demo rows) is the single live read left in the pipeline: `build_movement.py` calls
+`gh` itself. Where `<venture>/.movementmeta/<owner>-<repo>.json` exists it is read **instead**, with
+`{"issues": [...], "labels": [...], "events": [[event, iso-timestamp, number, label], ...]}` -- each list
+exactly as `gh` returns it. That makes the movement half generable with no credential, and it is why
+these branches now have test coverage at all. No file, no change: `gh` is still the fallback.
 
 **2. Generate the agenda.**
 

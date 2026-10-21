@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.4** (2026-10-21) |
 | **Contract** | additive — `layout: compact` alongside the existing `card`; nothing existing changes |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py` renderers for the post, the agenda and the facilitator document; the config key `carry_forward.layout`), SKILL.md |

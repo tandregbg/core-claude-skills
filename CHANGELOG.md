@@ -7,6 +7,92 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.4] - 2026-10-21
+
+Wave 3: the shorter format. CR-121 and CR-148 were designed as one layout
+mechanism before either was built, then implemented with CR-149 ahead of them (both
+outputs render its list) and CR-150 after (its rule had to hold for what CR-148
+produces). Every CR was verified adversarially, fixed and re-checked. The
+verification found a lint that reported every team total as a per-person count, a
+word ceiling that warned and then exceeded itself, a demo list of things not ready
+to demo, and several tests that asserted the implementation's source text rather
+than its behaviour and so passed against code that was wrong.
+
+### Added
+
+- **CR-149 -- milestones as a list, each with a date, a source and a state.** `milestones:` takes
+  `name`, `date`, `state` (confirmed, proposed, target, done), `source`, `set_on` and CR-127's
+  `decide_by`, `criteria` and `history`; a lone `milestone:` reads as a list of one, so the three
+  readers that existed (config validation, the card, the chat post) keep their behaviour through one
+  shared resolver. The card and the post render the list by date with the state on every line and
+  the days left on the next one. `confirmed` without a source is shown as `proposed` and reported,
+  because a reader meeting a bare date cannot otherwise tell a commitment from a proposal -- the
+  measured case being a project whose further dates existed only in a plan document whose own header
+  says every date in it is unconfirmed. Findings for a passed proposed date, a missing `set_on`, two
+  entries on one date and a `done` date in the future. A declared milestone can no longer go missing
+  in silence: two undated entries are no longer collapsed into one, an unparseable date is reported
+  and shown as written instead of as *date not set*, and a list item that is not a mapping is
+  reported rather than dropped.
+
+- **CR-121 -- the card fits the project and the session.** `carry_forward.card.release_blockers:
+  false` drops the *Release blockers* section and its lead for a project that ships no releases;
+  carried `[blocker]` lines still appear, under *Blockers*, without the word release. An empty,
+  irrelevant section trains the room to skip sections, which is the failure the card exists to
+  prevent. A milestone `kind: demo` puts a **Demo** section under the milestone on its own date --
+  item, shown by, state -- with *shown by* read from the line's owner and left **blank, never
+  guessed**, so the room fills it and the blank is visible. The rows are the items fixed and waiting
+  for a test, not every open blocker: an open blocker is not something to show at a demo.
+
+- **CR-148 -- a compact card layout.** `layout: compact` (opt-in; `card` stays the default) produces
+  four outputs: a plain-text post of at most `max_words` (default 150), the agenda as the decisions
+  and the one-minute round, a facilitator document carrying the dependencies read against the data
+  with no per-person figures, and the unchanged details file. The measured failure was a generated
+  post of about 660 words in markdown against a project rule of three to five lines of plain text,
+  with an agenda of about 1,880 words the room walked row by row and dependencies appearing twice.
+  The ceiling now holds by shortening the blocker list alone -- groups preserved, an emptied group's
+  heading dropped with it, the remainder a counted *and N more, in <agenda>* line -- so nothing is
+  hidden without saying so; ten blocker titles of the length a real tracker produces measured 177
+  words before and 142 after. A new optional `.movementmeta/` archive lets the movement reader take
+  what an archiver wrote instead of calling the GitHub CLI, which makes the repo blocker table, the
+  demo rows and the post's *waiting for a test* grouping reachable from a fixture and covered for
+  the first time.
+
+- **CR-150 -- the generator never aggregates by person, and a lint keeps team-facing files clean of
+  it.** No generated output carries a per-person total; the details appendix still names each item's
+  author for traceability, with no count per author. A digest reading a source that carries
+  per-person figures says so in one line and copies none. `metrics_document:` declares the
+  owner-only path, exempt from the lint, never linked from a team-facing file and never written to.
+  The rule exists because the numbers mislead -- lines reward volume, closures reward splitting
+  work, part of the code is written in agent sessions -- and because a person leading the meeting
+  may be one of the people counted.
+
+### Fixed
+
+- **The per-person lint tells a person from a team, and its boundary is now bound in both
+  directions.** It first accepted any capitalised word as a name, so `Mobile: 7 PRs merged`,
+  `Backend: 12 issues closed` and even `Total: 40 PRs merged` were all reported as work counted per
+  person -- and a lint that calls a grand total a per-person count is switched off by the first
+  operator who reads one, which is the failure CR-150's own proposal 5 warns about. The subject is
+  now resolved against the project's `people:` roster, which the check had never consulted; with no
+  roster declared it reports nothing and says why once, rather than guessing per line. Closing that
+  hole opened the opposite one, and five real leaderboard spellings went unreported: the `has` and
+  `with` separators were unreachable legs of the pattern, a subject could not follow sentence
+  punctuation (so a per-person count written after a team total on one line escaped), a two-word
+  subject swallowed `has` and matched as a name no roster holds, a separator closing inside the
+  emphasis was not matched, and `--` -- the separator this repository writes in its own prose -- was
+  missing from the class. Eleven leaderboard spellings now fire and ten aggregates and owner columns
+  stay clean, each one line in the test file, and the leading-identifier guard that separates an
+  owned item from a count against a person is covered at last: removing it used to leave the whole
+  suite green.
+
+- **Three tests asserted the implementation's source text and proved nothing.** One checked that a
+  literal layout comparison was absent from the module's text, and the bug it existed to prevent was
+  reintroduced in a different spelling with the suite still green; it now asks the layout predicate
+  about each layout value, which is what the renderers consult. The other two, covering the 150-word
+  default and a suppressed repo table, are behaviour tests. Every fix in this release was
+  mutation-tested: the implementation line each test claims to cover was broken, the test confirmed
+  failing, and the line restored.
+
 ## [1.92.3] - 2026-10-21
 
 Wave 2: the card follows the data. Both CRs were implemented, verified adversarially

@@ -71,6 +71,35 @@ def declared(cf: dict) -> dict | None:
     return None
 
 
+def archived(root: Path, repo: str) -> tuple | None:
+    """CR-121/CR-148: the same three reads, from an archive instead of from `gh`.
+
+    `<venture>/.movementmeta/<owner>-<name>.json` -- the sibling of `.githubmeta/` and
+    `.jirameta/`, found the same way and read the same way: whatever an archiver wrote,
+    never the network. `{"issues": [...], "labels": [...], "events": [[event, iso,
+    number, label], ...]}`, each list exactly as `gh` returns it. The events are sorted
+    and scoped to the issues read, which is what `load()` does, so the two reads hand
+    `History` the same thing and a record is not a second code path downstream.
+
+    Without it the movement half of the card is reachable only with a live `gh`, which
+    means it cannot be generated on a machine with no credential and -- the reason this
+    exists -- cannot be covered by a test at all. The repo table, the demo rows and the
+    post's grouped blockers were all unreachable from a fixture, and two of them were
+    wrong because of it.
+    """
+    venture = next((p for p in [root, *root.parents] if (p / ".movementmeta").is_dir()), None)
+    if venture is None:
+        return None
+    f = venture / ".movementmeta" / (repo.replace("/", "-") + ".json")
+    if not f.is_file():
+        return None
+    d = json.loads(f.read_text(encoding="utf-8"))
+    nums = {i["number"] for i in d.get("issues") or []}
+    events = sorted((_ts(t), e, int(n), l) for e, t, n, l in (d.get("events") or [])
+                    if int(n) in nums)
+    return d.get("issues") or [], d.get("labels") or [], events
+
+
 def load(repo):
     issues = json.loads(_gh(["issue", "list", "-R", repo, "--state", "all", "--limit", "5000", "--json",
                              "number,title,state,createdAt,closedAt,labels,assignees,url"]))
@@ -141,7 +170,10 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
     out = root / (mv.get("out") or "status/movement")
     (out / "snapshots").mkdir(parents=True, exist_ok=True)
 
-    issues, labels, events = load(repo)
+    # The archive first where there is one, `gh` otherwise: an archived read is what
+    # every other source in this pipeline does, and it is the only one a fixture can
+    # reach (CR-121/CR-148, see `archived`).
+    issues, labels, events = archived(root, repo) or load(repo)
     h = History(issues, events)
     now = dt.datetime.now(TZ)
     today = now.date()
@@ -499,6 +531,35 @@ def report_states(cf: dict, today: dt.date | None = None):
     return states + list(vs), problems
 
 
+def vault_report_dir(cf: dict, r: dict) -> Path | None:
+    """The declared vault report's directory, resolved -- or None when it is not there.
+
+    `dir:` is relative to the project root or found walking up, which is the one rule
+    every reader of `vault_reports:` has to agree on: a project nested two levels under
+    the venture declares `../../meetings/board/status` and the same folder has to resolve
+    to the same path whichever reader asked.
+    """
+    root = Path(cf.get("_root") or ".")
+    return next(((p_ / r["dir"]).resolve() for p_ in (root, *root.parents)
+                 if (p_ / r["dir"]).is_dir()), None)
+
+
+def vault_report_files(d: Path, r: dict) -> list[Path]:
+    """The file(s) a declared vault report currently resolves to, in that directory.
+
+    `current:` first when it exists -- a stable filename is the author's statement that
+    this is the live one -- and otherwise the newest name matching `pattern:`, by sort,
+    which is what a YYMMDD or ISO prefix makes chronological. Empty when neither answers.
+
+    One reader, so a check that reports a report's age and a digest that reads its text
+    (CR-150, proposal 2) cannot disagree about WHICH file the declaration named.
+    """
+    if r.get("current") and (f := d / r["current"]).exists():
+        return [f]
+    pat = r.get("pattern") or r"^$"
+    return sorted(x for x in d.iterdir() if x.is_file() and re.match(pat, x.name))[-1:]
+
+
 def vault_reports(cf: dict, today: dt.date | None = None):
     """CR-116: report series kept in the vault, not the repo -- board reports, dashboards.
 
@@ -518,7 +579,7 @@ def vault_reports(cf: dict, today: dt.date | None = None):
     root = Path(cf["_root"])
     for r in ((cf.get("ext") or {}).get("vault_reports") or []):
         nm = r.get("name") or r.get("dir", "?")
-        d = next(((p_ / r["dir"]).resolve() for p_ in (root, *root.parents) if (p_ / r["dir"]).is_dir()), None)
+        d = vault_report_dir(cf, r) if r.get("dir") else None
         if not d:
             # CR-140: a renamed folder reads as "source missing" when the likelier
             # cause is that the config is stale. Name the sibling that looks like it.
@@ -527,16 +588,18 @@ def vault_reports(cf: dict, today: dt.date | None = None):
                          + (f" · config stale? {hint} exists" if hint else ""))
             states.append((nm, r.get("owner"), None, None))
             continue
-        if r.get("current"):
-            f = d / r["current"]
-            if f.exists():
-                age = (today - dt.date.fromtimestamp(f.stat().st_mtime)).days
-                lines.append(f"  report    {nm[:44]:44} current {r['current']} · "
-                             + ("updated today" if age == 0 else f"STALE — last updated {age}d ago"))
-                states.append((nm, r.get("owner"), r["current"], age))
-                continue
-        hits = sorted(x.name for x in d.iterdir() if x.is_file() and re.match(r.get("pattern") or r"^$", x.name))
-        newest = hits[-1] if hits else None
+        # One resolver for which file the declaration names (`vault_report_files`); the
+        # two branches below differ only in how that file is DATED -- a `current:` path
+        # carries no date in its name, so its mtime is the only answer, while a dated
+        # series is dated by its filename.
+        got = vault_report_files(d, r)
+        if r.get("current") and got and got[0].name == r["current"]:
+            age = (today - dt.date.fromtimestamp(got[0].stat().st_mtime)).days
+            lines.append(f"  report    {nm[:44]:44} current {r['current']} · "
+                         + ("updated today" if age == 0 else f"STALE — last updated {age}d ago"))
+            states.append((nm, r.get("owner"), r["current"], age))
+            continue
+        newest = got[0].name if got else None
         # CR-140: one reader for both dated spellings, so a repo series and a vault
         # series of the same shape cannot be dated by one and called undated by the other.
         when_ = filename_date(newest or "")

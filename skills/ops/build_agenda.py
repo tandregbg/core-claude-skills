@@ -62,6 +62,42 @@ ITEM = re.compile(r"^-\s+(?:\[[a-z]+\]\s+)?\*\*(.+?)\*\*(.*)$", re.M)
 KIND_RE = re.compile(r"^-\s+\[([a-z]+)\]\s+\*\*(.+?)\*\*", re.M)
 KINDS = ("blocker", "dependency", "decision")
 
+# CR-148: the declared layouts. `list` is the default and the reading of anything
+# unknown, which is what `cf.get("layout") == "card"` did before there was a third
+# value. The predicates below replace that scattered comparison: `compact` is a card
+# VARIANT -- it redistributes sections the card already computes and computes nothing
+# of its own -- so every place that asked "does this project get the card's data
+# discipline?" must answer yes for it, and `is_card` is the one place that says so.
+LAYOUTS = ("list", "card", "compact")
+
+
+def layout_of(cf: dict) -> str:
+    """CR-148: the declared layout, with an unknown value reading as `list`."""
+    lay = cf.get("layout")
+    return lay if lay in LAYOUTS else "list"
+
+
+def is_card(cf: dict) -> bool:
+    """CR-148: whether this project gets the card's DATA rules (CR-147, CR-142).
+
+    `compact` inherits them deliberately. What it does NOT inherit is the card's TEXT
+    -- the headings, the lead line, the markdown post -- which is `section_plan()`'s.
+    A heading decided by `is_card` is this mechanism's one way of going wrong.
+    """
+    return layout_of(cf) in ("card", "compact")
+
+
+def is_compact(cf: dict) -> bool:
+    """CR-148: the four-output layout -- post, agenda, facilitator document, details."""
+    return layout_of(cf) == "compact"
+
+
+# The config file pair, nearest-first within one folder: a project's own config, then a
+# folder-level one. Named once so a reader that walks the chain itself (`hygiene_check`)
+# cannot drift from the order `config()` resolves -- the two disagreeing would mean a key
+# the agenda reads from one file and the lint reads from another.
+CONFIG_FILES = (Path(".claude") / "ops-config.yaml", Path("_ops.yaml"))
+
 
 def external(start: Path) -> dict:
     """external_systems (CR-054, contract 16) resolved by the normal config chain:
@@ -136,7 +172,18 @@ def config(meetings: Path) -> dict:
             # CR-107: the date the card runs toward. Project-wide, so it sits beside
             # `tracks:` rather than inside carry_forward; a nearer declaration wins.
             cf["milestone"] = d.get("milestone") or cf.get("milestone")
+            # CR-149: the dates that matter are more than one. `milestones:` is the list;
+            # `milestone:` stays readable as a list of one, so a config that declares only
+            # it behaves exactly as before. Merged the same way -- nearest wins -- and
+            # resolved for every reader by `milestones()`, never read raw.
+            cf["milestones"] = d.get("milestones") or cf.get("milestones")
             cf["definitions"] = d.get("definitions") or cf.get("definitions")   # CR-118
+            # CR-150: the owner-only document where work counted per person is allowed to
+            # live. Merged like the keys above -- nearest declaration wins -- and read for
+            # one purpose only: to know which path the lint must leave alone. The generator
+            # NEVER writes to it and never links it from a team-facing file, which is why
+            # there is no renderer anywhere that takes this value.
+            cf["metrics_document"] = d.get("metrics_document") or cf.get("metrics_document")
             # CR-139: `meets:` is an ALIAS for `schedule_days`, not a second key. The
             # two would answer the same question -- which days this series meets --
             # and a config declaring both would have no defined winner, so the reader
@@ -302,6 +349,141 @@ def details_name(cf: dict, target: str) -> str:
     """CR-107: the card layout's companion file. `agenda-x` -> `agenda-details-x`."""
     a = cf["agenda_suffix"]
     return f"{target}-" + (a.replace("agenda-", "agenda-details-", 1) if a.startswith("agenda-") else a + "-details") + ".md"
+
+
+def facilitator_name(cf: dict, target: str) -> str:
+    """CR-148: the compact layout's facilitator document. `agenda-x` -> `agenda-facilitator-x`.
+
+    Derived exactly as `details_name` is, so a project that renames its agenda suffix
+    gets both companions renamed with it and does not have to declare either.
+    `compact.facilitator_suffix` overrides the whole name where a project needs to.
+    """
+    over = ((cf.get("compact") or {}) if isinstance(cf.get("compact"), dict) else {}).get("facilitator_suffix")
+    if over:
+        return f"{target}-{over}.md"
+    a = cf["agenda_suffix"]
+    return f"{target}-" + (a.replace("agenda-", "agenda-facilitator-", 1)
+                           if a.startswith("agenda-") else a + "-facilitator") + ".md"
+
+
+# CR-121/CR-148: a section is an id. Its title, its lead line and the kind it draws
+# from are DATA, so one key can drop a section (CR-121's `release_blockers: false`)
+# and one key can move it between outputs (CR-148's `layout: compact`) -- neither
+# needs a branch inside a renderer. The strings here were MOVED out of the card
+# renderer unchanged, which is what keeps the default card byte-identical.
+#
+# `blockers` and `release_blockers` are two ids over the SAME kind: that is how
+# CR-121 changes a heading and a lead with no conditional in the renderer.
+SECTIONS: dict[str, dict] = {
+    "milestone":        {"title": "Milestone"},
+    "movement":         {"title": "Movement"},
+    "release_blockers": {"title": "Release blockers", "kind": "blocker",
+                         "lead": "**What blocks the release, who owns it, the plan.**",
+                         "col": "Stuck for"},
+    "blockers":         {"title": "Blockers", "kind": "blocker",
+                         "lead": "**What is stuck, who owns it, the plan.**",
+                         "col": "Stuck for"},
+    "dependencies":     {"title": "Dependencies", "kind": "dependency",
+                         "lead": "**A person waiting on another person, or on someone"
+                                 " outside the room.**",
+                         "col": "Waiting"},
+    "decisions":        {"title": "Decisions needed today", "kind": "decision",
+                         "lead": "**Each one leaves the room decided, or with a date.**",
+                         "col": "Open for"},
+    # CR-114: the carried blockers that the repo's gap label does not name. A second
+    # heading under the repo table, and an id here for the same reason as the rest.
+    "other_blockers":   {"title": "Other blockers carried", "kind": "blocker",
+                         "lead": "**Carried as blockers; not labelled in the repo.**",
+                         "col": "Stuck for"},
+    "demo":             {"title": "Demo"},          # CR-121
+    "confirm": {}, "stuck": {}, "round": {}, "close": {},
+}
+# CR-121: how the post labels the carried sections it carries inline. Kept beside
+# SECTIONS so one id names one thing in both renderers.
+POST_LABELS = {"release_blockers": "Blockers", "blockers": "Blockers",
+               "dependencies": "Waiting on", "decisions": "Decide today"}
+
+
+def demo_on(cf: dict, day: datetime.date) -> dict | None:
+    """CR-121: the milestone being demonstrated TODAY, or None.
+
+    Read off the first entry whose `kind:` is `demo` and whose date is the generated
+    day. Any other day, or any other kind, and the card is unchanged -- which is the
+    whole of CR-121's "on the milestone's own date".
+    """
+    for e in milestones(cf):
+        if str(e.get("kind") or "").strip().lower() == "demo" and e["_date"] == day:
+            return e
+    return None
+
+
+def section_plan(cf: dict, day: datetime.date) -> dict[str, list[str]]:
+    """CR-121, CR-148: which sections each output carries, in order.
+
+    The ONLY place a layout or a `card:` key decides a section's presence or its
+    position. A renderer loops the list it is given and never asks what layout it is
+    in: that split is what keeps `is_card()` about data and this function about text.
+    """
+    card = cf.get("card") if isinstance(cf.get("card"), dict) else {}
+    rel = (card or {}).get("release_blockers", True)      # CR-121: default True
+    blockers = "release_blockers" if rel else "blockers"
+    plan = ({"agenda":      ["decisions", "confirm", "round"],
+             "post":        ["milestone", blockers],
+             "facilitator": ["dependencies", "movement", "stuck"],
+             "details":     ["all"]} if is_compact(cf) else
+            {"agenda": ["milestone", "movement", blockers, "dependencies",
+                        "decisions", "confirm", "stuck", "round", "close"],
+             "post":   ["milestone", "movement", blockers, "dependencies", "decisions", "round"],
+             "facilitator": [],                   # the card writes none
+             "details": ["all"]})
+    # CR-121: the Demo section sits directly under the milestone, in the agenda and in
+    # the post. Inserted HERE rather than in two renderers, so "on its own date" is
+    # stated once.
+    #
+    # CR-121 vs CR-148, a real conflict, resolved in favour of CR-148 and stated here
+    # so the operator can overrule it with one line: CR-121 puts Demo "directly under
+    # the milestone", and the COMPACT agenda carries no milestone to put it under --
+    # CR-148 says that agenda is the decisions and the round, "Nothing else." Putting
+    # Demo at index 0 instead would make the compact agenda three sections on demo day
+    # and quietly repeal the layout the project opted into. So compact keeps Demo in
+    # the POST only, which is also where CR-121 itself says the demo list goes ("the
+    # Teams post carries the demo list in place of the blockers line"). To reverse it,
+    # drop the `is_compact` guard: the renderer and the lead line need no change.
+    if demo_on(cf, day):
+        for out in ("agenda", "post"):
+            if out == "agenda" and is_compact(cf):
+                continue
+            if "milestone" in plan[out]:
+                plan[out].insert(plan[out].index("milestone") + 1, "demo")
+            else:
+                plan[out].insert(0, "demo")
+    return plan
+
+
+def lead_line(cf: dict, plan: dict[str, list[str]], day: datetime.date) -> str:
+    """The agenda's italic lead: what the room is being asked to do today.
+
+    CR-107 wrote one sentence inline. CR-121 gives it two more readings -- a project
+    with no releases should not be asked to confirm release blockers, and on a demo
+    day the content IS what is shown -- so the sentence is chosen from the plan, which
+    is the thing that already knows both.
+    """
+    if demo_on(cf, day):      # CR-121
+        return ("*Demo day: the people who raised the ideas show them; then what we wait on,"
+                " and one minute each. Five to ten minutes when nothing blocks; statistics"
+                " are read offline.*\n")
+    # CR-121 + CR-148, DELIBERATE: the compact agenda never carries a blockers section
+    # of either id (CR-148: it is the decisions and the round, "Nothing else"), so the
+    # test below would always read as "no release" there -- and that is the wanted
+    # reading, not an accident of the plan's contents. Under compact the blockers live
+    # in the post, so asking the room in the AGENDA to confirm a list it cannot see
+    # would be wrong whatever `card.release_blockers` says. The key still governs the
+    # post's blockers heading; it is inert for the compact lead on purpose.
+    if is_compact(cf) or "release_blockers" not in plan["agenda"]:   # CR-121: `release_blockers: false`
+        return ("*Raise what you wait on, then one minute each. Five to ten minutes when"
+                " nothing blocks; statistics are read offline.*\n")
+    return ("*Confirm the release blockers and their plan, raise what you wait on, then one minute each. "
+            "Five to ten minutes when nothing blocks; statistics are read offline.*\n")
 
 
 def carried(path: Path) -> list[tuple[str, str]]:
@@ -796,6 +978,265 @@ def closing_refs(text: str) -> set[str]:
     the right thing in one click.
     """
     return {f"#{int(n)}" for n in _ID_CLOSES.findall(text or "")}
+
+
+# ---- CR-150: work counted per person -------------------------------------------
+# One reader, in the module the lint already imports for exactly this reason (CR-142's
+# marker): a lint and a generator that disagreed about what "a count against a name" is
+# would be worse than neither having a rule.
+#
+# Why the rule exists, because it governs what this matches and what it must not: counts
+# of work per person mislead -- lines reward volume, closures reward splitting one job
+# into three, and part of the code is written in agent sessions, so the number measures
+# the work's shape and not the person. And the person leading the meeting is often one of
+# the people counted, which makes the figure something they read out about themselves.
+# Counting belongs in one owner-only document (`metrics_document:`), never in what the
+# team reads.
+#
+# What is NOT a finding, and this is the whole difficulty: a name beside an item -- an
+# owner, an assignee, a *Shown by* -- is accountability for a task, and the agenda is
+# built out of exactly those. A lint that fires on every owner column is one somebody
+# switches off, and then nothing is checked at all. So a finding needs BOTH a DECLARED
+# PERSON as its subject AND a count of work against it, and where the subject is a person
+# the ORDER decides: a line that names an identifier FIRST is a statement about that item,
+# whatever follows it.
+#
+# The subject is resolved against the project's own `people:` roster and nothing else
+# (defect pass). A shape test cannot tell a person from a team, and the capitalised-word
+# shape every name has is also the shape of every team, area and grand total a standup
+# writes -- `Mobile: 7 PRs merged`, `Backend: 12 issues closed`, `Total: 40 PRs merged`.
+# Flagging those as work counted per person is not a near miss, it is the opposite answer,
+# and a lint that gives it on ordinary lines gets switched off. Counts per AREA are what a
+# standup is for; only counts per PERSON are the rule's business, and the roster is the one
+# place a project states who its people are.
+
+# The units of work a person gets compared on. Deliberately a closed list: a count of
+# anything else ("3 sessions", "2 days") is not this rule's business, and widening it is
+# how a lint starts firing on the round table.
+_COUNTED = (r"(?:issues?|tickets?|pull\s+requests?|PRs?|merge\s+requests?|MRs?|commits?"
+            r"|lines?(?:\s+of\s+code)?|LOC|story\s+points?)")
+# `Bob: 14 issues`, `Bob — 7 PRs merged`, `**Dee** 312 lines of code`. The name is a
+# short capitalised token or two, so a sentence is not read as a name, and the count comes
+# AFTER it. Whether such a pair is a FINDING is decided in the loop, by what precedes it.
+_PERSON_COUNT = re.compile(
+    # The name follows the start of the line, a cell boundary, a list bullet or an
+    # emphasis mark. Dashes are in the class for the bullet, which is also what lets
+    # `- **Dee** — 14 issues closed` match: the subject is found at the bullet, and the
+    # dash before the figure is consumed by the separator group below.
+    # Sentence punctuation is an anchor too: a leaderboard line often follows a team
+    # total on the same line (`Total: 40 PRs merged, Bob: 14 issues closed`), and a
+    # subject reachable only after a bullet or a cell wall let that one through.
+    # The second word must not be a separator word: under `re.I` a two-word subject
+    # happily swallowed `has`, so `Bob has 14 issues` matched with the name "Bob has",
+    # which no roster holds -- the count then read as nobody's and went unreported.
+    r"(?:^|[|*_·\-]\s*|[,.;]\s+)\*{0,2}([A-Z][\w.'-]*(?:\s+(?!has\b|with\b)[A-Z][\w.'-]*)?)"
+    # The separator may sit INSIDE the emphasis (`**Bob:** 14 issues`) or outside it
+    # (`**Ann** 312 lines`), which is the difference between matching the shape people
+    # actually write and matching only the one shape that was thought of first.
+    # `has`/`with` need their own leading space: a `\s*` before this group would eat
+    # it and leave `\bhas\b` unreachable, which is what made those two legs dead.
+    # The emphasis may close before OR after the separator (`**Ann** 312 lines` against
+    # `**Bob:** 14 issues`), so a closing run is allowed on either side of it.
+    # `--` is the separator this repo writes in its own prose, so it belongs beside
+    # the em and en dashes; without it a leaderboard line written the house way was
+    # the one spelling the lint missed.
+    r"\*{0,2}(?:\s*[:—–]|\s+(?:has|with)\b|\s*(?:--|[—–\-]))?\*{0,2}\s*"
+    r"\*{0,2}(\d+)\*{0,2}\s*" + _COUNTED + r"\b",
+    re.I | re.UNICODE)
+# ... and the same pair written the other way round: `14 issues closed by Bob`.
+_COUNT_PERSON = re.compile(r"\b\d+\s*" + _COUNTED + r"\b[^.|]{0,24}?\bby\s+\*{0,2}([A-Z][\w.'-]*)",
+                           re.I | re.UNICODE)
+# A column header that names a unit of work, with or without a verb: `Issues closed`,
+# `PRs`, `Commits`, `Lines of code`.
+_COUNT_HEADER = re.compile(r"^\**\s*(?:\w+\s+)?" + _COUNTED + r"(?:\s+\w+)?\s*\**$", re.I)
+# A first cell that is a bare person: one or two capitalised words, no identifier, no
+# link, no parenthetical. `**Ann**` is the spelling the round table uses.
+_BARE_NAME = re.compile(r"^\**\s*([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*)?)\s*\**$")
+_TABLE_RULE = re.compile(r"^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$")
+
+
+def _cells(line: str) -> list[str] | None:
+    """A markdown table row's cells, or None when the line is not one."""
+    s = line.strip()
+    if not s.startswith("|"):
+        return None
+    return [c.strip() for c in s.strip("|").split("|")]
+
+
+def roster_names(cf: dict) -> set[str]:
+    """Every spelling the project's `people:` roster answers to, lower-cased (CR-150).
+
+    Name and aliases both, the way every other roster reader in this module resolves a
+    person (the round table, the owed lines, the track spread): a note names whoever was
+    spoken, and a config that declares `aliases: [Bob]` for `Robert` has stated that both
+    are the same person. First names too -- a roster entry `Ann Rivera` is `Ann` in the
+    room, and a lint that only knew the full spelling would miss the leaderboard that
+    writes it the short way, which is the way it is always written.
+    """
+    out: set[str] = set()
+    for p_ in cf.get("people") or []:
+        if not isinstance(p_, dict):
+            continue
+        for k in [p_.get("name")] + list(p_.get("aliases") or []):
+            if not k:
+                continue
+            out.add(str(k).strip().lower())
+            out.add(str(k).strip().split()[0].lower())
+    return out
+
+
+def person_count_lines(text: str, roster: set[str] | None = None) -> list[tuple[int, str]]:
+    """Lines that count work per person: `(line number, what was found)`.
+
+    Two shapes, which are the two ways this gets written:
+
+      - a TABLE whose rows are people and whose columns are counts -- a header naming a
+        unit of work (`Issues closed`, `PRs`, `Commits`) over body rows whose first cell
+        is a roster name. The header alone is not enough: an area table with a `Closed`
+        column is the appendix's own, and its first cell is an area, not a person.
+      - a LINE pairing a person with a count of that work, in either order
+        (`Bob: 14 issues closed`, `9 commits by Dee`).
+
+    `roster` is the set `roster_names()` builds, and the SUBJECT HAS TO BE IN IT. That is
+    the whole gate (defect pass): the capitalised-word shape a name has is also the shape
+    every team, area and grand total has, so a shape test answers "work counted per
+    person" for `Mobile: 7 PRs merged` and for `Total: 40 PRs merged` -- counts per area,
+    which are what a standup is for. Only a count against a person the project DECLARED
+    is this rule's business.
+
+    No roster, or an empty one, means NO findings, and that is deliberate rather than a
+    fallback. The alternative -- guess at the shape when nothing is declared -- is the
+    defect itself, just moved to the projects least able to notice it: a project with no
+    `people:` is usually one that has not configured `/ops` much, and it would get the
+    false findings while a configured project got none. Silence is the honest answer, and
+    `--check` is where a project is told that the check needs a roster (`_check_persons`),
+    once, instead of in a finding per line of every file.
+
+    The reason never to return the FIGURE: a finding that repeats it has published it
+    into the next file, which is the one place the rule was trying to keep it out of.
+    So the second element names the shape and the person, never the number.
+
+    Fenced blocks are skipped, as in `/ops check`'s other readers: a table inside a
+    fence is an example of the convention and not a file's content.
+    """
+    if not roster:
+        return []
+    out: list[tuple[int, str]] = []
+    lines = (text or "").splitlines()
+    fenced = False
+    count_cols: list[int] = []
+    header: list[str] = []
+    for n, line in enumerate(lines, 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            count_cols, header = [], []
+            continue
+        if fenced:
+            continue
+        cells = _cells(line)
+        if cells is None:
+            count_cols, header = [], []
+        elif _TABLE_RULE.match(line):
+            pass                                  # the rule under a header: table still open
+        elif not count_cols and (cols := [i for i, c in enumerate(cells)
+                                          if i and _COUNT_HEADER.match(c)]):
+            # A candidate header: at least one column after the first names a unit of
+            # work. Which ones they are is remembered rather than recomputed, so the
+            # finding can name the column that made this a leaderboard, and so the gate
+            # and the column set cannot disagree about the same header.
+            header, count_cols = cells, cols
+        elif count_cols:
+            who = _BARE_NAME.match(cells[0]) if cells else None
+            if who and who.group(1).strip().lower() in roster \
+                    and any(i < len(cells) and re.fullmatch(r"\**\d+\**", cells[i])
+                            for i in count_cols):
+                col = header[count_cols[0]].strip("* ")
+                out.append((n, f"a table row counting {who.group(1)} by {col.lower()}"))
+            continue
+        # Every pair on the line, not only the first: the subject gate means a match can
+        # now be rejected for not being a person, and stopping at the first one would let
+        # `Mobile: 7 PRs merged · Bob: 3 commits` hide a real count behind an area's.
+        m = next((x for x in list(_PERSON_COUNT.finditer(line)) + list(_COUNT_PERSON.finditer(line))
+                  if x.group(1).strip().lower() in roster), None)
+        # An identifier BEFORE the pair rules the line out: `#12 Payment webhook — Bob`
+        # and `TICK-9 · 3 commits · Ann` are statements about one item, with a name on it
+        # for accountability, which is what every line the generator writes is.
+        #
+        # Only before it, and that is the whole correction (defect pass): "the line names
+        # an identifier anywhere" also swallowed `**Bob:** 3 commits on #12`, so appending
+        # one issue number to a leaderboard line silenced the lint -- a rule that can be
+        # switched off by adding `on #12` is not a rule. What decides is the ORDER: an item
+        # with an owner names the item first, and a count against a person names the person
+        # first. `m.start()` is where that pair begins.
+        if m and not identifiers(line[:m.start()]):
+            out.append((n, f"a count of work against {m.group(1)}"))
+    return out
+
+
+def metrics_path(cf: dict) -> Path | None:
+    """CR-150, proposal 3: the declared owner-only metrics document, resolved -- or None.
+
+    `metrics_document: status/metrics.md`, relative to the project root or found walking
+    up, exactly as a declared report's `dir:` is. Returned whether or not the file exists:
+    the lint has to leave the declared PATH alone, and a document that is about to be
+    written must not become a finding the day before it is.
+    """
+    rel = cf.get("metrics_document")
+    if not rel:
+        return None
+    root = Path(cf.get("_root") or ".")
+    return next((p / rel for p in (root, *root.parents) if (p / rel).exists()), root / rel)
+
+
+def source_person_counts(cf: dict) -> list[str]:
+    """CR-150, proposal 2: declared sources that already count work per person.
+
+    One line per source, naming it and nothing else -- *per-person figures present in the
+    source, not copied*. A digest reads a status report because of what the report says
+    about the work; the figures in it are its author's own method (out of scope here) and
+    copying them into the agenda would move them from one owner's document into the one
+    the room reads, which is the whole thing CR-150 forbids. Saying so is not optional
+    either: a digest that silently left them out would be indistinguishable from one whose
+    author had not noticed them, and the next person to write one would copy them.
+
+    Vault reports only -- a repo report's path lives in the repository, where this script
+    has nothing to read (the same boundary `_renamed_hint` draws). The declared
+    `metrics_document` is never one of these: it is the place the figures BELONG.
+
+    WHICH file a declaration resolves to is `build_movement`'s answer, not a second one
+    kept here (defect pass): the dir walked up from the project root, `current:` before
+    `pattern:`, newest by sort. That module already owns `vault_reports:` -- it is what
+    reports their age to `--check` -- and two resolvers would eventually disagree, which
+    would mean a report whose age is read off one file and whose figures are read off
+    another. Imported inside the function, as the other `build_movement` calls here are:
+    it is an optional companion, and a project with no declared report must still build.
+    """
+    out: list[str] = []
+    mine = metrics_path(cf)
+    roster = roster_names(cf)
+    if not roster:
+        return out                     # nothing to resolve a subject against (see above)
+    try:
+        import build_movement
+    except Exception:
+        return out                     # best effort, as everywhere else in this pipeline
+    for r in ((cf.get("ext") or {}).get("vault_reports") or []):
+        if not isinstance(r, dict) or not r.get("dir"):
+            continue
+        d = build_movement.vault_report_dir(cf, r)
+        if not d:
+            continue
+        for f in build_movement.vault_report_files(d, r):
+            if mine and f.resolve() == mine.resolve():
+                continue
+            try:
+                text = f.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue               # unreadable is `--check`'s finding, not this one
+            if person_count_lines(text, roster):
+                out.append(f"**{r.get('name') or r['dir']}**: per-person figures present in"
+                           " the source, not copied.")
+    return out
 
 
 def probably_closed(items, chat, repo, jira):
@@ -1395,6 +1836,131 @@ def round_table(path: Path) -> dict[str, str]:
     return out
 
 
+# CR-149: the declared states of a milestone. `confirmed` is the only one that asserts a
+# commitment, which is why proposal 3 makes it the one that has to name where it came from;
+# the rest say plainly that the date is not yet anybody's word.
+MILESTONE_STATES = ("confirmed", "proposed", "target", "done")
+MILESTONE_DEFAULT_STATE = "proposed"
+
+
+def as_date(value):
+    """A `YYYY-MM-DD` value (or a date) as a `datetime.date`, or None where it is neither.
+
+    One reader for the config's dates. The milestone block had its own copy inside
+    `config_checks`, and CR-149 gives three renderers the same parsing job, so a date the
+    card sorts by and a date the validation complains about can no longer disagree.
+    """
+    if isinstance(value, datetime.date):
+        return value
+    try:
+        return datetime.datetime.strptime(str(value), "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def milestones(cf: dict) -> list[dict]:
+    """CR-149: the project's milestones, resolved and sorted by date, earliest first.
+
+    The shape every reader gets, whatever the config declared. `milestones:` is the list;
+    a lone `milestone:` (CR-107) reads as a list of ONE, which is what keeps this additive --
+    the card, the chat post and `config_checks` all came through here, and a config that
+    declares only `milestone:` renders byte for byte as before. Where both are declared the
+    list wins and `milestone:` is appended if the list does not already hold its date, so a
+    project adding `milestones:` beside an existing block loses nothing.
+
+    Each entry keeps its declared keys and gains three resolved ones:
+
+    - `_date`: the parsed `date:`, or None where none is declared or it is malformed.
+    - `_state`: the state as it is SHOWN. Proposal 3: `confirmed` without a source is not a
+      commitment anybody can trace, so it is shown as `proposed` -- the validation says why
+      (`config_checks`). An undeclared or unknown state reads as `proposed` too: the state
+      exists to tell a commitment from a proposal, and the safe reading of silence is that
+      nothing has been committed.
+    - `_sourced`: whether the entry names a `source:` -- a decision id, a plan section or a
+      named confirmer. Carried so the renderers need not re-derive the demotion.
+
+    Dateless entries sort last: an entry still waiting for a date cannot be placed in the
+    sequence, and putting it first would read as the next thing due.
+    """
+    raw = cf.get("milestones")
+    if isinstance(raw, dict):            # a single mapping written under the plural key
+        raw = [raw]
+    entries = [m for m in (raw or []) if isinstance(m, dict)]
+    lone = cf.get("milestone")
+    if isinstance(lone, dict) and lone:
+        # The duplicate is suppressed only where there is a date to compare. An undated
+        # `milestone:` beside an undated list entry is None == None, which read as the
+        # same milestone and DROPPED the declared block from the list, the card, the post
+        # and the validation -- a commitment vanishing is the opposite of what CR-149 is
+        # for, so a dateless lone block is always kept and the two dateless entries are
+        # shown as the two things that still need a date.
+        if not (lone.get("date") and any(m.get("date") == lone.get("date") for m in entries)):
+            entries.append(lone)
+    out = []
+    for m in entries:
+        e = dict(m)
+        e["_date"] = as_date(m.get("date"))
+        e["_sourced"] = bool(str(m.get("source") or "").strip())
+        state = str(m.get("state") or MILESTONE_DEFAULT_STATE).strip().lower()
+        if state not in MILESTONE_STATES:
+            state = MILESTONE_DEFAULT_STATE
+        if state == "confirmed" and not e["_sourced"]:
+            state = MILESTONE_DEFAULT_STATE
+        e["_state"] = state
+        out.append(e)
+    out.sort(key=lambda e: (e["_date"] is None, e["_date"] or datetime.date.max,
+                            str(e.get("name") or "")))
+    return out
+
+
+def unreadable_milestones(cf: dict) -> list[str]:
+    """CR-149: the `milestones:` items `milestones()` could not read, as written.
+
+    `milestones()` is best effort -- a list item that is not a mapping is skipped so the
+    readable entries still render -- but a skipped item is a milestone the author DECLARED
+    and the card, the post and the timeline then do not mention. `- Go/no-go` instead of
+    `- name: Go/no-go` is the slip, and silence about it is the disappearance this CR
+    exists to prevent, so `config_checks` reports every one of them.
+    """
+    raw = cf.get("milestones")
+    if isinstance(raw, dict) or not isinstance(raw, list):
+        return []
+    return [str(m) for m in raw if not isinstance(m, dict)]
+
+
+def next_milestone(ms: list[dict], day: datetime.date) -> dict | None:
+    """The earliest entry dated after `day`, or None where none is.
+
+    Proposal 2's *next date after today*: the one line that carries the days left. A `done`
+    entry is still eligible -- a done date in the future is a finding, not something to hide
+    from the reader who has to ask about it.
+    """
+    return next((e for e in ms if e["_date"] and e["_date"] > day), None)
+
+
+def timeline_line(ms: list[dict]) -> str:
+    """Proposal 5: the dated sequence on one line, for a reader who wants it at a glance.
+
+    Dates only, in order, with the undated entries left out -- a sequence is what this line
+    is for, and an entry with no date has no place in one.
+    """
+    return " -> ".join(e["_date"].isoformat() for e in ms if e["_date"])
+
+
+def undated_phrase(e: dict) -> str:
+    """CR-149: what a list line says where the entry has no date the generator can read.
+
+    Two different states, and the surfaces used to say the same thing about both: an entry
+    with no `date:` at all, and an entry whose declared date does not parse. The second is
+    not *date not set* -- a date WAS set, and printing it as unset tells the reader the
+    opposite of what the config says. So the unreadable value is shown as written, and
+    `config_checks` asks for `YYYY-MM-DD`.
+    """
+    if e.get("date"):
+        return f"{e['date']} (unreadable date)"
+    return "date not set" + (f", decide by {e['decide_by']}" if e.get("decide_by") else "")
+
+
 CONFIG_MARKER = "<!-- CONFIG-REVIEW:"
 
 
@@ -1405,30 +1971,92 @@ def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -
     and prepare proposes the edit out loud before generating.
     """
     out = []
-    ms = cf.get("milestone") or {}
-    def _d(v):
-        try:
-            return v if isinstance(v, datetime.date) else datetime.datetime.strptime(str(v), "%Y-%m-%d").date()
-        except ValueError:
-            return None
-    if ms:
-        if ms.get("date") and _d(ms["date"]) and _d(ms["date"]) < day:
-            out.append(f"milestone date {ms['date']} has passed: move it, or declare the next milestone")
+    # CR-149: the list, resolved once. Each entry is checked as the single milestone always
+    # was, so a config declaring only `milestone:` produces exactly the findings it did; an
+    # entry is NAMED in the message only where there is more than one, because the wording
+    # of the one-milestone findings is what the card and the skill doc already quote.
+    ms_all = milestones(cf)
+    _d = as_date
+    many = len(ms_all) > 1
+    for ms in ms_all:
+        at = f" ({ms.get('name')})" if many and ms.get("name") else ""
+        declared = str(ms.get("state") or "").strip().lower()
+        # A `done` date in the past is the normal case, not a slip: proposal 4's finding is
+        # the reverse of it (a `done` date in the FUTURE), checked below.
+        if ms["_date"] and ms["_date"] < day and ms["_state"] != "done":
+            # Proposal 4: a date that went by without being confirmed or moved. A DECLARED
+            # proposal gets the sharper wording -- that is the reading the state was added
+            # to make possible -- and the two readings of one passed date stay one finding.
+            # An entry that declares no state keeps the CR-107 sentence unchanged: it has
+            # said nothing about being a proposal, and the card has quoted that wording
+            # since CR-119.
+            out.append(f"milestone date {ms['date']}{at} was proposed and has passed without being "
+                       "confirmed or moved (CR-149)"
+                       if declared in ("proposed", "confirmed") and ms["_state"] == MILESTONE_DEFAULT_STATE
+                       else f"milestone date {ms['date']}{at} has passed: move it, or declare "
+                            "the next milestone")
+        elif ms.get("date") and not ms["_date"]:
+            # CR-149: a date WAS declared and `as_date` could not read it. Without this
+            # branch the card printed "*date not set*" and the post "date not set" -- a
+            # false statement about a config that says otherwise, and the one reading the
+            # reader cannot correct. So the finding names what was written and asks for
+            # the form, and never calls a declared date unset.
+            out.append(f"milestone date{at} is not a date the generator can read "
+                       f"({ms['date']}): write it as YYYY-MM-DD (CR-149)")
         elif not ms.get("date") and ms.get("decide_by") and _d(ms["decide_by"]) and _d(ms["decide_by"]) < day:
-            out.append(f"milestone has no date and its decide-by ({ms['decide_by']}) has passed")
+            out.append(f"milestone{at} has no date and its decide-by ({ms['decide_by']}) has passed")
         # CR-127: a date nobody can trace is a date that cannot be shown to have slipped.
         if ms.get("date") and not ms.get("set_on"):
-            out.append("milestone date has no `set_on`: when was it set? (CR-127)")
+            out.append(f"milestone date{at} has no `set_on`: when was it set? (CR-127)")
+        # Proposal 3: `confirmed` asserts a commitment, and a commitment nobody signed is
+        # a proposal. `milestones()` has already demoted it; this says so out loud.
+        if str(ms.get("state") or "").strip().lower() == "confirmed" and not ms["_sourced"]:
+            out.append(f"milestone{at} is marked `confirmed` with no `source`: shown as "
+                       "`proposed` until a decision id or a named confirmer says otherwise (CR-149)")
+        if ms["_state"] == "done" and ms["_date"] and ms["_date"] > day:
+            out.append(f"milestone{at} is marked `done` with a date in the future ({ms['date']}) (CR-149)")
         hist_ = ms.get("history")
         if hist_ and not isinstance(hist_, list):
-            out.append("milestone `history` must be a list of entries (CR-127)")
+            out.append(f"milestone{at} `history` must be a list of entries (CR-127)")
         else:
             for i, h in enumerate(hist_ or [], 1):
                 miss = [k for k in ("reason", "source") if not (isinstance(h, dict) and h.get(k))]
                 if miss:
-                    out.append(f"milestone history entry {i} has no {' or '.join(f'`{k}`' for k in miss)}")
-    elif cf.get("layout") == "card":
+                    out.append(f"milestone{at} history entry {i} has no "
+                               + " or ".join(f"`{k}`" for k in miss))
+    # CR-149: an item in `milestones:` that is not a mapping. Dropped from every surface
+    # by `milestones()`, so without this finding a declared milestone disappears in
+    # silence -- `- Go/no-go` where `- name: Go/no-go` was meant.
+    for item in unreadable_milestones(cf):
+        out.append(f"`milestones:` entry `{item}` is not a mapping: write it as "
+                   "`- name: ...` with its `date:`, or it is left off the card (CR-149)")
+    # Proposal 4: two entries on one date. Reported per date, once, naming both: the
+    # sequence the card renders cannot say which of them comes first.
+    for when in sorted({e["_date"] for e in ms_all if e["_date"]}):
+        same = [e for e in ms_all if e["_date"] == when]
+        if len(same) > 1:
+            out.append(f"{len(same)} milestones on the same date ({when.isoformat()}): "
+                       + ", ".join(str(e.get("name") or "unnamed") for e in same) + " (CR-149)")
+    # CR-148: compact is a card variant -- its post leads with the milestone list -- so
+    # a compact project with no milestone has the same nothing to run toward.
+    if not ms_all and is_card(cf):
         out.append("card layout without a milestone: the card has nothing to run toward")
+    # CR-121, proposal 3: the config and the project contradicting each other about
+    # releases. Report only -- both readings are legitimate, and which one is right is
+    # the team's to say, not the generator's.
+    card_cfg = cf.get("card") if isinstance(cf.get("card"), dict) else {}
+    declared_labels = [r for r in ((cf.get("ext") or {}).get("repos") or [])
+                       if isinstance(r, dict) and (r.get("labels") or {})]
+    if is_card(cf) and (card_cfg or {}).get("release_blockers") is None and not declared_labels:
+        kinds_ = {str(e.get("kind") or "").strip().lower() for e in ms_all} - {""}
+        if kinds_ and "release" not in kinds_:
+            out.append("card layout with no repo `labels:` and a milestone kind of "
+                       + ", ".join(sorted(kinds_))
+                       + ": nothing here ships a release — consider `card: {release_blockers: false}` (CR-121)")
+    if (card_cfg or {}).get("release_blockers") is False and ((mv_x or {}).get("top")):
+        out.append("`release_blockers: false` with the repo declaring a "
+                   f"`{mv_x.get('top')}` label: the config says this project ships no release"
+                   " and the repo says it does — one of the two is wrong (CR-121)")
     for lab in ((mv_x or {}).get("missing_labels") or []):
         out.append(f"declared label `{lab}` does not exist in the repo: its counts read as zero")
     for nm, _own, p_, age in ((mv_x or {}).get("reports") or []):
@@ -1436,6 +2064,26 @@ def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -
             out.append(f"report '{nm}' declared but not found")
         elif age is not None and age >= 3:
             out.append(f"report '{nm}' is {age} days old: retire the declaration, or ask its owner")
+    # CR-150, proposal 3: the owner-only metrics document, declared and not there. Worth
+    # one sentence because the declaration is what EXEMPTS a path from the lint: a stale
+    # `metrics_document:` silently exempts nothing, and the figures then have no declared
+    # home at all. Nothing else is checked about it -- the generator never writes to it,
+    # and what a project measures is its own method (CR-150, not in scope).
+    if cf.get("metrics_document") and not (mp := metrics_path(cf)).exists():
+        out.append(f"`metrics_document: {cf['metrics_document']}` does not exist ({mp.name}):"
+                   " the owner-only document the lint exempts is not there (CR-150)")
+    # CR-150: the per-person check resolves its subject against the `people:` roster and
+    # has nothing to resolve against without one, so it finds nothing. Said ONCE here,
+    # where a project is told about its configuration, rather than guessed at per line:
+    # the shape a name has is the shape every team and area has, and a check that fell
+    # back to it would report `Mobile: 7 PRs merged` as work counted per person.
+    #
+    # Only where there is history to lint. A series with no notes yet has nothing for the
+    # check to read, so a missing roster is not yet a gap -- and saying so would put a
+    # CR-150 line in the output of a project that has not held its first session.
+    if hist and not roster_names(cf):
+        out.append("no `people:` roster: the per-person check (CR-150) finds nothing,"
+                   " because a count's subject is resolved against the roster")
     rounds = [round_table(n) for _d_, n in hist[-3:]]
     if rounds and all(rounds):
         absent = [p_["name"] for p_ in cf.get("people") or []
@@ -1979,7 +2627,9 @@ def main() -> None:
     # basis in the header and the details. So `card_keep` now means exactly "kept because
     # the close is only probable", and a certain close is never in it.
     card_keep = set()
-    if cf.get("layout") == "card":
+    # CR-148: `card_keep` is a DATA rule -- what a probable close does to a carried
+    # line -- so compact shares it; the layout only decides where the line is printed.
+    if is_card(cf):
         kd0 = kinds(last)
         card_keep = {k for k in closed_keys - certain_keys if kd0.get(k) in KINDS}
     # Proposal 3: a line nobody can check is not asserted as live either. It leaves the
@@ -1990,7 +2640,9 @@ def main() -> None:
     # It is the CARD that asserts a short list as today's live work; the list layout's
     # carried-forward table is the full list by definition and keeps every line, which
     # is what "additive" means for a project that has not moved to the card.
-    pending = unconfirmed(raw_items) if cf.get("layout") == "card" else []
+    # CR-148: compact asserts the same short list of live work, so the unconfirmed
+    # routing is the same; only which output carries the question differs.
+    pending = unconfirmed(raw_items) if is_card(cf) else []
     streaks = {key(t[0]): t[2] for t in items}
     # A line in its FIRST session was raised aloud last night; the room is its
     # confirmation and proposal 4 forbids this pass touching what the room created.
@@ -2051,7 +2703,9 @@ def main() -> None:
     # file is inserted inside the `if card:` branch for exactly this reason.
     if certain:
         where = (f"Basis and time: [{details_name(cf, target)}]({details_name(cf, target)})."
-                 if cf.get("layout") == "card"
+                 # CR-148: compact writes the same details file, so the link target is
+                 # the card's; the list layout still points at its own section.
+                 if is_card(cf)
                  else "Basis and time below, under *Closed in the data since the last meeting*.")
         L += ["> **Closed in the data since the last meeting:** "
               + ", ".join(sorted({i for _l, _r, h in certain
@@ -2095,7 +2749,9 @@ def main() -> None:
                 balance[t] += 1
 
     built = datetime.datetime.now().strftime("%y%m%d %H:%M")
-    card = cf.get("layout") == "card"     # CR-107
+    # CR-107; CR-148: true for compact too -- the movement fetch feeds the facilitator
+    # document and the post's release-gap line, so the data is read the same way.
+    card = is_card(cf)
     mv_head = mv_note = None
     mv_reports: list[str] = []
     mv_x: dict = {}
@@ -2357,7 +3013,8 @@ def main() -> None:
         # branch and a line nobody had confirmed was printed as *yes, confirmed*, which
         # is a false statement about the operator's own data. A column with no meaning
         # is left out rather than filled with a guess.
-        on_card = cf.get("layout") == "card"
+        # CR-148: compact has a card, so the column means something there too.
+        on_card = is_card(cf)
         head_ = ["Item", "Owner"] + (["On the card"] if on_card else []) + ["Sessions"]
         L += ["| " + " | ".join(head_) + " |", "|" + "---|" * len(head_)]
         for lab, rest in unchecked:
@@ -2423,6 +3080,18 @@ def main() -> None:
         per = ", ".join(f"{c.get('name') or 'chat'} {len(c['messages'])}" for c in chat if c.get("messages"))
         L += ["## Since the last standup — not said in the room", "",
               f"<!-- DIGEST: {total_msgs} messages since {last_date} ({per}). Not yet read. -->", ""]
+    # CR-150, proposal 2: a declared source that already counts work per person. Written
+    # into the digest section, before `prepare` fills the slot, because `prepare` is the
+    # reader that would otherwise copy them -- the note tells it the figures are there and
+    # that they stay there. ONE line per source, naming the source and NO figure: a note
+    # that quoted one would itself have copied it. Independent of `total_msgs`: a report
+    # carrying figures is read whether or not the chat was busy.
+    if (src_counts := source_person_counts(cf)):
+        if not total_msgs:
+            L += ["## Since the last standup — not said in the room", ""]
+        L += [f"- {ln}" for ln in src_counts] + [""]
+        for ln in src_counts:
+            print("  source    " + ln.replace("**", ""))
     # CR-076: say when nothing was DECLARED, as distinct from declared-but-empty.
     # An undeclared block and a quiet week both render as no messages, and the one
     # that is a configuration miss is the one worth naming -- silently empty is how
@@ -2630,6 +3299,8 @@ def main() -> None:
     if card:
         kd = kinds(last)
         dname = details_name(cf, target)
+        # CR-121/CR-148: which sections this project's outputs carry, and in what order.
+        plan = section_plan(cf, day)
         head = L[:i_src]
         A = list(head)
         used_, unused_ = built_from(src)
@@ -2640,37 +3311,25 @@ def main() -> None:
         A.insert(len(A) - 2, f"> **Built from** ({built}): " + fmt(used_)
                  + ("" if not unused_ else ". **Not used or stale:** " + fmt(unused_))
                  + f". Detail: [{details_name(cf, target)}]({details_name(cf, target)}).\n")
-        A.insert(len(A) - 2, "*Confirm the release blockers and their plan, raise what you wait on, then one minute each. "
-                             "Five to ten minutes when nothing blocks; statistics are read offline.*\n")
-        ms = cf.get("milestone") or {}
-        A += ["## Milestone", ""]
-        if ms:
-            when = ms.get("date")
-            line = f"**{ms.get('name', 'Next milestone')}**"
-            if when:
-                dd = (datetime.datetime.strptime(str(when), "%Y-%m-%d").date() - day).days
-                line += f" — {when} · **{dd} days**"
-            else:
-                line += " — **date not set**" + (f"; decide by {ms['decide_by']}" if ms.get("decide_by") else "")
-            A.append(line)
-            if ms.get("criteria"):
-                A.append(f"Exit criteria: {ms['criteria']}")
-        else:
-            A.append("*No milestone declared (`milestone:` in the project config). An agenda with no date has nothing to run toward.*")
-        A.append("")
-        if mv_head:
-            A += ["## Movement", "", mv_head, ""]
-            rs = (mv_x or {}).get("reports") or []
-            if rs:
-                A.append("**Status sources:** " + " · ".join(
-                    f"{nm} — " + ("updated today" if a_ == 0 else ("missing" if a_ is None else f"**{a_}d old**"))
-                    + ("" if p_ and not p_.split("/")[-1][:4].isdigit() else " (dated file, no stable link)")
-                    for nm, _o, p_, a_ in rs))
-                A.append("")
-        elif cf.get("movement") is not None or any((r or {}).get("labels") for r in ((cf.get("ext") or {}).get("repos") or []) if isinstance(r, dict)):
-            A += ["## Movement", "", f"*Not available: {mv_note}.*", ""]
+        # CR-121: the lead is chosen from the plan, which already knows whether this
+        # project confirms release blockers and whether today is its demo day. The
+        # three head inserts above stay in this order: each goes in at len-2, so the
+        # header reads in the REVERSE of the insert sequence.
+        A.insert(len(A) - 2, lead_line(cf, plan, day))
+        ms_all = milestones(cf)
+        ms = ms_all[0] if ms_all else {}
+        # Page-level, not a section's: `rest_n` is printed after the loop, and the
+        # facilitator document (CR-148) renders the same `stuck_tasks` list.
+        stuck_tasks = [t for t in items if kd.get(key(t[0])) not in KINDS and (t[2] >= E or (ED and t[4] >= ED))]
+        rest_n = len([t for t in items if kd.get(key(t[0])) not in KINDS]) - len(stuck_tasks)
 
-        def sect(kind, title, lead, col):
+        # CR-121/CR-148: one section, named by its id. The title, the lead and the
+        # column come out of SECTIONS, so a plan can swap `release_blockers` for
+        # `blockers` (CR-121) or move a section to another output (CR-148) without
+        # a conditional in here. The body is CR-107's, unchanged.
+        def sect(sid):
+            s_ = SECTIONS[sid]
+            kind, title, lead, col = s_["kind"], s_["title"], s_["lead"], s_["col"]
             rows_ = [t for t in all_items if kd.get(key(t[0])) == kind
                      and not off_card(key(t[0]))]
             if not rows_:
@@ -2685,89 +3344,273 @@ def main() -> None:
                     mark += " · *probably closed? evidence in details*"
                 out_.append(f"| **{item_of(lab, rest)}**" + (f" — {note}" if note else "") + f" | {owner_of(lab, rest)} | {mark} |")
             return out_ + [""]
-        # CR-114: a blocker is a RELEASE blocker. With labels declared, the list comes
-        # from the repo -- the label is the definition -- and the room confirms it.
-        # Carried [blocker] lines follow; people waiting on people are dependencies.
-        rb = (mv_x or {}).get("blockers") or []
-        if rb:
-            A += ["## Release blockers", "",
-                  f"**From the repo's `{mv_x.get('top')}` label. Is this the list? Anything missing? What is the plan for each?**", "",
-                  "| # | Area | State | Assignee | Issue |", "|---|---|---|---|---|"]
-            for b_ in rb:
-                A.append(f"| [#{b_['n']}]({b_['url']}) | {b_['area']} | "
-                         + ("fixed, waiting for a test" if b_["fixed"] else "**open**")
-                         + f" | {', '.join(b_['who']) or '—'} | {b_['title'][:80].replace('|', '/')} |")
-            A.append("")
-            more = sect("blocker", "Other blockers carried", "**Carried as blockers; not labelled in the repo.**", "Stuck for")
-            if not more[2].startswith("*None"):
-                A += more
-        else:
-            A += sect("blocker", "Release blockers", "**What blocks the release, who owns it, the plan.**", "Stuck for")
-        A += sect("dependency", "Dependencies", "**A person waiting on another person, or on someone outside the room.**", "Waiting")
-        A += sect("decision", "Decisions needed today", "**Each one leaves the room decided, or with a date.**", "Open for")
-        # CR-142, proposal 2: on the card, not only in the details. An unconfirmed
-        # inference is a question for a named person, and the card is where the room
-        # reads the questions it has to answer out loud.
-        A += confirm_block
-        stuck_tasks = [t for t in items if kd.get(key(t[0])) not in KINDS and (t[2] >= E or (ED and t[4] >= ED))]
-        if stuck_tasks:
-            A += [f"## Stuck? ({len(stuck_tasks)})", "",
-                  f"Tasks carried {E}+ sessions. Give each a date and a name, or drop it.", ""]
-            A += [f"- {item_of(l, r)} · **{owner_of(l, r)}** ({n} sessions)" for l, r, n, _g, _d in stuck_tasks] + [""]
-        rest_n = len([t for t in items if kd.get(key(t[0])) not in KINDS]) - len(stuck_tasks)
-        A += [f"*{rest_n} more carried task(s), the sources, the chat digest and the repo detail: [{dname}]({dname}).*", ""]
-        # The round: one minute each, one question, the previous track as a hint.
-        rnd = L[i_round:i_close]
-        A += ["---", "", "## One-minute round", "",
-              "**One minute each. What moved toward the milestone? What is stuck, and who owns the other end?**"
-              + (" Track first." if tracks else ""), ""]
-        A += [x for x in rnd if x.startswith("Last session") or x.startswith("Last ") or x.startswith("- ") and "had no one" in x]
-        # Each person's minute starts from what they carry (CR-084 routed it to their row;
-        # the card must not lose that): their card items by kind, then a count of their
-        # other carried tasks. The question is the same for everyone; the prompt is not.
-        mark_ = {"blocker": "blocked", "dependency": "waiting", "decision": "decide"}
-        per: dict[str, list[str]] = {}
-        tasks_n: dict[str, int] = {}
-        for lab, rest, n, _g, _d in all_items:
-            if off_card(key(lab)):
-                continue
-            who = owner_of(lab, rest)
-            if who == "UNOWNED":
-                continue
-            k_ = kd.get(key(lab))
-            short = re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:60]
-            for nm in re.split(r",|\band\b|·", who):
-                nm = nm.strip().strip("*").lower()
-                if not nm:
-                    continue
-                if k_ in KINDS:
-                    per.setdefault(nm, []).append(f"*{mark_[k_]}:* {short}")
+
+        def s_milestone():
+            A = []
+            A += ["## Milestone" + ("s" if len(ms_all) > 1 else ""), ""]
+            if len(ms_all) > 1:
+                # CR-149, proposal 2: a table, sorted by date, the state on every line, and the
+                # next date after today carrying the days left. The state is the column the
+                # reader needs: a bare date cannot say whether it is a commitment somebody made
+                # or a proposal out of a plan document, and both are on this card.
+                nxt = next_milestone(ms_all, day)
+                A += ["| Milestone | Date | State | Set on | Source |", "|---|---|---|---|---|"]
+                for e in ms_all:
+                    when = e["_date"].isoformat() if e["_date"] else ""
+                    if e is nxt:
+                        when = f"**{when}** · **{(e['_date'] - day).days} days**"
+                    elif e.get("date"):
+                        # CR-149: declared and unparseable. Shown as written -- never as
+                        # "date not set", which would contradict the config.
+                        when = f"**{e['date']}** (unreadable date)"
+                    else:
+                        when = "*date not set*" + (f"; decide by {e['decide_by']}" if e.get("decide_by") else "")
+                    A.append(f"| **{e.get('name', 'Unnamed')}** | {when} | {e['_state']} | "
+                             f"{e.get('set_on') or '—'} | {e.get('source') or '—'} |")
+                tl = timeline_line(ms_all)
+                if tl:
+                    A += ["", f"*Sequence: {tl}*"]
+                crit = [f"Exit criteria — {e.get('name', 'Unnamed')}: {e['criteria']}"
+                        for e in ms_all if e.get("criteria")]
+                if crit:
+                    A += [""] + crit
+            elif ms:
+                when = ms.get("date")
+                line = f"**{ms.get('name', 'Next milestone')}**"
+                # CR-149: through `as_date` like every other config date -- the last copy
+                # of the parse lived here, and the one reader is what stops the date the
+                # card sorts by and the date the validation complains about disagreeing.
+                if ms["_date"]:
+                    dd = (ms["_date"] - day).days
+                    line += f" — {when} · **{dd} days**"
+                elif when:
+                    # A date that was declared and does not parse. Calling it unset would
+                    # be false; config_checks names it and asks for YYYY-MM-DD.
+                    line += f" — **{when}** (not a date the generator can read)"
                 else:
-                    tasks_n[nm] = tasks_n.get(nm, 0) + 1
-        if people:
-            lt_col = bool(tracks and round_recorded)
-            A += ["", "| | " + ("Last track | " if lt_col else "") + "Bring to your minute |",
-                  "|---|" + ("---|" if lt_col else "") + "---|"]
-            for p_ in people:
-                keys_ = [p_["name"]] + list(p_.get("aliases") or [])
-                mine_, seen_ = [], set()
-                for k in keys_:
-                    for x in per.get(k.lower(), []):
-                        if x not in seen_:
-                            seen_.add(x); mine_.append(x)
-                order_k = {"*blocked:*": 0, "*waiting:*": 1, "*decide:*": 2}
-                mine_.sort(key=lambda x: order_k.get(x.split(" ", 1)[0], 3))
-                nt = max((tasks_n.get(k.lower(), 0) for k in keys_), default=0)
-                cell = " · ".join(mine_)
-                for nm_r, own_r, _p, a_r in ((mv_x or {}).get("reports") or []):
-                    if own_r and own_r.lower() in [k.lower() for k in keys_]:
-                        cell = f"*summarise:* {nm_r}" + (" (STALE)" if a_r not in (0,) else "") + (" · " + cell if cell else "")
-                if nt:
-                    cell += (" · " if cell else "") + f"{nt} carried task{'s' if nt != 1 else ''} (details)"
-                prev = next((last_round[k.lower()] for k in keys_ if k.lower() in last_round), "")
-                A.append(f"| **{p_['name']}** | " + (f"{declared_track(prev, tracks) or ''} | " if lt_col else "")
-                         + (cell or "—") + " |")
-        A += L[i_close:i_app]
+                    line += " — **date not set**" + (f"; decide by {ms['decide_by']}" if ms.get("decide_by") else "")
+                # CR-149: the state is appended only where the config declared one. A single
+                # milestone that says nothing about its state renders exactly as it did before.
+                if ms.get("state"):
+                    line += f" · *{ms['_state']}*"
+                A.append(line)
+                if ms.get("criteria"):
+                    A.append(f"Exit criteria: {ms['criteria']}")
+            else:
+                A.append("*No milestone declared (`milestone:` in the project config). An agenda with no date has nothing to run toward.*")
+            # CR-121: a demo date that has gone by. The milestone line itself is left
+            # exactly as it is -- config_checks already says the date has passed -- and
+            # this adds the one thing that finding does not: the demo is the kind of
+            # milestone whose outcome has to be recorded before the next date is set.
+            past_demo = next((e for e in ms_all
+                              if str(e.get("kind") or "").strip().lower() == "demo"
+                              and e["_date"] and e["_date"] < day), None)
+            if past_demo:
+                A.append(f"*Demo held ({past_demo['_date'].isoformat()})? Record it and set the"
+                         " next milestone.*")
+            A.append("")
+            return A
+
+        def s_movement():
+            A = []
+            if mv_head:
+                A += ["## Movement", "", mv_head, ""]
+                rs = (mv_x or {}).get("reports") or []
+                if rs:
+                    A.append("**Status sources:** " + " · ".join(
+                        f"{nm} — " + ("updated today" if a_ == 0 else ("missing" if a_ is None else f"**{a_}d old**"))
+                        + ("" if p_ and not p_.split("/")[-1][:4].isdigit() else " (dated file, no stable link)")
+                        for nm, _o, p_, a_ in rs))
+                    A.append("")
+            elif cf.get("movement") is not None or any((r or {}).get("labels") for r in ((cf.get("ext") or {}).get("repos") or []) if isinstance(r, dict)):
+                A += ["## Movement", "", f"*Not available: {mv_note}.*", ""]
+            return A
+
+        def s_blockers(sid="release_blockers"):
+            A = []
+            # CR-114: a blocker is a RELEASE blocker. With labels declared, the list comes
+            # from the repo -- the label is the definition -- and the room confirms it.
+            # Carried [blocker] lines follow; people waiting on people are dependencies.
+            #
+            # CR-121: the repo table is NOT config's to suppress. `release_blockers: false`
+            # says this project does not ship releases; a repo that declares a gap label
+            # says it does, and hiding the repo's own data on a config key would be the
+            # wrong direction. The key reaches `sid` -- the carried-line section -- only.
+            rb = (mv_x or {}).get("blockers") or []
+            if rb:
+                A += ["## Release blockers", "",
+                      f"**From the repo's `{mv_x.get('top')}` label. Is this the list? Anything missing? What is the plan for each?**", "",
+                      "| # | Area | State | Assignee | Issue |", "|---|---|---|---|---|"]
+                for b_ in rb:
+                    A.append(f"| [#{b_['n']}]({b_['url']}) | {b_['area']} | "
+                             + ("fixed, waiting for a test" if b_["fixed"] else "**open**")
+                             + f" | {', '.join(b_['who']) or '—'} | {b_['title'][:80].replace('|', '/')} |")
+                A.append("")
+                more = sect("other_blockers")
+                # The index-2 probe is CR-114's: `sect` puts its *None carried* placeholder
+                # there, and a section with nothing in it is not worth a second heading.
+                if not more[2].startswith("*None"):
+                    A += more
+            else:
+                A += sect(sid)
+            return A
+
+        def s_dependencies():
+            A = []
+            A += sect("dependencies")
+            return A
+
+        def s_decisions():
+            A = []
+            A += sect("decisions")
+            return A
+
+        def s_confirm():
+            A = []
+            # CR-142, proposal 2: on the card, not only in the details. An unconfirmed
+            # inference is a question for a named person, and the card is where the room
+            # reads the questions it has to answer out loud.
+            A += confirm_block
+            return A
+
+        def s_stuck():
+            A = []
+            if stuck_tasks:
+                A += [f"## Stuck? ({len(stuck_tasks)})", "",
+                      f"Tasks carried {E}+ sessions. Give each a date and a name, or drop it.", ""]
+                A += [f"- {item_of(l, r)} · **{owner_of(l, r)}** ({n} sessions)" for l, r, n, _g, _d in stuck_tasks] + [""]
+            # The link to the details file follows the stuck list: it is what the card
+            # offers instead of the rest, and it is the reason the card can be short.
+            A += [f"*{rest_n} more carried task(s), the sources, the chat digest and the repo detail: [{dname}]({dname}).*", ""]
+            return A
+
+        def s_round():
+            A = []
+            # The round: one minute each, one question, the previous track as a hint.
+            rnd = L[i_round:i_close]
+            A += ["---", "", "## One-minute round", "",
+                  "**One minute each. What moved toward the milestone? What is stuck, and who owns the other end?**"
+                  + (" Track first." if tracks else ""), ""]
+            A += [x for x in rnd if x.startswith("Last session") or x.startswith("Last ") or x.startswith("- ") and "had no one" in x]
+            # Each person's minute starts from what they carry (CR-084 routed it to their row;
+            # the card must not lose that): their card items by kind, then a count of their
+            # other carried tasks. The question is the same for everyone; the prompt is not.
+            mark_ = {"blocker": "blocked", "dependency": "waiting", "decision": "decide"}
+            per: dict[str, list[str]] = {}
+            tasks_n: dict[str, int] = {}
+            for lab, rest, n, _g, _d in all_items:
+                if off_card(key(lab)):
+                    continue
+                who = owner_of(lab, rest)
+                if who == "UNOWNED":
+                    continue
+                k_ = kd.get(key(lab))
+                short = re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:60]
+                for nm in re.split(r",|\band\b|·", who):
+                    nm = nm.strip().strip("*").lower()
+                    if not nm:
+                        continue
+                    if k_ in KINDS:
+                        per.setdefault(nm, []).append(f"*{mark_[k_]}:* {short}")
+                    else:
+                        tasks_n[nm] = tasks_n.get(nm, 0) + 1
+            if people:
+                lt_col = bool(tracks and round_recorded)
+                A += ["", "| | " + ("Last track | " if lt_col else "") + "Bring to your minute |",
+                      "|---|" + ("---|" if lt_col else "") + "---|"]
+                for p_ in people:
+                    keys_ = [p_["name"]] + list(p_.get("aliases") or [])
+                    mine_, seen_ = [], set()
+                    for k in keys_:
+                        for x in per.get(k.lower(), []):
+                            if x not in seen_:
+                                seen_.add(x); mine_.append(x)
+                    order_k = {"*blocked:*": 0, "*waiting:*": 1, "*decide:*": 2}
+                    mine_.sort(key=lambda x: order_k.get(x.split(" ", 1)[0], 3))
+                    nt = max((tasks_n.get(k.lower(), 0) for k in keys_), default=0)
+                    cell = " · ".join(mine_)
+                    for nm_r, own_r, _p, a_r in ((mv_x or {}).get("reports") or []):
+                        if own_r and own_r.lower() in [k.lower() for k in keys_]:
+                            cell = f"*summarise:* {nm_r}" + (" (STALE)" if a_r not in (0,) else "") + (" · " + cell if cell else "")
+                    if nt:
+                        cell += (" · " if cell else "") + f"{nt} carried task{'s' if nt != 1 else ''} (details)"
+                    prev = next((last_round[k.lower()] for k in keys_ if k.lower() in last_round), "")
+                    A.append(f"| **{p_['name']}** | " + (f"{declared_track(prev, tracks) or ''} | " if lt_col else "")
+                             + (cell or "—") + " |")
+            return A
+
+        def s_close():
+            A = []
+            A += L[i_close:i_app]
+            return A
+
+        def s_demo():
+            """CR-121: what is being shown today, who shows it, and in what state.
+
+            Rows come from what the pipeline already knows: the carried lines that are
+            on the card, and the repo's gap-label issues fixed and waiting for a test
+            (`mv_x["blockers"]` with `fixed`), which is "on staging or done since the
+            last demo" as the repo states it. A gap-label issue nobody has fixed yet is
+            NOT a demo row (CR-121 proposal 2): it is on the card under Release blockers.
+
+            *Shown by* is READ or left BLANK. The demo convention is that the person who
+            raised an idea shows it, so a carried line's owner is the raiser; an issue the
+            repo assigned to nobody has no raiser to read, and a plausible guess -- the
+            assignee, the last person to touch it -- would put a name against work that
+            person never offered to present. The blank is the point: the room fills it.
+            """
+            A = ["## Demo", "",
+                 "**What is shown today, by whom, in what state. A blank *Shown by* is for"
+                 " the room to fill, not for the generator to guess.**", "",
+                 "| Item | Shown by | State |", "|---|---|---|"]
+            seen_ = set()
+            for lab, rest, _n, _g, _d in all_items:
+                if off_card(key(lab)) or kd.get(key(lab)) not in KINDS:
+                    continue
+                who = owner_of(lab, rest)
+                item = item_of(lab, rest)
+                seen_.add(item.lower())
+                A.append(f"| **{item}** | " + ("" if who == "UNOWNED" else who)
+                         + f" | carried as `[{kd.get(key(lab))}]` |")
+            for b_ in ((mv_x or {}).get("blockers") or []):
+                # CR-121 proposal 2: rows are the repo items "on staging or done since
+                # the last demo", which for this repo's data is the `awaiting_test`
+                # label -- fixed and waiting for a test. An item nobody has fixed is
+                # not something to show at a demo, and listing it as **open** put the
+                # release-blocker table's content into the Demo section. The open ones
+                # are still on the card, under Release blockers, where they belong.
+                if not b_["fixed"] or b_["title"].strip().lower() in seen_:
+                    continue
+                A.append(f"| [#{b_['n']}]({b_['url']}) {b_['title'][:70].replace('|', '/')} | "
+                         # No raiser in the repo's data: the assignee fixed it, which is
+                         # not the same statement as "this person will show it".
+                         + " | fixed, waiting for a test |")
+            if len(A) == 6:
+                A.append("| *nothing carried or moved* | | |")
+            return A + [""]
+
+        # CR-121/CR-148: the agenda is its plan. The order and the presence of every
+        # section are section_plan()'s; this loop only renders what it is handed, so
+        # a layout or a `card:` key never reaches into a renderer.
+        render = {"milestone": s_milestone, "movement": s_movement,
+                  # One renderer, two ids: CR-121 changes the heading and the lead by
+                  # choosing the id, not by branching inside the renderer.
+                  "release_blockers": lambda: s_blockers("release_blockers"),
+                  "blockers": lambda: s_blockers("blockers"),
+                  "dependencies": s_dependencies, "decisions": s_decisions,
+                  "confirm": s_confirm, "stuck": s_stuck, "round": s_round,
+                  "close": s_close, "demo": s_demo}
+        for sid in plan["agenda"]:
+            A += render[sid]()
+        # CR-148: the compact agenda has no Stuck? section, so the link to the details
+        # file -- which `s_stuck` carries on the card -- is written here instead. The
+        # link is not optional: "the rest is in the details" is the whole claim that
+        # lets the agenda be two sections, and an agenda that drops it is simply short.
+        if is_compact(cf):
+            A += ["",
+                  f"*Everything else -- the dependencies, the movement, the sources, the full"
+                  f" carried list: [{dname}]({dname}). The facilitator's document is"
+                  f" `{facilitator_name(cf, target)}`.*", ""]
         out.write_text("\n".join(A), encoding="utf-8")
         D = [f"# Agenda details — {day.strftime('%A %-d %B')}", "",
              f"Companion to [{out.name}]({out.name}): what the agenda was built from, the full carried list, "
@@ -2775,6 +3618,100 @@ def main() -> None:
              f"*{base}*", ""]   # CR-139
         D += L[i_src:i_carry] + L[i_carry:i_closed] + L[i_closed:i_digest] + L[i_digest:i_round] + L[i_app:]
         (md / dname).write_text("\n".join(D), encoding="utf-8")
+        if is_compact(cf):
+            # CR-148: the facilitator's own document. Time boxes, the dependencies read
+            # against the data, and what to watch.
+            #
+            # CR-150: NO PER-PERSON FIGURES. The temptation here is a "who carries the
+            # most" watch list, and it is exactly the aggregation CR-150 forbids -- the
+            # person reading this is often one of the people who would be counted. The
+            # dependencies are ordered by AGE, never by owner, and an owner appears only
+            # beside the one item they own, which is accountability, not a scoreboard.
+            F = [f"# Facilitator — {day.strftime('%A %-d %B')}", "",
+                 f"For whoever leads. Not screen-shared: the room reads `{out.name}`.", "",
+                 f"*{base}*", ""]   # CR-139
+            if cfg_findings:
+                F += [f"> **Config: {len(cfg_findings)} finding(s)** — " + "; ".join(cfg_findings)
+                      + ". Fix the config, or say why not, before the meeting.", ""]
+            F += ["> **Built from** (" + built + "): " + fmt(used_)
+                  + ("" if not unused_ else ". **Not used or stale:** " + fmt(unused_))
+                  + f". Detail: [{dname}]({dname}).", ""]
+
+            def f_timeboxes():
+                """CR-148: how long each part of the agenda gets.
+
+                Derived from what the agenda actually carries -- a minute per person for
+                the round, and the remainder of CR-107's ten minutes for the decisions.
+                A box is a plan for the time, not a claim about what happened.
+                """
+                dec_n = len([x for x in all_items if kd.get(key(x[0])) == "decision"
+                             and not off_card(key(x[0]))])
+                rnd_m = max(1, len(people))
+                return ["## Time boxes", "",
+                        "| Part | Minutes |", "|---|--:|",
+                        f"| Decisions needed ({dec_n}) | {max(2, dec_n * 2)} |",
+                        f"| One-minute round ({rnd_m} people) | {rnd_m} |",
+                        "| Anything raised in the room | 2 |", ""]
+
+            def f_dependencies():
+                """CR-148: the dependencies, each line read against the data (CR-147).
+
+                A line whose own source says closed or merged is LISTED AS CLOSED rather
+                than dropped: the facilitator is the person who would otherwise raise it,
+                and a line that silently disappeared is the failure CR-147 names. Ordered
+                by age, oldest first -- never by owner (CR-150).
+                """
+                rows_ = [x for x in all_items if kd.get(key(x[0])) == "dependency"]
+                if not rows_:
+                    return ["## Dependencies", "", "*None carried as `[dependency]`.*", ""]
+                F_ = ["## Dependencies", "",
+                      "**Oldest first. Each line was read against its own source; a closed one is"
+                      " listed as closed, not removed.**", "",
+                      "| Item | Owner | Waiting | Read against the data |", "|---|---|---|---|"]
+                for lab, rest, n, _g, d in sorted(rows_, key=lambda x: (-x[4], -x[2])):
+                    k_ = key(lab)
+                    if k_ in certain_keys:
+                        state = "**closed** — its own source says so"
+                    elif k_ in card_keep:
+                        state = "probably closed? evidence in the details"
+                    elif k_ in aged_keys:
+                        state = f"unconfirmed for {CONFIRM_SESSIONS}+ sessions — off the card"
+                    elif k_ in pending_keys:
+                        state = "awaiting its owner's word"
+                    elif k_ in {key(l) for l, _r, _h in held}:
+                        state = "source not read, so nothing was removed on its word"
+                    else:
+                        state = "open"
+                    F_.append(f"| **{item_of(lab, rest)}** | {owner_of(lab, rest)} | "
+                              + (f"{n} session{'s' if n != 1 else ''}"
+                                 + (f" · {d}d" if d >= 7 else "")) + f" | {state} |")
+                return F_ + [""]
+
+            def f_movement():
+                return s_movement()
+
+            def f_stuck():
+                """CR-148: what to watch. CR-150: counted by ITEM, never by person."""
+                F_ = ["## What to watch", ""]
+                if stuck_tasks:
+                    F_ += [f"- {len(stuck_tasks)} task(s) carried {E}+ sessions: "
+                           + " · ".join(item_of(l, r) for l, r, *_ in stuck_tasks)]
+                if certain:
+                    F_ += [f"- {len(certain)} carried line(s) came off the card because their own"
+                           " source says closed. The header says which; the basis is in the details."]
+                if held:
+                    F_ += ["- a source was not read, so nothing was removed on its word: "
+                           + "; ".join(f"{k}: {v}" for k, v in sorted(blocked.items()))]
+                if rest_n:
+                    F_ += [f"- {rest_n} more carried task(s) in the details, not raised here."]
+                return F_ + ([""] if len(F_) > 2 else ["*Nothing.*", ""])
+
+            f_render = {"dependencies": f_dependencies, "movement": f_movement,
+                        "stuck": f_stuck}
+            F += f_timeboxes()
+            for sid in plan["facilitator"]:
+                F += f_render[sid]()
+            (md / facilitator_name(cf, target)).write_text("\n".join(F), encoding="utf-8")
     else:
         out.write_text("\n".join(L), encoding="utf-8")
 
@@ -2826,48 +3763,239 @@ def main() -> None:
         # CR-107: the post is the card -- the date, what is stuck, what is waiting,
         # what must be decided. Each person's full carried list stays in the details.
         kd = kinds(last)
-        ms = cf.get("milestone") or {}
+        ms_all = milestones(cf)
+        ms = ms_all[0] if ms_all else {}
+        plan = section_plan(cf, day)        # CR-121/CR-148
         C = [T[0], ""]
         used_, unused_ = built_from(src)
         C += ["**Built from:** " + " · ".join(n for n, _ in used_)
               + ("" if not unused_ else ". Not used or stale: " + " · ".join(n for n, _ in unused_)) + ".", ""]
-        if ms:
-            C.append(f"**Milestone:** {ms.get('name', '')}" + (f" — {ms['date']}" if ms.get("date") else
-                     " — date not set" + (f", decide by {ms['decide_by']}" if ms.get("decide_by") else "")))
-        if mv_head:
-            m_ = re.search(r"\*\*Release gap\*\*[^|]*\| \*\*(\d+)\*\* \(([^)]*)\) \| ([^|]+)\|", mv_head)
-            m2 = re.search(r"Release gap: still to fix \| \*\*(\d+)\*\*", mv_head)
-            if m_:
-                C.append(f"**Release gap:** {m_.group(1)} open ({m_.group(2)})"
-                         + (f", {m2.group(1)} still to fix" if m2 else "") + f" · since yesterday {m_.group(3).strip()}")
-        for kind, title in (("blocker", "Blockers"), ("dependency", "Waiting on"), ("decision", "Decide today")):
+
+        def c_milestone():
+            C = []
+            if len(ms_all) > 1:
+                # CR-149, proposal 2: in the plain-text post a SHORT list -- one line per
+                # milestone, the state on each, the days left on the next date after today.
+                # No table: the post is pasted into a chat where a table does not survive.
+                nxt = next_milestone(ms_all, day)
+                C.append("**Milestones:**")
+                for e in ms_all:
+                    when = e["_date"].isoformat() if e["_date"] else undated_phrase(e)
+                    C.append(f"- {e.get('name', 'Unnamed')} — {when} · {e['_state']}"
+                             + (f" · **{(e['_date'] - day).days} days**" if e is nxt else "")
+                             + (f" · {e['source']}" if e.get("source") else ""))
+                tl = timeline_line(ms_all)
+                if tl:
+                    C.append(f"Sequence: {tl}")
+            elif ms:
+                C.append(f"**Milestone:** {ms.get('name', '')}" + (f" — {ms['date']}" if ms.get("date") else
+                         " — date not set" + (f", decide by {ms['decide_by']}" if ms.get("decide_by") else ""))
+                         # CR-149: appended only where a state was declared, so an existing
+                         # single-milestone post is unchanged.
+                         + (f" · {ms['_state']}" if ms.get("state") else ""))
+            return C
+
+        def c_movement():
+            C = []
+            if mv_head:
+                m_ = re.search(r"\*\*Release gap\*\*[^|]*\| \*\*(\d+)\*\* \(([^)]*)\) \| ([^|]+)\|", mv_head)
+                m2 = re.search(r"Release gap: still to fix \| \*\*(\d+)\*\*", mv_head)
+                if m_:
+                    C.append(f"**Release gap:** {m_.group(1)} open ({m_.group(2)})"
+                             + (f", {m2.group(1)} still to fix" if m2 else "") + f" · since yesterday {m_.group(3).strip()}")
+            return C
+
+        def c_kind(sid):
+            """One carried-line section, inline, labelled as POST_LABELS names it.
+
+            CR-121: `release_blockers` and `blockers` are the same kind under two ids,
+            and the post labels both *Blockers* -- the post has never carried the word
+            release in that label, so the key changes nothing here.
+            """
+            C = []
+            kind = SECTIONS[sid]["kind"]
             rows_ = [t for t in all_items if kd.get(key(t[0])) == kind
                      and not off_card(key(t[0]))]
             if rows_:
-                C.append(f"**{title}:** " + " · ".join(f"{item_of(l, r)} ({owner_of(l, r)})" for l, r, *_ in rows_))
-        C += ["", "**Round, one minute each:** what moved toward the milestone, what is stuck."]
-        order_ = []
-        for p_ in people:
-            keys_ = [p_["name"]] + list(p_.get("aliases") or [])
-            mine_ = []
-            for lab, rest, *_ in all_items:
-                if kd.get(key(lab)) in KINDS and not off_card(key(lab)):
-                    owners_ = [o.strip().strip("*").lower() for o in re.split(r",|\band\b|·", owner_of(lab, rest))]
-                    if any(k.lower() in owners_ for k in keys_):
-                        mine_.append((["blocker", "dependency", "decision"].index(kd.get(key(lab))),
-                                      re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:50]))
-            mine_ = [x for _, x in sorted(mine_, key=lambda t: t[0])]
-            order_.append(f"**{p_['name']}**" + (f" ({'; '.join(mine_)})" if mine_ else ""))
-        if order_:
-            C.append("Order: " + " · ".join(order_))
+                C.append(f"**{POST_LABELS[sid]}:** "
+                         + " · ".join(f"{item_of(l, r)} ({owner_of(l, r)})" for l, r, *_ in rows_))
+            return C
+
+        def c_demo():
+            """CR-121: on demo day the post carries what is shown, not the blockers line."""
+            rows_ = [f"{item_of(l, r)}"
+                     + ("" if owner_of(l, r) == "UNOWNED" else f" ({owner_of(l, r)})")
+                     for l, r, *_ in all_items
+                     if kd.get(key(l)) in KINDS and not off_card(key(l))]
+            # Same filter as `s_demo`: on staging or done, never the still-open ones.
+            rows_ += [f"#{b_['n']} {b_['title'][:60]}"
+                      for b_ in ((mv_x or {}).get("blockers") or []) if b_["fixed"]]
+            return ["**Demo today:** " + (" · ".join(rows_) if rows_
+                                          else "nothing carried or moved — agree the list in the room")]
+
+        def c_round():
+            C = []
+            C += ["", "**Round, one minute each:** what moved toward the milestone, what is stuck."]
+            order_ = []
+            for p_ in people:
+                keys_ = [p_["name"]] + list(p_.get("aliases") or [])
+                mine_ = []
+                for lab, rest, *_ in all_items:
+                    if kd.get(key(lab)) in KINDS and not off_card(key(lab)):
+                        owners_ = [o.strip().strip("*").lower() for o in re.split(r",|\band\b|·", owner_of(lab, rest))]
+                        if any(k.lower() in owners_ for k in keys_):
+                            mine_.append((["blocker", "dependency", "decision"].index(kd.get(key(lab))),
+                                          re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:50]))
+                mine_ = [x for _, x in sorted(mine_, key=lambda t: t[0])]
+                order_.append(f"**{p_['name']}**" + (f" ({'; '.join(mine_)})" if mine_ else ""))
+            if order_:
+                C.append("Order: " + " · ".join(order_))
+            return C
+
+        # CR-121/CR-148: the post is its plan too, and the same ids name the same
+        # sections as in the agenda.
+        c_render = {"milestone": c_milestone, "movement": c_movement, "demo": c_demo,
+                    "release_blockers": lambda: c_kind("release_blockers"),
+                    "blockers": lambda: c_kind("blockers"),
+                    "dependencies": lambda: c_kind("dependencies"),
+                    "decisions": lambda: c_kind("decisions"),
+                    "round": c_round}
+        for sid in plan["post"]:
+            C += c_render[sid]()
         if bits:
             C += ["", "**Repo since the last note:** " + " · ".join(bits) + "."]
         C += ["", f"Agenda: `{out.name}` · details: `{details_name(cf, target)}`"]
         T = C
     else:
         T += [f"Full agenda: `{out.name}`"]
-    post = md / f"{target}-teams-{cf['agenda_suffix']}.md"
-    post.write_text("\n".join(T) + "\n", encoding="utf-8")
+    # ---- CR-148: the compact post ---------------------------------------------
+    # PLAIN TEXT, in a .txt file. The measured failure was a markdown post pasted into
+    # a chat whose own rule is three to five lines of plain text: the asterisks showed
+    # as asterisks and the post ran about 660 words. So this writer uses no emphasis,
+    # no table and no link, and it carries the milestones, the blockers and the ask --
+    # not the round and not the dependencies, which have their own documents.
+    if is_compact(cf):
+        kd = kinds(last)
+        ms_all = milestones(cf)
+        nxt = next_milestone(ms_all, day)
+        P = [f"{cf.get('title', md.parent.name)} — {day.strftime('%A %-d %B')}"
+             + (f", {cf['time']}" if cf.get("time") else "")]
+        parts: list[tuple[str, list[str]]] = []
+        if demo_on(cf, day):      # CR-121: on demo day the post carries the demo list
+            shown = [item_of(l, r) for l, r, *_ in all_items
+                     if kd.get(key(l)) in KINDS and not off_card(key(l))]
+            # The repo's own rows, under the same CR-121 filter the card's Demo section
+            # applies: on staging or done, never the still-open ones. Without them the
+            # compact post -- the only post a compact project has -- would carry less
+            # than the card's post does on the same day.
+            shown += [f"#{b_['n']} {b_['title'][:60]}"
+                      for b_ in ((mv_x or {}).get("blockers") or []) if b_["fixed"]]
+            parts.append(("demo", ["Demo today: " + (", ".join(shown) if shown
+                                                     else "list to be agreed in the room")]))
+        ml = []
+        for e in ms_all:
+            # CR-149: an unreadable declared date is shown as written, not as "date not
+            # set" -- the compact post is the one some readers see instead of the card.
+            # The decide-by that `undated_phrase` adds is new here and wanted: a date
+            # still to be decided is exactly what this post is meant to raise.
+            when = e["_date"].isoformat() if e["_date"] else undated_phrase(e)
+            ml.append(f"- {e.get('name', 'Unnamed')}: {when}, {e['_state']}"
+                      + (f", {(e['_date'] - day).days} days" if e is nxt else ""))
+        parts.append(("milestones", (["Milestones:"] + ml) if ml else
+                      ["Milestones: none declared."]))
+        # The blockers, one per line, grouped as the repo states them: what still has to
+        # be fixed, and what is fixed and waiting for a test. The carried [blocker]
+        # lines join the first group -- a line nobody has fixed is something to fix.
+        to_fix = [f"- {b_['title'][:70]} (#{b_['n']})"
+                  for b_ in ((mv_x or {}).get("blockers") or []) if not b_["fixed"]]
+        waiting = [f"- {b_['title'][:70]} (#{b_['n']})"
+                   for b_ in ((mv_x or {}).get("blockers") or []) if b_["fixed"]]
+        bsid = "release_blockers" if "release_blockers" in plan["post"] else "blockers"
+        to_fix += [f"- {item_of(l, r)}"
+                   + ("" if owner_of(l, r) == "UNOWNED" else f" ({owner_of(l, r)})")
+                   for l, r, *_ in all_items
+                   if kd.get(key(l)) == SECTIONS[bsid]["kind"] and not off_card(key(l))]
+        bl = []
+        if to_fix:
+            bl += ["To fix:"] + to_fix
+        if waiting:
+            bl += ["Waiting for a test:"] + waiting
+        parts.append((POST_LABELS[bsid].lower(), bl or ["No blockers."]))
+        parts.append(("ask", ["Bring what moved, what is stuck and who owns the other end."
+                              f" Agenda: {out.name}"]))
+
+        def assemble(ps):
+            return "\n".join(P + [x for _n, ls in ps for x in [""] + ls]) + "\n"
+
+        def shortened(ls: list[str], keep: int, total: int) -> list[str]:
+            """`ls` with only its first `keep` `- ` rows, and a counted line for the rest.
+
+            The rows are grouped ("To fix:", "Waiting for a test:") and the grouping is
+            CR-148's, so rows are dropped from the END and a group left with no rows is
+            dropped with its own heading -- an empty "Waiting for a test:" says nothing.
+            Dropping from the end means only the LAST heading can be left empty, so one
+            trailing check is the whole of it.
+            """
+            o, left = [], keep
+            for x in ls:
+                if not x.startswith("- "):
+                    o.append(x)
+                elif left > 0:
+                    o.append(x); left -= 1
+            while o and not o[-1].startswith("- "):
+                o.pop()
+            return o + ([f"- and {total - keep} more, in {out.name}"] if keep < total else [])
+
+        # CR-148: `max_words` (default 150). Read with an explicit None test, NOT `or`:
+        # CR-148's own key may legitimately be 0, which `or 150` read as unset -- a
+        # project writing 0 to mean "always warn" silently got the default and no
+        # warning at all.
+        raw_mw = ((cf.get("compact") or {}) if isinstance(cf.get("compact"), dict)
+                  else {}).get("max_words")
+        try:
+            limit = 150 if raw_mw is None else int(raw_mw)
+        except (TypeError, ValueError):
+            limit = 150
+        limit = max(0, limit)
+        text = assemble(parts)
+        words = len(text.split())
+        if words > limit:
+            # CR-148 acceptance bullet 1: "with ten blockers, the post is at most 150
+            # words". A warning beside a 300-word file does not meet that bullet -- the
+            # post is the thing pasted into a chat whose rule is three to five lines, so
+            # a post that does not fit has already failed at the only job it has.
+            #
+            # So the ceiling HOLDS, and the BLOCKER list is the part that gives way --
+            # named by its id, not by being the longest. It is the only unbounded part:
+            # the milestones are declared by the project and the ask is one line and the
+            # reason the post exists, so a post that dropped either would be a worse
+            # post than a long one. As many whole blocker lines are kept as fit, and the
+            # remainder becomes ONE counted line naming the file that carries them all.
+            # Nothing disappears silently: the count is in the post, the full list is in
+            # the agenda and the details, and the warning below still names the longest
+            # part, which is what CR-148 proposal 1 asks the operator to be told.
+            nm_, ln_ = max(((n, len(" ".join(ls).split())) for n, ls in parts),
+                           key=lambda x: x[1])
+            print(f"  post is {words} words (limit {limit}); longest part: {nm_}, {ln_} words")
+            bid = POST_LABELS[bsid].lower()
+            over = next((i for i, (n, _l) in enumerate(parts) if n == bid), None)
+            if over is not None:
+                full = parts[over][1]
+                total = sum(1 for x in full if x.startswith("- "))
+                for keep in range(total, -1, -1):
+                    trial = list(parts)
+                    trial[over] = (bid, shortened(full, keep, total))
+                    if len(assemble(trial).split()) <= limit or keep == 0:
+                        parts = trial
+                        break
+                text = assemble(parts)
+        (md / f"{target}-teams-{cf['agenda_suffix']}.txt").write_text(text, encoding="utf-8")
+    # CR-148: under compact the post IS the .txt above. Writing the markdown one too
+    # would leave two posts in the folder and the team would paste the wrong one -- the
+    # markdown one is the file whose asterisks caused this CR.
+    if not is_compact(cf):
+        post = md / f"{target}-teams-{cf['agenda_suffix']}.md"
+        post.write_text("\n".join(T) + "\n", encoding="utf-8")
     if not has_section(last):
         print(f"  ⚠ {last.name} has no '## Carried forward' section — chain broken, nothing carried in")
     print(f"  {last.name} -> {out.name}  ({len(items)} carried"

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** |
+| **Status** | **Implemented v1.92.4** (2026-10-21) |
 | **Contract** | additive — optional `carry_forward.card` keys and an optional milestone `kind`; default output unchanged |
 | **Date** | 2026-10-09 |
 | **Area** | `ops` (`build_agenda.py` card layout), `ops-config` schema |

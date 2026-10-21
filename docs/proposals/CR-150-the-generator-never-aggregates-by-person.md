@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.4** (2026-10-21) |
 | **Contract** | additive — a lint rule and one config key (`metrics_document`); generated output gains no per-person totals |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py` appendix, digest; `lint`), `ops-config` |

@@ -3,7 +3,7 @@
 
     python3 hygiene_check.py <folder>            # [FINDING] lines + a count
     python3 hygiene_check.py <folder> --json
-    python3 hygiene_check.py <folder> --only links,yaml,tasks,profile,themes,inferred
+    python3 hygiene_check.py <folder> --only links,yaml,tasks,profile,themes,inferred,persons
 
 Report only: nothing is rewritten. The fix is a judgement each time (encode the link
 or rename the file, map a status or cancel the task), so it stays with a person.
@@ -55,6 +55,13 @@ or rename the file, map a status or cancel the task), so it stays with a person.
            older than 14 days: archived by a client, never filed (CR-128). Names the inbox item
            it points to. The one check that reads `.transcripts/` (read-locked in a vault): by name, and only the
            first 64 KiB of each raw file, never its body. The lock exemption is written in CR-128.
+  persons  a team-facing .md file that counts WORK PER PERSON (CR-150): a table whose rows are
+           people and whose columns are counts, or a line pairing a person with a count of
+           issues, pull requests, commits or lines. The finding names the file and the line and
+           **does not repeat the figure** -- quoting it would copy the number into one more file.
+           A name beside an ITEM (an owner, an assignee) is never a finding: that is
+           accountability for a task, and a lint firing on every owner column is one that gets
+           switched off. The declared `metrics_document:` is exempt: that is where they belong.
 
 Dot-folders (.archive/, .transcripts/, .knowledge/ ...) are never walked; the one exception is
 the `raw` check, which opens `.transcripts/*-raw.md` by name and reads the head only.
@@ -102,7 +109,7 @@ ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
 SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence")
 SCOPES = ("root", "org", "project", "personal")
 PRIORITIES = ("P0", "P1", "P2", "P3")
-CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred")
+CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred", "persons")
 RAW_PENDING_DAYS = 14
 # CR-142: what was inferred, pulled out of the marker the agenda's reader matched, so the
 # finding can name the phrase to go and ask about. The agenda's own, not a copy: the module
@@ -507,13 +514,149 @@ def check_inferred(root: Path) -> list:
     return found
 
 
+# --- persons -------------------------------------------------------------
+
+def _person_scopes(root: Path) -> tuple[set[Path], list[tuple[Path, set[str]]]]:
+    """Every declared config under `root`, read once: `(exempt paths, (scope, roster)s)`.
+
+    Two answers from one walk, because they come from the same declarations (defect pass):
+
+      - the owner-only `metrics_document:` paths the lint leaves alone -- exempt by
+        DECLARATION, not by filename: a path nobody declared is a file the team can open,
+        whatever it is called.
+      - the `people:` roster per scope, which is what a count's subject is resolved
+        against (CR-150). Deepest scope first, so a file inside a project is read against
+        that project's roster and not the venture's.
+
+    One walk and one copy of the config file pair, which is `build_agenda.CONFIG_FILES`
+    (defect pass). The SCOPES come from `walk()`, the module's one directory reader, with
+    the dot-folder skip it already owns; each scope is then probed for the declared pair
+    in its declared order, exactly as `config()` probes one folder. A second walk and a
+    second literal pair were cost and drift risk both -- a config filename added in one
+    place and not the other is a roster the lint silently cannot see.
+
+    `.claude/` is a dot-folder, so it is never WALKED into; it is probed, which is the
+    only way the primary spelling (`.claude/ops-config.yaml`) is seen at all. That also
+    settles what is not a config: `ops-config.yaml` loose in a project is a document,
+    because it is not at a path the pair names.
+    """
+    exempt: set[Path] = set()
+    rosters: list[tuple[Path, set[str]]] = []
+    # The scopes to probe: every folder `walk()` reaches under `root`, taken off the files
+    # it yields, since a folder with no file of its own declares nothing anyway -- PLUS
+    # `root` and its ancestors. The ancestors matter because `config()` walks UP: a project
+    # that declares `carry_forward` in its own config and its roster at the venture level
+    # is read against that roster by the agenda, so a lint scoped to the project alone has
+    # to see it too, or the same file is clean when linted directly and a finding when the
+    # venture is scanned.
+    scopes = sorted({root.resolve(), *root.resolve().parents}
+                    | {f.parent.resolve() for f in walk(root)})
+    for scope in scopes:
+        for name in build_agenda.CONFIG_FILES:
+            f = scope / name
+            if not f.is_file():
+                continue
+            try:
+                d = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+            except (OSError, yaml.YAMLError):
+                continue
+            if not isinstance(d, dict):
+                continue
+            if rel := d.get("metrics_document"):
+                if got := build_agenda.metrics_path({"metrics_document": rel, "_root": scope}):
+                    exempt.add(got.resolve())
+            # Read straight off the file, not through `config()`: the roster is wanted per
+            # DECLARATION here, and `config()` answers for one folder by walking up, which
+            # is the question `_roster_for` asks instead.
+            if roster := build_agenda.roster_names({"people": d.get("people") or []}):
+                rosters.append((scope, roster))
+    # Deepest scope first, and STABLY (`list.sort` is), so a folder declaring both files
+    # of the pair keeps them in the order `CONFIG_FILES` names them: `_roster_for` takes
+    # the first scope containing the file, which is then the declaration `config()` would
+    # have preferred too. A sort that reordered equal depths would pick between them by
+    # path, which is not a rule anybody stated.
+    rosters.sort(key=lambda x: len(x[0].parts), reverse=True)
+    return exempt, rosters
+
+
+def _roster_for(p: Path, rosters: list[tuple[Path, set[str]]]) -> set[str]:
+    """The roster governing `p`: the deepest declaring scope containing it (CR-150).
+
+    Nearest declaration wins, which is how every other key in this family resolves. No
+    scope contains it -- a file outside every configured project -- and the answer is the
+    empty set, which means no findings: there is no declared set of people to resolve a
+    count's subject against, and guessing from the shape is the defect this gate fixes.
+    """
+    p = p.resolve()
+    return next((r for scope, r in rosters if scope == p or scope in p.parents), set())
+
+
+def check_persons(root: Path) -> list:
+    """CR-150, proposal 4: a team-facing file that counts work per person.
+
+    A project settled the rule that counts of work per person -- issues or tickets closed,
+    pull requests, commits, lines -- belong in ONE owner-only document and never in the
+    files the team reads or that the person leading the meeting reads aloud. The reasons
+    are worth keeping next to the check, because they are what it is for: the numbers
+    mislead (lines reward volume, closures reward splitting one job into three, and part
+    of the code is written in agent sessions), and the person leading is often one of the
+    people counted, which makes the figure something they read out about themselves.
+
+    The generator already emits none (CR-150, proposal 1), so what this catches is a
+    HAND-ADDED one -- the table somebody pastes in because it was easy to produce. Two
+    shapes, read by `build_agenda.person_count_lines`: a table whose rows are people and
+    whose columns are counts, and a line pairing a person with a count of that work.
+
+    **A name beside an item is not a finding.** An owner, an assignee, a *Shown by* is
+    accountability for a task and is most of what an agenda is; a lint that fired on an
+    owner column would be switched off within a week and then nothing would be checked.
+    That boundary lives in the shared reader, not here.
+
+    **The subject has to be a person the project DECLARED** -- a name or alias in the
+    governing `people:` roster, resolved nearest-first like every other key. The shape of
+    a name is also the shape of every team, area and grand total a standup writes, so a
+    shape test reports `Mobile: 7 PRs merged` and `Total: 40 PRs merged` as work counted
+    per person, which is the opposite answer: counts per area are what a standup is for.
+    A file no roster governs yields nothing, and `/ops --check` is where a project with no
+    roster is told the check needs one -- once, not in a finding per line.
+
+    The finding names the FILE and the LINE and does not repeat the figure: a report that
+    quoted it would have copied the number into one more file, which is exactly what the
+    rule exists to stop. Report only, like every other check in this module -- deciding
+    whether a figure moves to the metrics document or goes is a person's judgement.
+
+    Exempt: the declared `metrics_document:`, which is where these figures belong.
+    """
+    found = []
+    exempt, rosters = _person_scopes(root)
+    if not rosters:
+        return found               # no declared people anywhere: nothing to resolve against
+    for p in walk(root):
+        if p.suffix != ".md" or p.resolve() in exempt:
+            continue
+        roster = _roster_for(p, rosters)
+        if not roster:
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for n, what in build_agenda.person_count_lines(text, roster):
+            found.append(_finding("persons", p, n,
+                                  f"work counted per person -- {what}. The figure is not repeated here"
+                                  " on purpose. Move it to the owner-only `metrics_document:`, or drop"
+                                  " it: a name beside an item is accountability, a count against a name"
+                                  " is a scoreboard (CR-150)", root))
+    return found
+
+
 def run(root, only=CHECKS) -> list:
     root = Path(root).expanduser()
     out = []
     for name in only:
         out += {"links": check_links, "yaml": check_yaml, "tasks": check_tasks,
                 "profile": check_profile, "themes": check_themes, "raw": check_raw,
-                "inferred": check_inferred}[name](root)
+                "inferred": check_inferred, "persons": check_persons}[name](root)
     return out
 
 

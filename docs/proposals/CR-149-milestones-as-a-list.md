@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.4** (2026-10-21) |
 | **Contract** | additive — `milestones:` as a list; a single `milestone:` still reads as a list of one |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py` milestone block, config validation), `ops-config` schema |

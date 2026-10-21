@@ -375,15 +375,49 @@ milestone:                         # project-wide, beside `tracks:`
   set_on: YYYY-MM-DD               # optional (CR-127): when this date was set
   decide_by: YYYY-MM-DD            # optional; when the date itself must be decided
   criteria: string                 # optional; where the exit criteria live
+  kind: demo | release | review    # optional (CR-121); see `milestones[].kind` below
   history:                         # optional (CR-127); newest last, append only
     - date: YYYY-MM-DD             # the target that was in force
       set_on: YYYY-MM-DD
       reason: string
       source: string               # file or decision the move came from
+milestones:                        # optional (CR-149); the list, when one date is not enough
+  - name: string                   # what this milestone is
+    date: YYYY-MM-DD               # optional; absent = "date not set"
+    state: confirmed | proposed | target | done   # default proposed
+    source: string                 # a decision id, a plan section, a named confirmer
+    set_on: YYYY-MM-DD             # when this date was set
+    decide_by: YYYY-MM-DD          # optional, as above
+    criteria: string               # optional, as above
+    kind: demo | release | review  # optional (CR-121); default none. With `demo` AND this
+                                   # entry's date == the generated day, a Demo section sits
+                                   # directly under the milestone and the lead becomes the
+                                   # demo one. Any other day or kind changes nothing.
+    history: [...]                 # optional, same shape as above (CR-127)
 workflows:
   post_processing:
     carry_forward:
-      layout: card                 # card | list (default list: unchanged behaviour)
+      layout: card                 # card | list | compact (default list: unchanged behaviour)
+                                   # compact (CR-148): four outputs -- a plain-text post,
+                                   # a decisions-and-round agenda, a facilitator document,
+                                   # the details file unchanged. An unknown value reads as list.
+      card:                        # optional (CR-121); only read in card or compact layout
+        release_blockers: false    # default true; false drops the Release blockers section
+                                   # and the word release from the lead. Carried [blocker]
+                                   # lines still render, under Blockers. The repo-label
+                                   # table is unaffected -- that is the repo's definition.
+                                   # On layout: compact this governs the POST's blockers
+                                   # heading only: that agenda carries no blockers
+                                   # section, so its lead is the no-release one either way.
+      compact:                     # optional (CR-148); only read in compact layout
+        max_words: 150             # default 150, and 0 means 0 (always warn), not unset.
+                                   # A ceiling that HOLDS: over it the generator warns
+                                   # and names the longest part, and the blocker list
+                                   # keeps as many whole lines as fit, closing with one
+                                   # counted "and N more, in <agenda>" line. Milestones
+                                   # and the ask are never what gives way.
+        facilitator_suffix: string # default derived from agenda_suffix, as the details
+                                   # file is: agenda-x -> agenda-facilitator-x
       movement:                    # optional; used when a repo declares labels
         out: status/movement       # relative to the project root
         days: 14
@@ -434,6 +468,40 @@ definitions: taxonomy.md         # the project's own terms, each marked local or
 
 `/ops orient` prints *Definitions*: the standards path, and the project file with its counts (local, proposed
 upward, without a status). Only tables with a *Status* column are counted.
+
+#### The owner-only metrics document (CR-150)
+
+```yaml
+# project config, project-wide (beside `tracks:` and `milestone:`)
+metrics_document: status/metrics.md   # optional; the ONE place work counted per person may live
+```
+
+Counts of work per person -- issues or tickets closed, pull requests, commits, lines -- belong here and
+nowhere else. The reasons are the rule: the numbers mislead (lines reward volume, closures reward splitting
+one job into three, and part of the code is written in agent sessions), and the person leading the meeting is
+often one of the people counted.
+
+What the declaration does, and all it does:
+
+- it **exempts this path** from `/ops check`'s `persons` finding, which flags a team-facing file holding a
+  table whose rows are people and whose columns are counts, or a line pairing a person with a count of that
+  work. A path nobody declared is a file the team can open, whatever it is called;
+- the generator **never writes to it** and **never links it** from a team-facing file. Declaring it does not
+  make the agenda produce anything;
+- a declared path that does not exist is a config finding: a stale declaration exempts nothing, and the
+  figures then have no declared home at all.
+
+**A name beside an item is not a count against a name.** An owner, an assignee, a *Shown by* is accountability
+for a task and is most of what an agenda is; the appendix lists the author of every moved issue and pull
+request for traceability, with no count per author. Collecting the metrics is out of scope here: how a
+project measures, from which sources, over which windows, is its own method and lives in this document.
+
+**The finding needs a `people:` roster**, because the subject of a count is resolved against it -- a declared
+name or alias, nearest declaration winning. The shape of a name is also the shape of every team, area and
+grand total a standup writes, so a check reading the shape would report `Mobile: 7 PRs merged` and
+`Total: 40 PRs merged` as work counted per person, which is the opposite answer: counts per area are what a
+standup is for. A project with no roster gets no `persons` findings at all, and `/ops <series> --check` says
+so once.
 
 #### Task Import
 

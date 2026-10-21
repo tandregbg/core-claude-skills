@@ -23,7 +23,7 @@ AFTER = datetime.date(2026, 9, 22)
 
 
 def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None, notes=None, fetch=None,
-          note_items="- **Android build:** Bob\n", date="260924"):
+          movement=None, note_items="- **Android build:** Bob\n", date="260924"):
     """A venture with one project; returns (agenda text, stdout).
 
     CR-147 added two optional arguments, both inert when not passed: `notes`, a
@@ -31,6 +31,12 @@ def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None, notes=None, f
     a session streak rather than only its first sitting; and `fetch`, a
     `{archive subdirectory: record}` map written as CR-088 `_fetch.json` files, so a
     test can say that a source's fetch failed.
+
+    CR-121/CR-148 added `movement`, also inert when not passed: a
+    `{"repo": slug, "issues": [...], "labels": [...], "events": [...]}` record written
+    as a `.movementmeta/` archive, so a test can reach the movement half of the card --
+    the repo blocker table, the demo rows, the post's grouped blockers -- which
+    otherwise needs a live `gh` and could not be covered at all.
     """
     vault = Path(tempfile.mkdtemp())
     venture = vault / "venture"
@@ -62,6 +68,14 @@ def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None, notes=None, f
         (rdir / "app-2026-09-24.json").write_text(json.dumps(
             {"day": "2026-09-24", "issues": repo.get("issues", []), "pulls": repo.get("pulls", [])}),
             encoding="utf-8")
+    if movement is not None:
+        # `build_movement.archived` reads this instead of calling `gh`; same shape `gh`
+        # returns, so nothing downstream of the read behaves differently.
+        mdir = venture / ".movementmeta"
+        mdir.mkdir(parents=True)
+        (mdir / (movement["repo"].replace("/", "-") + ".json")).write_text(
+            json.dumps({k: movement.get(k) or [] for k in ("issues", "labels", "events")}),
+            encoding="utf-8")
     if jira is not None:
         # CR-141 reuses this helper for the ticket half; same shape as the repo branch
         jdir = venture / ".jirameta" / "tick"
@@ -71,7 +85,12 @@ def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None, notes=None, f
             json.dumps({"day": "2026-09-24", "issues": jira}), encoding="utf-8")
     res = subprocess.run([sys.executable, str(OPS / "build_agenda.py"), "--dir", str(meetings),
                           "--date", date], check=True, capture_output=True, text=True)
-    build.last_post = (meetings / f"{date}-teams-agenda-daily-standup.md").read_text(encoding="utf-8")
+    # CR-148: `layout: compact` writes the post as PLAIN TEXT in a `.txt` file and
+    # deliberately does not write the markdown one, so the read is by whichever exists.
+    # Every other layout is unaffected: the `.md` is found first, exactly as before.
+    post = next((q for q in (meetings / f"{date}-teams-agenda-daily-standup.md",
+                             meetings / f"{date}-teams-agenda-daily-standup.txt") if q.exists()), None)
+    build.last_post = post.read_text(encoding="utf-8") if post else ""
     build.last_meetings = str(meetings)
     return (meetings / f"{date}-agenda-daily-standup.md").read_text(encoding="utf-8"), res.stdout
 
