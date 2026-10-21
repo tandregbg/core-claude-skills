@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.2** (2026-10-21) |
 | **Contract** | narrowing — fewer matches, each with a stated basis |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py`, the *Probably closed* section) |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-20) |
+| **Status** | **Implemented v1.92.2** (2026-10-21) |
 | **Contract** | additive — documents an existing output; no new fields, no behaviour change |
 | **Date** | 2026-10-20 |
 | **Area** | `inbox` (SKILL.md), `skills/inbox/survey.py` docstring |

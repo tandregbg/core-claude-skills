@@ -1518,6 +1518,7 @@ remembered. A second user of this skill needs to know which half is theirs.
 | The carry-forward check against the sources | `people[]`, with `track` and `adjacent` |
 | Ordering by age; handing the track on | `round_columns` |
 | With `tracks:` declared: the *Last track* column and the balance line (CR-090) | `tracks:`, `carry_forward.balance_window` |
+| Today as the default date (the next session once today has a note), the past-date refusal, the `Base:` header line (CR-139) | `carry_forward.skip_dates` (which days the series did not meet, and why), `carry_forward.meets` / `schedule_days` |
 | The lint checks (roster, vault-only ids, suffix) | Track names and the taxonomy behind them |
 | — | Recap and chat-post templates |
 
@@ -1678,6 +1679,21 @@ evidence, not the first; a matching chat message with a negative (*failing*, *no
 release, a closed issue or a done ticket outranks any chat message; the evidence cell shows the date
 (and time) it used. A done-word is evidence of a claim, not of a state.
 
+**Matching is on explicit identifiers only (CR-141).** *Probably closed* pairs a carried line with
+evidence when they share an identifier — the line's own `#id` or ticket key (a written range like
+`TICK-9..12` counts as every key in it), or a pull request that names the issue (`Re #12`,
+`Fixes #12`). There is no title-similarity matching: measured over three mornings on one project the
+word heuristic it replaced was right 0 of 9, 2 of 5 and 1 of 7 times, because the evidence string
+always carries the repository name and the ticket prefix. Consequences:
+
+- **A line with no identifier gets no marker.** It stays carried and is listed in the details file
+  under *Items with no identifier, cannot be checked* — no marker there means *not checked*, not
+  *not moved*. Add the `#id` to that line in the summary and the next agenda can check it.
+- **Every marker states its basis**, so a reader verifies it in one click: `issue #12 closed
+  2026-10-16 11:02`, `PR #7 (Re #12) merged`, `ticket TICK-9 done`.
+- **A state change is not a close.** A ticket that only reached *fixed*, *in review* or *in test* is
+  reported under *Fixed, waiting for a test* and stays carried; it is never *probably closed*.
+
 **A snapshot is a reading taken at a moment, not an event log.** If the newest one predates the last
 note, say so rather than presenting stale rows as news.
 
@@ -1772,6 +1788,121 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    It counts how many **consecutive** prior notes carried each item and puts them at the top of the
    agenda, before the round.
 
+   **Run it with no `--date` here.** This step follows step 5's summary for today, so today has a note
+   and the default resolves to the **next session** — which is the agenda this step is for (CR-139).
+
+   **The full build is long-running — run it in the background (CR-140).** It reads every declared
+   source and, in card layout, the repository's whole issue history: about three minutes, which exceeds
+   the default foreground command limit. Start it in the background and read the agenda when it lands.
+
+   **Check the sources first — `--check` (CR-140):**
+
+   ```
+   python3 ~/.claude/skills/ops/build_agenda.py --dir <project>/meetings --check
+   ```
+
+   One table, one row per declared source — chat/repository/ticket fetch, each `reports:` and
+   `vault_reports:` entry, the previous note, the recording source — each `ready`, `stale`, `failed`
+   or `missing`, with the time it was last good. It **exits non-zero on any stale or missing source**,
+   so it is what a scheduler runs before the build.
+
+   It answers in **seconds**: the fetch records, the local note and one status call per declared
+   report, and none of the readers that ask *what moved*. That is the point — before `--check`, the
+   only way to learn that a source was missing was to wait out the three-minute build and read its
+   sources block, which reports a three-day-old status report three days late.
+
+   | State | Means | Next step |
+   |---|---|---|
+   | `ready` | fetched since the last note, or dated within three days | build |
+   | `stale` | the last success predates the last summary, or a report is three days old or more | re-run the fetch, or ask the report's owner |
+   | `failed` | the fetch itself failed — a login expired, a timeout | fix the fetch; the archive still holds the last good data, which is **not** today's |
+   | `missing` | no fetch recorded, a report not found, a declared recording archive not found, or the previous note has no `## Carried forward` | write the close-out, or fix the config |
+   | `not checked` | a recording store is declared with no archive | `prepare` checks the store by hand (CR-117) |
+
+   A report's age is read from its filename in **either dated spelling** — 6-digit `YYMMDD` (the house
+   convention, and what `vault_reports:` patterns declare) or 4-digit `YYYY-MM-DD`. A name carrying
+   neither is reported as `missing` with *no date in the name*, never as fresh. A `current:` path's age
+   is its last commit date, read in the zone `carry_forward.movement.tz` declares — the same zone the
+   full build reads it in, so the two cannot disagree about one report across the three-day boundary.
+
+   `checked` on the recording row means the declared `archive:` was **found**, not merely declared: a
+   typo'd or deleted archive is `missing`, because the archive reader would find nothing there.
+
+   **A missing report directory names a similarly named sibling**, when the declared parent still
+   holds one sharing a word: `NOT FOUND — ../board/status-reports · config stale? ../board/status-reports-2026 exists`.
+   A folder renamed overnight otherwise reads as *source missing* and sends a person looking for a
+   report that exists, when the stale thing is the **config**. Same parent only, and a shared word of
+   at least four letters: a suggestion that is wrong is read as an answer, so a loose one is worse
+   than none. Letter runs and digit runs count as separate words, so `reports` → `reports2026` is
+   matched too, while a year **alone** in common (`agendas2026` → `minutes2026`) is not. The declared
+   directory is looked for at every level first: a sibling is suggested only when the declared folder
+   is nowhere to be found. It decides nothing — the report is still reported missing.
+
+   **A failed fetch is also named in the agenda's own header (CR-140)**, not only in the fetch's own
+   file and one line of the sources block. The sections built from an archive use its last good data
+   and read as current, so the page looked complete while a fetch had failed twice that morning.
+
+   **The date defaults to TODAY (CR-139) — or to the next session, once today has a note.** It used
+   to default to the next scheduled day after the newest note, which is only right when the series
+   meets every scheduled day *and* every meeting is written up the same day. On a morning after a day
+   nobody met, that default built an agenda for the **skipped day** — and the generator then stamped
+   its own output STALE, the right warning on the wrong file.
+
+   The loop runs this generator twice with no `--date`, and the two runs want different dates:
+
+   | Run | What exists | What is built |
+   |---|---|---|
+   | the morning run (step 2 of the loop, `prepare`) | no note for today; the session is ahead | **today** |
+   | the same-day close-out (step 5 writes today's summary, then this step) | today has a note | **the next session** the series meets, read from `meets:` / `schedule_days` |
+
+   A note for today **is** the signal that the close-out has happened, so it resolves the date rather
+   than refusing it; nothing in the documented sequence needs `--date`.
+
+   One refusal comes with it, and it is not the pre-existing *"exists -- delete it first"* guard
+   (which says only that this agenda was already generated):
+
+   | Refused | Why | Way through |
+   |---|---|---|
+   | a date earlier than today, not typed | the day has gone; the agenda would be read after the meeting it was to prepare | `--date YYMMDD` — the caller saying they mean it |
+
+   **An explicit `--date` behaves exactly as before**, including one naming a day that already has a
+   note: deleting the agenda and rebuilding it is the ordinary way to correct one, and refusing that
+   would take a working case away.
+
+   **`skip_dates:` declares the days the series did not meet**, each with a one-word reason. A skipped
+   day is not a missing note: the base note stays the last meeting held, and **nothing ages on a day
+   nobody met** — the elapsed-days count takes the declared days out.
+
+   ```yaml
+   workflows:
+     post_processing:
+       carry_forward:
+         meets: [mon, tue, wed, thu, fri]   # alias for schedule_days; three letters or full names
+         skip_dates:
+           - date: 261020
+             reason: holiday-in
+           - from: 261224
+             to: 261226
+             reason: leave
+   ```
+
+   The list is **operator-written** — the skill does not know which days a team is away, and there is
+   no holiday calendar of its own. One unparseable entry is skipped and the rest are kept: a single bad
+   line must not take the whole list down and silently restore the ageing it was written to stop. A bare
+   `261020` is accepted and reads as *no reason given*, and so is `skip_dates: 261020` written without
+   the dash — one day said unambiguously, which YAML reads as a scalar. An entry giving only `to:` is
+   the same one day as one giving only `from:`.
+
+   **`meets:` is an ALIAS for `schedule_days`, not a second key.** Both answer the same question —
+   which days this series meets — so a config declaring both would have no defined winner.
+   `schedule_days` keeps precedence, which is what makes the alias additive: a config that already
+   declares it behaves exactly as before.
+
+   **The agenda's header says its base**: `Base: <note> (last meeting held <date>; skipped: <dates>)`.
+   The base summary was already named in the sources block, but a reader working out why a session
+   count did not move has to know which days did not count — so it goes above the carried list, not
+   below it. Only skips between the base summary and this agenda are listed.
+
 4. **Escalate on sessions OR elapsed days, whichever trips first.** `escalate_after` (default 3) and
    `escalate_after_days` (default 14).
 
@@ -1784,6 +1915,10 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
 
    The days rule is effectively inert on a daily series, where sessions trip first. It exists for
    everything else.
+
+   **The days are counted in sessions, not calendar days (CR-139):** days declared in `skip_dates:`
+   are taken out, so a holiday or a week of leave does not escalate an item nobody could have worked
+   on. Without `skip_dates:` the count is the calendar gap, exactly as before.
 
    At either threshold the agenda says so itself: *an item that survives three
    agendas is not an agenda problem -- it has no owner who is present, or it is not actually being

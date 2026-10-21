@@ -22,7 +22,8 @@ NOTE_DAY = "260922"
 AFTER = datetime.date(2026, 9, 22)
 
 
-def build(ops_yaml: str, *, chat_lines=None, repo=None, note_items="- **Android build:** Bob\n", date="260924"):
+def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None,
+          note_items="- **Android build:** Bob\n", date="260924"):
     """A venture with one project; returns (agenda text, stdout)."""
     vault = Path(tempfile.mkdtemp())
     venture = vault / "venture"
@@ -47,6 +48,13 @@ def build(ops_yaml: str, *, chat_lines=None, repo=None, note_items="- **Android 
         (rdir / "app-2026-09-24.json").write_text(json.dumps(
             {"day": "2026-09-24", "issues": repo.get("issues", []), "pulls": repo.get("pulls", [])}),
             encoding="utf-8")
+    if jira is not None:
+        # CR-141 reuses this helper for the ticket half; same shape as the repo branch
+        jdir = venture / ".jirameta" / "tick"
+        jdir.mkdir(parents=True)
+        (jdir / "_project.json").write_text(json.dumps({"project": "TICK"}), encoding="utf-8")
+        (jdir / "tick-2026-09-24.json").write_text(
+            json.dumps({"day": "2026-09-24", "issues": jira}), encoding="utf-8")
     res = subprocess.run([sys.executable, str(OPS / "build_agenda.py"), "--dir", str(meetings),
                           "--date", date], check=True, capture_output=True, text=True)
     build.last_post = (meetings / f"{date}-teams-agenda-daily-standup.md").read_text(encoding="utf-8")
@@ -132,21 +140,26 @@ class Pulls(unittest.TestCase):
 
 
 class Evidence(unittest.TestCase):
-    ITEM = [("Android build", "Bob")]
+    # CR-141: the matcher matches on an explicit identifier only, so the carried line
+    # and the evidence both name `#12`. These tests are about how evidence is WEIGHED
+    # (newest wins, a negative cancels, a merged PR outranks chat), which is unchanged;
+    # before CR-141 two shared words were enough to pair them up and the ids were not
+    # needed to reach the weighing.
+    ITEM = [("Android build", "#12 · **Bob**")]
 
     def chat(self, *lines):
         return [{"name": "standup", "messages": [(l[:10], l) for l in lines]}]
 
     def test_a_newer_negative_cancels_an_older_claim(self):
-        chat = self.chat("2026-09-23 10:00 — Bob — Android build is failing, I have fixed and raised a PR",
-                         "2026-09-24 09:00 — Bob — Android build issue was not solved after my fix")
+        chat = self.chat("2026-09-23 10:00 — Bob — #12 is failing, I have fixed and raised a PR",
+                         "2026-09-24 09:00 — Bob — #12 was not solved after my fix")
         closed, still = ba.probably_closed(self.ITEM, chat, [], [])
         self.assertEqual(closed, [])
         self.assertEqual(still, self.ITEM)
 
     def test_the_newest_positive_is_the_evidence_and_carries_its_time(self):
-        chat = self.chat("2026-09-23 10:00 — Bob — Android build failing again",
-                         "2026-09-24 09:00 — Bob — Android build fixed and distributed")
+        chat = self.chat("2026-09-23 10:00 — Bob — #12 failing again",
+                         "2026-09-24 09:00 — Bob — #12 fixed and distributed")
         closed, _ = ba.probably_closed(self.ITEM, chat, [], [])
         self.assertEqual(len(closed), 1)
         kind, ref, txt = closed[0][2]
@@ -154,7 +167,7 @@ class Evidence(unittest.TestCase):
         self.assertIn("2026-09-24 09:00", ref)
 
     def test_a_merged_pull_request_outranks_chat(self):
-        chat = self.chat("2026-09-24 09:00 — Bob — Android build still broken")
+        chat = self.chat("2026-09-24 09:00 — Bob — #12 still broken")
         repo = [{"kind": "pull", "repo": "acme/app", "n": 12, "title": "Android build fix",
                  "status": "merged", "when": "2026-09-23T12:00:00Z"}]
         closed, _ = ba.probably_closed(self.ITEM, chat, repo, [])
@@ -162,7 +175,7 @@ class Evidence(unittest.TestCase):
         self.assertIn("PR #12 merged", closed[0][2][1])
 
     def test_nothing_is_ever_dropped(self):
-        chat = self.chat("2026-09-24 09:00 — Bob — Android build done")
+        chat = self.chat("2026-09-24 09:00 — Bob — #12 done")
         closed, still = ba.probably_closed(self.ITEM + [("Web copy", "Ann")], chat, [], [])
         self.assertEqual(len(closed) + len(still), 2)
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.2** (2026-10-21) |
 | **Contract** | additive — one config key (`skip_dates`), one changed default; an explicit `--date` behaves as before |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py`, SKILL.md step 9), `ops-config` (schema), `ecosystem.yaml` |

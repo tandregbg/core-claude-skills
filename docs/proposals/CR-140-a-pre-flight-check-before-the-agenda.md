@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.2** (2026-10-21) |
 | **Contract** | additive — one flag (`--check`), no change to the agenda's shape; the background-run guidance is documentation |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py`, SKILL.md step 9), `ops-config` (`reports`, `vault_reports`, `chats`) |

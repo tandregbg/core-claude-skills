@@ -2,7 +2,7 @@
 name: inbox
 description: Universal entry point for unstructured content. Classifies, stores in _inbox/, and hands off to the appropriate downstream skill.
 user-invocable: true
-argument-hint: [content, file path, or subcommand: status|process [id|all]|triage [refresh|status]|help]
+argument-hint: [content, file path, or subcommand: status|process [id|all]|triage [refresh|status]|survey|help]
 ---
 
 # Inbox Skill
@@ -259,6 +259,80 @@ a config pointer under the vault's own config layer). Two directions, both
 This skill documents the *contract* (gated push + gated reconcile, secret-free,
 triage-path read from the registered `file:`); it ships **no** provider code.
 
+### `/inbox survey` -- The task audit's shape (CR-138)
+
+The audit of the open task ledger is **generated**, not written. It is
+`skills/inbox/survey.py`, and this section is its contract: a reader should be
+able to reproduce the file from here without opening the script. Before CR-138
+the whole format existed only as code, so any surface that lost the code --
+another session, the same session past a compaction, another assistant -- met
+the requirement by building something plausible instead. **The drift was caught
+by the operator, not by any check.**
+
+**The failure to name, in one line: a subset presented in this file's name is a
+regression.** The audit's claim is completeness; a document that shows some of
+the open entries under the audit's filename reads as reasonable unless the row
+count is checked against the ledger, which nobody does.
+
+**Relationship to the triage doc.** Both render `_inbox/_tasks.yaml`, and they
+are not duplicates. `daglig-triage.md` answers *what do I do now* and is
+deliberately cut to the dated and the prioritised; this audit answers *what is
+there* and is complete. Drop either and the other does not cover it -- the
+triage cannot surface an entry it filters out, and the audit is far too long to
+work from daily.
+
+**The views.** Five, selected by flag, all read-only and all printing to stdout
+(the operator redirects; the script writes no file). The flags are not exclusive
+and `main()` tests them in a fixed order, so a combination silently picks one
+view: **`--migration` wins over `--table`, which wins over `--undated`, which
+wins over the default.**
+
+| Invocation | What it renders |
+|---|---|
+| *(no flag)* | JSON: the register, the ledger and the folder reconciled three ways |
+| `--markdown` | The same reconciliation as prose -- the situation half of an audit |
+| `--table` | The same per-state buckets as JSON, keyed by state name. Not operator-facing |
+| `--table --markdown` | **The operator-facing task audit.** Every open entry, one row each, with a proposed bucket and an empty `Godta` column |
+| `--undated` | JSON: only the entries with neither date nor age, keyed by context |
+| `--undated --markdown` | The working list of those entries -- one heading each, with three tick-boxes (`GÖRA` / `REFERENS` / `ÖVERSPELAD`) to write in |
+| `--migration` | The context -> venture worksheet, venture column first. A map of the context *values*, not of the entries |
+
+`--markdown` alone is the situation half; it is `--table` that makes it the
+audit. `--table` and `--undated` without `--markdown` print JSON -- but
+**`--migration` does not consult `--markdown` at all**: its branch prints the
+worksheet unconditionally, so `--migration` and `--migration --markdown` emit
+the same bytes and the flag is a no-op on that path. Written here because the
+asymmetry is in the code and reads as an oversight from the other three views.
+
+#### The shape of `--table --markdown`
+
+| Element | Rule |
+|---|---|
+| Filename | The script prints to stdout. The operator redirects it to a **stable filename** (a vault convention, e.g. `_inbox/_uppgifter.md`) -- it is meant to stay open, not to accumulate dated copies. The header says so and repeats the command that regenerates it |
+| Grouping | `## <STATE> -- N poster` then `### <context> -- N`, contexts largest first. `DATERADE FRAMÅT` is flat, with no context level |
+| States | `FÖRFALLNA`, `ODATERADE MED PRIO`, `UTAN DATUM OCH UTAN ÅLDER`, `ODATERADE`, `DATERADE FRAMÅT`, in that order. Each is defined by `due`/`created`/`priority`, so an entry lands in exactly one; empty states are omitted. Each section carries a one-line note saying what the state means |
+| Row | Six cells: `# \| Ålder \| Uppgift \| Förslag \| \| Godta`. **The signal column's header cell is empty** -- the `✓`/`?` mark appears only in the body rows, and a reader looking for a `✓/?` heading will not find one. The cells are the id with its priority, the age, the task truncated to 80 characters, the proposed bucket, the signal mark, and the operator's column |
+| Row under `DATERADE FRAMÅT` | **A different, three-cell row:** `# \| Datum \| Uppgift`, the task truncated to 74 characters. No `Förslag`, no signal mark and **no `Godta` column** -- the section exists for completeness, its proposal is `LÅT STÅ` for every entry, and there is nothing to decide. The only section that differs |
+| `Ålder` | `<N> d` for an overdue entry. For every other state the cell is a dash: `age_days` is set only when the due date has passed, so the undated states carry no age. The code falls back to the due date when the age is falsy; for a well-formed `due` that entry is never in an undated state, so **the operator sees no date here** -- with one exception: a `due` the date parser cannot read (not `YYMMDD`, or outside the calendar) leaves `age_days` unset and the raw value is printed in this column. A date in this cell therefore means the entry's `due` is malformed |
+| Coverage | **Every open entry appears exactly once.** The count in the header is the ledger's own open count. A subset is a different document and must say so in its own name |
+| Header | A movement line (what closed today, shown only when something did), the open count, the proposals tallied by kind, `✓` against `?`, the `Godta` legend, and a per-state summary table of where the proposals fall |
+| `Godta` | Left **empty** by the generator. Empty means the proposal stands; the operator writes a date (`261027`), `R` for reference, `Ö` for write-off or `S` for leave standing |
+| `✓` / `?` | Whether the proposal has a signal in the entry's own text (`✓`) or is a guess from its shape (`?`). The operator reads the guesses first |
+| Buckets | `NYTT DATUM`, `SÄTT DATUM`, `AVSKRIV`, `REFERENS`, `LÅT STÅ`. A prose heuristic, and labelled as one in the header: *"Förslagen är en läsning av texten, inte ett beslut."* The operator overrides any row |
+| Outside the table | A short `### Utanför tabellen` list for what is wrong with the register itself rather than with an entry -- undeclared status words, a registered file still waiting -- each with its own proposal and `Godta` cell |
+
+**The state travels with the row, it does not define the sections --** except that
+here it does both: the state is the section *and* it is readable per row through
+`Ålder` and the proposed bucket. Grouping by venture instead is a different
+question, and that is `--migration`, which maps context values to ventures and
+projects and carries no `Godta` column. Do not merge the two: the audit is per
+entry and decidable; the migration worksheet is per context value and its
+decisions belong in `_config/verksamhet-karta.yaml`.
+
+**What this subcommand never does.** It writes nothing, enforces nothing and
+decides nothing. A check that the file holds as many rows as the ledger has open
+entries would be cheap, but it is a separate decision and does not exist.
+
 ### `/inbox help` -- Usage Guide
 
 Print this usage guide:
@@ -268,6 +342,7 @@ Print this usage guide:
 /inbox status           Show inbox counts by status
 /inbox route [id|all] Process one or all stored items
 /inbox triage [refresh|status]  Triage working-surface upkeep (CR-022)
+/inbox survey           The generated task audit -- see the section above (CR-138)
 /inbox help             This help text
 
 Content types detected: voice_memo, email, quick_note, raw_text, clipboard

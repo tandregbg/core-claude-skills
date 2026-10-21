@@ -7,6 +7,76 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.2] - 2026-10-21
+
+Wave 1 of the agenda-generator CRs: the morning run is trustworthy before anything
+else is built on it. Each of the four was implemented, then adversarially verified
+against its own acceptance bullets; the verification found eleven defects, four of
+them blocking, and all are fixed in this release.
+
+### Changed
+
+- **CR-139 -- the agenda is built for the day the series actually meets next.** `build_agenda.py`
+  defaulted `--date` to the next scheduled day after the newest base summary, which is only right
+  when a series meets every scheduled day and every meeting is written up the same day; after a day
+  nobody met it built for the skipped day and then stamped its own output STALE. The default is now
+  today, or the next session once today already has a base summary -- a summary for today being the
+  signal that the close-out has happened, so both runs the loop makes with no `--date` get the date
+  they want. An explicit `--date` behaves exactly as before; only a past date nobody typed is
+  refused, and the refusal names the date to use. A series can declare `carry_forward.skip_dates:`
+  (single days or ranges, each with a one-word reason) and `meets:` as an alias for `schedule_days`;
+  the elapsed-days escalation count takes skipped days out, so nothing ages on a day nobody met, and
+  the header carries `Base: <summary> (last meeting held <date>; skipped: <dates>)`. Observed cost of
+  the old default in a run of seven working days: one wasted three-minute build, three deleted files
+  and a manual correction. Side effect worth naming: `schedule_days: [mon, tue]` was previously
+  discarded in silence (no entry matched, so every weekday became a meeting day) and is now honoured,
+  which fixes a silent-ignore bug on an existing key.
+
+- **CR-141 -- the *probably closed* matcher matches on explicit identifiers, or says nothing.**
+  Title-similarity matching is gone: a carried line matches only its own `#id` or ticket key, a pull
+  request that names the issue, or a ticket key a chat message carries. Measured over three mornings
+  on one project the word matcher was right 0 of 9, 2 of 5 and 1 of 7 times, and the false pairings
+  shared a single ordinary word with an unrelated item; they no longer occur. A line naming no
+  identifier is never marked, and is listed as *cannot be checked* in the details file instead.
+  Closing references are read where the archived record keeps them, so `Fixes #12` in a pull-request
+  description reaches the matcher at all -- the first implementation read a field no producer sets,
+  and the path was dead. Every marker states its basis, chat evidence included, and the quoted
+  evidence keeps the identifier through truncation. A state change is not a close: a ticket that only
+  reached a built-but-not-accepted state yields *fixed, waiting for a test*, takes precedence over any
+  close matched on the same line, and stays carried. A range expands only when written tight, so a
+  prose dash -- this codebase's own separator -- cannot invent keys.
+
+### Added
+
+- **CR-140 -- a pre-flight check before the agenda.** `build_agenda.py --check` prints one table of
+  every declared source as ready, stale, failed or missing, with the time behind each, and exits
+  non-zero on any stale or missing one. It is what a scheduler runs: seconds, against a full build of
+  about three minutes, which SKILL.md now says to run in the background. A missing report directory
+  names a similarly-named directory beside it, so an overnight rename reads as stale config rather
+  than a vanished source -- found three times in seven mornings, each time by a person listing a
+  folder. One reader, `filename_date()`, accepts both the 6-digit `YYMMDD` the house writes and the
+  4-digit form already in the wild, and is shared with the vault-report path; a name whose digits are
+  not a date stays undated rather than guessed. A `current:` report's age is read in the zone
+  `carry_forward.movement.tz` declares, so the check and the build cannot disagree about one report
+  across the staleness boundary. A declared recording archive is resolved before the row says
+  `checked`: a typo'd path is `missing`, not a source that was looked at. A failed fetch is named in
+  the agenda header, not only in the fetch's own record.
+
+- **CR-138 -- the task audit's shape lives in the skill, and the contract is bound to the generator.**
+  `skills/inbox/SKILL.md` gains a `/inbox survey` section documenting what `survey.py` actually emits,
+  every claim verified by running it: the five-view flag matrix, including that `--migration` never
+  reads `--markdown` and that a fixed test order makes `--migration` beat `--table` beat `--undated`;
+  the six-cell row whose signal column has an empty header cell; the separate three-cell forward-dated
+  row with no `Godta` column; and an age cell that is a dash for every undated state, carrying a raw
+  value only when the entry's own date is malformed. The script's docstring is reconciled with it. The
+  contract existed nowhere before: a format with no written shape has no detector, so a surface that
+  lost the code met the requirement by building something plausible instead, and the operator became
+  the regression test -- twice in one day. The first implementation of this CR reproduced that failure
+  one level up, with nine assertions that only checked prose was present and passed a deliberately
+  falsified section; they are replaced by 32 that build a fixture vault, run the generator and compare
+  the section against the printed output. Thirteen planted falsifications now each fail the suite.
+  No change to `survey.py`'s behaviour.
+
 ## [1.92.1] - 2026-10-20
 
 ### Changed

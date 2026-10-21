@@ -13,7 +13,24 @@ The inbox has one failure mode the outbox cannot have. An outbox manifest lives
 register is a separate file from the content it describes, so it can drift
 silently and did. Hence the three-way reconciliation here: entry, file, outcome.
 
-Read-only. Prints JSON, or `--markdown` for the situation half of an audit.
+Read-only, and prints to stdout: it writes no file. Which flags produce which
+view (CR-138 -- the shape is contracted in `skills/inbox/SKILL.md`, not only here):
+
+    (no flag)             JSON: the three-way reconciliation above
+    --markdown            the same reconciliation as prose -- the situation half
+    --table --markdown    the operator-facing task audit: every open entry, one
+                          row each, a proposed bucket and an empty `Godta` column
+    --undated --markdown  the working list of entries with neither date nor age
+    --migration           the context -> venture worksheet, venture column first
+
+Five views, and the flags are not exclusive: `main()` tests them in order, so
+`--migration` wins over `--table`, which wins over `--undated`. `--table` and
+`--undated` print JSON without `--markdown`; `--migration` never reads that flag
+and prints the worksheet either way.
+
+`--markdown` on its own is a situation report; it is `--table` that makes it the
+audit the operator decides from. Every open entry appears there exactly once --
+a subset under the audit's filename is a regression.
 """
 import argparse
 import json
@@ -675,12 +692,15 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--vault", help="vault root (default: $VAULT_ROOT or cwd)")
     ap.add_argument("--today", help="YYYY-MM-DD (default: today)")
-    ap.add_argument("--markdown", action="store_true", help="situation half of an audit")
+    ap.add_argument("--markdown", action="store_true",
+                    help="render the selected view as markdown; alone, the situation half")
     ap.add_argument("--stale-days", type=int, default=30)
     ap.add_argument("--migration", action="store_true",
                     help="the context -> venture worksheet, venture column first")
     ap.add_argument("--table", action="store_true",
-                    help="the undated entries as one row each, with a proposed bucket")
+                    # CR-138: with --markdown this is the operator-facing audit, and it
+                    # covers every open entry -- not only the undated ones.
+                    help="every open entry as one row each, with a proposed bucket")
     ap.add_argument("--undated", action="store_true",
                     help="the full working list of entries with neither date nor age")
     a = ap.parse_args(argv)

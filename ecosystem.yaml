@@ -350,7 +350,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 46
-core_skills_version: "1.92.1"
+core_skills_version: "1.92.2"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -464,7 +464,7 @@ skills:
     - name: inbox
       description: "Universal entry point for unstructured content — classifies and routes. Maintains the triage working surface (CR-022)."
       badge: Capture
-      subcommands: [status, route, triage, help]
+      subcommands: [status, route, triage, survey, help]
     - name: preparation
       description: "The config-free form of /ops prepare: an agenda for a meeting with a contact, with a walk-in card on top."
       badge: Context

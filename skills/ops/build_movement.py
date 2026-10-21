@@ -363,6 +363,142 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
                                  "missing_labels": missing}
 
 
+# CR-140: both dated spellings a report series is written in. The house convention
+# for a dated report file is 6-digit YYMMDD (`vault_reports()` below, the agenda's
+# own note names), but a repository series may be written 4-digit ISO, and `build()`
+# reads that one. A pre-flight that knows only one spelling calls a conventionally
+# named report undated, which is the difference between *fresh* and *cannot tell*.
+# Six digits first: `20261021` would otherwise read its first four as a year.
+_DATED = (re.compile(r"(\d{2})(\d{2})(\d{2})(?!\d)"),
+          re.compile(r"(\d{4})-(\d{2})-(\d{2})"))
+
+
+def filename_date(name: str) -> dt.date | None:
+    """The date in a dated report filename -- 6-digit YYMMDD or 4-digit ISO -- or None.
+
+    A name that carries digits in neither shape, or digits that are not a date
+    (`261332-status.md`), is undated: the caller reports that, never a guess.
+    """
+    for i, rx in enumerate(_DATED):
+        m = rx.search(name or "")
+        if not m:
+            continue
+        y = int(m[1]) + 2000 if i == 0 else int(m[1])
+        try:
+            return dt.date(y, int(m[2]), int(m[3]))
+        except ValueError:
+            continue
+    return None
+
+
+# CR-140: letter runs and digit runs are separate words, so a year appended with no
+# separator does not swallow the name it was appended to -- `reports` -> `reports2026`
+# is the commonest form this rename takes, and one token `reports2026` shares nothing
+# with `reports`. Digit-only tokens are dropped by `_words()`: two unrelated folders
+# both carrying `2026` are not the same series renamed.
+_WORD = re.compile(r"[a-z]+|[0-9]+")
+
+
+def _words(name: str) -> set[str]:
+    """The words of a directory name that can carry a match: four letters or more."""
+    return {w for w in _WORD.findall(name.lower()) if len(w) >= 4 and w.isalpha()}
+
+
+def renamed_to(root: Path, declared: str) -> str | None:
+    """CR-140: a directory beside the declared one that looks like the same series renamed.
+
+    A folder renamed overnight makes every report under it read as *source missing*,
+    which sends a person looking for a report that exists. The likelier cause is that
+    the CONFIG is stale, and the difference is one a script can see: the declared
+    parent is still there and holds a sibling whose name shares a word with the name
+    that went away.
+
+    Same parent only, and a shared word of at least four letters. Looser matching
+    (any parent, any shared prefix) suggests folders that have nothing to do with the
+    series, and a suggestion that is wrong is worse than none: it is read as an
+    answer. Returns the suggestion as a path relative to the declared parent's own
+    spelling, or None.
+    """
+    d = Path(declared)
+    want = _words(d.name)
+    if not want:
+        return None
+    levels = (root, *root.parents)
+    # CR-140: the declared directory is looked for across EVERY level before any
+    # suggestion is made, the way `vault_reports()` resolves it. Guarding per level
+    # instead let a decoy sibling in a nearer parent be suggested while the real
+    # declared directory stood in a higher one -- a suggestion that is read as an
+    # answer, pointing away from the folder that was there all along.
+    if any((p_ / d).is_dir() for p_ in levels):
+        return None
+    for p_ in levels:
+        parent = (p_ / d.parent) if str(d.parent) != "." else p_
+        if not parent.is_dir():
+            continue
+        for cand in sorted(x for x in parent.iterdir() if x.is_dir()):
+            if _words(cand.name) & want:
+                return str(d.parent / cand.name) if str(d.parent) != "." else cand.name
+    return None
+
+
+def report_states(cf: dict, today: dt.date | None = None):
+    """CR-140: the state of every declared report, with no repository history read.
+
+    `build()` reports the same thing, but only after `load()` has pulled every issue
+    and every label event -- about three minutes. A pre-flight that has to wait that
+    long to say a report is three days old reports it three days late, so this takes
+    the one status call per declared report and nothing else: the commit date of a
+    `current:` path, or one directory listing for a `pattern:` series.
+
+    Returns the `(name, owner, path_or_None, age_days_or_None)` tuples `build()` and
+    `vault_reports()` return, with a fifth list of (name, detail) for what could not
+    be read -- a failure here is reported, never guessed at as "missing".
+    """
+    today = today or dt.date.today()
+    # CR-140: the zone `build()` reads a commit date in, from the same declaration
+    # (`carry_forward.movement.tz`). Reading it in the machine's zone instead let the
+    # two disagree about one report across the stale boundary -- exactly the
+    # disagreement a pre-flight exists to prevent.
+    mv = cf.get("movement") or {}
+    tz = ZoneInfo(mv["tz"]) if mv.get("tz") else dt.datetime.now().astimezone().tzinfo
+    states, problems = [], []
+    for decl in ((cf.get("ext") or {}).get("repos") or []):
+        if not (isinstance(decl, dict) and decl.get("url")):
+            continue
+        repo = repo_slug(decl["url"])
+        for r in (decl.get("reports") or []):
+            nm = r.get("name") or r.get("current") or r.get("dir", "?")
+            # CR-140: a report declaring BOTH `current:` and `pattern:` is one
+            # report, and `build()` reports it from `current:` alone -- the series
+            # behind it is history, the stable path is the status (CR-114). Reading
+            # the series here too would cost a second call per report and could
+            # still only repeat that one state, so the fast path reads `current:`
+            # and the two agree on the state they report. A `pattern:`-only
+            # declaration is the series' own state, below.
+            if r.get("current"):
+                try:
+                    when = _gh(["api", f"repos/{repo}/commits?path={r['current']}&per_page=1",
+                                "--jq", ".[0].commit.committer.date"]).strip()
+                    age = (today - _ts(when).astimezone(tz).date()).days if when else None
+                    states.append((nm, r.get("owner"), r["current"] if when else None, age))
+                except Exception as e:   # best effort, as everywhere else in this pipeline
+                    problems.append((nm, f"not read — {type(e).__name__}: {str(e).splitlines()[0][:80]}"))
+                continue
+            try:
+                names_ = json.loads(_gh(["api", f"repos/{repo}/contents/{r['dir']}", "--jq", "[.[].name]"]))
+                hits = sorted(n for n in names_ if re.match(r["pattern"], n))
+                newest = hits[-1] if hits else None
+                # CR-140: both dated spellings, 6-digit YYMMDD and 4-digit ISO. The
+                # 4-digit regex alone called every house-convention report undated.
+                when_ = filename_date(newest or "")
+                age = (today - when_).days if when_ else None
+                states.append((nm, r.get("owner"), f"{r['dir']}/{newest}" if newest else None, age))
+            except Exception as e:
+                problems.append((nm, f"not read — {type(e).__name__}: {str(e).splitlines()[0][:80]}"))
+    _lines, vs = vault_reports(cf, today)
+    return states + list(vs), problems
+
+
 def vault_reports(cf: dict, today: dt.date | None = None):
     """CR-116: report series kept in the vault, not the repo -- board reports, dashboards.
 
@@ -384,7 +520,11 @@ def vault_reports(cf: dict, today: dt.date | None = None):
         nm = r.get("name") or r.get("dir", "?")
         d = next(((p_ / r["dir"]).resolve() for p_ in (root, *root.parents) if (p_ / r["dir"]).is_dir()), None)
         if not d:
-            lines.append(f"  report    {nm[:44]:44} NOT FOUND — {r.get('dir')}")
+            # CR-140: a renamed folder reads as "source missing" when the likelier
+            # cause is that the config is stale. Name the sibling that looks like it.
+            hint = renamed_to(root, r["dir"]) if r.get("dir") else None
+            lines.append(f"  report    {nm[:44]:44} NOT FOUND — {r.get('dir')}"
+                         + (f" · config stale? {hint} exists" if hint else ""))
             states.append((nm, r.get("owner"), None, None))
             continue
         if r.get("current"):
@@ -397,8 +537,10 @@ def vault_reports(cf: dict, today: dt.date | None = None):
                 continue
         hits = sorted(x.name for x in d.iterdir() if x.is_file() and re.match(r.get("pattern") or r"^$", x.name))
         newest = hits[-1] if hits else None
-        m = re.match(r"(\d{2})(\d{2})(\d{2})", newest or "")
-        age = (today - dt.date(2000 + int(m[1]), int(m[2]), int(m[3]))).days if m else None
+        # CR-140: one reader for both dated spellings, so a repo series and a vault
+        # series of the same shape cannot be dated by one and called undated by the other.
+        when_ = filename_date(newest or "")
+        age = (today - when_).days if when_ else None
         lines.append(f"  report    {nm[:44]:44} " + (f"newest {newest}" + (f" · {age}d old" if age is not None else "")
                                                      if newest else "NONE FOUND"))
         states.append((nm, r.get("owner"), newest, age))

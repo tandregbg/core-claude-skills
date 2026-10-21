@@ -25,6 +25,13 @@ Config, from the project's `.claude/ops-config.yaml`:
           escalate_after: 3
           round_columns: [Track]            # extra blank columns in the round table
           balance_window: 1                 # CR-090: sessions counted in the track balance line
+          meets: [mon, tue, wed, thu, fri]  # CR-139: alias for schedule_days
+          skip_dates:                       # CR-139: days this series did not meet
+            - date: 261020
+              reason: holiday-in
+            - from: 261224
+              to: 261226
+              reason: leave
     people:
       - name: Name                        # the round table, in order
       - name: Other
@@ -130,6 +137,13 @@ def config(meetings: Path) -> dict:
             # `tracks:` rather than inside carry_forward; a nearer declaration wins.
             cf["milestone"] = d.get("milestone") or cf.get("milestone")
             cf["definitions"] = d.get("definitions") or cf.get("definitions")   # CR-118
+            # CR-139: `meets:` is an ALIAS for `schedule_days`, not a second key. The
+            # two would answer the same question -- which days this series meets --
+            # and a config declaring both would have no defined winner, so the reader
+            # resolves one list and `schedule_days` keeps precedence: a config that
+            # already declares it behaves exactly as before.
+            if not cf.get("schedule_days") and cf.get("meets"):
+                cf["schedule_days"] = cf["meets"]
             if not cf.get("schedule_days"):
                 mt = (d.get("meeting_types") or {}).values()
                 sched = next((m.get("schedule", {}).get("days") for m in mt
@@ -548,9 +562,15 @@ def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[s
             for r in snap.get("releases") or []:
                 pub = (r.get("publishedAt") or r.get("createdAt") or "")
                 if pub and not r.get("isDraft") and datetime.date.fromisoformat(pub[:10]) >= after:
+                    name = r.get("name") or r.get("tagName") or ""
+                    # CR-141: a release names what it shipped in its NOTES, so the ids
+                    # are read here, where the archived notes are, under either
+                    # archiver name. Without this the notes never reached the matcher.
+                    notes = str(r.get("body") or r.get("description") or "")
                     out.append({"kind": "release", "repo": info["repo"],
                                 "n": r.get("tagName") or r.get("name") or "",
-                                "title": r.get("name") or r.get("tagName") or "", "when": pub})
+                                "title": name, "when": pub,
+                                "names": sorted(identifiers(name) | identifiers(notes))})
         if "issues" not in reads:
             continue
         for i in snap.get("issues") or []:
@@ -577,6 +597,15 @@ def pulls_since(repo: str, pulls: list[dict], after: datetime.date,
     (open, not a draft, no approval yet) or `open` (other open ones, drafts
     included). `age` is days since the PR was opened -- the question for one
     awaiting review is how long it has waited.
+
+    CR-141: `closes` carries the ids the PR SAYS it closes, read HERE, where the
+    archived record still is -- from the title and from the description under
+    whichever name the archiver stored it (`body` is `gh`'s field, `bodyText` the
+    GraphQL plain-text one). The row handed on is a fixed shape, so a closing
+    reference that lives only in the description had no way through it before and
+    `Fixes #12` in a PR body never matched anything. An archive that stores no
+    description matches on the title, which is always present; `closes` is then an
+    empty set and the marker falls back to the PR's own number.
     """
     today = today or datetime.date.today()
     out = []
@@ -596,8 +625,13 @@ def pulls_since(repo: str, pulls: list[dict], after: datetime.date,
         created = (pr.get("createdAt") or "")[:10]
         age = (today - datetime.date.fromisoformat(created)).days if created else 0
         who = (pr.get("author") or {}).get("login", "") if isinstance(pr.get("author"), dict) else ""
-        out.append({"kind": "pull", "repo": repo, "n": pr.get("number"), "title": pr.get("title") or "",
+        title = pr.get("title") or ""
+        # CR-141: read the closing references off the archived record while it is in
+        # hand -- the title plus the description under either archiver name.
+        closes = closing_refs(title) | closing_refs(str(pr.get("body") or pr.get("bodyText") or ""))
+        out.append({"kind": "pull", "repo": repo, "n": pr.get("number"), "title": title,
                     "status": status, "when": when or "", "age": age, "who": who,
+                    "closes": sorted(closes),
                     "new": bool(created) and datetime.date.fromisoformat(created) >= after})
     return out
 
@@ -679,8 +713,90 @@ def _chat_when(txt: str) -> str:
     return f"{m.group(1)} {m.group(2)}".strip() if m and m.group(2) else (m.group(1) if m else "")
 
 
+# ---- CR-141: identifiers, the only thing the closed matcher matches on ------
+# The matcher used to compare word sets: two shared 4+-letter words between the
+# carried line and an evidence string made a hit. Measured over three mornings on
+# one project it was right 0 of 9, 2 of 5 and 1 of 7 times -- the evidence string
+# always carries the repository name and the ticket prefix, so a *checkout* fix
+# matched a carried payments line on the two words they happened to share. A
+# marker that is wrong most of the time is removed by hand every morning, which is
+# the work the generator exists to save. So: an explicit identifier, or nothing.
+
+# `#12`, but not a colour (`#fff`) and not the `#` of a heading.
+_ID_HASH = re.compile(r"(?<![\w#])#(\d{1,6})\b")
+# `TICK-9`, `ABC-1234`. The prefix is 2+ characters, upper-case and starting with a
+# letter, so a hyphenated word (`re-run`) and a date (`2026-09-24`) are not read as
+# ticket keys. Upper-case is the board's own convention and keeping it that way is
+# what stops ordinary prose turning into an identifier.
+_ID_TICKET = re.compile(r"\b([A-Z][A-Z0-9]{1,9})-(\d{1,6})\b")
+# A range of ticket keys: `TICK-9..12`, `TICK-9-12`, `TICK-9–12` (en dash) and the
+# fully written `TICK-9..TICK-12`. A note writes one of these for a batch of work
+# and means every key in it, so each is extracted.
+#
+# CR-141: the separator takes NO surrounding whitespace. A spaced dash is prose --
+# and ` — ` is this file's own separator, on nearly every carried line -- so allowing
+# one made `Q3-2026 - Q3-2030 roadmap` yield five keys and `ISO-8601 - ISO-8609
+# encoding` nine, inventing identifiers nobody wrote. That is the over-matching this
+# CR exists to remove, re-entering through the range feature. A written range is
+# tight (`TICK-9..12`), so requiring tight costs nothing real and the two prose lines
+# above now yield only the literal keys they contain.
+_ID_TICKET_RANGE = re.compile(
+    r"\b([A-Z][A-Z0-9]{1,9})-(\d{1,6})(?:\.\.|[–—-])(?:\1-)?(\d{1,6})\b")
+# A pull request naming the issue it closes. GitHub's own closing keywords plus the
+# `Re #id` a team writes by hand.
+_ID_CLOSES = re.compile(r"\b(?:re|fix|fixes|fixed|close|closes|closed|resolve|resolves|resolved)\s*:?\s*#(\d{1,6})\b", re.I)
+
+# How many keys a written range may expand to. A typo (`TICK-9..99999`) otherwise
+# expands to a set that matches every ticket on the board, which is the old
+# everything-matches failure in a new costume.
+MAX_RANGE = 50
+
+
+def identifiers(text: str) -> set[str]:
+    """Explicit identifiers named in a line: `#12` -> `#12`, `TICK-9` -> `TICK-9`.
+
+    The one place CR-141's "match only on an explicit identifier" is decided, and
+    deliberately reusable: CR-147 acts on certain closes and needs the same answer
+    to "which work does this line name?" that the marker was based on.
+
+    Recognised, in the carried line, a chat message, a pull request title or a
+    commit body alike:
+
+      - `#12`                       an issue or pull request number
+      - `TICK-9`                    a ticket key
+      - `TICK-9..12`, `TICK-9-12`   a written range, expanded to every key in it
+      - `Fixes #12`, `Re #12`       a closing reference (also yielded as `#12`)
+
+    Case is kept for ticket keys (they are upper by convention and compared as
+    written) and the hash form has no case. Returns a set, so a line that names the
+    same id twice counts once. Never guesses: prose with no identifier returns an
+    empty set, and the caller then says nothing rather than something wrong.
+    """
+    out: set[str] = set()
+    t = text or ""
+    for pre, a, b in _ID_TICKET_RANGE.findall(t):
+        lo, hi = int(a), int(b)
+        if lo <= hi and hi - lo < MAX_RANGE:
+            out.update(f"{pre}-{n}" for n in range(lo, hi + 1))
+    out.update(f"{pre}-{int(n)}" for pre, n in _ID_TICKET.findall(t))
+    out.update(f"#{int(n)}" for n in _ID_HASH.findall(t))
+    out.update(f"#{int(n)}" for n in _ID_CLOSES.findall(t))
+    return out
+
+
+def closing_refs(text: str) -> set[str]:
+    """The ids a pull request or commit says it CLOSES (`Fixes #12`, `Re #12`).
+
+    Separate from `identifiers` because the distinction is what proposal 3 prints:
+    a PR whose own number is #7 and whose body says `Fixes #12` is evidence about
+    #12, and the marker says so -- `PR #7 (Re #12) merged` -- so a reader checks
+    the right thing in one click.
+    """
+    return {f"#{int(n)}" for n in _ID_CLOSES.findall(text or "")}
+
+
 def probably_closed(items, chat, repo, jira):
-    """Carried items the sources suggest are finished.
+    """Carried items the sources suggest are finished, each with its basis.
 
     Carry-forward is never compared with anything, so an item that shipped
     yesterday leads this morning's agenda and the room spends its first minutes
@@ -695,36 +811,84 @@ def probably_closed(items, chat, repo, jira):
     - a merged PR, a published release, a closed issue or a done ticket that
       matches outranks any chat message;
     - the evidence cell carries the date (and time, for chat) that was used.
+
+    CR-141, what MATCHES:
+    - an explicit identifier shared between the carried line and the evidence --
+      the line's own `#id` or ticket key, or a pull request that names the issue
+      (`Re #id`, `Fixes #id`). No title-similarity matching, at all;
+    - a carried line that names no identifier is never marked. It stays carried and
+      `without_identifier` lists it for the details file as *items with no
+      identifier, cannot be checked* -- saying nothing is the honest answer;
+    - a state change is not a close: a ticket that only moved to a *fixed* state
+      is evidence of `fixed, waiting for a test`, never of a close, so it is not
+      marked as probably closed.
+
+    Returns (closed, still), unchanged in shape: CR-141 narrows WHICH items land in
+    the first list, and the lines it can say nothing about are read separately with
+    `without_identifier`.
     """
-    ev = []   # (rank, when, kind, ref, txt, negative)
+    ev = []   # (rank, when, kind, ref, txt, negative, ids)
     for c in chat:
         for line in (c.get("messages") or []):
             txt = line[1] if isinstance(line, (tuple, list)) and len(line) > 1 else str(line)
             neg = bool(NEGATIVE_WORDS.search(txt or ""))
             if neg or DONE_WORDS.search(txt or ""):
-                ev.append((1, _chat_when(txt), "chat", c.get("name") or "chat", txt.strip(), neg))
+                ids = identifiers(txt)
+                if ids:   # CR-141: a done-word with no id names no work
+                    # CR-141, proposal 3: the basis names the identifier matched on.
+                    # `<channel> · <timestamp>` alone named no id, so the one marker
+                    # a reader could not verify in one click was the chat one -- and
+                    # the quote it leaned on is truncated, which could cut the id out.
+                    ev.append((1, _chat_when(txt), "chat",
+                               f"{c.get('name') or 'chat'} names {', '.join(sorted(ids))}",
+                               txt.strip(), neg, ids))
     for r in repo:
         kind = r.get("kind", "issue")
         when = str(r.get("when") or "")[:16].replace("T", " ")
+        n = r.get("n", "")
+        title = r.get("title", "")
         if kind == "pull" and r.get("status") == "merged":
-            ev.append((2, when, "repo", f"{r.get('repo','')} PR #{r.get('n','')} merged", r.get("title", ""), False))
+            # CR-141: a merged PR is evidence about what it SAYS it closes, and about
+            # itself. `Re #12` is the link a reader checks. `closes` is read by the
+            # producer, where the archived description is (`pulls_since`); the title
+            # is re-read here so a row assembled by another caller still works.
+            closes = set(r.get("closes") or ()) | closing_refs(title)
+            basis = f"{r.get('repo','')} PR #{n} merged"
+            if closes:
+                basis = f"{r.get('repo','')} PR #{n} ({', '.join(f'Re {c_}' for c_ in sorted(closes))}) merged"
+            ev.append((2, when, "repo", basis, title, False, closes | {f"#{n}"} if n != "" else closes))
         elif kind == "release":
-            ev.append((2, when, "repo", f"{r.get('repo','')} release {r.get('n','')}", r.get("title", ""), False))
+            # A release names what it shipped in its notes; nothing else about it is
+            # an identifier, so a release with no id in its notes matches nothing.
+            # CR-141: `names` is read by the producer, which has the archived notes;
+            # the title is re-read here for a row another caller assembled.
+            ev.append((2, when, "repo", f"{r.get('repo','')} release {r.get('n','')}",
+                       title, False, set(r.get("names") or ()) | identifiers(title)))
         elif kind == "issue" and r.get("state") == "closed":
-            ev.append((2, when, "repo", f"{r.get('repo','')}#{r.get('n','')}", r.get("title", ""), False))
+            ev.append((2, when, "repo", f"{r.get('repo','')} issue #{n} closed", title, False,
+                       {f"#{n}"} if n != "" else set()))
     for t in jira:
-        if any(w in (t.get("state") or "") for w in ("done", "closed", "resolved")):
-            ev.append((2, "", "tickets", str(t.get("n") or ""), t.get("title", ""), False))
+        state = t.get("state") or ""
+        n = str(t.get("n") or "")
+        if not n:
+            continue
+        # CR-141, proposal 4: a state change is not a close. `fixed` on a board means
+        # the work is waiting for a test, and the agenda already has words for that.
+        if any(w in state for w in ("done", "closed", "resolved")):
+            ev.append((2, "", "tickets", f"ticket {n} {state or 'done'}", t.get("title", ""), False, {n.upper()}))
     if not ev:
         return [], items
 
-    def words(x):
-        return {w for w in re.findall(r"[a-zåäö0-9]{4,}", x.lower())}
-
     closed, still = [], []
     for label, rest in items:
-        want = words(label)
-        matches = [e for e in ev if want and len(want & words(f"{e[3]} {e[4]}")) >= 2]
+        want = identifiers(f"{label} {rest}")
+        if not want:
+            # CR-141, proposal 2: no identifier, no marker. The line stays carried and
+            # the details file says it could not be checked, rather than the card
+            # claiming something about it that nobody can verify in one click.
+            still.append((label, rest))
+            continue
+        matches = [e for e in ev if want & e[6]]
         strong = sorted((e for e in matches if e[0] == 2), key=lambda e: e[1])
         chats = sorted((e for e in matches if e[0] == 1), key=lambda e: e[1])
         hit = None
@@ -733,11 +897,102 @@ def probably_closed(items, chat, repo, jira):
         elif chats and not chats[-1][5]:
             hit = chats[-1]           # the newest chat word is a positive one
         if hit:
-            _rank, when, kind, ref, txt, _neg = hit
-            closed.append((label, rest, (kind, f"{ref} · {when}" if when else ref, txt)))
+            _rank, when, kind, ref, txt, _neg, ids = hit
+            # CR-141, proposal 3: the quote is cut here, where the ids that matched
+            # are known, so the cut cannot remove the id the basis names.
+            closed.append((label, rest, (kind, f"{ref} · {when}" if when else ref,
+                                         quote_for(txt, want & ids))))
         else:
             still.append((label, rest))
     return closed, still
+
+
+# CR-141, proposal 4: states a board uses for work that is BUILT but not accepted.
+# A close is a close; everything here is a state change, and the agenda already has
+# the words for it -- the release-blockers table has said `fixed, waiting for a test`
+# since CR-114. Marking one of these *probably closed* is how a carried item left the
+# card before anyone had tested it.
+FIXED_STATES = ("fixed", "in review", "in test", "ready for test", "ready for qa",
+                "verify", "awaiting test", "qa")
+
+
+def state_changed(items, jira) -> list[tuple[str, str, str]]:
+    """Carried items whose ticket moved to a built-but-not-accepted state.
+
+    `(label, rest, "fixed, waiting for a test")` per item, matched on the ticket key
+    the carried line names -- never on words, same rule as `probably_closed`. This
+    is deliberately NOT a close: the room is told the work exists and the test does
+    not, which is the thing it has to schedule, and the item stays carried until
+    somebody says it passed.
+    """
+    by_id = {}
+    for t_ in jira:
+        n = str(t_.get("n") or "").upper()
+        st = str(t_.get("state") or "").lower()
+        if n and any(w in st for w in FIXED_STATES) and not any(
+                w in st for w in ("done", "closed", "resolved")):
+            by_id[n] = st
+    if not by_id:
+        return []
+    out = []
+    for label, rest in items:
+        hit = sorted(identifiers(f"{label} {rest}") & set(by_id))
+        if hit:
+            out.append((label, rest, "fixed, waiting for a test"))
+    return out
+
+
+def quote_for(txt: str, ids, width: int = 70) -> str:
+    """CR-141, proposal 3: a quoted evidence line that still shows the id.
+
+    The quote is truncated to keep the table readable, and a chat line that says
+    the interesting thing late (`... which closes #12`) lost the identifier to the
+    cut -- leaving a marker whose own quote did not support it. The basis names the
+    id either way, so this is about the quote agreeing with it: if the first `width`
+    characters contain none of the matched ids, the window slides to the first one
+    and is marked as a middle (an elision on each side it actually cut).
+    """
+    t = " ".join((txt or "").split())
+    if len(t) <= width:
+        return t
+    found = sorted((t.find(i), len(i)) for i in (ids or ()) if i in t)
+    if not found or any(p + n <= width for p, n in found):
+        return t[:width].rstrip() + "..."       # an id is already in the window
+    at = found[0][0]
+    start = max(0, at - width // 3)
+    return "..." + t[start:start + width].rstrip() + ("..." if start + width < len(t) else "")
+
+
+def reconcile_closed(closed, fixed_rows):
+    """CR-141: one carried line gets ONE verdict, and *waiting for a test* wins.
+
+    `probably_closed` and `state_changed` read the same carried lines against the
+    same sources independently, and a line naming two keys can satisfy both: with
+    `TICK-9` done and `TICK-10` in review, the line was reported as *probably
+    closed* AND as *fixed, waiting for a test* -- two sections contradicting each
+    other -- and the close also took it off the carried list, so the room lost the
+    item whose test nobody had run.
+
+    Precedence is proposal 4's: a state change is not a close, so an item with any
+    built-but-not-accepted key stays carried and keeps only the *waiting for a
+    test* row. The close evidence is not thrown away silently -- it is still true
+    about the key it names -- but the line is not declared finished while part of
+    it is untested. Returns the filtered `closed` list; `fixed_rows` is unchanged.
+    """
+    waiting = {(l, r) for l, r, _st in fixed_rows}
+    return [(l, r, h) for l, r, h in closed if (l, r) not in waiting]
+
+
+def without_identifier(items) -> list[tuple[str, str]]:
+    """CR-141: carried lines that name no `#id` and no ticket key.
+
+    The honest companion to a narrowed matcher. Nothing can be checked about these
+    lines, so they get no marker -- and that silence is itself worth printing, in
+    the details file rather than on the card: a reader who knows the matcher ran
+    should know which items it had nothing to go on for, otherwise *no markers*
+    reads as *nothing moved*.
+    """
+    return [(l, r) for l, r in items if not identifiers(f"{l} {r}")]
 
 
 def recorded_since(cf: dict, after: datetime.date, told: str | None) -> list[dict]:
@@ -891,6 +1146,23 @@ def declared_track(value: str, tracks: list[str]) -> str | None:
     return next((t for t in tracks if t.lower() == v), None)
 
 
+def weekdays(days) -> set[int]:
+    """Declared cadence days as weekday numbers, full name or three letters.
+
+    CR-139: `meets: [mon, tue]` is the shape an operator writes; `schedule_days`
+    has always been read as full names. Both resolve here, so the alias needs no
+    second spelling rule and an unrecognised entry is ignored exactly as before --
+    a typo must not silently empty the schedule and turn every day into a meeting day.
+    """
+    out = set()
+    for x in days or []:
+        v = str(x).strip().lower()
+        i = next((n for n, d in enumerate(DAYS) if d == v or (len(v) == 3 and d.startswith(v))), None)
+        if i is not None:
+            out.add(i)
+    return out
+
+
 def next_session(yymmdd: str, days: list[str] | None) -> str:
     """The next day this series actually meets.
 
@@ -899,7 +1171,7 @@ def next_session(yymmdd: str, days: list[str] | None) -> str:
     looks broken on Thursday because the Tuesday file is the newest thing with no
     note behind it. Falls back to the next weekday where no schedule is declared.
     """
-    want = {DAYS.index(x.lower()) for x in (days or []) if x.lower() in DAYS}
+    want = weekdays(days)
     d = datetime.datetime.strptime(yymmdd, "%y%m%d").date() + datetime.timedelta(days=1)
     for _ in range(14):
         if (d.weekday() in want) if want else (d.weekday() <= 4):
@@ -908,16 +1180,360 @@ def next_session(yymmdd: str, days: list[str] | None) -> str:
     return d.strftime("%y%m%d")
 
 
+def default_target(now: datetime.date, hist: list[tuple[str, Path]] | None = None,
+                   days: list[str] | None = None) -> str:
+    """CR-139: the date an agenda is for when the caller does not say.
+
+    TODAY, unless today already has a note -- then the NEXT session the series meets.
+    The two cases are the loop's two runs, and they want different dates:
+
+    * the morning run. Nothing has been written for today, the session is ahead, and
+      the agenda is for it. The old default (`next_session` after the newest note) got
+      this wrong after a day nobody met: no note was written for the skipped day, so
+      it built for the skipped day and then stamped its own output STALE.
+    * the same-day close-out (SKILL.md, *After the meeting, the same day*). The summary
+      for today has just been written, and the next thing wanted is the NEXT session's
+      agenda. A note for today is exactly the signal that the close-out has happened,
+      so it is read as one rather than refused: refusing it would break this repo's own
+      documented sequence, which runs the generator with no `--date` after step 5.
+
+    `next_session` stays the answer to its own question -- which day the series next
+    meets, also asked by `project_brief` -- and is reused here rather than re-derived,
+    so a cadence declared once is honoured in both.
+    """
+    today = now.strftime("%y%m%d")
+    if any(d_ == today for d_, _p in hist or []):
+        return next_session(today, days)
+    return today
+
+
+def refuse_target(target: str, now: datetime.date, hist: list[tuple[str, Path]],
+                  explicit: bool) -> str | None:
+    """CR-139: why this date may not be built for, or None.
+
+    One refusal beyond a malformed date, and it is not the pre-existing output-file
+    guard (which says only that this agenda was already generated): a date earlier
+    than today that nobody typed. The day has gone, so an agenda for it is read after
+    the meeting it was meant to prepare. An explicit `--date` is the caller saying
+    they mean it, so the refusal only catches a date the default produced.
+
+    A date that already has a note is NOT refused. The CR's contract is that an
+    explicit `--date` behaves as before, and before this CR such a date built -- a
+    rebuild after deleting the agenda is the ordinary way to correct one. With no
+    `--date` the case cannot arise: `default_target` reads a note for today as the
+    close-out having happened and moves to the next session, so there is nothing
+    left here to refuse.
+
+    `hist` is still read, for the malformed-date path's ordering and so a caller
+    passing history keeps one signature across both functions.
+    """
+    try:
+        day = datetime.datetime.strptime(target, "%y%m%d").date()
+    except ValueError:
+        return f"--date {target!r} is not a YYMMDD date"
+    if day < now and not explicit:
+        return (f"would build for {target}, which is earlier than today ({now:%y%m%d}) — "
+                f"pass --date {target} if you mean to build for a day that has gone")
+    return None
+
+
+def base_line(note: str, last_date: str, skips: list[tuple[datetime.date, str]],
+              day: datetime.date) -> str:
+    """CR-139: `Base: <note> (last meeting held <date>; skipped: <dates>)`.
+
+    The agenda already named the note it was built from further down, in the sources
+    block -- but a reader working out why a session count did not move has to know
+    which days did not count, and that fact lived nowhere. It goes in the header, so
+    it is read before the carried list rather than after it.
+
+    Only skip days between the base note and this agenda are listed: a skip from
+    three months ago says nothing about this agenda, and a header that lists it reads
+    as though it did.
+    """
+    held = datetime.datetime.strptime(last_date, "%y%m%d").date()
+    inside = [(d, why) for d, why in skips if held < d <= day]
+    tail = ""
+    if inside:
+        tail = "; skipped: " + ", ".join(f"{d:%y%m%d} ({why})" for d, why in inside)
+    return f"Base: {note} (last meeting held {held:%y%m%d}{tail})"
+
+
+def skip_dates(cf: dict) -> list[tuple[datetime.date, str]]:
+    """CR-139: the days this series did not meet, each with its one-word reason.
+
+    Two shapes, because a holiday is one day and leave is a stretch of them:
+
+        - date: 261020
+          reason: holiday-in
+        - from: 261224
+          to: 261226
+          reason: leave
+
+    A bare `261020` is accepted too -- an operator adding one day should not have to
+    write a mapping -- and then has no reason, which prints as `no reason given`
+    rather than being dropped. The list is OPERATOR-WRITTEN (the skill does not know
+    which days a team is away), so an unparseable entry is skipped and the rest are
+    kept: one bad line must not take the whole skip list down and silently restore
+    the ageing it was written to stop.
+
+    `skip_dates: 261020` -- one day written without the dash, which YAML reads as a
+    scalar int rather than a list -- is read as that one day. It is the natural typo
+    for an operator declaring a single day, it says unambiguously what was meant, and
+    iterating it raised a TypeError and a raw traceback instead of building the agenda.
+    """
+    out: dict[datetime.date, str] = {}
+
+    def _d(v):
+        try:
+            return datetime.datetime.strptime(str(v).strip(), "%y%m%d").date()
+        except (TypeError, ValueError):
+            return None
+
+    raw = cf.get("skip_dates") or []
+    # A str is iterable, so a bare `skip_dates: 261020` or a quoted one would
+    # otherwise be walked character by character and yield nothing.
+    if isinstance(raw, (str, int, dict)):
+        raw = [raw]
+    elif not isinstance(raw, (list, tuple, set)):
+        return []
+    for e in raw:
+        if isinstance(e, dict):
+            why = str(e.get("reason") or "").strip() or "no reason given"
+            # `from:` alone and `to:` alone are the same declaration of one day read
+            # from either end, so both resolve to that day: accepting one and
+            # silently dropping the other restores the ageing on exactly the day the
+            # operator wrote a reason for.
+            ends = [x for x in (_d(e.get("from")), _d(e.get("to")), _d(e.get("date"))) if x]
+            if not ends:
+                continue
+            a_, b_ = min(ends), max(ends)
+            d = a_
+            while d <= b_:
+                out.setdefault(d, why)
+                d += datetime.timedelta(days=1)
+        elif (a_ := _d(e)) is not None:
+            out.setdefault(a_, "no reason given")
+    return sorted(out.items())
+
+
+def skipped_between(skips: list[tuple[datetime.date, str]],
+                    first: datetime.date, last: datetime.date) -> int:
+    """How many declared skip days fall in `(first, last]`.
+
+    CR-139: a skipped day is not a missing note, so nothing may age across it. The
+    half-open interval is what makes that true at both ends -- the day an item was
+    first carried is a day the series DID meet, and a skip on the target day itself
+    still removes that day from the count."""
+    return sum(1 for d, _why in skips if first < d <= last)
+
+
+# ---- CR-140: the pre-flight -------------------------------------------------
+# The full build takes about three minutes and exceeds the default foreground
+# command limit, so a check that needs the build to find a missing source finds it
+# three minutes late. `--check` answers the same question in seconds: is every
+# declared source ready, and if not, which one and why.
+#
+# It reads the cheap half of what the build reads -- the fetch records, the local
+# note and the archives' own status -- plus one status call per declared report.
+# None of the expensive readers (`from_chat`, `from_repo`, `from_jira`) is called:
+# their answer is WHAT MOVED, which a pre-flight does not ask.
+READY, STALE, FAILED, MISSING, UNCHECKED = "ready", "stale", "failed", "missing", "not checked"
+# The states that make the exit code non-zero. `failed` is among them: a fetch that
+# failed is a source that is not there, whatever the archive still holds.
+CHECK_BAD = (STALE, FAILED, MISSING)
+# Days before a dated report counts as stale. Matches the config_checks threshold
+# (CR-119) so the two cannot disagree about the same report.
+REPORT_STALE_DAYS = 3
+
+
+def check_rows(cf: dict, md: Path, hist: list[tuple[str, Path]],
+               today: datetime.date | None = None,
+               reports=None) -> list[tuple[str, str, str, str]]:
+    """One (source, state, time, detail) row per declared source, in reading order.
+
+    `reports` is injected by the caller so the one network-touching part of the
+    check -- a report's status call -- can be left out or supplied by a test; None
+    means read it here.
+    """
+    today = today or datetime.date.today()
+    rows: list[tuple[str, str, str, str]] = []
+    ext = cf.get("ext") or {}
+    after = since(hist[-1][0]) if hist else today
+
+    # The archives, one row each, from the fetch record alone (CR-088). `fetch_ok`
+    # says the last attempt worked; `fetched_since` says it worked recently enough
+    # for the note. A source can be ok and stale, which is the whole point of the
+    # two questions being separate.
+    for label, sub, declared in (("chat fetch", ".teamschats", ext.get("chats")),
+                                 ("repository fetch", ".githubmeta", ext.get("repos")),
+                                 ("ticket fetch", ".jirameta", ext.get("jira"))):
+        if not declared:
+            continue
+        rec = fetch_record(archive_dir(cf, sub))
+        if rec is None:
+            rows.append((label, MISSING, "—", f"no fetch recorded in {sub}/"))
+        elif not fetch_ok(rec):
+            rows.append((label, FAILED, _stamp(_when(rec.get("last_success")), today),
+                         fetch_status(rec, today)))
+        elif not fetched_since(rec, after):
+            rows.append((label, STALE, _stamp(_when(rec.get("last_success")), today),
+                         f"last success predates {hist[-1][1].name if hist else 'the note'}"))
+        else:
+            rows.append((label, READY, _stamp(_when(rec.get("last_success")), today),
+                         str(rec.get("result"))))
+
+    # Every declared report, repo-kept and vault-kept alike. A report with no age
+    # is one whose date could not be read -- reported as missing, never as fresh.
+    if reports is None:
+        reports, problems = _check_reports(cf, today)
+    else:
+        problems = []
+    for nm, _own, path_, age in reports:
+        if path_ is None:
+            # CR-140: a rename reads as "config stale", not "source missing". The
+            # suggestion decides nothing -- the report is still missing -- but it is
+            # the difference between looking for a renamed folder and looking for a
+            # report that was never written.
+            rows.append((f"report: {nm}", MISSING, "—",
+                         "declared, not found" + (f" · config stale? {hint} exists"
+                                                  if (hint := _renamed_hint(cf, nm)) else "")))
+        elif age is None:
+            rows.append((f"report: {nm}", MISSING, "—", f"{path_}: no date in the name"))
+        elif age >= REPORT_STALE_DAYS:
+            rows.append((f"report: {nm}", STALE, f"{age}d old", str(path_)))
+        else:
+            rows.append((f"report: {nm}", READY, "today" if age == 0 else f"{age}d old", str(path_)))
+    for nm, detail in problems:
+        rows.append((f"report: {nm}", FAILED, "—", detail))
+
+    # The previous note. Absent, there is nothing to carry from and the build stops
+    # anyway -- but it stops three minutes in, which is what this exists to avoid.
+    if not hist:
+        rows.append(("previous note", MISSING, "—",
+                     f"no YYMMDD-{cf['note_suffix']}.md in {md.name}/"))
+    else:
+        last_date, last = hist[-1]
+        if not has_section(last):
+            rows.append(("previous note", MISSING, last_date,
+                         f"{last.name} has no '## Carried forward' section — close-out not written"))
+        else:
+            rows.append(("previous note", READY, last_date, last.name))
+
+    # The recording store is CHECKED or NOT CHECKED, never ready or stale: the
+    # script does not fetch it (CR-087), so the honest answer is whether anything
+    # looked. Declaring no archive is not a failure -- prepare checks the store by
+    # hand -- so NOT CHECKED leaves the exit code alone.
+    #
+    # CR-140: a DECLARED archive is resolved before the row says "checked". Printing
+    # "checked" from the declaration alone let a typo'd or deleted archive read as a
+    # source that was looked at, which is the opposite of what this row is for: the
+    # archive reader finds nothing there and reports no session, and the row agreed.
+    # A declaration pointing nowhere is a source that is not there, so it is missing.
+    trd = ext.get("transcripts") or {}
+    if trd:
+        arch = trd.get("archive")
+        root_ = Path(cf["_root"])
+        found = next((p_ / arch for p_ in (root_, *root_.parents)
+                      if (p_ / arch).is_dir()), None) if arch else None
+        if arch and found is None:
+            rows.append(("recording source", MISSING, "—",
+                         f"declared archive not found: {arch}"))
+        elif arch:
+            rows.append(("recording source", "checked", "—", str(arch)))
+        else:
+            rows.append(("recording source", UNCHECKED, "—",
+                         str(trd.get("store") or "declared")
+                         + " — no archive; prepare checks by hand (CR-117)"))
+    return rows
+
+
+def _renamed_hint(cf: dict, name: str) -> str | None:
+    """CR-140: for a declared report that is missing, a sibling directory that looks
+    like the same series renamed -- matched back to the declaration by its name.
+
+    Vault reports only: a repo report's path is in the repository, where this script
+    has no listing to compare against and a guess would be invented rather than seen.
+    """
+    for r in ((cf.get("ext") or {}).get("vault_reports") or []):
+        if not (isinstance(r, dict) and r.get("dir")):
+            continue
+        if (r.get("name") or r["dir"]) != name:
+            continue
+        try:
+            import build_movement
+            return build_movement.renamed_to(Path(cf["_root"]), r["dir"])
+        except Exception:
+            return None            # best effort, as everywhere else in this pipeline
+    return None
+
+
+def _check_reports(cf: dict, today: datetime.date):
+    """The report states for `--check`, or an empty list when they cannot be read.
+
+    Imported here rather than at module scope because `build_movement` is itself an
+    optional companion: a project with no declared report must still get a check.
+    """
+    try:
+        import build_movement
+        return build_movement.report_states(cf, today)
+    except Exception as e:
+        return [], [("declared reports", f"not read — {type(e).__name__}: {str(e).splitlines()[0][:80]}")]
+
+
+def check_table(rows: list[tuple[str, str, str, str]]) -> str:
+    """The rows as one fixed-width table -- the same shape as the sources block."""
+    w = max([len(r[0]) for r in rows] + [6])
+    out = [f"  {'Source'.ljust(w)}  {'State'.ljust(11)}  Time",
+           f"  {'-' * w}  {'-' * 11}  {'-' * 12}"]
+    for name, state, when, detail in rows:
+        out.append(f"  {name.ljust(w)}  {state.ljust(11)}  {when:<12}  {detail}".rstrip())
+    bad = [r for r in rows if r[1] in CHECK_BAD]
+    out += ["", f"  {len(bad)} of {len(rows)} source(s) not ready"
+            if bad else f"  all {len(rows)} source(s) ready"]
+    return "\n".join(out)
+
+
+def run_check(md: Path, cf: dict, hist: list[tuple[str, Path]]) -> int:
+    rows = check_rows(cf, md, hist)
+    print(check_table(rows))
+    return 1 if any(r[1] in CHECK_BAD for r in rows) else 0
+
+
+def failed_fetches(cf: dict, recs: dict, today: datetime.date) -> list[str]:
+    """CR-140: the fetches that failed, named for the agenda's own header.
+
+    A failed fetch was only ever in the fetch's own file and in one line of the
+    sources block. The repo-detail section meanwhile used the last good data and
+    read as current, so the agenda looked complete -- which is how the same fetch
+    failed twice in one morning without the room hearing about it.
+    """
+    ext = cf.get("ext") or {}
+    out = []
+    for label, sub, declared in (("chat", ".teamschats", ext.get("chats")),
+                                 ("repository", ".githubmeta", ext.get("repos")),
+                                 ("tickets", ".jirameta", ext.get("jira"))):
+        rec = recs.get(sub)
+        if declared and rec is not None and not fetch_ok(rec):
+            out.append(f"{label}: {fetch_status(rec, today)}")
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".", help="the meetings folder")
-    ap.add_argument("--date", help="YYMMDD; default is the next weekday after the last note")
+    ap.add_argument("--date", help="YYMMDD; CR-139: default is TODAY, or the next session when today "
+                                   "already has a note (the close-out has happened). A date in the "
+                                   "past is refused unless --date names it")
     ap.add_argument("--recorded", metavar="YYMMDD[,id...]",
                     help="CR-087: a recording of this series the caller already found. "
                          "The script never fetches; this is how a session that has looked tells it")
     ap.add_argument("--skip-unprocessed", action="store_true",
                     help="CR-087: build anyway, over a session that was recorded and never written "
                          "up. Skipping is then a decision on the record, not an accident")
+    ap.add_argument("--check", action="store_true",
+                    help="CR-140: print one table of source states and exit non-zero on any stale "
+                         "or missing source. Seconds, not the full build's minutes: no repository "
+                         "read beyond one status call per declared report")
     a = ap.parse_args()
 
     md = Path(a.dir).resolve()
@@ -930,16 +1546,44 @@ def main() -> None:
     pat = note_pattern(cf["note_suffix"])
     hist = sorted((m.group(1), p) for p in md.glob("*.md")
                   if (m := pat.match(p.name)) and not any(c in p.name for c in COMPANION))
+    # CR-140: the pre-flight runs BEFORE the no-note exit and before the target-date
+    # refusals. A check whose own preconditions can refuse it cannot be what a
+    # scheduler runs: a missing note is a row in the table, not a reason to say
+    # nothing about the other sources.
+    if a.check:
+        sys.exit(run_check(md, cf, hist))
     if not hist:
         sys.exit(f"no YYMMDD-{cf['note_suffix']}.md in {md}")
 
     last_date, last = hist[-1]
-    target = a.date or next_session(last_date, cf.get("schedule_days"))
+    # CR-139: the default is TODAY, not the next session after the last note. The old
+    # default is only right when the series meets every scheduled day and every
+    # meeting is written up the same day; on the morning after a day nobody met, it
+    # built an agenda for the SKIPPED day and the generator then stamped its own
+    # output STALE -- the right warning on the wrong file. Once today HAS a note the
+    # close-out has happened and the next session is what is wanted, which is the
+    # same-day sequence in SKILL.md and the one case the old default got right.
+    now = datetime.date.today()
+    target = a.date or default_target(now, hist, cf.get("schedule_days"))
+    if (why := refuse_target(target, now, hist, bool(a.date))):
+        sys.exit(why)
     day = datetime.datetime.strptime(target, "%y%m%d").date()
-    today = datetime.datetime.strptime(target, "%y%m%d").date()
+
+    skips = skip_dates(cf)
 
     def age(first: str | None) -> int:
-        return 0 if not first else (today - datetime.datetime.strptime(first, "%y%m%d").date()).days
+        """Days an item has carried, SESSIONS not calendar days (CR-139).
+
+        A day nobody met is not a day an item survived, so declared skip days are
+        taken out of the count. Anchored on the target `day`, not on the real today:
+        with the default that is the same date, and for an explicit `--date` it keeps
+        the age measured against the meeting the agenda is for -- which is what the
+        elapsed-days escalation threshold asks about.
+        """
+        if not first:
+            return 0
+        f_ = datetime.datetime.strptime(first, "%y%m%d").date()
+        return max(0, (day - f_).days - skipped_between(skips, f_, day))
 
     raw_items = carried(last)
     items = sorted(((l, r, n, g, age(f)) for l, r in raw_items
@@ -985,11 +1629,22 @@ def main() -> None:
     # Separated, never dropped -- a human confirms in the room and the next note
     # records the close. Silent closing is worse than repetition.
     closed_hits, _still = probably_closed(raw_items, chat, repo, jira)
+    # CR-141: the matcher now only answers about lines that name an identifier. Which
+    # lines it had nothing to go on for is printed too -- in the details, never on the
+    # card -- because an agenda with no markers otherwise reads as "nothing moved".
+    # And a ticket that only reached a fixed state is a state change, not a close, so
+    # the two verdicts are reconciled before either is printed or acted on: *waiting
+    # for a test* wins and the item stays carried.
+    unchecked = without_identifier(raw_items)
+    fixed_rows = state_changed(raw_items, jira)
+    closed_hits = reconcile_closed(closed_hits, fixed_rows)
     closed_keys = {key(l) for l, _r, _h in closed_hits}
     # CR-107: in card layout a blocker, dependency or decision is never taken off the card
-    # by a match. The matcher is a word heuristic; a false hit would silently drop the one
-    # thing the room most needs to see. It stays in its section, marked, and the evidence
-    # sits in the details file. Tasks still move to *Probably closed* as before.
+    # by a match. CR-141 narrowed the matcher to explicit identifiers, but a carried line
+    # and a closed issue can still name the same id for different work, and a false hit
+    # would silently drop the one thing the room most needs to see. It stays in its
+    # section, marked, and the evidence sits in the details file. Tasks still move to
+    # *Probably closed* as before.
     card_keep = set()
     if cf.get("layout") == "card":
         kd0 = kinds(last)
@@ -997,9 +1652,21 @@ def main() -> None:
     all_items = items
     items = [t for t in items if key(t[0]) not in closed_keys]
 
+    # CR-139: the base line goes in the header, above everything the reader has to
+    # take on trust -- which note this was built from, when the series last actually
+    # met, and which days in between did not count.
+    base = base_line(last.name, last_date, skips, day)
     L = [f"# {cf.get('title', md.parent.name)}",
          f"### {day.strftime('%A %-d %B')}" + (f" · {cf['time']}" if cf.get("time") else ""),
-         "", "---", ""]
+         "", f"*{base}*", ""]
+    # CR-140: a failed fetch is named HERE, not only in the fetch's own file and one
+    # line of the sources block. The sections built from an archive use its last good
+    # data and read as current, so the page looked complete while a fetch had failed
+    # twice that morning. The header is the one place every reader passes.
+    if (ff := failed_fetches(cf, recs, now)):
+        L += [f"> ⚠ **Fetch failed — {'; '.join(ff)}.** What follows is the last good data for that"
+              " source, not today's.", ""]
+    L += ["---", ""]
 
     # ---- CR-084: the sources block, first ------------------------------------
     # An agenda that looks complete and was built from stale or missing inputs is
@@ -1211,9 +1878,24 @@ def main() -> None:
               "| Item | Owner | Evidence |", "|---|---|---|"]
         for lab, rest, hit in closed_hits:
             kind, ref, txt = hit
-            ev = f"{kind} · {ref}" + (f" — {txt[:70]}" if txt else "")
+            # CR-141: already cut to width by `quote_for`, with the matched id kept.
+            ev = f"{kind} · {ref}" + (f" — {txt}" if txt else "")
             L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {ev} |")
         L.append("")
+    if fixed_rows:
+        L += ["## Fixed, waiting for a test", "",
+              "**Built, not accepted.** The ticket moved; nobody has tested it. These stay carried —",
+              "schedule the test, do not close them.", "",
+              "| Item | Owner | State |", "|---|---|---|"]
+        for lab, rest, st in fixed_rows:
+            L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {st} |")
+        L.append("")
+    if unchecked:
+        L += [f"## Items with no identifier, cannot be checked ({len(unchecked)})", "",
+              "**No `#id` and no ticket key on these lines, so the sources were not consulted for them.**",
+              "No marker here means *not checked*, not *not moved*. Add the id to that line in the",
+              "summary and the next agenda can check it.", ""]
+        L += [f"- {item_of(lab, rest)} · **{owner_of(lab, rest)}**" for lab, rest in unchecked] + [""]
 
 
     # Raw chat lines are still NOT printed: pasted into a team-facing document they
@@ -1572,7 +2254,8 @@ def main() -> None:
         out.write_text("\n".join(A), encoding="utf-8")
         D = [f"# Agenda details — {day.strftime('%A %-d %B')}", "",
              f"Companion to [{out.name}]({out.name}): what the agenda was built from, the full carried list, "
-             "and the detail nobody needs to talk through. Not read out in the meeting.", ""]
+             "and the detail nobody needs to talk through. Not read out in the meeting.", "",
+             f"*{base}*", ""]   # CR-139
         D += L[i_src:i_carry] + L[i_carry:i_closed] + L[i_closed:i_digest] + L[i_digest:i_round] + L[i_app:]
         (md / dname).write_text("\n".join(D), encoding="utf-8")
     else:
