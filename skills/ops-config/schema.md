@@ -549,6 +549,9 @@ workflows:
       command: string   # shell command producing [OK]/[DRIFT]/[SKIP] verdict lines
     privacy_scan:
       command: string   # CR-029: whole-repo privacy watcher, same verdict-line contract
+    links:                     # CR-137: what the link check reads
+      scope: all|dated|regex   # default `all` (every .md). `dated` = the pre-CR-137 set
+                               # (YYMMDD-*, README, CHANGELOG); a regex names your own
     structure_exemptions:      # CR-025: deliberate exceptions to single-inbox/outbox
       - path: string           # vault-relative directory path
         reason: string         # why the exception exists (include decision date)
@@ -560,6 +563,12 @@ reports each `[DRIFT]` component (expected vs actual version) and each
 maintainer tooling for the machine that owns a skill-ecosystem contract,
 not for consumer vaults. The command owns the component list and version
 rules; sweep is only the scheduled reader.
+
+`links.scope` (CR-137) decides which files the link check reads. The default `all` is a
+widening: the previous set was dated files, `README.md` and `CHANGELOG.md`, which on one
+vault skipped 53% of a folder tree -- every standards document, every rolling plan, every
+manifest. The pattern selected files born with a date and skipped the ones that are
+maintained, which is backwards for links. Declare `dated` to keep the old behaviour.
 
 `structure_exemptions` (CR-025) lists directories that are allowed to match
 the stray-inbox/outbox fuzzy pattern (sweep check 9 and the `/ops status`

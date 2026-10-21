@@ -8,10 +8,27 @@
 Report only: nothing is rewritten. The fix is a judgement each time (encode the link
 or rename the file, map a status or cancel the task), so it stays with a person.
 
-  links    Markdown links in YYMMDD-*.md, README.md and CHANGELOG.md whose target
-           holds a raw `(`, `)` or space (write %28 %29 %20), or a relative target
-           that resolves to no file, neither from the file's folder nor from any
-           folder above it (a vault may write links from its root). External,
+  links    Markdown links whose target holds a raw `(`, `)` or space (write %28 %29 %20),
+           or a relative target that does not resolve from the file's own folder.
+           Five classes (CR-137), because they need different people:
+             moved      exactly one file of that name exists elsewhere -- the computed
+                        relative path is the offered fix. Mechanical.
+             ambiguous  several candidates -- all listed, none chosen.
+             dead       no file of that name anywhere. **A content finding:** the
+                        document claims a source that does not exist.
+             ancestor   resolves only from a folder above the file's own. Was silently
+                        accepted before CR-137; reported, not failed, so an adopting
+                        vault is not met by a wall of them.
+             privacy    two tiers. `sealed`: a link into .handoff/ from any living document
+                        -- written once, indexed nowhere, referenced from nothing. `outgoing`: a link
+                        into one person's private material (.notes/board-private/) from a
+                        document staged to LEAVE (_outbox/). A private note linking its
+                        owner's other private notes is normal practice and is not flagged.
+                        Reported whatever the link's state, and the offered fix is REMOVAL,
+                        not repair: a broken link into restricted material is an inoperative
+                        leak, and repairing it mechanically restores it.
+           Scope is every .md file by default; `workflows.sweep.links.scope: dated`
+           restores the pre-CR-137 set (YYMMDD-*, README, CHANGELOG). External,
            anchor-only and mailto links are skipped.
   yaml     a .yaml file holding \\xNN or \\uNNNN escapes of LETTERS: the signature of
            an agent that loaded and re-dumped the whole file (CR-122 section 2).
@@ -53,7 +70,19 @@ sys.path.insert(0, str(HERE.parent / "tasks"))
 import task_attributes  # noqa: E402
 
 ECOSYSTEM = HERE.parents[1] / "ecosystem.yaml"
-LINKED = re.compile(r"^(\d{6}-.*|README|CHANGELOG)\.md$")
+LINKED_DATED = re.compile(r"^(\d{6}-.*|README|CHANGELOG)\.md$")   # pre-CR-137 scope
+LINKED = LINKED_DATED                                              # kept: imported elsewhere
+# Read-restricted paths (CR-137 class 5), in two tiers because they are two different rules.
+# SEALED: the vault's own hard rule -- a frozen snapshot is written once, indexed nowhere and
+# referenced from no living document. A link into one is a finding from anywhere.
+# `.transcripts/` is deliberately NOT here: a summary naming the raw file it was built from is
+# the vault's own provenance convention, and flagging it fired 175 times on one vault.
+SEALED = (".handoff",)
+# PRIVATE: material that is one person's to read. A planning note of their own may link it; a
+# document that LEAVES (staged in an outbox, or carrying a send manifest) may not. Flagged only
+# for outgoing sources -- otherwise the check fires on normal practice and gets ignored.
+PRIVATE = (".notes/board-private",)
+OUTGOING = ("_outbox",)
 ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
 # The tasks schema's four, plus the two source kinds the contract declared later as terms
 # (content, CR-105; correspondence, CR-080): a task from a report or a mail thread is not drift.
@@ -100,10 +129,61 @@ def link_targets(line: str):
         i = j
 
 
+def _links_scope(root: Path):
+    """Which files are link-checked. `all` (default, CR-137) or `dated` (pre-CR-137)."""
+    try:
+        cfg = profiles.resolve(root).get("config") or {}
+    except Exception:
+        cfg = {}
+    scope = (((cfg.get("workflows") or {}).get("sweep") or {}).get("links") or {}).get("scope")
+    if scope in (None, "all"):
+        return None                       # every .md
+    if scope == "dated":
+        return LINKED_DATED
+    try:
+        return re.compile(scope)          # a vault may name its own pattern
+    except re.error:
+        return None
+
+
+def _basename_index(root: Path):
+    """basename -> [paths], over the whole vault the scope sits in. Built once, and only
+    when something is already broken: it is the difference between `moved` and `dead`."""
+    top = root
+    for d in (root, *root.parents):
+        if (d / "_inbox").is_dir() or (d / "INDEX.md").is_file():
+            top = d
+            break
+    index = {}
+    for dirpath, dirnames, filenames in os.walk(top):
+        dirnames[:] = [d for d in dirnames if d not in ("node_modules", "__pycache__", ".git")]
+        for name in filenames:
+            index.setdefault(name, []).append(Path(dirpath) / name)
+        for name in dirnames:
+            index.setdefault(name + "/", []).append(Path(dirpath) / name)
+    return index
+
+
+def _under(path: Path, parts) -> bool:
+    s = str(path).replace(os.sep, "/") + "/"
+    return any(("/" + r + "/") in s for r in parts)
+
+
+def _crossing(src: Path, tgt: Path):
+    """The privacy class, or None. Two tiers -- see SEALED / PRIVATE."""
+    if _under(tgt, SEALED) and not _under(src, SEALED):
+        return ("sealed", "a frozen snapshot / raw transcript is referenced from no living document")
+    if _under(tgt, PRIVATE) and not _under(src, PRIVATE) and _under(src, OUTGOING):
+        return ("outgoing", "this document is staged to leave the vault")
+    return None
+
+
 def check_links(root: Path) -> list:
-    found = []
+    root = Path(root)
+    pattern = _links_scope(root)
+    found, broken, private = [], [], {}
     for p in walk(root):
-        if not LINKED.match(p.name):
+        if p.suffix != ".md" or (pattern and not pattern.match(p.name)):
             continue
         try:
             lines = p.read_text(encoding="utf-8").splitlines()
@@ -119,8 +199,7 @@ def check_links(root: Path) -> list:
             for target in link_targets(line):
                 t = target.strip()
                 if t.startswith("<") and t.endswith(">"):
-                    t = t[1:-1]
-                    raw_ok = True
+                    t, raw_ok = t[1:-1], True
                 else:
                     raw_ok = False
                     t = t.split(' "')[0] if ' "' in t else t      # [x](file "title")
@@ -131,8 +210,59 @@ def check_links(root: Path) -> list:
                                                          "(write %28 %29 %20)", root))
                     continue
                 path = unquote(t.split("#")[0])
-                if path and not any((d / path).exists() for d in (p.parent, *p.parent.parents)):
-                    found.append(_finding("links", p, n, f"link target does not exist: {t}", root))
+                if not path:
+                    continue
+                own = (p.parent / path)
+                # class 5 first: a crossing is a finding even when the link resolves
+                if _under(own, PRIVATE) and not _under(p, PRIVATE) and not _under(p, OUTGOING):
+                    # not a finding per link: a planning note of one's own may reference
+                    # one's own private material. Counted once per run instead (CR-137).
+                    private[p] = private.get(p, 0) + 1
+                cross = _crossing(p, own)
+                if cross:
+                    why = cross[1]
+                    found.append(_finding("links", p, n,
+                                          f"privacy ({cross[0]}): {t} -- {why}. Offered fix is REMOVAL "
+                                          "(keep the reference as text), not repair: a broken link into "
+                                          "restricted material is an inoperative leak", root))
+                    continue
+                if own.exists():
+                    continue
+                broken.append((p, n, t, path))
+
+    if private:
+        top = sorted(private.items(), key=lambda kv: -kv[1])[:5]
+        names = ", ".join(f"{_finding('links', f, None, '', root)['file']} ({c})" for f, c in top)
+        found.append(_finding("links", root, None,
+                              f"privacy (advisory): {sum(private.values())} link(s) in {len(private)} living "
+                              f"document(s) point into private material -- {names}"
+                              f"{' ...' if len(private) > 5 else ''}. Not a finding per link: an owner's own "
+                              "planning note may reference it. Review whether any of these are SHARED -- "
+                              "a document a colleague opens must not carry the link", root))
+    if not broken:
+        return found
+    index = _basename_index(root)
+    for p, n, t, path in broken:
+        if any((d / path).exists() for d in p.parent.parents):
+            found.append(_finding("links", p, n, f"ancestor: resolves only from a folder above its own: {t} "
+                                                 "(wrong relative to this file)", root))
+            continue
+        base = os.path.basename(path.rstrip("/"))
+        key = base + "/" if path.rstrip().endswith("/") else base
+        cands = index.get(key) or index.get(base) or []
+        if len(cands) == 1:
+            new = os.path.relpath(cands[0], p.parent)
+            if path.rstrip().endswith("/"):
+                new += "/"
+            note = " [target is archived]" if "/.archive/" in str(cands[0]).replace(os.sep, "/") else ""
+            found.append(_finding("links", p, n, f"moved: {t} -> {new}{note}", root))
+        elif cands:
+            found.append(_finding("links", p, n, f"ambiguous: {t} -- {len(cands)} candidates, "
+                                                 "none chosen", root))
+        else:
+            found.append(_finding("links", p, n, f"dead: no file named {base} anywhere in the vault "
+                                                 f"-- this document claims a source that does not exist: {t}",
+                                  root))
     return found
 
 

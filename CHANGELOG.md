@@ -7,6 +7,26 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.1] - 2026-10-20
+
+### Changed
+
+- **CR-137 -- the link check sees half the files and forgives the rest (no contract change, additive).**
+  `/ops check` check 11 reported clean while 163 relative links in one folder tree were broken. Two causes,
+  both measured: the `LINKED` pattern read only dated files, `README.md` and `CHANGELOG.md`, skipping 127 of
+  238 files (53%) -- every standards document, every rolling plan, every manifest, because it selects files
+  born with a date and skips the ones that are maintained; and a fallback accepted any target that resolved
+  from a folder *above* the file's own, passing 199 of 10,698 targets vault-wide. Scope is now every `.md`
+  (`workflows.sweep.links.scope: dated` restores the old set) and a target resolves from its own folder only.
+  Findings separate into **moved** (one candidate, relative path offered), **ambiguous** (several, none
+  chosen), **dead** (no such file anywhere -- *a content finding*: the document claims a source that does not
+  exist), **ancestor** (reported, not failed, so an adopting vault is not met by a wall of them) and
+  **privacy** (`.handoff/` from any living document; private material from a document staged in `_outbox/`),
+  whose offered fix is **removal, not repair**. Links into private material from an owner's own notes are
+  counted once per run as an advisory line. `.transcripts/` is deliberately not sealed -- a summary naming
+  its own raw file is the vault's provenance convention and flagging it fired 176 times on one vault.
+  Report only; nothing is rewritten.
+
 ## [1.92.0] - 2026-10-20
 
 ### Added

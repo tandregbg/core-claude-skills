@@ -1228,6 +1228,21 @@ declared form** (report the item, the word, and the closest declared form from
 9. **Structure conformance (CR-025)** -- enforce the CR-010 single-inbox/outbox rule with a **fuzzy matcher**, because reality drifts through variants that exact-name checks miss: scan for directories matching `_inbox`, `_outbox`, `.inbox`, `.outbox`, any `*inbox*`/`*outbox*`, and localized forms (`inkorg*`/`utkorg*`), case-insensitive. Everything except the vault-root `_inbox/` + `_outbox/` pair is a finding -- **including empty scaffolds** (they re-seed the habit). Paths in `workflows.sweep.structure_exemptions` are skipped with a one-line `(exempt: <path> -- <reason>)` note: deliberate exceptions are recorded once and respected. Offered fixes (never auto-applied): merge pending items into the central folder *via the normal `/inbox`/`/outbox` flows* so manifests and indexes stay true; archive already-resolved material to its destination folder; delete empty scaffolds; or add a `structure_exemptions` entry if the exception is deliberate. Rationale worth repeating in the report: a second outbox means the central pending list lies.
 
 11. **Hygiene (CR-122)** -- the folder check's `hygiene_check.py` run over the whole scope: link targets,
+    **Link scope and classes (CR-137).** Every `.md` file is link-checked, not only dated files,
+    `README.md` and `CHANGELOG.md` -- that pattern skipped 53% of one vault's `ops/` tree, including
+    every standards document and every rolling plan, because it selects files born with a date and
+    skips the ones that are maintained. `workflows.sweep.links.scope: dated` restores the old set.
+    A target resolves **from the file's own folder only**; the pre-CR-137 fallback to any ancestor
+    accepted 199 of 10,698 targets on one vault that were wrong against their own file. Findings
+    separate into **moved** (one candidate, path offered -- mechanical), **ambiguous** (several, none
+    chosen), **dead** (no such file anywhere -- *a content finding*: the document claims a source that
+    does not exist), **ancestor** (reported, not failed, so an adopting vault is not met by a wall),
+    and **privacy**: a link into `.handoff/` from any living document, or into private material from
+    a document staged in `_outbox/`. Its offered fix is **removal, not repair** -- a broken link into
+    restricted material is an inoperative leak, and repairing it mechanically restores it. Links into
+    private material from an owner's own notes are normal and are counted once per run as an advisory
+    line, never per link. `.transcripts/` is deliberately not in the sealed tier: a summary naming the
+    raw file it was built from is the vault's own provenance convention.
 re-dumped YAML, task ledgers outside their enums, unknown profiles, theme consistency, and (CR-128) raw
 files in `.transcripts/` archived by a client (`written_by:`) with an empty `summary` for more than 14 days
 ("archived, never filed", with the inbox item each points to). Report only.
