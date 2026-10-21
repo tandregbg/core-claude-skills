@@ -72,19 +72,36 @@ class Digest(unittest.TestCase):
 
 
 class ProbablyClosedNeverEmptiesTheCard(unittest.TestCase):
-    # CR-141: the pull request now has to NAME the carried item's #12 ("Re #12") for
-    # the matcher to pair them. Before CR-141 a shared pair of words did it, so the
-    # title alone was enough; a title-only PR no longer matches anything and the test
-    # would pass without ever exercising the card_keep path it exists to protect.
+    # CR-141: the matcher pairs a carried line with evidence only on an explicit
+    # identifier. Before CR-141 a shared pair of words did it, so a PR title alone was
+    # enough; a title-only PR no longer matches anything and the test would pass without
+    # ever exercising the card_keep path it exists to protect.
+    #
+    # CR-147: this class's premise now holds for a PROBABLE close only. A merged pull
+    # request naming the issue is a CERTAIN close and the line leaves the card (second
+    # test below), so the fixture moved to the evidence that stays merely probable --
+    # a chat message naming #12 with a done-word, which CR-101 ranks below any source
+    # state and which CR-147 deliberately does not act on. What the class asserts is
+    # unchanged and still true: a match that is only evidence never empties the card.
+    REPO = "external_systems:\n  repos:\n    - url: https://github.com/acme/app\n      reads: [issues, pulls]\n"
+    CHAT = "external_systems:\n  chats:\n    - name: standup\n      id: chat-1\n"
+
     def test_a_matched_blocker_stays_on_the_card_marked(self):
-        repo = {"reads": ["issues", "pulls"], "pulls": [
-            {"number": 7, "title": "fix payment webhook on retry, Re #12", "state": "MERGED",
-             "mergedAt": "2026-09-23T10:00:00Z", "createdAt": "2026-09-23T09:00:00Z", "author": {"login": "bob"}}]}
-        agenda, _ = build(CARD + "external_systems:\n  repos:\n    - url: https://github.com/acme/app\n      reads: [issues, pulls]\n",
-                          note_items=ITEMS, repo=repo)
+        agenda, _ = build(CARD + self.CHAT, note_items=ITEMS,
+                          chat_lines=[("09:00", "Bob", "as far as I can tell #12 is fixed")])
         blockers = agenda[agenda.index("## Release blockers"):agenda.index("## Dependencies")]
         self.assertIn("**Payment webhook fails**", blockers)
         self.assertIn("probably closed? evidence in details", blockers)
+
+    def test_a_certain_close_does_leave_the_card(self):
+        # CR-147: the same blocker, against the source rather than against talk.
+        repo = {"reads": ["issues", "pulls"], "pulls": [
+            {"number": 7, "title": "fix payment webhook on retry, Re #12", "state": "MERGED",
+             "mergedAt": "2026-09-23T10:00:00Z", "createdAt": "2026-09-23T09:00:00Z", "author": {"login": "bob"}}]}
+        agenda, _ = build(CARD + self.REPO, note_items=ITEMS, repo=repo)
+        blockers = agenda[agenda.index("## Release blockers"):agenda.index("## Dependencies")]
+        self.assertNotIn("**Payment webhook fails**", blockers)
+        self.assertIn("Closed in the data since the last meeting:", agenda)
 
 
 class ListLayoutUnchanged(unittest.TestCase):

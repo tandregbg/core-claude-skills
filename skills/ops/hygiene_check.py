@@ -3,7 +3,7 @@
 
     python3 hygiene_check.py <folder>            # [FINDING] lines + a count
     python3 hygiene_check.py <folder> --json
-    python3 hygiene_check.py <folder> --only links,yaml,tasks,profile,themes
+    python3 hygiene_check.py <folder> --only links,yaml,tasks,profile,themes,inferred
 
 Report only: nothing is rewritten. The fix is a judgement each time (encode the link
 or rename the file, map a status or cancel the task), so it stays with a person.
@@ -42,6 +42,15 @@ or rename the file, map a status or cancel the task), so it stays with a person.
            with the task ids, so a ledger with one habit gives one line, not eighty.
   profile  an unknown `profile:` name (CR-123).
   themes   the CR-124 registry checks, when the project enables themes.
+  inferred a decision whose note still carries `*inferred: <what>*` (CR-142): something that was
+           not said and is in no source, written where the register reads as decided. Reported
+           per decision line, with what was inferred. A line that also carries
+           `*confirmed: <source>*` is not a finding -- the inference has its source and the next
+           summary drops the marker. Scope is the decisions section of any .md file (Decisions,
+           Beslut, Decision register and their variants), because that is where a guess written
+           as a fact survived two days and had to be corrected. Fenced blocks are skipped, as in
+           `links`: an illustrative marker is not a decision, and a `#` comment inside a fence
+           is not a heading that ends the section.
   raw      a raw file in `<root>/.transcripts/` with `written_by:` and an empty `summary`,
            older than 14 days: archived by a client, never filed (CR-128). Names the inbox item
            it points to. The one check that reads `.transcripts/` (read-locked in a vault): by name, and only the
@@ -64,6 +73,10 @@ sys.path.insert(0, str(HERE.parent / "ops-config"))
 sys.path.insert(0, str(HERE))
 import profiles  # noqa: E402
 import themes as themes_mod  # noqa: E402
+# CR-142: the inference marker has ONE reader, the one the agenda uses. A second copy of
+# the pattern here would let the agenda and this check disagree about the same line, and
+# a marker that means two things is worse than no marker.
+import build_agenda  # noqa: E402
 sys.path.insert(0, str(HERE.parent / "ops-base"))
 import raw_archive  # noqa: E402
 sys.path.insert(0, str(HERE.parent / "tasks"))
@@ -89,8 +102,18 @@ ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
 SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence")
 SCOPES = ("root", "org", "project", "personal")
 PRIORITIES = ("P0", "P1", "P2", "P3")
-CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw")
+CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred")
 RAW_PENDING_DAYS = 14
+# CR-142: what was inferred, pulled out of the marker the agenda's reader matched, so the
+# finding can name the phrase to go and ask about. The agenda's own, not a copy: the module
+# comment above says the marker has one reader, and the words it names are part of that --
+# two patterns would let this check and the *Confirm or drop* column quote different words
+# off one line (defect pass). Re-exported because `INFERRED_WHAT` was a name here first.
+INFERRED_WHAT = build_agenda.INFERRED_WHAT
+# A decisions section, in either declared language and in the shapes a register uses:
+# `## Beslut`, `## Decisions`, `### Decision register`, `## Decisions & Rationale`.
+DECISIONS_HEADING = re.compile(r"^#{1,6}\s*(?:\d+[.)]\s*)?(decisions?|beslut)\b", re.I)
+HEADING = re.compile(r"^#{1,6}\s")
 
 
 def walk(root: Path):
@@ -430,12 +453,67 @@ def check_raw(root: Path, today=None) -> list:
     return found
 
 
+# --- inferred ------------------------------------------------------------
+
+def check_inferred(root: Path) -> list:
+    """CR-142, proposal 2: a decision whose note still carries an unconfirmed inference.
+
+    A register line reads as settled whatever it was built from. One meeting's audio was
+    partly garbled, three phrases were resolved by guessing and written as facts, and two
+    days later a decision register line had to be corrected -- the marker was written on
+    the carried lines but nothing read it where the decision itself lived. So this reads
+    it: inside a decisions section, a line holding `*inferred: ...*` and no
+    `*confirmed: ...*` is a finding, and the message carries what was inferred so the
+    reader knows which phrase to go and ask about.
+
+    A fenced block is skipped, exactly as `check_links` skips one (defect pass): inside a
+    fence a hash-prefixed comment line matches `HEADING`, so a `# set the day` in a code
+    sample closed the decisions section and a real unconfirmed inference below the fence
+    was MISSED; and the example marker in a document explaining the convention was
+    reported as a finding on the documentation itself. Neither line is a decision.
+
+    Report only, like every other check here: confirming an inference or dropping it is
+    a person's judgement, and a tool that edited the register would be making the same
+    mistake the marker exists to prevent.
+    """
+    found = []
+    for p in walk(root):
+        if p.suffix != ".md":
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if "inferred" not in text.lower():
+            continue                       # the usual case: one pass, no line walk
+        inside, fenced = False, False
+        for n, line in enumerate(text.splitlines(), 1):
+            if line.lstrip().startswith("```"):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            if HEADING.match(line):
+                # A heading ends the previous section whether or not it opens a new one,
+                # so an inference further down the file is not attributed to decisions.
+                inside = bool(DECISIONS_HEADING.match(line))
+                continue
+            if not inside or not build_agenda.inferred(line):
+                continue
+            what = build_agenda.inferred_what(line)
+            found.append(_finding("inferred", p, n,
+                                  f"decision carries an unconfirmed inference ({what}): confirm it with"
+                                  " a source and drop the marker, or write what is known (CR-142)", root))
+    return found
+
+
 def run(root, only=CHECKS) -> list:
     root = Path(root).expanduser()
     out = []
     for name in only:
         out += {"links": check_links, "yaml": check_yaml, "tasks": check_tasks,
-                "profile": check_profile, "themes": check_themes, "raw": check_raw}[name](root)
+                "profile": check_profile, "themes": check_themes, "raw": check_raw,
+                "inferred": check_inferred}[name](root)
     return out
 
 

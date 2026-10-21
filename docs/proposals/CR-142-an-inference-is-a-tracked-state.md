@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.3** (2026-10-21) |
 | **Contract** | additive — one marker (`*inferred: …*`) read by the generator and the lint; one rule in the close-out step |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (SKILL.md post-meeting steps, `build_agenda.py` carried lines, `lint`), a project's own rules file |

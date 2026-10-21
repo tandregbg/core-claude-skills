@@ -1106,6 +1106,18 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    row no entry names (whole-vault runs only) and an `objekttyp:` other than Uppgift filed as a task;
    an absent field is never a finding. **Report only**: the fix is a
    judgement each time.
+
+   **`inferred` (CR-142): an unconfirmed inference in a decision.** A line inside a decisions section
+   (`## Decisions`, `## Beslut`, a decision register) that still carries `*inferred: <what>*` and no
+   `*confirmed: <source>*`. A register line reads as settled whatever it was built from, which is how
+   three guessed phrases survived two days and one register line had to be corrected. The finding names
+   **what was inferred**, so the reader knows which phrase to go and ask about. Report only here too:
+   confirming an inference with its source, or dropping it and writing what is known, is a person's
+   judgement -- and a tool editing the register would be making the same mistake the marker exists to
+   prevent. **A fenced block is skipped**, as in `links`: a marker written inside a fence is an
+   example of the convention and not a decision, and a `#` comment line inside a fence is not a
+   heading that ends the section -- it used to end it, and the real inference below the fence was
+   then missed.
 2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
    `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:
    `stale`, `schema` (frontmatter, `sources.yaml`, `brands.yaml`), `unsourced`, `credential` (a key value in
@@ -1320,6 +1332,15 @@ it came from.
 Step 9 then runs post-processing as configured. **The summary ends with `## Carried forward`** — that
 section is what tomorrow's agenda is built from, so a note without it silently ends the chain.
 `/ops check` checks that chain; it is the only defect in this loop that does not announce itself.
+
+**Close from the source (CR-142).** Before an item is written as closed -- in the summary, in the
+carry-forward section, in a decision register -- **open its source and read the state**: the issue, the
+ticket, the plan section the line names. **Say which source was read**, with its state, in the line that
+records the close. *Said in the room* is a reason to look, **not a source**: measured, a carried item was
+closed on a loose spoken "resolved" while its own issue was still open, and its title had drifted enough
+from the issue's to make the spoken word plausible. Where the source cannot be read -- no access, a
+failed fetch -- the item is **not closed**; it carries, and the summary says why. (The agenda's own
+*certain close* already works this way, CR-147; this is the same rule where a person writes the close.)
 
 **A deferred item the meeting never reached is carried, not dropped (CR-108).** Where the agenda
 carried a `## Carried, not on today's agenda` section, read it when writing the summary: any item
@@ -1694,6 +1715,70 @@ always carries the repository name and the ticket prefix. Consequences:
 - **A state change is not a close.** A ticket that only reached *fixed*, *in review* or *in test* is
   reported under *Fixed, waiting for a test* and stays carried; it is never *probably closed*.
 
+**A carried line is re-read from its source before the card is built (CR-147).** *Probably closed*
+**suggests**; this **acts**, and only on a **certain** close. Measured over two consecutive meetings,
+about six of eleven dependency rows and then four of seven were removed on sight by the person
+leading, and for most of them the tracker already said closed, merged or done. The agenda's rule still
+stands — *a machine that closes items silently is worse than one that repeats them* — so the answer is
+not silence but a close that shows its basis:
+
+- **Certain means a state read off the work's own source:** an issue whose state is *closed*, a pull
+  request that is **merged and names the id** (`Fixes #12`, `Re #12`), or a ticket whose state contains
+  *done*, *closed* or *resolved*. A merged pull request that names no id closes nothing — it is
+  evidence about itself. A **release** is not a close, and neither is a chat word: both stay *probably
+  closed*. A **label change never closes** (`fixed, waiting for a test` wins, CR-141's precedence).
+- **The line leaves the card with a trace.** The header gets one line, *Closed in the data since the
+  last meeting: `<ids>`* — naming the ids whose **own** source closed them, never the rest of the line's
+  id set — and the basis and the close time follow: in the details file on the card layout, in the
+  agenda's own *Closed in the data since the last meeting* section on the list layout, which writes no
+  companion file. It is **not** also offered under *Probably closed* — it is gone, not a question for
+  the room.
+- **A line nobody can read anything about is not asserted as live.** With no identifier it comes off
+  the card from its **second** session on. **Its first session is the one exception**, and it is
+  deliberate: the line was raised aloud last night, the room is its confirmation, and proposal 4 is
+  that this pass may not unmake what the room created. So *stays on the card only if its owner
+  confirms it* is the rule from the second session, not the first. The line is listed in the details
+  file in the same *Items with no identifier, cannot be checked* table as above, with a column saying
+  **why** it is or is not on the card — *first session, raised in the room*, *awaiting its owner's
+  word*, *confirmed by its owner*, *aged out* — and how many sessions it has carried. It returns to the
+  card when its owner confirms it in their own minute and the summary writes
+  `*confirmed: <what they said>*` on the line; unconfirmed after two sessions it is marked *aged out*
+  and the card stops asking. **Aged out means off the card, not out of that table**: the line keeps its
+  row, because dropping it from the one list that names it would be dropping it silently.
+- **The list layout is untouched by this proposal.** Its carried-forward table is the full list by
+  definition and keeps every line, so nothing comes off it for want of an identifier — and the *On the
+  card* column, which would have no meaning there, is not printed rather than filled with a guess.
+  A **certain close** still applies in both layouts: that is a state read off the source, not a
+  judgement about what today's short list should hold.
+- **Creation stays in the room.** The data can close a dependency, never open one: a closed issue
+  nobody carried adds no line.
+- **A source that could not be read removes nothing.** A fetch CR-088 records as *failed*, or an
+  archive the producer could not reach at all, holds every verdict it produced; the header names the
+  source and why. A fetch that was never *recorded* is not a failed one.
+
+**An unconfirmed inference ages, exactly as a line nothing can be read about does (CR-142).** A line
+carrying `*inferred: <what>*` is in the same tracked state as *cannot be checked* above, with the same
+two routes out and the same threshold:
+
+- From its **second** session it comes off the card -- the agenda does not assert an inference -- and it
+  is listed in the details file under *Unconfirmed inferences, off the card*, so it leaves with a trace.
+  A line that also names **no identifier** is instead listed in the *cannot be checked* table above,
+  which already carries it with a card column and a session count: one section per line, never two.
+- **The marker decides the state, not the identifier.** Most inferences name no identifier at all --
+  an owner, a release day, which items belong together are exactly the phrases a garbled recording
+  produces -- so a marker-bearing line reaches *Confirm or drop* whether or not it names one. A line
+  carrying **no** marker and no identifier keeps CR-147's handling unchanged.
+- After **two** sessions still unconfirmed it is listed on the card under **Confirm or drop**, **owner
+  first**, with what was inferred and how many sessions it has carried. The question is for a named
+  person, which is why the ordering is by owner and not by item.
+- **A line the data closed is not also asked about.** Where the line's own source says closed, the
+  header reports it under *Closed in the data since the last meeting* and the line is gone; it is not
+  also offered under *Confirm or drop*, for the same reason CR-147 keeps it out of *Probably closed*.
+  A wrong guess inside a closed item is settled by the close -- and a decision register line carrying
+  the marker is still reported by `check`.
+- It returns to being asserted the moment its owner confirms it and the summary writes the confirming
+  source on the line -- which is proposal 5's rule, seen from the agenda's side.
+
 **A snapshot is a reading taken at a moment, not an event log.** If the newest one predates the last
 note, say so rather than presenting stale rows as news.
 
@@ -1773,6 +1858,34 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    recognise it. **And it carries no counts**: a number written into a carried line is stale by the next
    session, while the movement block reads it fresh. *(Observed: two lines recognised by nobody, and a
    count read out after the movement block had already given the current one.)*
+
+   **A carried line's text does not replace its source's title (CR-142).** Where the line is a
+   paraphrase, **quote the title once** -- `**Card in the production pipeline** ("a test account with a
+   card, number and address", #12)` -- and from then on the paraphrase is anchored. **A change of
+   wording needs the owner's word**, written on the line like any other confirmation. Measured: a
+   carried title drifted from *a test account with a card, number and address* to *a card in the
+   production pipeline*, and the drift is what made a loose spoken "resolved" sound plausible about an
+   issue that was still open.
+
+   **What was inferred is marked as inferred (CR-142).** Where a phrase was **not said and is in no
+   source** -- a garbled passage resolved by guessing, an owner nobody named, which items belonged
+   together -- the summary writes `*inferred: <what>*` in the source part of the line:
+
+   ```
+   - [dependency] **Backend answer on refunds** — TICK-9 *inferred: the release day* · **Ann**
+   ```
+
+   The same marker goes **in a decision's note**, and as **`Inferred:`** on its own line in prose. It is
+   the contract, not a habit: `build_agenda.py` reads it on a carried line and `/ops check` reads it in a
+   decision (see *Carry-Forward* and `check`). Measured: one meeting's audio was partly garbled, three
+   phrases were resolved by guessing and written as facts -- a release day, an owner, which items
+   belonged together -- and two days later the people involved answered in the chat and **all three were
+   partly wrong**; a decision register line had to be corrected after the fact.
+
+   **A confirmed inference loses its marker in the next summary, with the confirming source.** Not
+   silently: `*inferred: the release day*` becomes `*confirmed: release day from TICK-9*`. The marker
+   earns its keep only if it comes off when the answer arrives -- a register full of stale markers is
+   read as decoration, and the next assistant stops writing them.
 
 2. **Owner is read from a defined position, never guessed from prose.** Trailing bold after the last
    middot, or the label itself when it is a person's own line. **Anything else is `UNOWNED`, and that

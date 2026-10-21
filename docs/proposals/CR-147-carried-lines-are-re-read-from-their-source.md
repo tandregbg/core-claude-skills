@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.3** (2026-10-21) |
 | **Contract** | additive — a pre-build pass over the carried lines; the card's contents change, the file formats do not |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py`, the carried-forward and *Dependencies* sections, SKILL.md step 9) |

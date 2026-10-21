@@ -7,6 +7,61 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.3] - 2026-10-21
+
+Wave 2: the card follows the data. Both CRs were implemented, verified adversarially
+against their acceptance bullets, then fixed and re-checked; the verification found a
+close line that asserted a close for an identifier whose source said open, two leaks of
+card behaviour into the list layout, a central requirement that was entirely missing, and
+a test that could not detect what it claimed to assert.
+
+### Added
+
+- **CR-147 -- a carried line is re-read from its source before the card is built.** CR-141 made the
+  match reliable and *suggests* a close; this one *acts*, and only on a certain close: an issue in a
+  closed state, a merged pull request that names the id, a ticket marked done. A release, a chat
+  word, an unmerged pull request and a merged one naming no id close nothing, and a label change
+  never closes -- the certain closes run through CR-141's own precedence, so a line with any
+  built-but-not-accepted key stays *fixed, waiting for a test*. The measured need was removal by
+  hand: over two consecutive meetings about six of eleven dependency rows, then four of seven, were
+  struck on sight by the person leading, and for most the tracker already said closed, merged or
+  done. The agenda's rule is kept -- the line leaves with its basis in the header and its close time
+  in the details file, never silently -- and the header names only the identifiers whose own source
+  closed them, so a line naming a closed and an open id no longer announces both. A line with no
+  identifier is not asserted as live from its second session on (the first session was raised aloud
+  in the room, which this pass must not unmake), and a source CR-088 records as failed removes
+  nothing while the header names it. Creation stays in the room: the data can close a dependency,
+  never open one.
+
+- **CR-142 -- an inference is a tracked state, and an item is closed only from its own source.**
+  `*inferred: <what>*` is part of the carried-line contract: the generator reads it, an unconfirmed
+  inference comes off the card from its second session with a trace, and the agenda then asks for it
+  under *Confirm or drop*, owner first, naming the guess rather than the item. The state is decided
+  by the marker, not by whether the line names an identifier -- most inferences (an owner, a release
+  day, which items belong together) name none, and testing the identifier first routed every one of
+  them into CR-147's *cannot be checked* table, where nothing asked about them again at any session
+  count. A line whose own source says closed is reported closed and is not also offered for
+  confirmation, so each line appears in one section and never two. `/ops check` gains an `inferred`
+  finding for a decision whose note still carries the marker, naming what was inferred; it skips
+  fenced blocks as the link check does, because a `#` comment inside a fence closed the decisions
+  section and hid the real inference below it. The measured need: a meeting's audio was partly
+  garbled, three phrases were resolved by guessing and written as facts, and two days later all
+  three were partly wrong and a decision register line had to be corrected.
+
+### Fixed
+
+- **The list layout keeps the lines it always kept.** CR-147's head-block close line pointed at the
+  companion details file in both layouts although only the card layout writes it, so a list-layout
+  header printed a dead link; it now points at the agenda's own basis section there. The *cannot be
+  checked* table printed an *On the card* column while the pending list was gated on the card, so on
+  the list layout every row fell through to a default reading *yes -- confirmed* for a dependency
+  nobody had confirmed -- a false statement about an operator's own data. The column is now printed
+  only where a card exists, and each cell states its actual reason. *Aged out* no longer claims the
+  row leaves the table it is printed in; `readable_sources` gates on a declared source as
+  `failed_fetches` does; and SKILL.md states the first-session exception the implementation relies
+  on, so the behaviour and the contract agree. A list-layout agenda was diffed against the previous
+  release's generator: the only difference is the table this CR introduces.
+
 ## [1.92.2] - 2026-10-21
 
 Wave 1 of the agenda-generator CRs: the morning run is trustworthy before anything

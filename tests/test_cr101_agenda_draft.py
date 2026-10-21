@@ -22,16 +22,30 @@ NOTE_DAY = "260922"
 AFTER = datetime.date(2026, 9, 22)
 
 
-def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None,
+def build(ops_yaml: str, *, chat_lines=None, repo=None, jira=None, notes=None, fetch=None,
           note_items="- **Android build:** Bob\n", date="260924"):
-    """A venture with one project; returns (agenda text, stdout)."""
+    """A venture with one project; returns (agenda text, stdout).
+
+    CR-147 added two optional arguments, both inert when not passed: `notes`, a
+    `{YYMMDD: carried-forward body}` map of EARLIER notes, so a test can give an item
+    a session streak rather than only its first sitting; and `fetch`, a
+    `{archive subdirectory: record}` map written as CR-088 `_fetch.json` files, so a
+    test can say that a source's fetch failed.
+    """
     vault = Path(tempfile.mkdtemp())
     venture = vault / "venture"
     meetings = venture / "proj" / "meetings"
     meetings.mkdir(parents=True)
     (venture / "proj" / "_ops.yaml").write_text(ops_yaml, encoding="utf-8")
+    for day, body in sorted((notes or {}).items()):
+        (meetings / f"{day}-daily-standup.md").write_text(
+            f"# Standup\n\n## Carried forward\n\n{body}", encoding="utf-8")
     (meetings / f"{NOTE_DAY}-daily-standup.md").write_text(
         f"# Standup\n\n## Carried forward\n\n{note_items}", encoding="utf-8")
+    for sub, record in (fetch or {}).items():
+        root = venture / sub
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "_fetch.json").write_text(json.dumps(record), encoding="utf-8")
     if chat_lines is not None:
         chat = venture / ".teamschats" / "standup"
         chat.mkdir(parents=True)

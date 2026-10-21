@@ -689,6 +689,9 @@ def from_jira(cf: dict, after: datetime.date, rec: dict | None = None) -> list[d
                         "title": t.get("summary") or t.get("title") or "",
                         "state": str(t.get("status") or "").lower(),
                         "who": t.get("assignee") or "",
+                        # CR-147: a close has to state WHEN, and the archive already
+                        # holds it -- the row simply dropped it on the way through.
+                        "updated": t.get("updated") or t.get("updatedAt") or "",
                         "track": t.get("track") or t.get("component") or ""})
     return out
 
@@ -993,6 +996,320 @@ def without_identifier(items) -> list[tuple[str, str]]:
     reads as *nothing moved*.
     """
     return [(l, r) for l, r in items if not identifiers(f"{l} {r}")]
+
+
+# ---- CR-147: a certain close, read back off the source -----------------------
+# CR-141 made the match reliable; this acts on it. The distinction is the whole
+# CR: *probably closed* SUGGESTS a close from any evidence the sources carry --
+# a chat word included -- and the line stays on the page for a human. A CERTAIN
+# close is a state read off the work's own source, and the line leaves the card.
+# Measured over two consecutive meetings, about six of eleven dependency rows and
+# then four of seven were removed on sight by the person leading, and for most of
+# them the tracker already said closed, merged or done. That removal is the work
+# this does before the room sits down.
+#
+# What counts, and nothing else (proposal 5):
+#   - an issue whose state is closed;
+#   - a pull request that is merged AND names the id (`Fixes #12`, `Re #12`);
+#   - a ticket whose state contains done, closed or resolved.
+# A merged pull request that names no id closes nothing: it is evidence about
+# itself, and the carried line is not its subject. A label change is never a
+# close -- `state_changed` already owns that judgement and `reconcile_closed`
+# already gives it precedence, so this reuses both rather than deciding again.
+
+# Which archive answers for an identifier's kind, and which config key declares it
+# (proposal 6). A `#id` is a repo number and a ticket key is the board's, so a line
+# can only be dropped when the archive that would contradict the drop was actually
+# read -- and only a DECLARED source can be unread, exactly as in `failed_fetches`.
+_ID_SOURCE = {"repo": (".githubmeta", "repos"), "tickets": (".jirameta", "jira")}
+
+
+def certainly_closed(items, repo, jira):
+    """Carried lines whose own source says closed or merged, each with its basis.
+
+    `(label, rest, (kind, basis, when))` per line, where `kind` is `repo` or
+    `tickets` -- the archive the verdict came from, so the caller can refuse to
+    drop a line whose archive failed to fetch (CR-147, proposal 6).
+
+    Identifiers come from CR-141's `identifiers` and `closing_refs`; a second
+    extractor here would drift from the marker's own notion of what a line names,
+    and the two disagreeing about the same line is worse than either being wrong.
+
+    The newest state wins, as in `probably_closed`: a reopened issue re-read in
+    the same window must not be closed by the older row.
+    """
+    # (when, kind, basis, ids, closes) -- a row that is NOT a close is evidence too,
+    # because the NEWEST state has to decide: an issue closed and reopened inside the
+    # same window appears twice, and acting on the older row would drop a live line.
+    ev = []
+    for r in repo:
+        if not isinstance(r, dict):
+            continue
+        kind = r.get("kind", "issue")
+        when = str(r.get("when") or "")[:16].replace("T", " ")
+        n = r.get("n", "")
+        if kind == "issue" and n != "":
+            shut = r.get("state") == "closed"
+            ev.append((when, "repo", f"{r.get('repo','')} issue #{n} "
+                       + ("closed" if shut else str(r.get("state") or "open")), {f"#{n}"}, shut))
+        elif kind == "pull" and r.get("status") == "merged":
+            # Proposal 5: a merged PR is a certain close only of what it SAYS it
+            # closes. Its own number is deliberately not in the id set -- a line
+            # naming #7 where #7 is the pull request is a line about the change,
+            # not about a closed issue, and dropping it would be the false drop
+            # this CR must not make.
+            closes = set(r.get("closes") or ()) | closing_refs(r.get("title", ""))
+            if closes:
+                ev.append((when, "repo",
+                           f"{r.get('repo','')} PR #{n} ({', '.join('Re ' + c for c in sorted(closes))}) merged",
+                           closes, True))
+    for t_ in jira:
+        if not isinstance(t_, dict):
+            continue
+        n = str(t_.get("n") or "")
+        state = str(t_.get("state") or "").lower()
+        if not n:
+            continue
+        shut = any(w in state for w in ("done", "closed", "resolved"))
+        ev.append((str(t_.get("updated") or "")[:16].replace("T", " "), "tickets",
+                   f"ticket {n.upper()} {state or 'open'}", {n.upper()}, shut))
+    if not ev:
+        return []
+    out = []
+    for label, rest in items:
+        want = identifiers(f"{label} {rest}")
+        if not want:
+            continue          # proposal 3's case, not this one
+        # Per identifier the newest row decides; across identifiers ANY still-closing
+        # one closes the line, and `reconcile_closed` is what holds a line whose other
+        # key is merely built (CR-141's precedence, reused rather than re-decided).
+        hit, shut_ids = None, set()
+        for i in sorted(want):
+            rows = sorted((e for e in ev if i in e[3]), key=lambda e: e[0])
+            if rows and rows[-1][4]:
+                hit = hit or rows[-1]
+                # Only the identifiers whose OWN newest row closes them. A line may
+                # name several; announcing the line's whole id set as closed asserts
+                # a close for an id whose source still says open, which is the silent
+                # misstatement this CR exists to prevent.
+                shut_ids.add(i)
+        if hit:
+            when, kind, basis, _ids, _shut = hit
+            out.append((label, rest, (kind, basis, when, shut_ids)))
+    return out
+
+
+def readable_sources(cf: dict, recs: dict, rows: dict, today: datetime.date | None = None) -> dict[str, str]:
+    """CR-147, proposal 6: per verdict kind, the reason its source may not be
+    trusted to remove a line -- or nothing, when it was read.
+
+    `{"repo": "fetch failed ...", "tickets": ...}`, keyed as `certainly_closed`
+    keys its verdicts. Two ways a source cannot be read, and both are already
+    reported elsewhere, so both are reused rather than re-derived:
+
+    - CR-088's fetch record says the fetch FAILED. A failed fetch leaves the last
+      good data in place, which reads as current (CR-140) -- tolerable for a line
+      the page repeats, fatal for a line the page removes.
+    - the producer could not reach the archive at all and said so in a `note` row
+      (no archive above the project, no snapshot, unreadable, not refreshed).
+
+    A fetch that was never RECORDED is not a failed one. `fetch_status` calls it
+    *fetch not recorded* precisely because the three states need three answers,
+    and treating the unknown as a failure would make this pass inert on every
+    project whose archiver predates CR-088 -- which is most of them.
+
+    An UNDECLARED source is not an unread one either, which is what `cf` is read
+    for -- the same gate `failed_fetches` applies, and for the same reason. A
+    `_fetch.json` left under `.jirameta/` by a config that no longer declares
+    `jira:` produces no verdicts at all, so nothing is held back on its word; but
+    the header names every blocked source, and naming one the project does not use
+    tells the room a source failed when none did.
+    """
+    today = today or datetime.date.today()
+    ext = cf.get("ext") or {}
+    bad = {}
+    for kind, (sub, declares) in _ID_SOURCE.items():
+        if not ext.get(declares):
+            continue
+        rec = recs.get(sub)
+        if rec is not None and not fetch_ok(rec):
+            bad[kind] = fetch_status(rec, today)
+            continue
+        notes = [r["note"] for r in (rows.get(kind) or [])
+                 if isinstance(r, dict) and r.get("note")]
+        if notes:
+            bad[kind] = notes[0]
+    return bad
+
+
+def drop_closed(closed, blocked: dict[str, str]):
+    """CR-147, proposal 6: split certain closes into the ones that may act and the
+    ones whose source could not be read.
+
+    Returns `(acted, held)`. A held line keeps carrying exactly as before this CR
+    -- which is the point: a source that cannot be read must not be able to empty
+    the card, and the header names it instead.
+    """
+    acted = [h for h in closed if h[2][0] not in blocked]
+    held = [h for h in closed if h[2][0] in blocked]
+    return acted, held
+
+
+def off_card_keys(certain_keys: set[str], pending_keys: set[str],
+                  closed_keys: set[str], card_keep: set[str]) -> set[str]:
+    """CR-147: the carried lines kept off the card's own sections.
+
+    One predicate, because the card's sections, each person's minute and the chat
+    post all decide this and three copies of the condition drifted apart once
+    already. A line is off the card when its source certainly closed it, when
+    nothing could be read about it and nobody confirmed it (proposal 3), or when a
+    probable close was matched and CR-107 does not hold it.
+
+    `certain_keys` is named in its own right although it is, today, redundant:
+    every certain close is also a probable one, and `card_keep` is built as
+    `closed_keys - certain_keys`, so `closed_keys - card_keep` already covers it.
+    It stays because the redundancy is an accident of two matchers reading the same
+    rows, not an invariant this predicate should rest on -- the header announces a
+    certain close, and a line announced closed must never still be on the card.
+    Verified redundant 2026-10-21; if the matchers diverge, this term is what keeps
+    the page honest, so it is tested directly rather than through `main()`.
+    """
+    return certain_keys | pending_keys | (closed_keys - card_keep)
+
+
+# ---- CR-147, proposal 3: a line nobody can check is not asserted as live -----
+# A line with no identifier used to sit on the card looking like a live
+# dependency. Nothing can be checked about it, so the card must not assert it:
+# it goes to the details file under *cannot be checked* and returns to the card
+# only on its owner's word, said in their own minute and written into the note.
+#
+# CR-142 adds a second state with exactly these rules (an inference nobody has
+# confirmed), so the mechanism is factored on the marker, not on this CR's one
+# case: `unconfirmed()` takes the markers to look for and `ages_out()` counts the
+# sessions. CR-142 adds its marker to `CONFIRM_MARKERS` and inherits both.
+
+# What an owner's confirmation looks like in the source part of a carried line.
+# `*confirmed: still waiting on the other team*` -- the word plus whose word it
+# is, because "still open" with no name is the thing that kept carrying.
+_CONFIRMED = re.compile(r"\*confirmed\b", re.I)
+
+# CR-142: what the writer of a summary writes where a phrase was not said and is in no
+# source -- `*inferred: the release day*`. Measured: one meeting's audio was partly
+# garbled, three phrases were resolved by guessing and written as facts (a release day,
+# an owner, which items belonged together), and two days later all three turned out
+# partly wrong and a decision register line had to be corrected. One regex for all three
+# places the marker is written -- the source part of a carried line, a decision's note,
+# and `Inferred:` in prose -- because a second reader would let the agenda and the check
+# disagree about the same line.
+_INFERRED = re.compile(r"\*inferred\b|^[ \t]*inferred:", re.I | re.M)
+
+# WHAT was inferred, pulled out of the marker the pattern above matched --
+# `*inferred: the release day*` -> `the release day`. Public and exported for the same
+# reason `_INFERRED` is one regex: the agenda asks the room about the guess and `check`
+# names it in a finding, and a second copy would let the two quote different words off
+# one line (CR-142, defect pass -- it was duplicated inline here and in the check).
+INFERRED_WHAT = re.compile(r"\*inferred:?\s*(.*?)\*", re.I)
+
+# CR-147: markers that put a carried line in the unconfirmed state. One entry per
+# CR that defines such a state; CR-142's `*inferred:*` is the second one.
+CONFIRM_MARKERS: tuple[re.Pattern, ...] = (_INFERRED,)
+
+
+# Proposal 3: how many sessions an unconfirmed line may carry before the agenda
+# stops repeating it. Two, as written -- long enough for an owner who was absent
+# once, short enough that the list does not become the thing nobody reads.
+CONFIRM_SESSIONS = 2
+
+
+def inferred_what(text: str, default: str = "not stated") -> str:
+    """CR-142: the words the marker on `text` names, or `default` where it names none.
+
+    One reader for both callers -- the agenda's *Confirm or drop* column and `check`'s
+    finding message -- because a line is asked about by the GUESS and not by the item,
+    and two readers quoting one line differently is the disagreement the single regex
+    for the marker itself already rules out.
+    """
+    m = INFERRED_WHAT.search(text or "")
+    return (m.group(1).strip() if m else "") or default
+
+
+def confirmed(rest: str) -> bool:
+    """Whether a carried line's source part carries its owner's confirmation."""
+    return bool(_CONFIRMED.search(rest or ""))
+
+
+def inferred(text: str) -> bool:
+    """CR-142: whether a piece of text carries an UNCONFIRMED inference marker.
+
+    True for a carried line's source part, a decision's note or a line of prose holding
+    `*inferred: <what>*`; false once the same text also carries a confirmation, because
+    proposal 5 is that a confirmed inference loses its marker in the next summary, and
+    until that summary is written the owner's word is what the room actually has.
+    """
+    txt = text or ""
+    return bool(_INFERRED.search(txt)) and not _CONFIRMED.search(txt)
+
+
+def unconfirmed(items, extra_markers=()):
+    """Carried lines in the unconfirmed state, with the reason each is in it.
+
+    `(label, rest, reason)`. A line carrying one of the registered markers or of
+    `extra_markers` is unconfirmed because what it says was inferred (CR-142); a
+    line carrying none of them and naming no identifier is unconfirmed because
+    nothing can be read about it (CR-147). A line whose owner confirmed it is in
+    neither list -- that is the one word that puts it back on the card.
+
+    The MARKER is tested first, and that order is the requirement rather than a
+    detail (CR-142, defect pass). An inference is exactly the thing that has to be
+    confirmed or dropped, and most inferences -- an owner, a release day, which
+    items belong together -- name no identifier at all. Testing the identifier
+    first routed every one of those into CR-147's *cannot be checked* table, where
+    `confirm_or_drop` does not look, so after two sessions the agenda stopped
+    asking about the guess instead of asking harder. A line with NO marker still
+    gets CR-147's reason unchanged.
+    """
+    out = []
+    for label, rest in items:
+        if confirmed(rest):
+            continue
+        if any(pat.search(rest or "")
+               for pat in tuple(CONFIRM_MARKERS) + tuple(extra_markers)):
+            out.append((label, rest, "unconfirmed inference"))
+        elif not identifiers(f"{label} {rest}"):
+            out.append((label, rest, "no identifier, nothing to read"))
+    return out
+
+
+def ages_out(sessions: int, limit: int = CONFIRM_SESSIONS) -> bool:
+    """Whether an unconfirmed line has carried long enough to stop being repeated.
+
+    Sessions, not days: CR-139's point that a session is not a unit of time cuts
+    both ways, and an item nobody confirmed over two sittings of the series is the
+    one the agenda should stop asserting.
+    """
+    return sessions > limit
+
+
+def confirm_or_drop(items, streaks: dict[str, int], limit: int = CONFIRM_SESSIONS):
+    """CR-142, proposal 2: carried lines whose inference nobody has confirmed, after
+    `limit` sessions of carrying it.
+
+    `(label, rest, sessions)`, **owner first** -- sorted by owner and only then by the
+    item, because this list is read out to people and one ordered by item makes every
+    owner hunt for their own rows. `UNOWNED` sorts last: a line nobody owns is not a
+    question for anyone in particular, and putting it first buries the ones that are.
+
+    The state and the threshold are CR-147's, reused rather than counted again:
+    `unconfirmed` decides which lines are in it and `ages_out` when they have waited
+    long enough, so an unconfirmed inference and a line nothing can be read about come
+    off the card on exactly the same schedule.
+    """
+    rows = [(l, r) for l, r, why in unconfirmed(items) if why == "unconfirmed inference"]
+    out = [(l, r, streaks.get(key(l), 0)) for l, r in rows
+           if ages_out(streaks.get(key(l), 0), limit)]
+    out.sort(key=lambda t: (owner_of(t[0], t[1]) == "UNOWNED",
+                            owner_of(t[0], t[1]).lower(), item_of(t[0], t[1]).lower()))
+    return out
 
 
 def recorded_since(cf: dict, after: datetime.date, told: str | None) -> list[dict]:
@@ -1638,19 +1955,75 @@ def main() -> None:
     unchecked = without_identifier(raw_items)
     fixed_rows = state_changed(raw_items, jira)
     closed_hits = reconcile_closed(closed_hits, fixed_rows)
+    # CR-147: the same carried lines, re-read off their own source, acting only on a
+    # CERTAIN close -- a closed issue, a merged PR that names the id, a done ticket.
+    # `reconcile_closed` applies here too and for the same reason: a line with any
+    # built-but-not-accepted key is *fixed, waiting for a test*, never closed, so a
+    # state change can no more drop a line than it could mark one.
+    certain = reconcile_closed(certainly_closed(raw_items, repo, jira), fixed_rows)
+    # Proposal 6: a source whose fetch did not work may not remove anything. The
+    # verdicts it produced are held back and named in the header instead.
+    blocked = readable_sources(cf, recs, {"repo": repo, "tickets": jira}, now)
+    certain, held = drop_closed(certain, blocked)
+    certain_keys = {key(l) for l, _r, _h in certain}
     closed_keys = {key(l) for l, _r, _h in closed_hits}
-    # CR-107: in card layout a blocker, dependency or decision is never taken off the card
-    # by a match. CR-141 narrowed the matcher to explicit identifiers, but a carried line
-    # and a closed issue can still name the same id for different work, and a false hit
-    # would silently drop the one thing the room most needs to see. It stays in its
-    # section, marked, and the evidence sits in the details file. Tasks still move to
-    # *Probably closed* as before.
+    # CR-107 kept a matched blocker, dependency or decision ON the card, marked, because
+    # the matcher was a word heuristic: a false hit would have silently dropped the one
+    # thing the room most needs to see, and marking it cost a glance. CR-141 replaced the
+    # heuristic with explicit identifiers, and CR-147 now splits the two cases that were
+    # one. A PROBABLE close is still only evidence -- the same id can name different work
+    # in a chat line -- so CR-107's rule stands for it unchanged: the line stays in its
+    # section, marked, evidence in the details. A CERTAIN close is the work's own source
+    # saying closed or merged, which is what the person leading the meeting was reading off
+    # the tracker by hand before removing the row; that line leaves the card, with its
+    # basis in the header and the details. So `card_keep` now means exactly "kept because
+    # the close is only probable", and a certain close is never in it.
     card_keep = set()
     if cf.get("layout") == "card":
         kd0 = kinds(last)
-        card_keep = {k for k in closed_keys if kd0.get(k) in KINDS}
+        card_keep = {k for k in closed_keys - certain_keys if kd0.get(k) in KINDS}
+    # Proposal 3: a line nobody can check is not asserted as live either. It leaves the
+    # card for the details file, and comes back only on its owner's written confirmation
+    # -- until it has carried past `CONFIRM_SESSIONS`, after which the agenda stops
+    # repeating it at all. CR-142 hooks its own marker into `unconfirmed` and inherits
+    # this routing. Proposal 4: nothing here can OPEN a line; creation stays in the room.
+    # It is the CARD that asserts a short list as today's live work; the list layout's
+    # carried-forward table is the full list by definition and keeps every line, which
+    # is what "additive" means for a project that has not moved to the card.
+    pending = unconfirmed(raw_items) if cf.get("layout") == "card" else []
+    streaks = {key(t[0]): t[2] for t in items}
+    # A line in its FIRST session was raised aloud last night; the room is its
+    # confirmation and proposal 4 forbids this pass touching what the room created.
+    # From the second session on, "it was said once" has stopped being evidence that
+    # anyone is still waiting -- that is the nagging the team named -- so the owner's
+    # word is what keeps it, and after `CONFIRM_SESSIONS` unconfirmed sessions the
+    # agenda stops listing it at all.
+    pending = [(l, r, why) for l, r, why in pending if streaks.get(key(l), 0) > 1]
+    pending_keys = {key(l) for l, _r, _why in pending}
+    aged_keys = {k for k in pending_keys if ages_out(streaks.get(k, 0))}
+    # CR-142, proposal 2: an unconfirmed inference ages. The state and the threshold are
+    # CR-147's; what this adds is the one thing a carried line otherwise lacked --
+    # somewhere to be SAID. A line that is only *not readable* has CR-147's *cannot be
+    # checked* table; an inferred line may name an id, in which case it never reached
+    # that table and after two sessions would have come off the card with no trace at
+    # all. Both layouts get the section: it adds a question and removes nothing, so the
+    # list layout's own carried table is untouched.
+    #
+    # `certain_keys` is filtered out for the same reason CR-147 filters it out of
+    # *Probably closed* (defect pass): a line whose own source says closed is GONE, and
+    # the header already announces it under *Closed in the data since the last meeting*.
+    # Asking the room to confirm the guess on a line the same page declares closed is two
+    # statements about one item, and the one that reads as an open question is the wrong
+    # one. The inference itself is not lost -- a wrong guess inside a closed item is
+    # settled by the close, and a decision register line carrying the marker is still
+    # reported by `check_inferred`.
+    confirm_drop = [t for t in confirm_or_drop(raw_items, streaks)
+                    if key(t[0]) not in certain_keys]
     all_items = items
-    items = [t for t in items if key(t[0]) not in closed_keys]
+    items = [t for t in items if key(t[0]) not in closed_keys | certain_keys]
+
+    _off = off_card_keys(certain_keys, pending_keys, closed_keys, card_keep)
+    off_card = _off.__contains__
 
     # CR-139: the base line goes in the header, above everything the reader has to
     # take on trust -- which note this was built from, when the series last actually
@@ -1666,6 +2039,31 @@ def main() -> None:
     if (ff := failed_fetches(cf, recs, now)):
         L += [f"> ⚠ **Fetch failed — {'; '.join(ff)}.** What follows is the last good data for that"
               " source, not today's.", ""]
+    # CR-147, proposal 2: a line that leaves the card leaves a trace where every reader
+    # passes. The agenda's own rule is that a machine which closes items silently is
+    # worse than one that repeats them, so the ids go in the header and the basis and
+    # time follow -- a close that shows its basis, not a silent one.
+    #
+    # WHERE they follow is the layout's. On the card the basis table lives in the
+    # companion details file, which only the card layout writes; on the LIST layout
+    # the same table is a section of this one page, so the link is to the section and
+    # never to a file that was not written. Every other head-block link to the details
+    # file is inserted inside the `if card:` branch for exactly this reason.
+    if certain:
+        where = (f"Basis and time: [{details_name(cf, target)}]({details_name(cf, target)})."
+                 if cf.get("layout") == "card"
+                 else "Basis and time below, under *Closed in the data since the last meeting*.")
+        L += ["> **Closed in the data since the last meeting:** "
+              + ", ".join(sorted({i for _l, _r, h in certain
+                                  for i in (h[3] if len(h) > 3 else ())}))
+              + ". " + where, ""]
+    # Proposal 6: the held verdicts. Nothing was dropped on this source's word, and the
+    # header says which source and why -- otherwise the page is simply shorter on a
+    # morning a fetch failed, which is the failure CR-140 exists to prevent.
+    if held:
+        why = "; ".join(f"{k}: {v}" for k, v in sorted(blocked.items()))
+        L += ["> ⚠ **Source not read, so nothing was removed on its word — " + why + ".** "
+              + f"Held on the card: {', '.join(item_of(l, r) for l, r, _h in held)}.", ""]
     L += ["---", ""]
 
     # ---- CR-084: the sources block, first ------------------------------------
@@ -1869,7 +2267,45 @@ def main() -> None:
               "now invisible to this one.", ""]
 
     i_closed = len(L)
+    # CR-147, proposal 2: the trace for a line that LEFT. Basis and time per line, so
+    # the close can be checked in one click -- and `certainly_closed` keyed each verdict
+    # by the archive it came from, which is the thing a reader distrusts first.
+    if certain:
+        L += [f"## Closed in the data since the last meeting ({len(certain)})", "",
+              "**These left the card.** Each one's own source says closed or merged; the person leading",
+              "was reading the tracker and removing these rows by hand. A close here is not a judgement",
+              "about whether the work was good -- that is the test -- only that the source says it is done.",
+              "", "| Item | Owner | Basis | When |", "|---|---|---|---|"]
+        for lab, rest, hit in certain:
+            kind, basis, when = hit[0], hit[1], hit[2]
+            L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {kind} · {basis} | {when or '—'} |")
+        L.append("")
+    # CR-142, proposal 2: the inferences nobody has confirmed, owner first. Built once
+    # and used twice -- the card asks the question, the details file keeps the copy --
+    # because the one thing that must not happen to an unconfirmed guess is to be written
+    # somewhere and read nowhere, which is how three wrong phrases reached a decision
+    # register two days after the meeting they came from.
+    confirm_block: list[str] = []
+    if confirm_drop:
+        confirm_block = [f"## Confirm or drop ({len(confirm_drop)})", "",
+                         f"**Carried with an unconfirmed inference for more than {CONFIRM_SESSIONS}"
+                         " sessions.** Each line holds something that",
+                         "was not said and is in no source. Ask its owner: confirm it, and the next summary"
+                         " names the",
+                         "confirming source and drops the marker — or drop the inference and write what is"
+                         " actually known.", "",
+                         "| Item | Owner | Inferred | Sessions |", "|---|---|---|---|"]
+        for lab, rest, n_ in confirm_drop:
+            # The marker's own words, so the room is asked about the GUESS and not about
+            # the item: `*inferred: the release day*` -> `the release day`.
+            what = inferred_what(rest)
+            confirm_block.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {what} | {n_} |")
+        confirm_block.append("")
+        L += confirm_block
     # CR-084: printed after the carried block, before anything else the room does.
+    # CR-147: a line with a CERTAIN close is not offered for confirmation -- it is gone,
+    # and listed above with its basis. Only the probable ones are a question for the room.
+    closed_hits = [h for h in closed_hits if key(h[0]) not in certain_keys]
     if closed_hits:
         L += ["## Probably closed — confirm", "",
               "**The sources say these moved since the last note.** They are NOT dropped: a machine that",
@@ -1890,12 +2326,89 @@ def main() -> None:
         for lab, rest, st in fixed_rows:
             L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {st} |")
         L.append("")
+    # CR-147, proposal 3: ONE section, not two -- CR-141's list of lines nothing could
+    # be read about and this CR's list of lines the card therefore does not assert are
+    # the same lines, and printing both said it twice. CR-141's heading and reason
+    # stand; this adds what the card now does with each, its session count, and the
+    # ageing. CR-142's marker joins the same table through `unconfirmed`.
+    pending_by_key = {key(l): (r, why) for l, r, why in pending}
     if unchecked:
         L += [f"## Items with no identifier, cannot be checked ({len(unchecked)})", "",
               "**No `#id` and no ticket key on these lines, so the sources were not consulted for them.**",
               "No marker here means *not checked*, not *not moved*. Add the id to that line in the",
               "summary and the next agenda can check it.", ""]
-        L += [f"- {item_of(lab, rest)} · **{owner_of(lab, rest)}**" for lab, rest in unchecked] + [""]
+        if pending:
+            L += ["**Not on the card either (CR-147): the agenda does not assert a line it cannot read.**",
+                  "A line returns to the card when its owner confirms it in their own minute and the",
+                  f"summary writes `*confirmed: <what they said>*` on it. Its FIRST session is the one"
+                  " exception:",
+                  "it was raised aloud last night and the room is its confirmation, so it is asserted"
+                  " once and",
+                  f"then asked for. Unconfirmed after {CONFIRM_SESSIONS} sessions the card stops asking"
+                  " and the row below says",
+                  "*aged out* — it keeps its place in this table, because a line removed from the one"
+                  " list that",
+                  "names it would be removed silently. Nothing here can be OPENED by the data: a"
+                  " dependency is raised aloud.",
+                  ""]
+        # CR-147, defect pass: the card column is printed only where there IS a card.
+        # On the list layout `pending` is empty by design -- that layout's carried table
+        # is the full list and keeps every line -- so every row fell through to the final
+        # branch and a line nobody had confirmed was printed as *yes, confirmed*, which
+        # is a false statement about the operator's own data. A column with no meaning
+        # is left out rather than filled with a guess.
+        on_card = cf.get("layout") == "card"
+        head_ = ["Item", "Owner"] + (["On the card"] if on_card else []) + ["Sessions"]
+        L += ["| " + " | ".join(head_) + " |", "|" + "---|" * len(head_)]
+        for lab, rest in unchecked:
+            k_ = key(lab)
+            n_ = streaks.get(k_, 0)
+            cells = [item_of(lab, rest), owner_of(lab, rest)]
+            if on_card:
+                if k_ in aged_keys:
+                    # Off the card, still listed here: see the prose above.
+                    cells.append("**aged out** — unconfirmed, off the card")
+                elif k_ in pending_by_key:
+                    cells.append("no — awaiting its owner's word")
+                elif n_ <= 1:
+                    # Proposal 4: the room raised it last night and this pass may not
+                    # unmake that. Said as the reason it is there, not as a bare *yes*.
+                    cells.append("yes — first session, raised in the room")
+                else:
+                    cells.append("yes — confirmed by its owner")
+            cells.append(str(n_))
+            L.append("| " + " | ".join(cells) + " |")
+        L.append("")
+    # CR-142: the inferred lines that have come off the card but have NOT yet aged into
+    # *Confirm or drop*. Where such a line names an identifier CR-147's *cannot be
+    # checked* table never held it, and without this it would leave the card with no
+    # trace at all -- the silent removal this agenda's whole rule is against. Same two
+    # routes out: the owner's confirmation, or the section on the card.
+    #
+    # Three keys are excluded, each because the line is already accounted for on this
+    # page and CR-147's rule is ONE section per line, not two (defect pass):
+    # `confirm_drop_keys`, the aged ones the card now asks about; `unchecked_keys`,
+    # the lines the table just above already lists with their own card column -- an
+    # inference naming no identifier is in both states at once, and that table is the
+    # one that names it; and `certain_keys`, a line whose own source says closed, which
+    # the header reports as closed and is no longer carried at all.
+    confirm_drop_keys = {key(l) for l, _r, _n in confirm_drop}
+    unchecked_keys = {key(l) for l, _r in unchecked}
+    held_inferred = sorted(((l, r) for l, r, why in pending
+                            if why == "unconfirmed inference"
+                            and key(l) not in confirm_drop_keys | unchecked_keys | certain_keys),
+                           key=lambda t: (owner_of(*t) == "UNOWNED", owner_of(*t).lower(),
+                                          item_of(*t).lower()))   # owner first, as on the card
+    if held_inferred:
+        L += [f"## Unconfirmed inferences, off the card ({len(held_inferred)})", "",
+              "**Each of these carries `*inferred: <what>*`: something nobody said and no source holds.**",
+              "The card does not assert an inference, so the line sits here until its owner confirms it —",
+              "the next summary then names the confirming source and drops the marker. Still unconfirmed",
+              f"after {CONFIRM_SESSIONS} sessions, it moves to *Confirm or drop* on the card.", "",
+              "| Item | Owner | Sessions |", "|---|---|---|"]
+        for lab, rest in held_inferred:
+            L.append(f"| {item_of(lab, rest)} | {owner_of(lab, rest)} | {streaks.get(key(lab), 0)} |")
+        L.append("")
 
 
     # Raw chat lines are still NOT printed: pasted into a team-facing document they
@@ -2159,7 +2672,7 @@ def main() -> None:
 
         def sect(kind, title, lead, col):
             rows_ = [t for t in all_items if kd.get(key(t[0])) == kind
-                     and (key(t[0]) not in closed_keys or key(t[0]) in card_keep)]
+                     and not off_card(key(t[0]))]
             if not rows_:
                 return [f"## {title}", "", f"*None carried as `[{kind}]`.*", ""]
             out_ = [f"## {title}", "", lead, "", f"| Item | Owner | {col} |", "|---|---|---|"]
@@ -2192,6 +2705,10 @@ def main() -> None:
             A += sect("blocker", "Release blockers", "**What blocks the release, who owns it, the plan.**", "Stuck for")
         A += sect("dependency", "Dependencies", "**A person waiting on another person, or on someone outside the room.**", "Waiting")
         A += sect("decision", "Decisions needed today", "**Each one leaves the room decided, or with a date.**", "Open for")
+        # CR-142, proposal 2: on the card, not only in the details. An unconfirmed
+        # inference is a question for a named person, and the card is where the room
+        # reads the questions it has to answer out loud.
+        A += confirm_block
         stuck_tasks = [t for t in items if kd.get(key(t[0])) not in KINDS and (t[2] >= E or (ED and t[4] >= ED))]
         if stuck_tasks:
             A += [f"## Stuck? ({len(stuck_tasks)})", "",
@@ -2212,7 +2729,7 @@ def main() -> None:
         per: dict[str, list[str]] = {}
         tasks_n: dict[str, int] = {}
         for lab, rest, n, _g, _d in all_items:
-            if key(lab) in closed_keys and key(lab) not in card_keep:
+            if off_card(key(lab)):
                 continue
             who = owner_of(lab, rest)
             if who == "UNOWNED":
@@ -2325,7 +2842,7 @@ def main() -> None:
                          + (f", {m2.group(1)} still to fix" if m2 else "") + f" · since yesterday {m_.group(3).strip()}")
         for kind, title in (("blocker", "Blockers"), ("dependency", "Waiting on"), ("decision", "Decide today")):
             rows_ = [t for t in all_items if kd.get(key(t[0])) == kind
-                     and (key(t[0]) not in closed_keys or key(t[0]) in card_keep)]
+                     and not off_card(key(t[0]))]
             if rows_:
                 C.append(f"**{title}:** " + " · ".join(f"{item_of(l, r)} ({owner_of(l, r)})" for l, r, *_ in rows_))
         C += ["", "**Round, one minute each:** what moved toward the milestone, what is stuck."]
@@ -2334,7 +2851,7 @@ def main() -> None:
             keys_ = [p_["name"]] + list(p_.get("aliases") or [])
             mine_ = []
             for lab, rest, *_ in all_items:
-                if kd.get(key(lab)) in KINDS and (key(lab) not in closed_keys or key(lab) in card_keep):
+                if kd.get(key(lab)) in KINDS and not off_card(key(lab)):
                     owners_ = [o.strip().strip("*").lower() for o in re.split(r",|\band\b|·", owner_of(lab, rest))]
                     if any(k.lower() in owners_ for k in keys_):
                         mine_.append((["blocker", "dependency", "decision"].index(kd.get(key(lab))),
