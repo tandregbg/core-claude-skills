@@ -6,7 +6,7 @@
 | **Contract** | additive — one flag (`--check`), no change to the agenda's shape; the background-run guidance is documentation |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py`, SKILL.md step 9), `ops-config` (`reports`, `vault_reports`, `chats`) |
-| **Related CRs** | CR-116 (vault reports), CR-117 (the *Built from* line), CR-119 (validate the config first), CR-139 (the default date) |
+| **Related CRs** | CR-116 (vault reports), CR-117 (the *Built from* line), CR-119 (validate the config first), CR-088 (a fetch record says whether it worked), CR-139 (the default date) |
 
 ## What happened
 

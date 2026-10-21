@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-147**
+Next available CR number: **CR-151**
 
 ---
 
@@ -12,6 +12,10 @@ Next available CR number: **CR-147**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-150 | `ops` (`build_agenda.py` appendix and digest, `lint`), `ops-config` (`metrics_document`) | Medium | **Proposed** (2026-10-21). The generator never aggregates by person, and a lint keeps team-facing files clean of it. A details file listing authors is one grouping away from a leaderboard |
+| CR-149 | `ops` (`build_agenda.py` milestone block, config validation), `ops-config` schema | **High** | **Proposed** (2026-10-21). Milestones as a list, each with a date, a source and a state. The card runs toward one date while several matter, and a plan's dates are unconfirmed proposals |
+| CR-148 | `ops` (`build_agenda.py` renderers, `carry_forward.layout`), SKILL.md | **High** | **Proposed** (2026-10-21). A compact card layout: a short plain-text post, a round-only agenda, dependencies for the facilitator. The day's post ran about 660 words against a rule of three to five lines |
+| CR-147 | `ops` (`build_agenda.py` carried lines and *Dependencies*, SKILL.md step 9) | **High** | **Proposed** (2026-10-21). Carried lines are re-read from their source before the card is built. A closed issue stayed on the card two days; about half the dependency rows were removed on sight |
 | CR-146 | `ops` (post-meeting steps, weekly template and builder) | Low | **Draft** (2026-10-21). The weekly status is a step the Friday close-out surfaces, with skipped weeks folded in. Two weeks were skipped before anyone noticed |
 | CR-145 | `ops` (`build_agenda.py` sources, `chats:`), the chat archiver | Medium | **Proposed** (2026-10-21). A failed or missing source is named in the output, and direct messages can be declared. Replies to four one-to-one questions were invisible |
 | CR-144 | `outbox` (SKILL.md, `resolved.py`), `ecosystem.yaml` | Medium | **Draft** (2026-10-21). A *sent* status carries its proof, and a session never overwrites it. One manifest read *sent* with no message to match; English written words are accepted alongside the Swedish ones |

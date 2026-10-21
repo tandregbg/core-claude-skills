@@ -6,7 +6,7 @@
 | **Contract** | additive — a reminder in the close-out and a `--since` form for the weekly builder |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (SKILL.md post-meeting steps, the project weekly template and builder) |
-| **Related CRs** | CR-057 (the carry-forward agenda), CR-005 (the card), the project's weekly template |
+| **Related CRs** | CR-057 (the carry-forward agenda), CR-107 (the card), the project's weekly template |
 
 ## What happened
 

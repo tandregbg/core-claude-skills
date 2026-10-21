@@ -6,7 +6,7 @@
 | **Contract** | additive — chat entries may be marked `kind: direct`; the agenda header names failed fetches |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py` source lines, `ops-config` `chats:`), the chat archiver (separate repo) |
-| **Related CRs** | CR-047 (the chat archive), CR-087 (recordings), CR-117 (the *Built from* line), CR-140 (pre-flight) |
+| **Related CRs** | CR-047 (the chat archive), CR-087 (recordings), CR-088 (a fetch record says whether it worked), CR-117 (the *Built from* line), CR-140 (pre-flight) |
 
 ## What happened
 

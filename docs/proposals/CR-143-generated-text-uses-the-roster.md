@@ -6,7 +6,7 @@
 | **Contract** | additive — a roster field (`pronouns`) and a lint over generated and staged text |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`lint`, SKILL.md writing rules), `ops-config` (`people:` roster), `outbox` (staging) |
-| **Related CRs** | CR-017 (ASR variants in the roster), CR-052 (the roster's aliases), CR-102 (manifests edited in place) |
+| **Related CRs** | CR-017 (ASR variants in the roster), CR-102 (manifests edited in place) |
 
 ## What happened
 
