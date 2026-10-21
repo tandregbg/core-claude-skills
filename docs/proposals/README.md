@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-151**
+Next available CR number: **CR-152**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-151**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-151 | `ops` (a helper beside `build_agenda.py`, SKILL.md), `ops-config` (`external_systems.repos`) | Medium | **Proposed** (2026-10-21). The repository list is derived from the status author's reports, and proposed for confirmation. One declared repository where the release depended on at least eight |
 | CR-150 | `ops` (`build_agenda.py` appendix and digest, `lint`), `ops-config` (`metrics_document`) | Medium | **Proposed** (2026-10-21). The generator never aggregates by person, and a lint keeps team-facing files clean of it. A details file listing authors is one grouping away from a leaderboard |
 | CR-149 | `ops` (`build_agenda.py` milestone block, config validation), `ops-config` schema | **High** | **Proposed** (2026-10-21). Milestones as a list, each with a date, a source and a state. The card runs toward one date while several matter, and a plan's dates are unconfirmed proposals |
 | CR-148 | `ops` (`build_agenda.py` renderers, `carry_forward.layout`), SKILL.md | **High** | **Proposed** (2026-10-21). A compact card layout: a short plain-text post, a round-only agenda, dependencies for the facilitator. The day's post ran about 660 words against a rule of three to five lines |
