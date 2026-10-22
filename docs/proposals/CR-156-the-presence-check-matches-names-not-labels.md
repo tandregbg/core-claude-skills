@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-22) |
+| **Status** | **Implemented v1.92.7** (2026-10-22) |
 | **Contract** | additive — a looser match of a roster name to a round row; an optional `away:` list on a roster entry |
 | **Date** | 2026-10-22 |
 | **Area** | `ops` (`build_agenda.py`: the config finding *on the roster, not in the last three rounds*; `round_table`), `ops-config` (`people:`) |

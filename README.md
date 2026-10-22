@@ -1,6 +1,6 @@
 # core-skills
 
-**Version:** 1.92.6
+**Version:** 1.92.7
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 

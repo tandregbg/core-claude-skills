@@ -7,6 +7,18 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.7] - 2026-10-22
+
+### Changed
+
+- **CR-156 -- the presence check matches names, not whole row labels, and reads declared leave (`ops`, contract
+  unchanged).** The config finding *on the roster, not in the last three rounds* compared the whole row
+  label, exactly, so a person in the room every day was reported absent because the note labelled their row
+  `Robert (Bob)`. A roster name or alias now counts as present when it is a **whole word** in a row label
+  (`Mohamed` is not `Mo`), in any of the three rounds. A new optional `away:` list on a roster entry (the
+  shapes `skip_dates` takes, plus `2026-10-26..2026-10-30 leave` strings) stops a person being reported for
+  a round day they are away. The message names its basis: *no row matching <name, aliases>*. 16 new tests.
+
 ## [1.92.6] - 2026-10-22
 
 The compact agenda keeps what the room confirms (CR-155). CR-148's compact layout, released the day
