@@ -175,6 +175,9 @@ people:
     areas: [string]             # Optional: what this person works on
     pronouns: he|she|they       # Optional (CR-143): what generated and staged text must use
     canonical_short: string     # Optional (CR-143): the short form the notes must write
+    away: [date | range]        # Optional (CR-156): days this person is away, so the presence check does
+                                # not report them. 261021, 2026-10-21, 2026-10-26..2026-10-30 leave, or
+                                # {from:, to:, reason:} -- the shapes `skip_dates` takes
     github: login | [login]     # Optional (CR-155): the tracker login(s) that are this person; without it
                                 # a login starting with the name or an alias (3+ letters) is read as theirs
 ```

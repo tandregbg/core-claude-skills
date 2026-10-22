@@ -2818,10 +2818,31 @@ def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -
     elif flag_value(conn_) is True and not trd_.get("store"):
         out.append("`transcripts.connected: true` with no `store:`: nothing is named to"
                    " connect to, so the check still reports the store as not checked (CR-145)")
-    rounds = [round_table(n) for _d_, n in hist[-3:]]
-    if rounds and all(rounds):
-        absent = [p_["name"] for p_ in cf.get("people") or []
-                  if not any(k.lower() in r for r in rounds for k in [p_["name"]] + list(p_.get("aliases") or []))]
+    rounds = [(d_, round_table(n)) for d_, n in hist[-3:]]
+    if rounds and all(r_ for _d_, r_ in rounds):
+        # CR-156: a roster person is PRESENT in a round when their name or an alias is a whole
+        # word in a row label (`Robert (Bob)` is Robert), and is not reported for a day the
+        # roster entry declares them away. The comparison used to be the whole label, exactly,
+        # so a person in the room every day was reported absent because the row carried a
+        # bracketed alias.
+        absent = []
+        for p_ in cf.get("people") or []:
+            keys_ = [p_["name"]] + list(p_.get("aliases") or [])
+            away_ = away_days(p_)
+            here_ = False
+            for d_, r_ in rounds:
+                if any(label_has_name(lbl, keys_) for lbl in r_):
+                    here_ = True
+                    break
+                try:
+                    day_ = datetime.datetime.strptime(str(d_)[:6], "%y%m%d").date()
+                except ValueError:
+                    day_ = None
+                if day_ is not None and day_ in away_:
+                    here_ = True
+                    break
+            if not here_:
+                absent.append(f"{p_['name']} (no row matching {', '.join(str(k) for k in keys_)})")
         if absent:
             out.append("on the roster, not in the last three rounds: " + ", ".join(absent)
                        + " (absent, or no longer in this meeting?)")
@@ -2955,6 +2976,58 @@ def base_line(note: str, last_date: str, skips: list[tuple[datetime.date, str]],
     if inside:
         tail = "; skipped: " + ", ".join(f"{d:%y%m%d} ({why})" for d, why in inside)
     return f"Base: {note} (last meeting held {held:%y%m%d}{tail})"
+
+
+def label_has_name(label: str, names) -> bool:
+    """CR-156: does a round row's label contain any of these names as a WHOLE WORD?
+
+    `Robert (Bob)`, `Bob - backend` and `Robert Smith` all contain `Bob` or `Robert`; `Mohamed`
+    does not contain `Mo`. Case-insensitive, and the word boundary is the point: a name that is
+    only part of a longer word is not a match."""
+    low = str(label or "").lower()
+    for k in names:
+        k = str(k or "").strip().lower()
+        if k and re.search(r"(?<!\w)" + re.escape(k) + r"(?!\w)", low):
+            return True
+    return False
+
+
+def away_days(entry: dict) -> set[datetime.date]:
+    """CR-156: the days a roster entry declares its person away.
+
+    `away:` takes the shapes `skip_dates` does (a bare `261021`, or a mapping with `date:` or
+    `from:`/`to:` and a `reason:`) and also the string forms `2026-10-21` and
+    `2026-10-26..2026-10-30 leave` (a trailing reason is ignored). An unparseable entry is
+    skipped and the rest are kept, as in `skip_dates`: one bad line must not hide the others.
+    """
+    raw = (entry or {}).get("away") or []
+    if isinstance(raw, (str, int, dict)):
+        raw = [raw]
+    elif not isinstance(raw, (list, tuple, set)):
+        return set()
+
+    def _d(v):
+        for fmt in ("%y%m%d", "%Y-%m-%d"):
+            try:
+                return datetime.datetime.strptime(str(v).strip(), fmt).date()
+            except (TypeError, ValueError):
+                continue
+        return None
+
+    days: set[datetime.date] = set()
+    for e in raw:
+        if isinstance(e, dict):
+            ends = [x for x in (_d(e.get("from")), _d(e.get("to")), _d(e.get("date"))) if x]
+        else:
+            tok = str(e).strip().split()[0] if str(e).strip() else ""
+            ends = [x for x in (_d(t) for t in re.split(r"\.\.", tok)) if x]
+        if not ends:
+            continue
+        d = min(ends)
+        while d <= max(ends):
+            days.add(d)
+            d += datetime.timedelta(days=1)
+    return days
 
 
 def skip_dates(cf: dict) -> list[tuple[datetime.date, str]]:
