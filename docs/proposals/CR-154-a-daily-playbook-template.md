@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-22) |
+| **Status** | **Implemented v1.92.9** (2026-10-22). Built as: the template file, the SKILL.md pointer, and the staleness line (proposal 5). **Not built:** the `/ops new` offer at series set-up (proposal 2) -- the template is referenced from the skill and copied by the operator; and the `playbook:` placeholders are not auto-filled from `people:` and `labels:` (proposal 3), so every unknown is a visible blank |
 | **Contract** | additive — a template file and one pointer in the `ops` skill; no behaviour change |
 | **Date** | 2026-10-22 |
 | **Area** | `ops` (SKILL.md step 9, a new `templates/daily-playbook.md`), `ops-config` (a `playbook:` pointer, optional) |

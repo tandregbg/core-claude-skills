@@ -460,6 +460,10 @@ workflows:
                                    # table is unaffected -- that is the repo's definition.
                                    # On layout: compact (CR-155) it governs the heading and
                                    # the lead of the agenda and the post alike.
+      playbook:                    # optional (CR-154): the team's page about the meeting
+        path: how-the-daily-works.md      # relative to the project; a `Reviewed: YYYY-MM-DD` line dates it
+        decisions: decisions.md           # default decisions.md: table rows `| <id> | YYYY-MM-DD | ...`
+        stale_after: 8                    # default 8; more decisions than this since the review -> one line in `check`
       compact:                     # optional (CR-148); only read in compact layout
         max_words: 150             # default 150, and 0 means 0 (always warn), not unset.
                                    # A ceiling that HOLDS: over it the generator warns

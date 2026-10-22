@@ -495,6 +495,15 @@ redistributes what the card already computes across **four** outputs. Nothing is
 - **`layout: card` stays the default.** A project declaring neither `card:`, nor `layout: compact`, nor a
   milestone `kind:` renders byte for byte as before.
 
+**The team's page about the meeting: `templates/daily-playbook.md` (CR-154).** A project that runs a daily
+series starts its "how the daily works" page from this template, one page of checklists: the meeting's four
+parts, attendance, the four lines of a person's minute, what to do before and after, the roles, where things
+go. The project's own parts (the leader, the verifier, the labels, the tracker, the channel) are `{{placeholders}}`
+that stay visible until filled -- an unknown is a blank, never a guess. A page written in week one goes stale
+within weeks, so a project may declare `playbook: {path, decisions, stale_after}` and `check` says, in one line,
+when more than `stale_after` (default 8) decisions in the register are dated after the page's `Reviewed:`
+date (or its file date). It reads two files and decides nothing.
+
 It writes `YYMMDD-<agenda_suffix>.md` and the chat post, carrying what the transcript cannot:
 the carried-forward block with session counts, the round from the declared roster, and the
 *Since the last standup* block from the archives. **Hand-writing the agenda in a wired project

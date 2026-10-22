@@ -2899,6 +2899,7 @@ def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -
         if absent:
             out.append("on the roster, not in the last three rounds: " + ", ".join(absent)
                        + " (absent, or no longer in this meeting?)")
+    out += playbook_findings(cf)       # CR-154
     if hist:
         sec = SECTION.search(hist[-1][1].read_text(encoding="utf-8"))
         unknown = sorted({k for k, _l in KIND_RE.findall(sec.group(1))} - set(KINDS)) if sec else []
@@ -3029,6 +3030,50 @@ def base_line(note: str, last_date: str, skips: list[tuple[datetime.date, str]],
     if inside:
         tail = "; skipped: " + ", ".join(f"{d:%y%m%d} ({why})" for d, why in inside)
     return f"Base: {note} (last meeting held {held:%y%m%d}{tail})"
+
+
+def playbook_findings(cf: dict) -> list[str]:
+    """CR-154: is the team's page about its daily meeting older than the decisions it describes?
+
+    Declared as `playbook: {path: ..., decisions: ..., stale_after: N}` (paths relative to the
+    project; `decisions` defaults to `decisions.md`, `stale_after` to 8). The page's review date is
+    a `Reviewed: YYYY-MM-DD` line if it has one, else the file's modification date. A decision is
+    a table row `| <id> | YYYY-MM-DD | ...` dated after that. More than `stale_after` of them
+    yields ONE line; fewer, or no declaration, yields nothing. A declared page that is not there
+    is said once. It reads two files and decides nothing.
+    """
+    pb = cf.get("playbook")
+    if not isinstance(pb, dict) or not pb.get("path"):
+        return []
+    root = cf.get("_root")
+    if root is None:
+        return []
+    page = Path(root) / str(pb["path"])
+    if not page.is_file():
+        return [f"`playbook.path: {pb['path']}` is declared but not found (CR-154)"]
+    try:
+        limit = int(pb.get("stale_after") or 8)
+    except (TypeError, ValueError):
+        limit = 8
+    text = page.read_text(encoding="utf-8")
+    m = re.search(r"(?i)\breviewed\b[^0-9\n]{0,8}(\d{4}-\d{2}-\d{2})", text)
+    try:
+        reviewed = (datetime.date.fromisoformat(m.group(1)) if m
+                    else datetime.date.fromtimestamp(page.stat().st_mtime))
+    except (ValueError, OSError):
+        return []
+    reg = Path(root) / str(pb.get("decisions") or "decisions.md")
+    if not reg.is_file():
+        return []
+    n = 0
+    for line in reg.read_text(encoding="utf-8").splitlines():
+        mm = re.match(r"^\|\s*[A-Za-z][A-Za-z-]*\d+\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|", line)
+        if mm and datetime.date.fromisoformat(mm.group(1)) > reviewed:
+            n += 1
+    if n > limit:
+        return [f"playbook `{pb['path']}` last reviewed {reviewed}; {n} decision(s) recorded since in "
+                f"{reg.name} (more than {limit}): read it against them (CR-154)"]
+    return []
 
 
 def label_has_name(label: str, names) -> bool:
