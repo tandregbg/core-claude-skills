@@ -7,6 +7,92 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.5] - 2026-10-22
+
+Wave 4: the quality of the text and the sources, and the last of the four waves.
+All three CRs were verified adversarially, fixed and re-checked. The verification
+found a helper that handed back a config the operator could no longer load, a lint
+that reported a wall of findings about text the generator had written itself, and
+a narrowing that let an artefact title hide a genuine wrong pronoun.
+
+### Added
+
+- **CR-143 -- generated and staged text uses the roster's names and pronouns, and a lint checks it.**
+  A roster entry may declare `pronouns:` (`he`, `she`, `they`) and a `canonical_short:` form, and one
+  reader serves both `/ops check`'s new `pronouns` finding and the `/outbox` staging gate, so a draft
+  cannot pass the gate and then become a finding. A line naming exactly one declared person and then
+  using a singular gendered pronoun of the other form is reported with the declared form; a short
+  spelling of a person who declares a canonical one is reported with it. **An unlisted or undeclared
+  person is always `they`, never inferred from a name.** The measured incident: an assistant wrote
+  the short form and the wrong pronoun in two separate drafts across two sessions, after the roster
+  and its own notes had both said otherwise, and the person had corrected it in a meeting weeks
+  earlier -- two incidents in about ten days, both caught by the operator and neither by a check.
+  `they`, a plural subject of two declared people and a possessive like *their release* are never
+  findings: a lint that fires on ordinary prose is switched off, and then it checks nothing. The
+  check reads position, not reference, and says so in the finding and in SKILL.md -- anaphora
+  resolution is out of reach for a line-based lint, and claiming otherwise would be worse than
+  admitting the limit.
+
+- **CR-145 -- a failed or missing source is named in the output, and direct messages can be
+  declared.** A `chats:` entry may carry `kind: direct` with a person, read for replies since a send
+  and shown in the *Built from* line like any chat; the measured need was an operator sending four
+  one-to-one questions after a meeting to the people who owed the answers, whose replies the archive
+  could not see, so the operator relayed them by hand. A recording source states its preference
+  (`prefer: named-speakers`) and a second recording of the same meeting is listed rather than
+  silently dropped -- two recordings existed and nothing in the config said which was the source. A
+  recording store declared with `transcripts: store:` earns the *checked* pre-flight row. **The
+  `kind: direct` reading depends on a matching option in the chat archiver, which is a separate
+  repository: until that ships, a declared direct chat is read but has nothing to read.** The failed
+  fetch in the agenda header was already delivered by CR-140 in 1.92.2 and is not duplicated here.
+
+- **CR-151 -- the repository list is derived from the status author's reports, and proposed for
+  confirmation.** A helper reads the declared status reports over a window (default 14 working days)
+  and counts the repositories they name -- as `owner/repo`, as `repo#number`, and in tables whose
+  first column is a repository -- then **proposes** a `repos:` block with the days each was named,
+  the items cited and a purpose in the report's own words, listing words that merely collide with a
+  repository name separately as probably prose. **Nothing is written without a yes**, new entries
+  default to `reads: [pulls, releases]`, a re-run proposes again and never removes an entry itself,
+  and the pre-flight warns when a report names a repository the project does not declare. The
+  measured need: a project declared one repository, its own portal, while the release depended on at
+  least seven others, and the only place that said so was the daily status report. A count on the
+  declared repository alone showed several people with nothing merged; over the others the same
+  people had merged work every week, so the first reading had been wrong and nobody had been told.
+
+### Fixed
+
+- **A confirmed proposal no longer hands back a config that will not load.** The insertion found
+  `repos:` only as a line of its own, so a project declaring `repos: []` fell through to the
+  open-a-new-key branch: with an inline value the entries were spliced above the key and the result
+  did not parse, and in a second shape a duplicate key was produced whose last occurrence -- the
+  hand-written empty list -- is the one a reader keeps, so the operator's confirmed entries were
+  written to the file and then ignored by everything that read it. Silent loss of the confirmation
+  is the worst outcome available to a helper whose whole contract is that the operator stays in
+  control. The key is now resolved at its own depth inside `external_systems:`, an empty inline value
+  is rewritten as a block list, the entries are re-indented to the file's own depth, and the result
+  is parsed and checked for every confirmed name before anything is written -- a refusal costs a
+  re-run, a corrupted config costs the next reading of the agenda. The block's basis and date travel
+  with the entries even when the key already exists, because a reader meeting them in six months has
+  to be able to tell a declaration somebody made from one a script proposed and somebody confirmed.
+
+- **The roster lint stops firing on the generator's own output.** A GitHub login colliding with a
+  declared person's short form made every repo-detail line a finding -- `- acme/app #12 Import fix
+  (dee)`, which the generator writes from the author's login, reported *the short form `dee` is
+  ambiguous*. An identifier before the name now rules the line out, the same position-and-context
+  rule CR-150 settled on rather than a list of logins, while prose naming the person first still
+  fires. The wrong-pronoun narrowing admitted any two-word Title Case phrase as a second referent,
+  so `Ann reviewed the Payment Webhook and he signed off` was silenced; an article or a possessive in
+  front of a capitalised pair now marks it an object, because a thing is never a candidate referent
+  for `he` or `she`, while an undeclared colleague still is. The staging gate and the check shared a
+  name resolver but walked two different scopes, so a project declaring its roster in a dotted
+  folder passed the gate and then became a finding; both now resolve one scope.
+
+- **A declared source preference is honoured.** A recording variant is matched on whole tokens rather
+  than substrings, so `unnamed-speakers`, `unnamed` and `renamed-v2` no longer report named speakers
+  -- with the unnamed capture the longer of the two, a declared `prefer: named-speakers` had selected
+  the recording that contradicts it. A store's `connected:` flag is read through one reader, so the
+  spellings YAML permits all count and a value that is neither a yes nor a no becomes a config
+  finding rather than a quiet no.
+
 ## [1.92.4] - 2026-10-21
 
 Wave 3: the shorter format. CR-121 and CR-148 were designed as one layout

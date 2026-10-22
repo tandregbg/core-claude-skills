@@ -292,6 +292,18 @@ a dispatcher under CR-115) checks before writing, with `resolved.py --validate <
 3. It is written `**Status:** <value>`, colon outside the bold. `**Status: SKICKAD**` reads as
    statusless to every tool and so falls out of every count.
 
+4. **The roster's names and pronouns (CR-143).** The manifest body is the draft -- the mejl text, the
+   recap, the summary that goes out -- and it is checked against the project's `people:` roster, resolved by
+   walking up from the folder the manifest will be written to (`--roster DIR` when validating on stdin).
+   A line naming exactly one declared person whose entry declares `pronouns:` and then using a singular
+   gendered pronoun of the other form is refused, with the declared form named; so is a short spelling of
+   a person whose entry declares `canonical_short:`, with the canonical one named. **The gate runs here
+   so a draft with the problem never reaches `_outbox/`** -- reporting it afterwards is after the package
+   was staged. `they`/`them`/`their` is never refused, and nor is a gendered pronoun on a line naming two
+   declared people: a gate that fired on ordinary prose about a team would be worked around. With no
+   declared roster, or no entry declaring either key, only requirements 1-3 are checked -- the gate never
+   guesses a person's pronouns from their name, which is the defect CR-143 is about.
+
 `/ops check` keeps reporting and never rewrites (CR-103); it is now the backstop for legacy items.
 Whether a `Kanonisk källa` path resolves is not checked (CR-120).
 

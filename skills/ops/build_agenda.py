@@ -648,6 +648,51 @@ def _chat_messages(d: Path, after: datetime.date) -> list[tuple[str, str]]:
     return out
 
 
+# CR-145, proposal 1: the kinds a declared chat may be. `group` is the only kind that
+# existed before, so it is the default and an entry declaring nothing keeps behaving
+# exactly as it did. `direct` is a one-to-one conversation with ONE person.
+#
+# Why it exists, measured: an operator sent four one-to-one questions after a meeting,
+# to the people who owed the answers. The archive reads only declared group chats, so
+# the replies were invisible to everything downstream and the operator relayed them by
+# hand -- the one job this loop exists to remove. The answers were later found, by luck,
+# in the project chat where the people had also posted them.
+CHAT_KINDS = ("group", "direct")
+CHAT_DEFAULT_KIND = "group"
+
+
+def chat_kind(entry: dict) -> str:
+    """The declared kind of one `chats:` entry, or `group` (CR-145, proposal 1).
+
+    An unknown value reads as `group`: a kind nobody implemented must not quietly turn a
+    declared chat into an unread one, and `config_checks` reports the bad value instead.
+    """
+    k = str((entry or {}).get("kind") or "").strip().lower()
+    return k if k in CHAT_KINDS else CHAT_DEFAULT_KIND
+
+
+def chat_person(cf: dict, entry: dict) -> str | None:
+    """The roster name a `kind: direct` chat is with, as the roster spells it, or None.
+
+    Resolution is `roster_entries`/`keys_of` -- CR-143's resolver, shared with the pronoun
+    check and the per-person lint -- so a declared `person: Bob` resolves
+    through name, alias or first name exactly as every other roster reader in this module
+    does. A second resolver here would eventually disagree with that one about who a name
+    belongs to, which is the drift this repo warns about.
+
+    A `person:` no roster answers to returns None and keeps its declared spelling at the
+    call site: the chat is still READ -- the archive does not care what the config calls
+    the person -- and the unresolved name is a config finding, not a dropped source.
+    """
+    want = str((entry or {}).get("person") or "").strip().lower()
+    if not want:
+        return None
+    for p_, keys in roster_entries(cf):
+        if want in keys:
+            return str(p_.get("name") or "").strip() or None
+    return None
+
+
 def from_chat(cf: dict, after: datetime.date) -> list[dict]:
     """Messages posted to the series chats since the last note -- said in writing,
     never in the room, therefore absent from every transcript.
@@ -662,16 +707,35 @@ def from_chat(cf: dict, after: datetime.date) -> list[dict]:
     runs across three chats and whose agenda quietly reads one produces a block that
     is complete-looking and partial.
 
-    Returns one record per declared chat -- `{name, messages, problem}` -- so the
-    caller can report per chat. A chat that cannot be resolved carries a `problem`
+    **A `kind: direct` entry is read the same way (CR-145, proposal 1)** -- same archive,
+    same id match, same message reader. Direct messages are chat traffic; the only thing
+    the kind changes is what the output CALLS the source, so a reader can tell a reply
+    owed by one person from a post to the room. Nothing here is conditional on the kind,
+    deliberately: a second reading path for direct messages is a second place for a
+    source to go quietly unread.
+
+    Returns one record per declared chat -- `{name, kind, person, messages, problem}` --
+    so the caller can report per chat. A chat that cannot be resolved carries a `problem`
     and NO messages: a diagnostic counted as traffic is worse than no count at all.
     """
     chats = cf.get("ext", {}).get("chats") or []
     if not chats:
         return []
+
+    def rec_for(c, messages, problem):
+        """One record. `person` is the roster's spelling where the roster answers to the
+        declared one, and the declared spelling otherwise -- never dropped, because a
+        name the roster does not hold is still the only thing that says whose reply this
+        is."""
+        kind = chat_kind(c)
+        who = (chat_person(cf, c) or str(c.get("person") or "").strip() or None) \
+            if kind == "direct" else None
+        return {"name": c.get("name"), "kind": kind, "person": who,
+                "messages": messages, "problem": problem}
+
     venture = next((p for p in cf["_root"].parents if (p / ".teamschats").is_dir()), None)
     if not venture:
-        return [{"name": None, "messages": [],
+        return [{"name": None, "kind": CHAT_DEFAULT_KIND, "person": None, "messages": [],
                  "problem": "no .teamschats/ archive found above this project"}]
     # One pass over the archive; declared ids are then looked up rather than the
     # archive re-globbed and re-parsed once per declared chat.
@@ -684,10 +748,23 @@ def from_chat(cf: dict, after: datetime.date) -> list[dict]:
     out = []
     for c in chats:
         d = byid.get(c.get("id"))
-        out.append({"name": c.get("name"),
-                    "messages": _chat_messages(d, after) if d else [],
-                    "problem": None if d else "declared chat not in the archive"})
+        out.append(rec_for(c, _chat_messages(d, after) if d else [],
+                           None if d else "declared chat not in the archive"))
     return out
+
+
+def chat_label(c: dict) -> str:
+    """What the output calls one chat record (CR-145, proposal 1).
+
+    A group chat is its declared name, as it always was. A direct chat is named for the
+    PERSON, because that is the fact a reader needs: the four invisible replies were owed
+    by four named people, and *direct: Ravi* says whose answer arrived where a platform
+    conversation id says nothing. The declared name is the fallback for a direct entry
+    that names no person -- an unlabelled source is worse than an imperfectly named one.
+    """
+    if c.get("kind") == "direct":
+        return "direct: " + str(c.get("person") or c.get("name") or "?")
+    return str(c.get("name") or "?")
 
 
 def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[str]:
@@ -1236,6 +1313,357 @@ def source_person_counts(cf: dict) -> list[str]:
             if person_count_lines(text, roster):
                 out.append(f"**{r.get('name') or r['dir']}**: per-person figures present in"
                            " the source, not copied.")
+    return out
+
+
+# ---- CR-143: generated text uses the roster's names and pronouns ----------------
+# One reader for the generator, `/ops check` and the staging gate, in the module that
+# already owns roster resolution (CR-150's `roster_names`). A gate and a lint that
+# disagreed about what "the wrong pronoun" is would be worse than one of them existing:
+# a draft would pass staging and then be a finding, or the reverse.
+#
+# Why it exists: a team member's name is also a common female name when shortened, and
+# the member is male. The roster carried the full name, the aliases and a note. An
+# assistant wrote the short form and the wrong pronoun in two separate drafts, once in
+# each of two sessions, after the roster and its own notes had both said otherwise, and
+# the person had corrected it in a meeting weeks earlier. Both were caught by the
+# operator; no check caught either. A name does not tell you anyone's pronouns, which is
+# why proposal 3 defaults an unlisted person to `they` and never infers.
+#
+# WHAT MAKES A LINE A FINDING, and this is the whole design problem. `they` is both the
+# singular pronoun for an unlisted person and the ordinary English plural, so a rule that
+# fired whenever a declared name shares a line with a pronoun fires on nearly every
+# sentence a standup writes -- "Ann and Bob shipped the import; their release is Friday",
+# "the team said they would". A lint that fires on ordinary prose is switched off within a
+# week, and then it checks nothing at all (CR-150 shipped that failure and it had to be
+# fixed twice). So a finding needs ALL FOUR of:
+#
+#   1. the subject is a person the project DECLARED (`roster_names`, nearest declaration),
+#      resolved by name, alias or first name -- never by the shape of a capitalised word;
+#   2. the person's entry DECLARES `pronouns:`. No declaration, no finding: the roster is
+#      the only thing that knows, and guessing from the name is the defect itself;
+#   3. the pronoun is SINGULAR AND GENDERED (`he`/`him`/`his`, `she`/`her`/`hers`).
+#      `they`/`them`/`their` is never a finding in either direction -- it is the plural,
+#      it is the default for the unlisted, and it is correct for a person who declares it;
+#   4. the pronoun CONTRADICTS the declaration, and the line names ONE declared person.
+#      A line naming two people is a plural subject, so a gendered pronoun on it may
+#      belong to either; that is a sentence to rewrite, not a wrong fact to report.
+#
+# WHAT THIS CANNOT KNOW, stated plainly because the finding states it too (defect pass).
+# The rule above is a POSITION test: the pronoun comes after the name. It is not a REFERENT
+# test, and a line-based lint cannot be one -- resolving which noun phrase a pronoun refers
+# to is anaphora resolution, and the cases are structurally identical:
+#
+#     Dee led the review; his summary is filed.               <- the pronoun IS Dee's
+#     Dee filed the ticket the reporter raised; her account was locked.   <- it is not
+#
+# Same shape, same punctuation, same distance; the only difference is that `the reporter`
+# denotes a person and `the review` does not, which needs a word list of role nouns, and
+# CR-150 records what a word list or a shape test does to this kind of check. So the
+# narrowing is condition 6 -- the ONE intervening referent the lint can see without
+# guessing, an undeclared person written as a two-word name (`_OTHER_NAME`) -- and the
+# finding SAYS the check read position and not reference, so the author confirms rather
+# than obeying. A third party named by a role noun still produces a finding; it is a
+# finding the author can dismiss in one read, which is the honest cost of a line-based
+# check, and it is written down here rather than left for the operator to discover.
+#
+# The second finding is the AMBIGUOUS SHORT FORM: a roster entry declaring
+# `canonical_short:` has said which short spelling a summary uses, and any other short form
+# of that entry is reported WITH the canonical one. That is the measured incident's other
+# half -- the short form was written, and it reads as somebody else.
+#
+# ... and it needed a fifth condition, because the lint fired on the GENERATOR'S OWN OUTPUT
+# (defect pass). A repo's data carries GitHub LOGINS -- `author.login`, `assignees[].login`
+# -- and a login is lower-case and short, so a login that happens to equal somebody's short
+# form made every repo-detail line a finding:
+#
+#     - acme/app #12 Import fix (dee)          <- `pulls_since`, rendered by this module
+#     - #7 Retest — dee                        <- the issue list
+#     | [#3](url) | api | **open** | dee | ... |  <- the release-blocker table
+#
+# `/ops check` then reported a wall of findings about text this module wrote deliberately,
+# and the operator switches the check off -- which is exactly how CR-150 shipped and had to
+# be fixed twice.
+#
+#   5. an IDENTIFIER BEFORE the short form rules the line out. This is CR-150's rule, and
+#      the same reason holds: an item with a handle on it names the ITEM first, and the
+#      name after it is an accountability slot the generator filled from the source's own
+#      field. PROSE about a person names the person first -- `Dee reviewed the import`,
+#      `Dee owns it` -- and has no issue number, ticket key or PR number ahead of them.
+#      That is a POSITION-AND-CONTEXT test, not a word list: no login is enumerated
+#      anywhere, so a new repo, a new login or a new renderer needs no change here. All
+#      three shapes above put `#n` ahead of the name, and so does every other line this
+#      module writes from a repo row.
+#
+# What it deliberately does NOT rule out: `Dee closed #12 yesterday` -- the person is named
+# first, the identifier follows, and that is prose. A draft can still silence a genuine
+# finding by putting an issue number in front of a sentence about a person, and that is the
+# same residual CR-150 accepted for the same reason: the alternative fires on every line of
+# every generated appendix, and a check nobody runs catches nothing.
+
+# Singular gendered pronouns, by the form the roster declares. `they` is deliberately
+# absent as a MATCH target: see rule 3 above. It is a value `pronouns:` may declare, and
+# an entry declaring it simply has no gendered form to contradict.
+_PRONOUN_FORMS = {"he": ("he", "him", "his", "himself"),
+                  "she": ("she", "her", "hers", "herself")}
+PRONOUN_VALUES = ("he", "she", "they")
+# Which declared form a spoken pronoun belongs to, lower-cased. `her` is both object and
+# possessive and belongs to `she` either way, so one map answers both.
+_PRONOUN_OF = {w: form for form, words in _PRONOUN_FORMS.items() for w in words}
+_GENDERED = re.compile(r"\b(" + "|".join(sorted(_PRONOUN_OF, key=len, reverse=True)) + r")\b", re.I)
+# CR-143, defect pass: an UNDECLARED person named between the declared name and the
+# pronoun. Two capitalised words in a row -- a NAME shape, which is the one person-shape a
+# single capitalised word does NOT have: `Mobile`, `Backend`, `Total` and every area and
+# team a standup writes are one word, and CR-150 records that flagging on single-word
+# capitalisation is "not a near miss, it is the opposite answer". So two words, both
+# capitalised, both with a lower-case letter following (`API Gateway` and `PR Review` stay
+# out). It is a NARROWING only: a match means the pronoun has another candidate referent
+# and the line is NOT reported. Missing a third party this does not see is a false
+# negative, which is the safe direction for a lint somebody has to keep switched on.
+_OTHER_NAME = re.compile(r"\b[A-Z][a-z][\w'-]*\s+[A-Z][a-z][\w'-]*")
+# A Title Case pair that is a PERSON rather than a thing: an article or a possessive
+# in front of it makes it an object (`the Payment Webhook`, `its Release Branch`), and
+# an object is never a candidate referent for `he` or `she`. Everything else is read as
+# a name, because the roster is not exhaustive and an undeclared colleague still owns a
+# pronoun this check cannot know (CR-143, defect pass).
+_OTHER_PERSON = re.compile(
+    r"(?<!\bthe )(?<!\ba )(?<!\ban )(?<!\bits )(?<!\bour )(?<!\btheir )(?<!\bthis )"
+    r"\b[A-Z][a-z][\w'-]*\s+[A-Z][a-z][\w'-]*")
+
+
+def pronoun_of(entry: dict) -> str:
+    """The pronouns a roster entry declares, or `they` (CR-143, proposal 3).
+
+    `they` for an entry that declares nothing, and for an undeclared value: the default is
+    never inferred from the name, which is the whole point of the CR. An entry declaring
+    something outside `PRONOUN_VALUES` is a config finding, not a licence to guess.
+    """
+    v = str((entry or {}).get("pronouns") or "").strip().lower()
+    return v if v in PRONOUN_VALUES else "they"
+
+
+def roster_entries(cf: dict) -> list[tuple[dict, set[str]]]:
+    """Each roster entry with every spelling it answers to, lower-cased (CR-143).
+
+    The same resolution `roster_names` performs -- declared name, aliases, and the first
+    name of each, because a roster entry `Ann Rivera` is `Ann` in the room -- but kept PER
+    ENTRY, because a pronoun belongs to a person and not to the roster as a whole.
+    `roster_names` is the union of exactly these sets, so the lint and the per-person
+    check cannot disagree about who is declared (the drift this repo warns about).
+    """
+    return [(p_, keys_of(p_)) for p_ in cf.get("people") or [] if isinstance(p_, dict)]
+
+
+def keys_of(entry: dict) -> set[str]:
+    """Every spelling ONE roster entry answers to, lower-cased: `roster_names` for one."""
+    return roster_names({"people": [entry]})
+
+
+def checkable_entries(people) -> list[tuple[dict, set[str]]]:
+    """The roster entries the pronoun lint can check: those that DECLARE something.
+
+    `pronouns:` or `canonical_short:` -- and a spelling to be found by. A scope whose
+    roster declares neither contributes nothing, which is what lets `pronoun_scope` keep
+    walking up to one that does, and it is the same reason CR-150's check needs a roster:
+    the declaration is the only thing that knows.
+    """
+    return [(e, keys) for e, keys in roster_entries({"people": people or []})
+            if keys and (e.get("pronouns") or e.get("canonical_short"))]
+
+
+def pronoun_scope(path) -> list[tuple[dict, set[str]]]:
+    """The roster entries governing `path` for the CR-143 pronoun lint.
+
+    THE ONE RESOLUTION, and that is the point of it (defect pass). `/ops check` and the
+    `/outbox` staging gate each had their own walk, and they disagreed: a project folder
+    declaring its own roster in `.claude/ops-config.yaml` and holding no plain file at its
+    own level was invisible to the check's scope list -- `walk()` skips dotted folders, so
+    the project never appeared as a scope -- while the gate's upward walk found it. The
+    same draft in that project then PASSED the gate against the project's roster and became
+    a finding against the venture's. A gate and a lint that disagree about what the wrong
+    pronoun is are worse than one of them existing, which is what this module's own design
+    comment says, so there is now one function and both surfaces call it.
+
+    Nearest declaration wins, walking UP from the file's own folder, which is how
+    `config()` resolves every other key in this family -- a project declaring its own
+    roster is not read against the venture's. The first scope with a CHECKABLE entry
+    answers; a scope whose roster declares neither key is passed over, because a roster
+    that says nothing about pronouns is not a declaration that the nearer silence wins.
+
+    `None`, no config, or nothing declared anywhere above it, and the answer is empty: the
+    caller then reports nothing. Guessing a person's pronouns from their name is the defect
+    CR-143 is about.
+    """
+    if path is None:
+        return []
+    p = Path(path).expanduser().resolve()
+    start = p.parent if p.is_file() or p.suffix else p
+    for root in (start, *start.parents):
+        for name in CONFIG_FILES:
+            f = root / name
+            if not f.is_file():
+                continue
+            try:
+                d = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+            except (OSError, yaml.YAMLError):
+                continue
+            if not isinstance(d, dict):
+                continue
+            if ents := checkable_entries(d.get("people")):
+                return ents
+    return []
+
+
+def short_forms(entry: dict) -> set[str]:
+    """Every one-word spelling of an entry, lower-cased: the short forms a draft may write.
+
+    The first word of the declared name and of each alias -- the spellings a short form on a
+    line is looked up in. Whether a given one is AMBIGUOUS is `pronoun_lines`'s decision and
+    only its decision: a `canonical_short:` of `Dee O` and a declared name of `Dee Okafor`
+    share their first word, so the question is never "is this word the canonical form" but
+    "is this word followed by the rest of a longer spelling". Excluding the canonical form
+    here as well was a second answer to that one, and a dead one (mutation pass): removing
+    it changed no behaviour, because the longer-spelling guard already covered every case.
+    """
+    out: set[str] = set()
+    for k in [entry.get("name")] + list(entry.get("aliases") or []):
+        if k and str(k).strip():
+            out.add(str(k).strip().split()[0].lower())
+    return {s for s in out if s}
+
+
+def pronoun_lines(text: str, entries: list[tuple[dict, set[str]]]) -> list[tuple[int, str]]:
+    """Lines whose pronoun or short form contradicts the roster: `(line number, what)`.
+
+    The six conditions a finding needs are in the block comment above; they are what keeps
+    this off ordinary prose and off this module's own output. Two kinds come back:
+
+      - *a wrong pronoun*: the line names exactly ONE declared person whose entry declares
+        `pronouns:`, and then uses a singular gendered pronoun of the other form. Reported
+        with the declared form, so the fix is in the finding.
+      - *an ambiguous short form*: the line writes a short spelling of an entry that
+        declares `canonical_short:`, which has said which short form a summary uses.
+        Reported with the canonical one.
+
+    Never a finding: `they`/`them`/`their` anywhere (the plural, the default for an
+    unlisted person, and correct for anyone declaring it); a gendered pronoun on a line
+    naming two or more declared people (a plural subject -- the pronoun may belong to
+    either, which is a sentence to rewrite and not a wrong fact); a gendered pronoun with
+    no declared person on the line at all (nobody to contradict); and a person whose entry
+    declares no `pronouns:`, because the roster is the only thing that knows.
+
+    The PRONOUN MUST FOLLOW THE NAME on the line. "He reviewed it; Ann is next" names a
+    previous subject and a new one, and reading the pronoun back onto the later name is how
+    a lint starts being wrong about correct prose.
+
+    Nor is either kind a finding where an IDENTIFIER precedes the name (condition 5): the
+    line is then a statement about an item and the name after it is the slot THIS MODULE
+    filled from a repo login, not prose about a person. Without this the check reported
+    every repo-detail line the generator writes whenever a login equalled somebody's short
+    form, which is a check the operator switches off.
+
+    And the wrong-pronoun kind is not a finding where another person is named BETWEEN the
+    name and the pronoun (condition 6): the pronoun has a second candidate referent. This
+    check reads POSITION, NOT REFERENCE -- it cannot resolve anaphora, a third party named
+    by a role noun (*the reporter*, *the customer*) still produces a finding, and the
+    finding says so, so the author confirms rather than obeys. The block comment above has
+    the two structurally identical sentences that make this unavoidable.
+
+    Fenced blocks are skipped, as in every other reader here: a line inside a fence is an
+    example of the convention, not a file's content.
+    """
+    out: list[tuple[int, str]] = []
+    declared = [(e, keys) for e, keys in entries if keys]
+    if not declared:
+        return out
+    fenced = False
+    for n, line in enumerate((text or "").splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        low = line.lower()
+        words = set(re.findall(r"[\w'-]+", low))
+        # Who the line names, and WHERE: the earliest spelling of each entry on the line.
+        # A word-boundary search rather than the token set, so the position is known --
+        # condition 4 needs the pronoun to come after the name.
+        # The END of the matched spelling is kept beside its start (defect pass): the
+        # referent narrowing below reads the span BETWEEN the name and the pronoun, and
+        # taking that span from the name's start would put the name's own second word
+        # (`Dee Okafor`) inside it and read as an intervening person every time.
+        named: list[tuple[int, int, dict]] = []
+        for e, keys in declared:
+            spans = [(m.start(), m.end()) for k in keys
+                     for m in [re.search(r"\b" + re.escape(k) + r"\b", low)] if m]
+            if spans:
+                named.append((*min(spans), e))
+        # The ambiguous short form is its own finding and does not need a pronoun at all:
+        # the measured incident wrote the short spelling AND the wrong pronoun, and either
+        # alone is the thing to fix. One per entry per line.
+        #
+        # It has to be written SHORT, standing alone (defect pass): `Dee` is the first word
+        # of `Dee Okafor`, so a token test reported the FULL declared name as its own
+        # ambiguous short form -- a finding on the one spelling that is never ambiguous, on
+        # every line naming the person. What is looked for is the short form NOT followed by
+        # a further word of a longer spelling the same entry answers to.
+        for _at, _end, e in named:
+            canon = str(e.get("canonical_short") or "").strip()
+            if not canon:
+                continue
+            # The CANONICAL form counts as one of the longer spellings (defect pass):
+            # `Dee O` starts with `Dee`, so without it the one spelling the roster ASKS
+            # for was reported as the ambiguous one -- a lint telling the author to write
+            # exactly what they wrote.
+            longer = sorted((k for k in keys_of(e) | {canon.lower()} if " " in k),
+                            key=len, reverse=True)
+            # A longer spelling must match AT A WORD BOUNDARY from here, not as a bare
+            # prefix (defect pass): `Dee O` is a prefix of `Dee owns the import`, so a
+            # `startswith` silenced the finding on the very sentence the CR is about.
+            #
+            # Condition 5 (defect pass): each occurrence is kept only if NO identifier
+            # precedes it on the line. `line[:m.start()]` rather than the whole line, so
+            # `Dee closed #12` -- prose, person first -- is still the finding it was,
+            # while `#12 Import fix (dee)`, which this module wrote from a login, is not.
+            wrote = sorted(s for s in short_forms(e) & words
+                           if any(not any(re.match(re.escape(k) + r"\b", low[m.start():])
+                                          for k in longer)
+                                  and not identifiers(line[:m.start()])
+                                  for m in re.finditer(r"\b" + re.escape(s) + r"\b", low)))
+            if wrote:
+                out.append((n, f"the short form `{wrote[0]}` is ambiguous: write `{canon}`"))
+        if len(named) != 1:
+            continue          # no declared person, or a plural subject (condition 4)
+        at, end, e = named[0]
+        want = pronoun_of(e)
+        if want not in _PRONOUN_FORMS:
+            continue          # `they`, declared or defaulted: no gendered form to contradict
+        # Condition 5, as for the short form: an identifier BEFORE the name means the line
+        # is a statement about an item and the name is the slot this module filled from a
+        # login, not prose about a person.
+        if identifiers(line[:at]):
+            continue
+        m = next((x for x in _GENDERED.finditer(line) if x.start() > at
+                  and _PRONOUN_OF[x.group(1).lower()] != want), None)
+        # Condition 6 (defect pass): another person named between the name and the pronoun
+        # gives the pronoun a second candidate referent, and the line is then not reported.
+        # This is a NARROWING, and a partial one on purpose -- see the honesty note below.
+        # Only another PERSON gives the pronoun a second candidate referent: a declared
+        # one, or a two-word name that is not a known thing. `_OTHER_NAME` alone matched
+        # any Title Case pair, so an artefact or an area title between the name and the
+        # pronoun (`Ann reviewed the Payment Webhook and he signed off`) silenced a
+        # genuine wrong pronoun. The roster is not exhaustive -- an undeclared colleague
+        # is still a referent -- so a Title Case pair counts unless the words before it
+        # make it a thing: `the`, `a` and a possessive introduce an object, never a name.
+        # A DECLARED second person never reaches here: condition 4 above already drops a
+        # line with two declared subjects, so this only has to recognise an UNDECLARED
+        # one -- which is why the roster is not consulted again.
+        between = line[end:m.start()] if m else ""
+        if m and not _OTHER_PERSON.search(between):
+            out.append((n, f"{e.get('name')} is `{want}` in the roster, and this line"
+                           f" writes `{m.group(1).lower()}` after their name -- confirm the"
+                           " pronoun refers to them (this check reads position, not"
+                           " reference)"))
     return out
 
 
@@ -1811,6 +2239,210 @@ def recorded_since(cf: dict, after: datetime.date, told: str | None) -> list[dic
     return out
 
 
+# ---- CR-145, proposal 3: which of two recordings of one meeting is the source ---
+#
+# Measured: two recordings of one meeting existed in the store -- a notetaker's and the
+# operator's own, differing in length and in whether speakers are named. Nothing in the
+# config said which was the source, so the assistant chose one (the one with named
+# speakers) and mentioned the other in a header. The choice was defensible and
+# undeclared, which means the next run could make the other one and nothing would notice.
+#
+# So the project DECLARES its preference and the output LISTS BOTH. Those are two separate
+# fixes for two separate halves of the same incident: a declared preference makes the
+# choice reproducible, and listing the one not used is what stops a dropped recording from
+# looking like a recording that never existed. Dropping the second silently is the failure
+# this module names everywhere else -- a source that was skipped must say so.
+#
+# `named-speakers` is the only preference implemented, because it is the only one measured
+# and because each one is a claim about what an archiver writes. An undeclared or unknown
+# value falls back to the longest recording: without a preference the longest is the one
+# most likely to be the whole meeting, and a run that cannot explain its choice at least
+# makes the same one every time.
+RECORDING_PREFERENCES = ("named-speakers", "longest")
+RECORDING_DEFAULT_PREFERENCE = "longest"
+# A variant an archiver writes when the transcript resolves speakers to names rather than
+# to "Speaker 1". The spelling is the archiver's and this side of the contract does not get
+# to dictate it, so several are accepted -- but each is matched as a WHOLE TOKEN sequence
+# and never as a substring (CR-145, defect pass).
+#
+# Why: with substring matching, the bare word `named` in this list made
+# `unnamed-speakers`, `unnamed` and `renamed-v2` all report named speakers,
+# so a `prefer: named-speakers` declaration selected the recording whose speakers are
+# explicitly NOT named -- the opposite of what the operator declared, and silently, because
+# the output names the chosen recording and not the reason. A variant is a token list
+# (`named-speakers`, `named speakers v2`), so tokenising it is reading the contract as the
+# archivers write it rather than guessing inside words.
+#
+# The bare `named` is NOT one of the accepted spellings, for the same reason: on its own it
+# says nothing about speakers, it is the token every negative spelling also contains, and
+# as one token it still matched `un-named`. A spelling that cannot be told apart from its
+# own negation is not a signal. Each accepted spelling names SPEAKERS explicitly.
+_NAMED_SPEAKER_WORDS = ("named-speakers", "named speakers", "speaker-names")
+# Tokens that NEGATE whatever follows them. `not-named-speakers` contains the accepted
+# sequence `named speakers` and means its opposite, so a match immediately preceded by one
+# of these is not a match: the same defect as `unnamed`, one token further out.
+_VARIANT_NEGATIONS = ("not", "no", "un", "without")
+# Anything that is not a letter or a digit separates tokens: `-`, `_`, `.`, space and `/`
+# are all seen in one archiver or another, and none of them is part of a word.
+_VARIANT_TOKEN = re.compile(r"[^a-z0-9]+")
+
+
+def _variant_tokens(value) -> list[str]:
+    """One recording variant as its lower-cased tokens (CR-145, defect pass)."""
+    return [t for t in _VARIANT_TOKEN.split(str(value or "").lower()) if t]
+
+
+# The spellings of true and false a hand-written YAML flag arrives as (CR-145, defect
+# pass). `yaml.safe_load` already turns bare `true`/`yes`/`on` into a bool, but a QUOTED
+# `"true"` and a `1` reach this side as a string and an int -- and the first reading of
+# `connected:` tested `is True`, so both fell through to the false branch and produced NO
+# finding: an operator who declared the connection in a spelling YAML permits got the old
+# behaviour and nothing telling them why. Every other key this CR adds either takes effect
+# or is reported, so this one does too.
+_FLAG_TRUE = ("true", "yes", "on", "1")
+_FLAG_FALSE = ("false", "no", "off", "0")
+
+
+def flag_value(value) -> bool | None:
+    """One declared boolean flag as a bool, or None where the spelling is not one.
+
+    None is "the operator wrote something, and it is not a yes or a no" -- the case that
+    earns a config finding rather than a silent default, exactly as an unknown `kind:` or
+    `prefer:` does (CR-145, defect pass). An ABSENT key is also None, so callers that
+    distinguish the two check for the key themselves.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):  # `connected: 1` is the same declaration as `connected: true`
+        return True if value == 1 else False if value == 0 else None
+    if isinstance(value, str):
+        v = value.strip().lower()
+        return True if v in _FLAG_TRUE else False if v in _FLAG_FALSE else None
+    return None
+
+
+def store_connected(cf: dict) -> bool:
+    """Whether the declared recording store is one the close-out step can read itself.
+
+    CR-145, proposal 4. `connected: true` beside a `store:` is the operator saying the
+    close-out has a way in -- so the CR-140 check can say *checked* rather than reporting
+    *not checked* forever at a source somebody does look at.
+
+    **Whether a project declares it stays the operator's decision, and this never infers
+    it.** A store's name says nothing about whether anything can read it, and a guess here
+    would turn an undeclared store into a claim that the transcript will arrive. It also
+    requires a `store:`: `connected: true` on its own names nothing to connect to.
+
+    The flag is read through `flag_value`, so the YAML-truthy spellings an operator may
+    write -- a quoted `"true"`, a `1`, `yes` -- are the declaration they look like, and a
+    value that is NEITHER a yes nor a no is a config finding rather than a quiet no
+    (CR-145, defect pass).
+    """
+    trd = (cf.get("ext") or {}).get("transcripts") or {}
+    return bool(trd.get("store")) and flag_value(trd.get("connected")) is True
+
+
+def recording_preference(cf: dict) -> str:
+    """The declared `transcripts.prefer:`, or `longest` (CR-145, proposal 3)."""
+    v = str(((cf.get("ext") or {}).get("transcripts") or {}).get("prefer") or "").strip().lower()
+    return v if v in RECORDING_PREFERENCES else RECORDING_DEFAULT_PREFERENCE
+
+
+def _duration_seconds(value) -> int:
+    """A recording's duration as seconds, or 0 where it cannot be read.
+
+    Archivers write this as seconds, as `MM:SS` or as `H:MM:SS`, so all three are read
+    here rather than one being declared the only true spelling -- the field belongs to
+    the archiver. An unreadable duration is 0, which puts the recording LAST in a
+    longest-first order: a recording whose length is unknown must not win a comparison
+    it never entered.
+    """
+    s = str(value or "").strip()
+    if not s:
+        return 0
+    if re.fullmatch(r"\d+", s):
+        return int(s)
+    if re.fullmatch(r"(?:\d+:)?\d{1,2}:\d{2}", s):
+        total = 0
+        for part in s.split(":"):
+            total = total * 60 + int(part)
+        return total
+    return 0
+
+
+def has_named_speakers(rec: dict) -> bool:
+    """Whether a recording's declared variant says its speakers are named.
+
+    Matched on WHOLE TOKENS (CR-145, defect pass): `unnamed-speakers`, `unnamed` and
+    `renamed-v2` say the speakers are not named, or say nothing about them, and each one
+    matched the bare substring `named`. A preference the operator declared must not select
+    the one recording that contradicts it.
+    """
+    toks = _variant_tokens((rec or {}).get("variant"))
+    for want in (_variant_tokens(w) for w in _NAMED_SPEAKER_WORDS):
+        for i in range(len(toks) - len(want) + 1):
+            # A token SEQUENCE, so `named-speakers` matches `named speakers v2` as well,
+            # while `unnamed speakers` -- a different first token -- matches nothing.
+            if toks[i:i + len(want)] != want:
+                continue
+            if i and toks[i - 1] in _VARIANT_NEGATIONS:
+                continue  # `not named-speakers` is the claim's negation, not the claim
+            return True
+    return False
+
+
+def choose_recordings(recs: list[dict], prefer: str) -> list[dict]:
+    """The same recordings, each gaining `used` and grouped by meeting (CR-145, proposal 3).
+
+    One meeting is one DAY of this series: the `match` filter has already decided every
+    recording here belongs to this series, so two on one day are two captures of one
+    session and not two sessions. Exactly one per day is marked `used: True` and the rest
+    `used: False` -- marked, never removed, because the second recording being absent from
+    the output is the half of the incident that made the choice invisible.
+
+    Order within a day is the preference's, and it is a TOTAL order in every case: a
+    `named-speakers` preference puts the named-speaker recordings first and then the
+    longest among them, so two named-speaker recordings of one meeting still resolve the
+    same way on every run rather than by whichever the archiver happened to write first.
+    """
+    rows = [r for r in recs if not r.get("note")]
+    out = [r for r in recs if r.get("note")]
+    named_first = prefer == "named-speakers"
+    for day in sorted({r.get("day") for r in rows}):
+        group = sorted(
+            (r for r in rows if r.get("day") == day),
+            key=lambda r: ((0 if has_named_speakers(r) else 1) if named_first else 0,
+                           -_duration_seconds(r.get("duration")),
+                           str(r.get("id") or "")))
+        for i, r in enumerate(group):
+            out.append({**r, "used": i == 0})
+    return out
+
+
+def recording_lines(recs: list[dict], prefer: str) -> list[str]:
+    """The recordings of this series as markdown lines, the used one marked (proposal 3).
+
+    Written where the detail lives -- the details file on the card layout, the appendix of
+    the one page on the list layout -- and not on the card: which capture a transcript came
+    from is a fact the close-out needs and not a thing the room talks through.
+    """
+    chosen = choose_recordings(recs, prefer)
+    rows = [r for r in chosen if not r.get("note")]
+    if not rows:
+        return []
+    out = ["## Recordings of this series", "",
+           f"Source preference declared: `{prefer}`. A recording marked *not used* is listed"
+           " because it exists, not because anything is wrong with it: two captures of one"
+           " meeting is the normal case, and the one not used must not vanish.", "",
+           "| Day | Recording | Duration | Variant | |", "|---|---|---|---|---|"]
+    for r in rows:
+        out.append(f"| {r.get('day', '?')} | {r.get('id') or '?'}"
+                   f"{' — ' + str(r['title']) if r.get('title') else ''}"
+                   f" | {r.get('duration') or '—'} | {r.get('variant') or '—'}"
+                   f" | {'**used**' if r.get('used') else 'not used'} |")
+    return out + [""]
+
+
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
@@ -2084,6 +2716,61 @@ def config_checks(cf: dict, hist: list, day: datetime.date, mv_x: dict | None) -
     if hist and not roster_names(cf):
         out.append("no `people:` roster: the per-person check (CR-150) finds nothing,"
                    " because a count's subject is resolved against the roster")
+    # CR-143, proposal 1: a `pronouns:` value outside the declared three. Reported rather
+    # than guessed at: `pronoun_of` answers `they` for it, which is the safe reading, but a
+    # config that meant something by the value has said it in a spelling nothing reads, and
+    # the person it describes then gets the default silently.
+    for p_ in cf.get("people") or []:
+        v = str(p_.get("pronouns") or "").strip()
+        if v and v.lower() not in PRONOUN_VALUES:
+            out.append(f"`pronouns: {v}` for {p_.get('name')} is not one of "
+                       + ", ".join(PRONOUN_VALUES)
+                       + f": the text defaults to `they` (CR-143)")
+    # CR-145: the new declarations, checked against the project. Each one is a key whose
+    # bad value falls back to the old behaviour rather than failing -- which is right for
+    # the build and wrong for the operator, who then has a declaration that reads as
+    # honoured and is not. So the fallback happens AND the finding is reported.
+    ext_ = cf.get("ext") or {}
+    roster_ = roster_names(cf)
+    for c_ in ext_.get("chats") or []:
+        if not isinstance(c_, dict):
+            continue
+        nm_ = c_.get("name") or c_.get("id") or "(unnamed chat)"
+        k_ = str(c_.get("kind") or "").strip().lower()
+        if k_ and k_ not in CHAT_KINDS:
+            out.append(f"`kind: {c_.get('kind')}` on chat {nm_} is not one of "
+                       + ", ".join(CHAT_KINDS)
+                       + f": it is read as `{CHAT_DEFAULT_KIND}` (CR-145)")
+        elif k_ == "direct":
+            # A direct chat with no person is readable and unattributable: the output can
+            # say a reply arrived and not whose, which is the one fact the measured
+            # incident needed (four replies, four people who owed them).
+            who_ = str(c_.get("person") or "").strip()
+            if not who_:
+                out.append(f"chat {nm_} is `kind: direct` with no `person:`:"
+                           " the source line cannot say whose reply it is (CR-145)")
+            elif roster_ and who_.lower() not in roster_:
+                out.append(f"`person: {who_}` on chat {nm_} is in no `people:` entry"
+                           " (name, alias or first name): the chat is still read, but the"
+                           " name is not the roster's (CR-145)")
+    trd_ = ext_.get("transcripts") or {}
+    pref_ = str(trd_.get("prefer") or "").strip()
+    if pref_ and pref_.lower() not in RECORDING_PREFERENCES:
+        out.append(f"`transcripts.prefer: {pref_}` is not one of "
+                   + ", ".join(RECORDING_PREFERENCES)
+                   + f": the source falls back to `{RECORDING_DEFAULT_PREFERENCE}` (CR-145)")
+    # CR-145, defect pass: the flag is read through `flag_value`, so a quoted `"true"` or a
+    # `1` is the declaration it looks like -- and a value that is NEITHER a yes nor a no is
+    # reported, as an unknown `kind:` or `prefer:` is, instead of falling through to the
+    # not-connected branch and leaving the operator with the old behaviour and no reason.
+    conn_ = trd_.get("connected")
+    if conn_ is not None and flag_value(conn_) is None:
+        out.append(f"`transcripts.connected: {conn_}` is not a yes or a no:"
+                   " the store is read as not connected, so the check reports it as"
+                   " not checked (CR-145)")
+    elif flag_value(conn_) is True and not trd_.get("store"):
+        out.append("`transcripts.connected: true` with no `store:`: nothing is named to"
+                   " connect to, so the check still reports the store as not checked (CR-145)")
     rounds = [round_table(n) for _d_, n in hist[-3:]]
     if rounds and all(rounds):
         absent = [p_["name"] for p_ in cf.get("people") or []
@@ -2303,9 +2990,18 @@ def skipped_between(skips: list[tuple[datetime.date, str]],
 # None of the expensive readers (`from_chat`, `from_repo`, `from_jira`) is called:
 # their answer is WHAT MOVED, which a pre-flight does not ask.
 READY, STALE, FAILED, MISSING, UNCHECKED = "ready", "stale", "failed", "missing", "not checked"
+# CR-151, proposal 6: a source the reports name and the config does not hold. Its own
+# state because it is the opposite question from the others: not *is the declared source
+# there* but *is a source missing from the declaration*, which is why it stays out of
+# `CHECK_BAD` below.
+UNDECLARED = "undeclared"
 # The states that make the exit code non-zero. `failed` is among them: a fetch that
 # failed is a source that is not there, whatever the archive still holds.
 CHECK_BAD = (STALE, FAILED, MISSING)
+# CR-151, proposal 6: days a report must name an undeclared repository on before the
+# pre-flight says so. One reader, in `propose_repos`, so the warning and the proposal
+# cannot disagree about the same repository.
+UNDECLARED_DAYS = 3
 # Days before a dated report counts as stale. Matches the config_checks threshold
 # (CR-119) so the two cannot disagree about the same report.
 REPORT_STALE_DAYS = 3
@@ -2405,11 +3101,57 @@ def check_rows(cf: dict, md: Path, hist: list[tuple[str, Path]],
                          f"declared archive not found: {arch}"))
         elif arch:
             rows.append(("recording source", "checked", "—", str(arch)))
+        elif store_connected(cf):
+            # CR-145, proposal 4: a store the close-out step can read ITSELF is a source
+            # that something looked at, so the row says CHECKED. Before this, the only way
+            # to earn `checked` was an archive written by an archiver, and a project whose
+            # close-out pulls the transcript directly read as `not checked` every morning
+            # -- a permanent "nobody looked" on a source somebody does look at, which is
+            # how a row stops being read at all.
+            #
+            # It stays OUTSIDE `CHECK_BAD`, like every other recording row: this script
+            # never fetches (CR-087), so the row reports what the DECLARATION entitles a
+            # reader to assume and never claims to have reached a store.
+            rows.append(("recording source", "checked", "—",
+                         f"{trd.get('store') or 'declared'} — connected;"
+                         " the close-out step pulls the transcript (CR-145)"))
         else:
             rows.append(("recording source", UNCHECKED, "—",
                          str(trd.get("store") or "declared")
                          + " — no archive; prepare checks by hand (CR-117)"))
+
+    # CR-151, proposal 6: a repository the status reports name day after day that the
+    # project does not declare. Measured, a project declared one repository and the
+    # release depended on at least seven others; every reader downstream -- the agenda,
+    # the movement block, the digest -- therefore read a fraction of the work and read as
+    # complete. The reports said so all along, so the gap is one a check can see.
+    #
+    # UNDECLARED, not `stale` or `missing`: the sources that ARE declared are all there,
+    # so the exit code is left alone (`CHECK_BAD` does not hold it). The finding is that
+    # the config is short of a source, which is a judgement the operator makes with
+    # `propose_repos.py` -- and a pre-flight that refused the build over it would be a
+    # script blocking a morning on a declaration only a person can write.
+    for nm, days in _undeclared_repos(cf, today):
+        rows.append((f"repository: {nm}", UNDECLARED, f"{days}d named",
+                     "named by the reports, not declared — propose_repos.py --dir <project>/meetings"))
     return rows
+
+
+def _undeclared_repos(cf: dict, today: datetime.date) -> list[tuple[str, int]]:
+    """CR-151's undeclared repositories, read from the declared reports -- or nothing.
+
+    Imported here rather than at module scope, as `build_movement` is: the helper is an
+    optional companion and a project with no declared report must still get a check.
+    One window reader, in `propose_repos`, so the warning and the proposal cannot
+    disagree about how many days a repository was named on.
+    """
+    try:
+        import propose_repos
+        start = propose_repos.working_days_back(today, 14)
+        counts, _read, _problems = propose_repos.count_window(cf, start, today)
+        return propose_repos.undeclared(cf, counts, UNDECLARED_DAYS)
+    except Exception:
+        return []                  # best effort, as everywhere else in this pipeline
 
 
 def _renamed_hint(cf: dict, name: str) -> str | None:
@@ -2471,6 +3213,15 @@ def failed_fetches(cf: dict, recs: dict, today: datetime.date) -> list[str]:
     sources block. The repo-detail section meanwhile used the last good data and
     read as current, so the agenda looked complete -- which is how the same fetch
     failed twice in one morning without the room hearing about it.
+
+    **CR-145, proposal 2: each line also says WHEN the data it left behind is from.**
+    CR-140's line named the failure and said the sections below hold the last good data,
+    which is half the answer: a reader who cannot see the age of that data has no way to
+    judge whether reading on is safe. Measured, a fetch failed for a morning and the
+    repository section used older data without saying so -- so the age comes from the
+    SAME record as the failure (`last_success`), and a record with no successful fetch in
+    it says that instead of implying a time nobody has. One line, extended; a second
+    header line about the same fetch would be two statements for one fact.
     """
     ext = cf.get("ext") or {}
     out = []
@@ -2479,7 +3230,10 @@ def failed_fetches(cf: dict, recs: dict, today: datetime.date) -> list[str]:
                                  ("tickets", ".jirameta", ext.get("jira"))):
         rec = recs.get(sub)
         if declared and rec is not None and not fetch_ok(rec):
-            out.append(f"{label}: {fetch_status(rec, today)}")
+            when = _when(rec.get("last_success"))
+            age = f"data is from {_stamp(when, today)}" if when is not None \
+                else "no successful fetch on record"
+            out.append(f"{label}: {age}; {fetch_status(rec, today)}")
     return out
 
 
@@ -2575,6 +3329,12 @@ def main() -> None:
     # session closed and carrying none of what it opened. Stop, name the recording,
     # and make skipping an explicit choice.
     unprocessed = recorded_since(cf, after, a.recorded)
+    # CR-145, proposal 3: the declared preference decides which capture of a day is the
+    # source, and BOTH are named. The caller's next step is to process one of them, so
+    # the stop message is the first place that has to say which -- and that the other
+    # exists, which is what the measured incident never said anywhere.
+    prefer = recording_preference(cf)
+    unprocessed = choose_recordings(unprocessed, prefer)
     if unprocessed and not a.skip_unprocessed:
         lines = ["", f"  A session appears to have been recorded after {last.name} and never written up:", ""]
         for r in unprocessed:
@@ -2582,7 +3342,9 @@ def main() -> None:
                 lines.append(f"    {r['note']}")
             else:
                 bits = [r.get("id", "?"), r.get("title", ""), r.get("duration", ""), r.get("variant", "")]
-                lines.append(f"    {r['day']}  " + "  ".join(str(b) for b in bits if b))
+                lines.append(f"    {r['day']}  " + "  ".join(str(b) for b in bits if b)
+                             + ("   <- the source (prefer: " + prefer + ")" if r.get("used")
+                                else "   (also recorded, not the source)"))
         lines += ["",
                   "  Process it first — the next agenda is built from the newest note, so building now",
                   "  drops that session entirely.",
@@ -2689,6 +3451,8 @@ def main() -> None:
     # data and read as current, so the page looked complete while a fetch had failed
     # twice that morning. The header is the one place every reader passes.
     if (ff := failed_fetches(cf, recs, now)):
+        # CR-145, proposal 2: each item now carries the age of the data it left behind,
+        # which is what the reader needs in order to decide whether to read on.
         L += [f"> ⚠ **Fetch failed — {'; '.join(ff)}.** What follows is the last good data for that"
               " source, not today's.", ""]
     # CR-147, proposal 2: a line that leaves the card leaves a trace where every reader
@@ -2791,13 +3555,17 @@ def main() -> None:
         crec = recs[".teamschats"]
         for c in chat:
             n = len(c.get("messages") or [])
+            # CR-145, proposal 1: a direct chat is named for its person here, so it
+            # appears in this block -- and therefore in the *Built from* line, which is
+            # parsed from it -- like any other chat rather than as an opaque id.
+            label = chat_label(c)[:44]
             if c.get("problem"):
-                src.append(f"  chat      {(c.get('name') or '?')[:44]:44} NOT READ — {c['problem']}")
+                src.append(f"  chat      {label:44} NOT READ — {c['problem']}")
             else:
                 msgs = c.get("messages") or []
                 newest = max((m[0] for m in msgs), default="—")
                 tail = stale_mark(crec) or fetch_status(crec)
-                src.append(f"  chat      {(c.get('name') or '?')[:44]:44} newest {newest} · {n} since the note · {tail}")
+                src.append(f"  chat      {label:44} newest {newest} · {n} since the note · {tail}")
 
     for kind, rows, declared, rec in (("repo", repo, (cf.get("ext") or {}).get("repos"), recs[".githubmeta"]),
                                       ("tickets", jira, (cf.get("ext") or {}).get("jira"), recs[".jirameta"])):
@@ -2821,8 +3589,13 @@ def main() -> None:
         src.append(f"  digest    {str(total_msgs) + ' message(s) since ' + last_date:44} NOT FILLED — prepare reads them and fills the digest slot")
     trd = (cf.get("ext") or {}).get("transcripts") or {}
     if trd:
+        # CR-145, proposal 4: the same three answers the check row gives, in the block the
+        # *Built from* line is parsed from, so the page and the pre-flight cannot disagree
+        # about whether anything looked at the recording store.
         src.append(f"  record    {str(trd.get('store') or 'declared')[:44]:44} "
                    + ("archive read" if trd.get("archive") else
+                      "connected — the close-out step pulls the transcript (CR-145)"
+                      if store_connected(cf) else
                       "declared, no archive — prepare checks the store by hand (CR-117)"))
     if card:
         src.append(f"  movement  {('read' if mv_head else (mv_note or '—'))[:60]}")
@@ -2855,7 +3628,10 @@ def main() -> None:
                     seen_current.add(name)
                 elif name in seen_current:
                     continue                      # the dated history behind a stable file
-            nm = {"note": name, "chat": f"chat {name}", "repo": "repo", "tickets": "tickets",
+            # CR-145, proposal 1: a direct chat already carries its own word in the
+            # name (`direct: Ravi`), so the `chat ` prefix would read as "chat direct".
+            nm = {"note": name, "chat": name if name.startswith("direct:") else f"chat {name}",
+                  "repo": "repo", "tickets": "tickets",
                   "movement": "issue labels", "record": f"recordings ({name})"}.get(kind, name)
             bits = []
             if (m := re.search(r"(\d+) since the note", status)):
@@ -3077,7 +3853,10 @@ def main() -> None:
     # a draft, and `/ops orient` reports it as one.
     i_digest = len(L)
     if total_msgs:
-        per = ", ".join(f"{c.get('name') or 'chat'} {len(c['messages'])}" for c in chat if c.get("messages"))
+        # CR-145, proposal 1: `prepare` reads this marker to know where the traffic was,
+        # and for a direct chat that is a PERSON -- a conversation title says nothing
+        # about whose reply is waiting in it.
+        per = ", ".join(f"{chat_label(c)} {len(c['messages'])}" for c in chat if c.get("messages"))
         L += ["## Since the last standup — not said in the room", "",
               f"<!-- DIGEST: {total_msgs} messages since {last_date} ({per}). Not yet read. -->", ""]
     # CR-150, proposal 2: a declared source that already counts work per person. Written
@@ -3108,12 +3887,12 @@ def main() -> None:
         if len([c for c in chat if c["messages"]]) > 1:
             for c in chat:
                 if c["messages"]:
-                    print(f"    {c['name']}: {len(c['messages'])}")
+                    print(f"    {chat_label(c)}: {len(c['messages'])}")
     # Problems print SEPARATELY and are never counted as messages. Folded into the
     # total they would report traffic that does not exist and hide the reason.
     for c in chat:
         if c["problem"]:
-            print(f"  chat not read — {c['problem']}: {c['name'] or '(declared chats)'}")
+            print(f"  chat not read — {c['problem']}: {chat_label(c) if c.get('name') or c.get('person') else '(declared chats)'}")
 
     # What each person is carrying INTO this session, routed to their own row.
     # The chain already knows it -- it was being printed once at the top and then
@@ -3232,6 +4011,14 @@ def main() -> None:
           "  without a name is the one that will be here again", ""]
 
     i_app = len(L)
+    # CR-145, proposal 3: the recordings, in the DETAILS. On the card layout `L[i_app:]`
+    # is written to the companion details file; on the list layout it is the tail of the
+    # one page. Either way it is detail rather than something the room talks through --
+    # which capture the transcript came from is the close-out's fact. Only written when
+    # the build ran over a recording (`--skip-unprocessed`, or a told recording): with no
+    # recording to report, a heading saying nothing is noise.
+    if (rec_lines := recording_lines(unprocessed, prefer)):
+        L += ["---", ""] + rec_lines
     if repo:
         notes = [r["note"] for r in repo if "note" in r]
         rows = [r for r in repo if "note" not in r and r.get("kind", "issue") == "issue"]

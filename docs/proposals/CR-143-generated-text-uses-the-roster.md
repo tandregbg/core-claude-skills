@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.5** (2026-10-22) |
 | **Contract** | additive — a roster field (`pronouns`) and a lint over generated and staged text |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`lint`, SKILL.md writing rules), `ops-config` (`people:` roster), `outbox` (staging) |

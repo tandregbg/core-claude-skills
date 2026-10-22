@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.5** (2026-10-22) |
 | **Contract** | additive — chat entries may be marked `kind: direct`; the agenda header names failed fetches |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (`build_agenda.py` source lines, `ops-config` `chats:`), the chat archiver (separate repo) |

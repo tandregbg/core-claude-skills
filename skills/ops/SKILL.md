@@ -476,6 +476,12 @@ redistributes what the card already computes across **four** outputs. Nothing is
   governs the heading the post's blockers get.
 - **`compact.facilitator_suffix`** names the facilitator document; by default it is derived from
   `agenda_suffix` exactly as the details file is (`agenda-x` -> `agenda-facilitator-x`).
+- **Pronouns come from the roster, or they are `they`** (CR-143). Every generated and staged text --
+  the agenda, the post, the recap, the daily summary, a manifest body -- uses the person's declared
+  `pronouns:`, writes `canonical_short:` where the roster declares one, and uses **`they` for anyone
+  the roster does not list**. A name is never the basis for a guess: the measured incident was an
+  assistant inferring a woman from a short form the roster had already corrected. The `pronouns`
+  check and the staging gate enforce it.
 - **No per-person figures in the facilitator document** (CR-150). The round's per-person cells stay in the
   **agenda**, where they belong to the person rather than to whoever leads. The dependencies are ordered by
   age, never by owner, and an owner appears only beside the one item they own.
@@ -1226,6 +1232,63 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    A declared source that already carries per-person figures gets **one line** in the digest
    section (*per-person figures present in the source, not copied*) and none of its figures: the
    note is what stops `prepare` copying them when it fills the digest slot.
+   **`pronouns` (CR-143): generated or staged text that contradicts the roster.** Two findings.
+   A line that names exactly ONE person the project declared, whose entry declares `pronouns:`,
+   and then uses a singular gendered pronoun of the other form -- reported with the declared
+   form, so the fix is in the finding. And a line writing a short spelling of a person whose
+   entry declares `canonical_short:` -- reported with the canonical one. The measured incident
+   is both at once: a team member's name is also a common female name when shortened, the member
+   is male, and an assistant wrote the short form and the wrong pronoun in two separate drafts
+   after the roster and its own notes had both said otherwise. Two incidents in about ten days,
+   both caught by the operator, none by a check.
+
+   **`they` is never a finding**, in either direction, and that is what makes this check
+   survivable. It is the ordinary plural, it is the default for anyone the roster does not list,
+   and it is correct for anyone declaring it -- so a sentence about a team, a plural subject and
+   a possessive like *their release* stay clean. **Nor is a gendered pronoun on a line naming two
+   declared people**: the subject is plural, the pronoun may belong to either, and that is a
+   sentence to rewrite rather than a wrong fact to report. **The pronoun must FOLLOW the name**
+   on the line: *He reviewed it; Ann is next* names a previous subject and a new one. A lint that
+   fires on ordinary prose is switched off within a week, and then it checks nothing at all.
+   **Nor is either finding raised where an IDENTIFIER precedes the name** -- `- acme/app #12
+   Import fix (dee)`, `- #7 Retest — dee`, a blocker table's assignee cell. Those lines are
+   what `/ops` ITSELF writes from a repo's `author.login`/`assignees[].login`, and a login
+   that happens to equal somebody's short form made every repo-detail line a finding. What
+   rules them out is the position: an item with a handle on it names the item first and the
+   name after it is an accountability slot, while prose about a person names the person first
+   (`Dee closed #12 yesterday` is still a finding). This is CR-150's rule, not a list of
+   logins, so a new repo or a new login needs no configuration.
+
+   **What the check cannot know, and says so.** The wrong-pronoun rule reads POSITION, not
+   REFERENCE: it cannot resolve which noun phrase a pronoun refers to, and the two cases are
+   structurally identical -- *Dee led the review; his summary is filed* (the pronoun is
+   Dee's) against *Dee filed the ticket the reporter raised; her account was locked* (it is
+   the reporter's). Telling them apart needs to know that *the reporter* denotes a person,
+   which is a word list, and CR-150 records what a word list does to this kind of check. So
+   the one intervening referent the lint can SEE is excluded -- another person named between
+   the name and the pronoun, written as a two-word name -- and the finding itself says
+   *confirm the pronoun refers to them (this check reads position, not reference)*. **A third
+   party named by a role noun still produces a finding**, which the author dismisses in one
+   read. That is the honest cost of a line-based check, and it is stated here rather than
+   left for the operator to discover.
+   **A roster entry that declares neither key yields nothing**, and an unlisted person is
+   **always `they`, never inferred from the name** (CR-143, proposal 3): a name does not tell you
+   anyone's pronouns, which is the whole finding of the CR. Scope is every `.md` file -- the
+   agenda, the post, the recap, the daily note and a manifest body all are, and a rule about who
+   somebody is does not apply to only some of the files that say so. A fenced block is skipped.
+   Report only: the fix is the author's sentence.
+
+   **The same lint runs at STAGING** (CR-143, proposal 4), in `resolved.py --validate`, so a
+   draft with the problem never reaches `_outbox/` -- see the `/outbox` staging gate. Both
+   surfaces read `build_agenda.pronoun_lines` for the rule AND `build_agenda.pronoun_scope`
+   for WHOSE ROSTER says so, so a draft cannot pass the gate and then be a finding, or the
+   reverse. The scope resolution walks up from the file's own folder for the nearest config
+   declaring `pronouns:` or `canonical_short:`, exactly as every other key in this family
+   resolves. Two walks is what shipped first and they disagreed: a project declaring its
+   roster in `.claude/ops-config.yaml` with no plain file at its own level was invisible to
+   the check's scope list, and its drafts passed the gate against the project's roster and
+   then became findings against the venture's.
+
 2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
    `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:
    `stale`, `schema` (frontmatter, `sources.yaml`, `brands.yaml`), `unsourced`, `credential` (a key value in
@@ -1445,6 +1508,20 @@ Two recordings of one meeting is the normal case, not the exception — one per 
 in length and speaker resolution. Present `document_id`, title, duration and transcript variant with a
 recommendation; **do not choose.** Record the chosen id in the summary, so the record says which recording
 it came from.
+
+**Where the project declares a preference, that is the recommendation (CR-145).**
+`external_systems.transcripts.prefer:` is `named-speakers` or `longest` (the default, and the reading of
+an unknown value). Measured, two captures of one meeting existed and nothing in the config said which was
+the source, so the assistant chose one and mentioned the other in a header — a defensible, undeclared
+choice the next run could make differently with nothing noticing. A declared preference makes the choice
+reproducible; it does not make it final, which is why this step still ends with a person picking. **The
+recording not used is LISTED, never dropped** — the agenda details carry both, one marked *used*, because
+a recording absent from the output is indistinguishable from one that never existed.
+
+**A connected store says so (CR-145).** `transcripts: connected: true` beside a `store:` means this step
+can pull the transcript itself, and the pre-flight then reports the recording source as *checked* instead
+of *not checked*. **Declaring it is the operator's decision and is never inferred** — a store's name says
+nothing about whether anything can reach it.
 
 **5. `/ops` — one pass produces the summary, the registers and one CHANGELOG line.**
 
@@ -1802,6 +1879,23 @@ undivided total does not say where to go and read. A declared chat that is not i
 problem and is **never counted as a message** — same rule as `reads:` below, a skipped source that
 announces itself is honest; a silent one looks like an empty result.
 
+**A one-to-one conversation can be a declared source (CR-145).** A `chats:` entry may carry
+`kind: direct` with a `person:`, and is then read exactly as a group chat is -- same archive, same id
+match, same message reader. The kind changes only what the output **calls** it: `direct: <person>`
+rather than the conversation's title, in the sources block, in the *Built from* line and in the digest
+marker. Measured, an operator sent four one-to-one questions after a meeting, to the people who owed
+the answers; the archive read only declared group chats, the replies were invisible, and the operator
+relayed them by hand. A conversation title is not the fact a reader needs -- *whose reply arrived* is.
+`person:` resolves against `people:` (declared name, alias or first name, the same resolution the
+round table uses) and the output uses the roster's own spelling; an unresolved name is a config
+finding and **never a dropped source**.
+
+> **External dependency, stated rather than guessed:** the archive has to CONTAIN the direct
+> conversation. Declaring `kind: direct` does not make anything fetch one — the matching option
+> belongs to the **chat archiver, a separate tool in a separate repository**. Until that archiver
+> writes the conversation to `<venture>/.teamschats/`, a declared direct chat reports *declared chat
+> not in the archive*: the honest answer, and the same one any unreachable chat gets.
+
 **Read the archives; do not fetch.** `<venture>/.teamschats/` (CR-047) and `<venture>/.githubmeta/` (CR-055)
 are siblings by design — an archiver writes, this reads. So an agenda generates **with no credential and
 no connectivity**, and the morning it is needed is not when a token turns out to have expired.
@@ -1871,6 +1965,11 @@ not silence but a close that shows its basis:
   judgement about what today's short list should hold.
 - **Creation stays in the room.** The data can close a dependency, never open one: a closed issue
   nobody carried adds no line.
+- **A failed fetch names the age of what it left behind (CR-140, extended by CR-145).** The agenda
+  header carries one line per failed fetch: the failure, its reason, and **when the data the sections
+  below are reading is from** (*data is from 260921*, or *no successful fetch on record*). Measured, a
+  fetch failed for a morning and the repository section used older data without saying so. One line per
+  fetch, extended — never a second line about the same fact.
 - **A source that could not be read removes nothing.** A fetch CR-088 records as *failed*, or an
   archive the producer could not reach at all, holds every verdict it produced; the header names the
   source and why. A fetch that was never *recorded* is not a failed one.
@@ -2049,7 +2148,9 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    | `stale` | the last success predates the last summary, or a report is three days old or more | re-run the fetch, or ask the report's owner |
    | `failed` | the fetch itself failed — a login expired, a timeout | fix the fetch; the archive still holds the last good data, which is **not** today's |
    | `missing` | no fetch recorded, a report not found, a declared recording archive not found, or the previous note has no `## Carried forward` | write the close-out, or fix the config |
-   | `not checked` | a recording store is declared with no archive | `prepare` checks the store by hand (CR-117) |
+   | `checked` | a declared recording archive resolves, or a `store:` is declared `connected: true` (CR-145) | nothing; the row never fails the check, because this script does not fetch |
+   | `not checked` | a recording store is declared with no archive and not connected | `prepare` checks the store by hand (CR-117) |
+   | `undeclared` (CR-151) | the declared status reports name a repository on more than three days that the project does **not** declare | run `propose_repos.py` and decide; it never fails the check |
 
    A report's age is read from its filename in **either dated spelling** — 6-digit `YYMMDD` (the house
    convention, and what `vault_reports:` patterns declare) or 4-digit `YYYY-MM-DD`. A name carrying
@@ -2070,9 +2171,81 @@ noticing it was skipped twice. Observed 2026-09-21: six of seventeen agenda item
    directory is looked for at every level first: a sibling is suggested only when the declared folder
    is nowhere to be found. It decides nothing — the report is still reported missing.
 
+   **A repository the reports name and the config does not hold is a row, not a refusal (CR-151).**
+   `undeclared` is the opposite question from the other states: not *is the declared source there* but
+   *is a source missing from the declaration*, so it leaves the exit code alone. Measured, a project
+   declared one repository — its own portal — and the release depended on at least seven others, so the
+   agenda, the movement block and the digest all read a fraction of the work and read as complete. The
+   row is read from the same window `propose_repos.py` counts over, so the warning and the proposal
+   cannot disagree about the same repository. Deciding what belongs is the operator's: see below.
+
    **A failed fetch is also named in the agenda's own header (CR-140)**, not only in the fetch's own
    file and one line of the sources block. The sections built from an archive use its last good data
    and read as current, so the page looked complete while a fetch had failed twice that morning.
+
+   **Which repositories the project should declare — `propose_repos.py` (CR-151):**
+
+   ```
+   python3 ~/.claude/skills/ops/propose_repos.py --dir <project>/meetings [--days 14] [--date YYMMDD]
+   ```
+
+   It reads the declared `vault_reports:` series (CR-116) over a window — **14 working days** by
+   default — and counts the repositories those reports name. Three shapes, which are the three ways a
+   status report names one: `owner/repo`; `repo#12`, `repo PR #12` or `repo issue #12`; and the first
+   column of a table whose first-column **header says it holds repositories**. The header gate is the
+   whole design of the third shape: a status report is mostly tables, and a reader that took the first
+   cell of each would count areas, people and dates as repositories.
+
+   **Why it exists.** A project declared **one** repository, its own portal, so the agenda, the
+   movement block and the digest read that one only. The release depended on at least seven others —
+   the public site, the proxy, the core API, two microservices, a configuration repository and the
+   database — and the only place that said so was the daily status report: in a table of backend
+   merges, in the release-branch paragraphs, in the blocker list. A count taken on the declared
+   repository alone showed several people with nothing merged; over the others the same people had
+   merged work every week. **The first reading had been wrong and nobody had been told.** Counting
+   mentions across twelve consecutive daily reports gave the shape in minutes — one repository in
+   every report, two in all but one, then a middle group named on five to eleven days, then nothing
+   that was not an ordinary word.
+
+   What it prints, per repository: the number of **days** it was named (not mentions — a repository
+   named nine times in one report was named on one day), the number of distinct pull requests or
+   issues cited, whether the project declares it, and a one-line purpose **copied from the report's
+   own words**. A purpose a script composed for a repository it has never read is a guess in a config
+   file, and a guess in a config file is indistinguishable from a decision.
+
+   | Listed as | Means |
+   |---|---|
+   | `declared` | the project already holds it |
+   | `NOT DECLARED` | a candidate for the proposed block |
+   | `cannot be read — no organisation in the reports` | nothing in the window wrote it as `owner/repo` and the project does not declare it, so there is **no address**. Written with a marker, never an invented organisation |
+   | *probably prose* | a word that matches a repository name — a repository called `scripts`, a word `billing`. Still **shown**, under its own heading: silently dropping it would mean the repository genuinely called `scripts` is never proposed at all. Any `owner/repo` spelling or any cited item number makes a name a repository instead |
+   | *declared and not named in the window* | a re-run's other half (proposal 5). **Never removed** — a repository can be declared for a reason no report mentions. Reported only when the window is at least 30 working days, so a short window cannot call seven repositories quiet |
+
+   **Nothing is written without a yes.** The default run prints the proposal and exits. The block is
+   written only by a second run that names, repository by repository, what the operator confirmed:
+
+   ```
+   python3 ~/.claude/skills/ops/propose_repos.py --dir <project>/meetings --write --confirm core-api,site
+   ```
+
+   `--write` without `--confirm` is refused, and so is a name the reports did not show. New entries get
+   **`reads: [pulls, releases]`** and nothing else (proposal 4) — a repository's issues are its own
+   team's working surface, and `issues` is added by the operator. The written block carries a comment
+   naming its basis and date, so a reader meeting it in six months can tell a declaration somebody made
+   from one a script proposed and somebody confirmed, and on what reading. The insertion is **textual**,
+   under the project's existing `external_systems:` / `repos:`: these configs are hand-written and carry
+   the comments that say why each declaration is there, and a YAML re-dump would return the same data
+   with every one of those comments gone.
+
+   **A re-run is a proposal again, every time (proposal 5).** It compares the declared list with the
+   reports and names additions and quiet entries; it never removes an entry itself.
+
+   It resolves **which** files a `vault_reports:` declaration names through `build_movement` — the
+   walk-up from the project root, the pattern, `filename_date()` — never a second resolver, so a window
+   can never count mentions in a folder whose age nothing is reporting. A declared series with no dated
+   report in the window, or a file that cannot be read, is **reported** rather than counted as a report
+   that named nothing. Reading the work trackers behind those repositories is a separate source with
+   its own access question, and out of scope here.
 
    **The date defaults to TODAY (CR-139) — or to the next session, once today has a note.** It used
    to default to the next scheduled day after the newest note, which is only right when the series

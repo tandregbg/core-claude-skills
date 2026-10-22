@@ -40,3 +40,7 @@ display_name: ?"(David Ekberg|Erik Sandberg|Raj Patel|Charlie|Alice & Bob|Bob Li
 26[0-9]{4}[a-z]?-(bob|örjan|åsa)_(a|b|recap|other)
 -(Anna-Bo|Åsa-Örjan|Åke)
 _contacts/åsa
+# Invented staged-item folder in the CR-143 staging-gate tests. `proj` is this
+# repo's generic project stand-in and 260101 is an invented date; both are
+# temp-directory fixture paths, with no relation to any real folder or person.
+26[0-9]{4}-proj_[a-z0-9-]+

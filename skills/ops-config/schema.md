@@ -173,7 +173,28 @@ people:
     track: string               # Optional (CR-084): default track for the round
     adjacent: bool              # Optional: belongs to the project, not to the round
     areas: [string]             # Optional: what this person works on
+    pronouns: he|she|they       # Optional (CR-143): what generated and staged text must use
+    canonical_short: string     # Optional (CR-143): the short form the notes must write
 ```
+
+**`pronouns:` and `canonical_short:` (CR-143).** A team member's name was also a common female name
+when shortened, and the member is male. The roster carried the full name, the aliases and a note; an
+assistant wrote the short form and the wrong pronoun in two separate drafts, once in each of two
+sessions, after the roster and its own notes had both said otherwise. Two incidents in about ten days,
+both caught by the operator, none by a check.
+
+- `pronouns:` is one of `he`, `she`, `they`. **Absent means `they`** -- and so does any other value,
+  which `/ops <series> --check` reports rather than guessing at. A pronoun is never inferred from a
+  name, for anyone listed or unlisted: that inference is the defect.
+- `canonical_short:` is the short spelling a summary must use where the ordinary one reads as somebody
+  else (`Dee O` rather than `Dee`). Any other short form of the same entry -- the first word of the
+  declared name or of an alias -- is then a finding, reported with the canonical one.
+- `/ops check`'s `pronouns` finding and the `/outbox` staging gate (`resolved.py --validate`, CR-132)
+  both read these, through one reader, so a draft cannot pass the gate and then be a finding.
+  **`they`/`them`/`their` is never a finding** in either direction: it is the plural, it is the default
+  for anyone unlisted, and it is correct for anyone declaring it. Nor is a gendered pronoun on a line
+  naming two declared people -- the subject is plural. A lint that fired on ordinary prose about a team
+  would be switched off, and then it would check nothing.
 
 **`track` versus `areas`, because they were once confused.** A **track** is the axis the round runs
 along — one per person, stated first, the same handful of values across the team. An **area** is what
@@ -206,6 +227,9 @@ external_systems:
     store: string               # the transcript store's name
     match: [string]             # how a recording is recognised as belonging to THIS series
     archive: string             # optional: folder an archiver writes, read by build_agenda.py
+    prefer: named-speakers | longest   # optional (CR-145). Default: longest
+    connected: boolean          # optional (CR-145). true = the close-out step can read
+                                #   the store itself; requires `store:`
 ```
 
 Optional. Where absent, the brief prints `transcripts: NOT DECLARED` and everything behaves as
@@ -222,6 +246,28 @@ skipping a session, re-raising what it closed and carrying none of what it opene
 **Nothing in this contract fetches.** A script reads a declared `archive:` or is told by its caller;
 it never reaches a store. The offline guarantee -- an agenda generates with no credential and no
 connectivity -- is the property that would be lost, and it is worth more than the convenience.
+
+**`prefer:` says which of two recordings of one meeting is the source (CR-145).** Two captures of
+one session is the normal case -- one per capturing tool, differing in length and in whether speakers
+are named. Measured, nothing in the config said which was the source, so the assistant chose one and
+mentioned the other in a header: a defensible, undeclared choice that the next run could make
+differently with nothing noticing. `named-speakers` prefers the capture whose declared variant
+resolves speakers to names, then the longest among those -- a variant is matched on whole tokens
+(`named-speakers`, `named speakers`, `speaker-names`), so `unnamed-speakers` and `not-named-speakers`
+say what they say; `longest` is the default and the reading of
+an unknown value, which is also reported as a finding. **The one not used is LISTED, never dropped**
+-- marked *not used* in the agenda details, because a recording absent from the output is
+indistinguishable from one that never existed.
+
+**`connected: true` says the close-out step can read the store itself (CR-145).** The CR-140
+pre-flight then reports the recording source as *checked* rather than *not checked*: a project whose
+close-out pulls the transcript directly otherwise read as "nobody looked" every morning, at a source
+somebody does look at, which is how a row stops being read. **Whether a project declares it stays the
+operator's decision and is never inferred** -- a store's name says nothing about whether anything can
+reach it. It requires a `store:`, and the row stays outside the states that fail the check, because
+this contract still never fetches. The flag is read in the spellings YAML permits -- `true`, a quoted
+`"true"`, `yes`, `on`, `1`, and their negatives -- and a value that is neither a yes nor a no is
+reported as a finding rather than read as a quiet no.
 
 ### `registry:` -- where a new project must appear (CR-086)
 
@@ -1012,6 +1058,9 @@ external_systems:                 # Optional. Everything under it is optional to
       platform: string            # Default: teams
       purpose: string             # Optional. Why this chat, e.g. "standup recaps"
       default: boolean            # Optional. Offer this one first
+      kind: group | direct        # Optional (CR-145). Default: group
+      person: string              # Required with kind: direct. The person on the
+                                  #   other side, resolved against `people:`
   repos:                          # Source repositories this folder's work concerns
     - url: string                 # REQUIRED. The repository, e.g. github.com/org/name
       name: string                # Optional. Short name; defaults to the last path part
@@ -1041,9 +1090,45 @@ decides what a project's channels are. A dispatcher reads it and offers what it
 finds; it never appends a chat it happened to send to, because that would turn an
 accident into a declaration.
 
+**A `repos:` entry may be PROPOSED from the status reports, and confirmed (CR-151).**
+`propose_repos.py` reads the declared `vault_reports:` series over a window and counts
+the repositories they name; it prints a proposal and writes nothing. The block is
+written only by a second run naming what the operator confirmed, and the entries it
+writes carry a comment saying so, with the basis and the date. That is the same rule
+as above, not an exception to it: the declaration is still the operator's, and what the
+helper contributes is the reading. The reason it exists is that a project declared one
+repository while its release depended on at least seven others, and the only place that
+said so was the daily status report. New entries default to `reads: [pulls, releases]`;
+`issues` is added by hand.
+
 **A missing block is not a defect.** It means nothing has been declared for that
 folder, and a tool should fall back to whatever it did before rather than refuse
 to work. Most folders will never need one.
+
+### `kind: direct` -- a one-to-one conversation as a declared source (CR-145)
+
+A `chats:` entry may be `kind: direct` with a `person:`. It is read exactly as a group chat
+is -- same archive, same id match, same message reader -- and the only thing the kind changes
+is what the output CALLS it: `direct: <person>` rather than the conversation's title, in the
+sources block, in the *Built from* line and in the digest marker.
+
+**Why:** measured, an operator sent four one-to-one questions after a meeting, to the people
+who owed the answers. The archive read only declared group chats, so the replies were
+invisible to everything downstream and the operator relayed them by hand. A conversation title
+is not the fact a reader needs; *whose reply arrived* is.
+
+`person:` is resolved against the project's `people:` roster -- declared name, alias or first
+name, the same resolution the round table and the per-person check use -- and the output then
+uses the roster's own spelling. A `person:` no entry answers to is a config finding, **not a
+dropped source**: the chat is still read and the declared spelling is kept, because a name the
+roster does not hold is still the only thing that says whose reply this is. A `direct` entry
+with no `person:` is a finding too; an unknown `kind:` reads as `group` and is reported.
+
+**External dependency:** the archive has to CONTAIN the direct conversation. Declaring
+`kind: direct` here does not make an archiver fetch one -- the matching option belongs to the
+chat archiver, which is a separate tool in a separate repository. Until it writes the
+conversation to `<venture>/.teamschats/`, a declared direct chat reports *declared chat not in
+the archive*, which is the honest answer and the same one any unreachable chat gets.
 
 **`reads:` under a repo is a scope, not a capability.** It states what a tool is
 welcome to look at. The intended use is metadata — documentation, issues,

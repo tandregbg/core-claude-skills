@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.92.5** (2026-10-22) |
 | **Contract** | additive — a helper that proposes a `repos:` declaration; nothing is declared without the operator's confirmation |
 | **Date** | 2026-10-21 |
 | **Area** | `ops` (a new helper beside `build_agenda.py`; SKILL.md), `ops-config` (`external_systems.repos`) |

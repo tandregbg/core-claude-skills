@@ -428,12 +428,72 @@ def source_problem(source: str) -> bool:
     return not value or bool(PLACEHOLDER.match(value)) or not PATH_FORM.match(value)
 
 
-def staging_problems(text: str) -> list[str]:
+def roster_entries_for(path: Path | None) -> list:
+    """The roster entries governing a staged manifest (CR-143), nearest declaration first.
+
+    ONE line of work, and that is deliberate: the resolution is `build_agenda.pronoun_scope`,
+    the same function `/ops check` calls. It used to be a walk of its own here, and the two
+    walks disagreed (defect pass) -- a draft in a project whose roster lives in
+    `.claude/ops-config.yaml`, with no plain file at the project's own level, passed this
+    gate against the project's roster and then became an `/ops check` finding against the
+    venture's. A gate and a lint that disagree about what the wrong pronoun is are worse
+    than one of them existing, so neither surface owns a copy of the rule.
+
+    No path (stdin), no config, or nothing declared, and the answer is empty: the gate then
+    has nothing to contradict and the manifest is judged on CR-132's two requirements alone.
+    A gate that guessed a person's pronouns from their name would be the defect CR-143 is
+    about, written into the one place that refuses to write the file.
+
+    Imported lazily and best effort: `/outbox` runs in vaults with no `/ops` config at all,
+    and a staging gate that failed to import must not stop a manifest being written.
+    """
+    if path is None:
+        return []
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops"))
+        import build_agenda
+    except Exception:
+        return []
+    try:
+        return build_agenda.pronoun_scope(path)
+    except Exception:
+        return []
+
+
+def pronoun_problems(text: str, path: Path | None) -> list[str]:
+    """CR-143, proposal 4: the pronoun lint, at staging. One problem per offending line.
+
+    Run on the manifest BODY, not just the header: the body is the draft -- the mejl text,
+    the recap, the note that goes out -- and that is where both measured incidents were
+    written. The whole point of running it here is that a draft with the problem never
+    reaches the outbox; reporting it afterwards is what `/ops check` already does, and
+    afterwards is after the package was staged.
+
+    The reading is `build_agenda.pronoun_lines` and the scope is `build_agenda.pronoun_scope`
+    (via `roster_entries_for`), so the gate and the check cannot disagree about the rule or
+    about whose roster states it.
+    """
+    entries = roster_entries_for(path)
+    if not entries:
+        return []
+    try:
+        import build_agenda
+    except Exception:
+        return []
+    return [f"line {n}: {what} (CR-143)" for n, what in build_agenda.pronoun_lines(text, entries)]
+
+
+def staging_problems(text: str, path: Path | None = None) -> list[str]:
     """What stops a manifest being written as staged; empty means it may be written.
 
     Never rewrites anything (CR-103 stands): it names the problem and the author fixes it.
     A `Kanonisk källa` path is not checked for resolving (CR-120: a path into another
     repository is unverifiable, not broken).
+
+    `path` is where the manifest will be written, and it is what the CR-143 pronoun lint
+    resolves the roster from (the declared config, walking up from that folder). Omitted --
+    a manifest validated on stdin with no destination given -- and CR-132's two requirements
+    are checked alone: there is no declared roster to read, and the gate never guesses one.
     """
     problems = []
     head = header_text(text)
@@ -453,6 +513,9 @@ def staging_problems(text: str) -> list[str]:
     if source_problem(source):
         problems.append(f"`Kanonisk källa` is required in the first {HEADER_LINES} lines: a path, "
                         f"or `{NO_SOURCE}` -- ask the author")
+    # CR-143, proposal 4: the roster's names and pronouns, checked before the draft is
+    # written rather than reported once it is in the outbox.
+    problems += pronoun_problems(text, path)
     return problems
 
 
@@ -745,17 +808,27 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--markdown", action="store_true",
                     help="with --survey: the situation half of an audit, as markdown")
     ap.add_argument("--validate", metavar="MANIFEST",
-                    help="staging gate (CR-132): check a manifest before it is written; "
+                    help="staging gate (CR-132, CR-143): check a manifest before it is written; "
                          "'-' reads stdin; exit 1 and list problems if it may not be written")
+    ap.add_argument("--roster", metavar="DIR",
+                    help="with --validate -: the folder the manifest will be written to, which is "
+                         "what the CR-143 pronoun lint resolves the `people:` roster from "
+                         "(walking up for the declared config). Without it a stdin manifest is "
+                         "checked on CR-132's requirements alone -- the gate never guesses a roster")
     ap.add_argument("--stale-days", type=int, default=30,
                     help="an item motionless this long is reported (default 30, CR-120)")
     args = ap.parse_args(argv)
 
     if args.validate:
+        # Where the manifest lives is where its roster is declared (CR-143). For a file
+        # that is the file's own path; for stdin it is `--roster`, because a draft piped in
+        # has no folder of its own and the roster is a property of the destination.
+        where = (Path(args.roster) if args.roster
+                 else None if args.validate == "-" else Path(args.validate))
         try:
             text = (sys.stdin.buffer.read().decode("utf-8") if args.validate == "-"
                     else Path(args.validate).expanduser().read_text(encoding="utf-8"))
-            problems = staging_problems(text)
+            problems = staging_problems(text, where)
         except (OSError, UnicodeDecodeError) as e:
             problems = [f"cannot read manifest: {e}"]
         print(json.dumps({"ok": not problems, "problems": problems}, ensure_ascii=False, indent=2))

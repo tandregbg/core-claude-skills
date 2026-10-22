@@ -55,6 +55,15 @@ or rename the file, map a status or cancel the task), so it stays with a person.
            older than 14 days: archived by a client, never filed (CR-128). Names the inbox item
            it points to. The one check that reads `.transcripts/` (read-locked in a vault): by name, and only the
            first 64 KiB of each raw file, never its body. The lock exemption is written in CR-128.
+  pronouns a .md file whose text contradicts the roster (CR-143): a line naming ONE declared person
+           whose entry declares `pronouns:` and then using a singular gendered pronoun of the other
+           form, or a line writing a short spelling of a person whose entry declares
+           `canonical_short:`. `they`/`them`/`their` is never a finding -- it is the plural, it is the
+           default for anyone unlisted, and it is correct for anyone who declares it; a lint firing on
+           ordinary prose about a team is one that gets switched off. Nor is a line whose name
+           follows an IDENTIFIER: that is a repo login in an accountability slot, which `/ops` wrote
+           itself. The pronoun rule reads POSITION, not reference -- it cannot resolve anaphora, and
+           the finding says so.
   persons  a team-facing .md file that counts WORK PER PERSON (CR-150): a table whose rows are
            people and whose columns are counts, or a line pairing a person with a count of
            issues, pull requests, commits or lines. The finding names the file and the line and
@@ -109,7 +118,7 @@ ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
 SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence")
 SCOPES = ("root", "org", "project", "personal")
 PRIORITIES = ("P0", "P1", "P2", "P3")
-CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred", "persons")
+CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred", "persons", "pronouns")
 RAW_PENDING_DAYS = 14
 # CR-142: what was inferred, pulled out of the marker the agenda's reader matched, so the
 # finding can name the phrase to go and ask about. The agenda's own, not a copy: the module
@@ -527,7 +536,6 @@ def _person_scopes(root: Path) -> tuple[set[Path], list[tuple[Path, set[str]]]]:
       - the `people:` roster per scope, which is what a count's subject is resolved
         against (CR-150). Deepest scope first, so a file inside a project is read against
         that project's roster and not the venture's.
-
     One walk and one copy of the config file pair, which is `build_agenda.CONFIG_FILES`
     (defect pass). The SCOPES come from `walk()`, the module's one directory reader, with
     the dot-folder skip it already owns; each scope is then probed for the declared pair
@@ -650,13 +658,82 @@ def check_persons(root: Path) -> list:
     return found
 
 
+# --- pronouns ------------------------------------------------------------
+
+def check_pronouns(root: Path) -> list:
+    """CR-143, proposal 2: generated and staged text contradicting the roster.
+
+    A team member's name is also a common female name when shortened, and the member is
+    male. The roster carried the full name, the aliases and a note. An assistant wrote the
+    short form and the wrong pronoun in two separate drafts, once in each of two sessions,
+    after the roster and its own notes had both said otherwise; the person had corrected it
+    in a meeting weeks earlier. Two incidents in about ten days, both caught by the
+    operator, none by a check.
+
+    The reading is `build_agenda.pronoun_lines` and the SCOPE is `build_agenda.pronoun_scope`
+    -- the generator's own, both of them, so this check and the staging gate
+    (`resolved.py --validate`, CR-132) cannot disagree about what the wrong pronoun is or
+    about whose roster says so. The scope used to be this module's `_person_scopes`/
+    `_roster_for` pair while the gate walked up from the destination, and they DID disagree
+    (defect pass): `walk()` skips dotted folders, so a project declaring its roster in
+    `.claude/ops-config.yaml` and holding no plain file at its own level never appeared in
+    the scope list, and a draft in it passed the gate against the project's roster and then
+    became a finding against the venture's. `_roster_for` stays where it is for CR-150's
+    per-person check, whose question is a different one -- which NAMES are declared, over
+    every scope under `root`.
+
+    Scope is every .md file the walk reaches: the agenda, the post, the recap, the daily
+    note and a manifest body are all .md, and a rule about who somebody is does not get to
+    apply only to some of the files that say so.
+
+    **`they` is never a finding**, and that is what makes this check survivable. It is the
+    plural, it is the default for anyone the roster does not list (proposal 3: a name does
+    not tell you anyone's pronouns), and it is correct for anyone declaring it -- so
+    ordinary prose about a team, a plural subject and a possessive like "their release" stay
+    clean. Nor is a gendered pronoun on a line naming TWO declared people: the subject is
+    plural, the pronoun may belong to either, and that is a sentence to rewrite rather than a
+    wrong fact to report. A lint that fired on those is one somebody switches off, and then
+    nothing is checked at all.
+
+    Needs a roster entry that DECLARES something -- `pronouns:` or `canonical_short:`. A
+    project that has declared neither gets no findings, for the same reason CR-150's check
+    needs a roster: the only thing that knows is the declaration.
+
+    Report only, like every other check here. The fix is the author's sentence.
+    """
+    found = []
+    cache: dict = {}
+    for p in walk(root):
+        if p.suffix != ".md":
+            continue
+        # One resolution per FOLDER, not per file: `pronoun_scope` walks up and reads
+        # config files, and every .md in one folder resolves to the same answer.
+        d = p.parent.resolve()
+        if d not in cache:
+            cache[d] = build_agenda.pronoun_scope(p)
+        entries = cache[d]
+        if not entries:
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for n, what in build_agenda.pronoun_lines(text, entries):
+            found.append(_finding("pronouns", p, n,
+                                  f"the text contradicts the roster -- {what}. Fix the line; the"
+                                  " roster is what the project declared about this person"
+                                  " (CR-143)", root))
+    return found
+
+
 def run(root, only=CHECKS) -> list:
     root = Path(root).expanduser()
     out = []
     for name in only:
         out += {"links": check_links, "yaml": check_yaml, "tasks": check_tasks,
                 "profile": check_profile, "themes": check_themes, "raw": check_raw,
-                "inferred": check_inferred, "persons": check_persons}[name](root)
+                "inferred": check_inferred, "persons": check_persons,
+                "pronouns": check_pronouns}[name](root)
     return out
 
 
