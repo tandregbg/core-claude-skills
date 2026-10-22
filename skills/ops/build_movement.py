@@ -389,9 +389,15 @@ def build(repo_decl: dict, mv: dict, root: Path, agenda_day: dt.date | None = No
                  "fixed": bool(FIXED and FIXED in names(i)),
                  "who": [a["login"] for a in i["assignees"]]}
                 for i in gapi if top and prio(i) == top]
+    # CR-155: every gap-label issue with its assignees and priority, not only the top one:
+    # the compact agenda's round is built from what is ASSIGNED to each person.
+    gap = [{"n": i["number"], "title": i["title"], "url": i["url"],
+            "fixed": bool(FIXED and FIXED in names(i)),
+            "who": [a["login"] for a in i["assignees"]], "prio": prio(i)}
+           for i in gapi]
     # CR-119: a declared label the repo does not have makes every count silently zero.
     missing = [x for x in PRIORITY + [FIXED, BLOCKED, ANSWERED] if x and x not in defs]
-    return headline, path, rep, {"blockers": blockers, "reports": report_state, "top": top,
+    return headline, path, rep, {"blockers": blockers, "gap": gap, "reports": report_state, "top": top,
                                  "missing_labels": missing}
 
 

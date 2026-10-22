@@ -7,6 +7,29 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.6] - 2026-10-22
+
+The compact agenda keeps what the room confirms (CR-155). CR-148's compact layout, released the day
+before, had taken the milestones and then the blockers out of the shared agenda; in use the room had no
+dates to look at and no list to confirm, and a person was shown items that were not theirs. This is a
+correction of released behaviour, not a new feature.
+
+### Changed
+
+- **CR-155 -- the compact agenda keeps the milestones and the blockers; its round is built from
+  assignments (`ops`, contract unchanged).** `layout: compact` agenda is now *Milestones*, *Release
+  blockers*, the confirm block and the one-minute round: no *Dependencies* and no *Decisions* section.
+  The Demo section sits under the milestone there too, and the lead is the card's (`card.release_blockers:
+  false` still gives the no-release lead). **The round's cells come from the tracker's assignments:** each
+  person's open `blocker` and `critical` issues (`*open:*`) and fixed ones waiting for their test
+  (`*verify:*`); a carried line goes only to its first-named owner, and a line about an issue the tracker
+  already lists is not repeated. A tracker login maps to a roster person through a new optional `github:`
+  key, else by a name or alias prefix (three letters or more; a tie is unknown). `build_movement` now returns
+  every gap-label issue (`gap`), not only the top priority. **New optional key
+  `compact.facilitator_dependencies`** (default false): the facilitator's dependencies table is off unless
+  asked. Tests: the CR-148 tests that asserted the old agenda are changed (not deleted); 14 new tests.
+  Proposal 5 (marking a date copied from a status report) is not built; see the CR.
+
 ## [1.92.5] - 2026-10-22
 
 Wave 4: the quality of the text and the sources, and the last of the four waves.

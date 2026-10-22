@@ -175,6 +175,8 @@ people:
     areas: [string]             # Optional: what this person works on
     pronouns: he|she|they       # Optional (CR-143): what generated and staged text must use
     canonical_short: string     # Optional (CR-143): the short form the notes must write
+    github: login | [login]     # Optional (CR-155): the tracker login(s) that are this person; without it
+                                # a login starting with the name or an alias (3+ letters) is read as theirs
 ```
 
 **`pronouns:` and `canonical_short:` (CR-143).** A team member's name was also a common female name
@@ -444,17 +446,17 @@ workflows:
   post_processing:
     carry_forward:
       layout: card                 # card | list | compact (default list: unchanged behaviour)
-                                   # compact (CR-148): four outputs -- a plain-text post,
-                                   # a decisions-and-round agenda, a facilitator document,
-                                   # the details file unchanged. An unknown value reads as list.
+                                   # compact (CR-148, CR-155): four outputs -- a plain-text post,
+                                   # a milestones-blockers-and-round agenda, a facilitator
+                                   # document, the details file unchanged. An unknown value
+                                   # reads as list.
       card:                        # optional (CR-121); only read in card or compact layout
         release_blockers: false    # default true; false drops the Release blockers section
                                    # and the word release from the lead. Carried [blocker]
                                    # lines still render, under Blockers. The repo-label
                                    # table is unaffected -- that is the repo's definition.
-                                   # On layout: compact this governs the POST's blockers
-                                   # heading only: that agenda carries no blockers
-                                   # section, so its lead is the no-release one either way.
+                                   # On layout: compact (CR-155) it governs the heading and
+                                   # the lead of the agenda and the post alike.
       compact:                     # optional (CR-148); only read in compact layout
         max_words: 150             # default 150, and 0 means 0 (always warn), not unset.
                                    # A ceiling that HOLDS: over it the generator warns
@@ -464,6 +466,9 @@ workflows:
                                    # and the ask are never what gives way.
         facilitator_suffix: string # default derived from agenda_suffix, as the details
                                    # file is: agenda-x -> agenda-facilitator-x
+        facilitator_dependencies: false   # CR-155: default false. True adds the dependencies
+                                   # table (read against the data) to the facilitator
+                                   # document; the room raises dependencies itself.
       movement:                    # optional; used when a repo declares labels
         out: status/movement       # relative to the project root
         days: 14

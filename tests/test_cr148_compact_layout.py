@@ -40,6 +40,11 @@ CARD = ("workflows:\n  post_processing:\n    carry_forward:\n      enabled: true
         "      layout: card\n") + PEOPLE + MS
 COMPACT = ("workflows:\n  post_processing:\n    carry_forward:\n      enabled: true\n"
            "      layout: compact\n") + PEOPLE + MS
+# CR-155: the facilitator's dependencies table is optional and off by default, so the
+# tests that read it ask for it.
+COMPACT_DEPS = COMPACT.replace("      layout: compact\n",
+                               "      layout: compact\n      compact:\n"
+                               "        facilitator_dependencies: true\n")
 ITEMS = ("- [blocker] **Payment webhook fails** — #12 · **Bob**\n"
          "- [dependency] **Backend answer on refunds** — TICK-9 · **Ann**\n"
          "- [dependency] **Legal sign-off on the terms** — LEG-4 · **Dee**\n"
@@ -507,16 +512,21 @@ class CompactAgenda(unittest.TestCase):
     def setUp(self):
         self.agenda, _ = build(COMPACT, note_items=ITEMS, notes=PRIOR)
 
-    def test_no_dependencies_and_no_blockers_heading(self):
+    def test_no_dependencies_decisions_or_movement(self):
+        """CR-155: a dependency is raised by the person in their own minute and decisions
+        come out of the milestones and the round, so neither has a section."""
         self.assertNotIn("## Dependencies", self.agenda)
-        self.assertNotIn("## Blockers", self.agenda)
-        self.assertNotIn("## Release blockers", self.agenda)
-        self.assertNotIn("## Milestone", self.agenda)
+        self.assertNotIn("## Decisions needed today", self.agenda)
         self.assertNotIn("## Movement", self.agenda)
 
-    def test_the_decisions_and_the_round_are_there(self):
-        self.assertIn("## Decisions needed today", self.agenda)
-        self.assertIn("## One-minute round", self.agenda)
+    def test_the_milestones_the_blockers_and_the_round_are_there(self):
+        """CR-155: remove only the duplication, never what the room confirms. The first
+        release took the milestones and then the blockers out of the shared agenda, and the
+        room had no dates and no list to confirm."""
+        heads = [l for l in self.agenda.split("\n") if l.startswith("## ")]
+        self.assertTrue(heads[0].startswith("## Milestone"), heads)
+        self.assertIn("## Release blockers", heads)
+        self.assertEqual(heads[-1], "## One-minute round")
 
     def test_the_round_keeps_each_persons_open_items(self):
         """CR-150: the per-person cells belong to the AGENDA, where they belong to the
@@ -546,29 +556,22 @@ class CompactAgenda(unittest.TestCase):
     def test_the_agenda_names_the_facilitator_document(self):
         self.assertIn("260924-agenda-facilitator-daily-standup.md", self.agenda)
 
-    def test_the_lead_never_asks_the_room_to_confirm_a_list_it_cannot_see(self):
-        """CR-121 + CR-148, decided deliberately: the compact agenda carries no blockers
-        section of either id, so its lead is the no-release one whatever
-        `card.release_blockers` says. Asked both ways round, because the point is that
-        the key is inert HERE -- not that one spelling of the config happens to work.
-        """
+    def test_the_lead_asks_the_room_to_confirm_the_blockers_it_now_carries(self):
+        """CR-155: the compact agenda carries the blockers again, so its lead is the card's;
+        `card.release_blockers: false` still gives the no-release lead, from the plan."""
         on = COMPACT.replace("      layout: compact\n",
                              "      layout: compact\n      card:\n"
                              "        release_blockers: true\n")
         off = COMPACT.replace("      layout: compact\n",
                               "      layout: compact\n      card:\n"
                               "        release_blockers: false\n")
-        for cfg, label in ((COMPACT, "unset"), (on, "true"), (off, "false")):
+        for cfg, label, want in ((COMPACT, "unset", "Confirm the release blockers"),
+                                 (on, "true", "Confirm the release blockers"),
+                                 (off, "false", "Raise what you wait on")):
             agenda, _ = build(cfg, note_items=ITEMS, notes=PRIOR)
-            self.assertIn("*Raise what you wait on, then one minute each.", agenda, label)
-            self.assertNotIn("Confirm the release blockers", agenda, label)
-        # Through the generated agenda alone the rule is indistinguishable from the
-        # coincidence it replaced -- the compact plan happens to have no
-        # `release_blockers` in its agenda list -- so the rule itself is asserted
-        # against `lead_line`: given a plan that DOES carry the id, compact still gets
-        # the no-release lead and the card still gets the release one.
+            self.assertIn(want, agenda, label)
         carries = {"agenda": ["milestone", "release_blockers", "round"]}
-        self.assertIn("Raise what you wait on",
+        self.assertIn("Confirm the release blockers",
                       ba.lead_line({"layout": "compact"}, carries, DAY))
         self.assertIn("Confirm the release blockers",
                       ba.lead_line({"layout": "card"}, carries, DAY))
@@ -582,24 +585,19 @@ class CompactAgenda(unittest.TestCase):
                                           "card": {"release_blockers": False}},
                                          DAY)["post"][-1], "blockers")
 
-    def test_on_demo_day_the_compact_agenda_is_still_the_decisions_and_the_round(self):
-        """CR-121 says Demo sits "directly under the milestone"; CR-148 says the compact
-        agenda is the decisions and the round, "Nothing else." The compact agenda has no
-        milestone to sit under, so CR-148 wins and Demo stays in the POST -- which is
-        also where CR-121 itself puts the demo list for the post. Decided, not incidental.
-        """
+    def test_on_demo_day_the_compact_agenda_carries_the_demo_under_the_milestone(self):
+        """CR-155: the compact agenda has a milestone again, so CR-121's "directly under the
+        milestone" holds there too (CR-148 had kept Demo in the post only)."""
         demo = COMPACT.replace(MS, "milestone:\n  name: First demo day\n"
                                    "  date: 2026-09-24\n  set_on: 2026-09-01\n  kind: demo\n")
         agenda, _ = build(demo, note_items=ITEMS, notes=PRIOR)
-        self.assertNotIn("## Demo", agenda)
         heads = [l for l in agenda.split("\n") if l.startswith("## ")]
-        self.assertEqual(heads, ["## Decisions needed today", "## One-minute round"])
-        # and the post is where it went
+        self.assertEqual(heads[:2], ["## Milestone", "## Demo"])
         self.assertIn("Demo today:", files()["260924-teams-agenda-daily-standup.txt"])
         self.assertEqual(ba.section_plan(
             {"layout": "compact", "milestone": {"name": "D", "date": "2026-09-24",
                                                 "kind": "demo"}}, DAY)["agenda"],
-            ["decisions", "confirm", "round"])
+            ["milestone", "demo", "release_blockers", "confirm", "round"])
 
     def test_the_card_still_gets_its_demo_section_on_demo_day(self):
         """The CR-148 decision above is scoped to compact. CR-121 on the card is intact.
@@ -616,7 +614,7 @@ class CompactFacilitator(unittest.TestCase):
     and NO per-person figures (CR-150)."""
 
     def setUp(self):
-        build(COMPACT, note_items=ITEMS, notes=PRIOR)
+        build(COMPACT_DEPS, note_items=ITEMS, notes=PRIOR)
         self.f = files()["260924-agenda-facilitator-daily-standup.md"]
 
     def test_it_has_time_boxes(self):
@@ -635,7 +633,7 @@ class CompactFacilitator(unittest.TestCase):
         """CR-147: a line that silently disappeared is the failure. The facilitator is
         the person who would otherwise raise it, so the close is said out loud."""
         tick = "external_systems:\n  jira:\n    - project: TICK\n"
-        build(COMPACT + tick, note_items=ITEMS, notes=PRIOR,
+        build(COMPACT_DEPS + tick, note_items=ITEMS, notes=PRIOR,
               jira=[{"key": "TICK-9", "summary": "Answer the refunds question",
                      "status": "Done", "updated": "2026-09-24T09:00:00.000+0000"}])
         f = files()["260924-agenda-facilitator-daily-standup.md"]
@@ -668,7 +666,7 @@ class CompactFacilitator(unittest.TestCase):
         """The mutant this catches: the stuck list rewritten as owner-and-count pairs.
         It is the exact aggregation CR-150 forbids, in prose rather than in a table."""
         tasks = "".join(f"- **Readme section {i}** — docs/r{i}.md · **Bob**\n" for i in range(1, 4))
-        build(COMPACT, note_items=tasks,
+        build(COMPACT_DEPS, note_items=tasks,
               notes={"260914": tasks, "260918": tasks, "260920": tasks})
         f = files()["260924-agenda-facilitator-daily-standup.md"]
         watch = f[f.index("## What to watch"):]
@@ -683,7 +681,7 @@ class CompactFacilitator(unittest.TestCase):
         # The older line has been carried since 260910; the newer one only since 260920,
         # so "oldest first" and "owner order" disagree (Dee before Ann).
         first = older.split("\n")[0] + "\n"
-        build(COMPACT, note_items=older,
+        build(COMPACT_DEPS, note_items=older,
               notes={"260910": first, "260914": first, "260920": older})
         f = files()["260924-agenda-facilitator-daily-standup.md"]
         dep = f[f.index("## Dependencies"):]
@@ -750,9 +748,12 @@ class LayoutPredicate(unittest.TestCase):
 
     def test_the_four_output_plan(self):
         plan = ba.section_plan({"layout": "compact"}, DAY)
-        self.assertEqual(plan["agenda"], ["decisions", "confirm", "round"])
+        self.assertEqual(plan["agenda"], ["milestone", "release_blockers", "confirm", "round"])
         self.assertEqual(plan["post"], ["milestone", "release_blockers"])
-        self.assertEqual(plan["facilitator"], ["dependencies", "movement", "stuck"])
+        self.assertEqual(plan["facilitator"], ["movement", "stuck"])      # CR-155: off by default
+        deps = ba.section_plan({"layout": "compact",
+                                "compact": {"facilitator_dependencies": True}}, DAY)
+        self.assertEqual(deps["facilitator"], ["dependencies", "movement", "stuck"])
 
     def test_compact_shares_the_cards_config_findings(self):
         """is_card() governs data, and a finding about the data is one of them: the
@@ -826,3 +827,104 @@ class ListLayoutIsUntouched(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LoginToPerson(unittest.TestCase):
+    """CR-155: which roster person a tracker login belongs to. Invented names."""
+
+    PEOPLE = [{"name": "Ann", "aliases": []},
+              {"name": "Robert", "aliases": ["Bob"]},
+              {"name": "Dee", "aliases": [], "github": ["dee-the-dev", "deedev2"]},
+              {"name": "Annabel", "aliases": []},
+              {"name": "Mo", "aliases": []}]
+
+    def test_an_explicit_github_key_wins(self):
+        self.assertEqual(ba.login_person("DeeDev2", self.PEOPLE), "Dee")
+
+    def test_a_login_that_starts_with_a_name_or_alias_belongs_to_that_person(self):
+        self.assertEqual(ba.login_person("Bob-Smith", self.PEOPLE), "Robert")
+        self.assertEqual(ba.login_person("robert_s", self.PEOPLE), "Robert")
+
+    def test_the_longest_name_wins(self):
+        self.assertEqual(ba.login_person("annabel-l", self.PEOPLE), "Annabel")
+        self.assertEqual(ba.login_person("ann-k", self.PEOPLE), "Ann")
+
+    def test_a_short_name_is_never_a_prefix_claim(self):
+        self.assertIsNone(ba.login_person("mojo", self.PEOPLE))      # "Mo" is two letters
+
+    def test_a_login_nobody_claims_is_none_not_a_stranger(self):
+        self.assertIsNone(ba.login_person("zed", self.PEOPLE))
+        self.assertIsNone(ba.login_person("", self.PEOPLE))
+
+    def test_two_people_tying_for_the_longest_is_unknown(self):
+        two = [{"name": "Sam", "aliases": []}, {"name": "Sam", "aliases": ["Sam"], "x": 1}]
+        two[1]["name"] = "Samuel"
+        two[1]["aliases"] = ["Sam"]
+        self.assertIsNone(ba.login_person("samsmith", two))
+
+
+class CompactRoundIsBuiltFromAssignments(unittest.TestCase):
+    """CR-155: each person's cell comes from the tracker's assignees, not from carried lines
+    whose owner field names several people."""
+
+    @staticmethod
+    def row(agenda, name):
+        return next(l for l in agenda.split("\n") if l.startswith(f"| **{name}** |"))
+
+    def setUp(self):
+        mv = {"repo": "acme/app",
+              "issues": [CompactPostGroupsTheRepoBlockers.issue(
+                             41, "Refund webhook retries forever", ["blocker", "area:payments"], who=["bob"]),
+                         CompactPostGroupsTheRepoBlockers.issue(
+                             42, "Locale crash on launch", ["blocker", "status: Fixed", "area:app"], who=["ann"]),
+                         CompactPostGroupsTheRepoBlockers.issue(
+                             43, "Slow export on large accounts", ["critical", "area:app"], who=["bob"])],
+              "labels": [{"name": n, "description": ""} for n in
+                         ("blocker", "critical", "status: Fixed", "area:payments", "area:app")],
+              "events": [["labeled", "2026-09-01T09:05:00Z", 41, "blocker"],
+                         ["labeled", "2026-09-01T09:05:00Z", 42, "blocker"],
+                         ["labeled", "2026-09-01T09:05:00Z", 43, "critical"],
+                         ["labeled", "2026-09-10T09:05:00Z", 42, "status: Fixed"]]}
+        items = ITEMS + ("- [dependency] **Shared question on refunds** — TICK-77 · **Ann, Bob**\n"
+                         "- [dependency] **Chase on issue 41** — #41 · **Dee**\n")
+        self.agenda, _ = build(COMPACT + CompactPostGroupsTheRepoBlockers.LABELS,
+                               note_items=items, notes=PRIOR, movement=mv)
+
+    def test_an_open_assignment_is_the_persons_open_item(self):
+        self.assertIn("*open:* #41 Refund webhook retries forever", self.row(self.agenda, "Bob"))
+        self.assertIn("*open:* #43 Slow export on large accounts", self.row(self.agenda, "Bob"))
+
+    def test_a_fixed_assignment_is_something_to_verify(self):
+        self.assertIn("*verify:* #42 Locale crash on launch", self.row(self.agenda, "Ann"))
+
+    def test_open_items_come_before_items_to_verify(self):
+        row = self.row(self.agenda, "Bob")
+        self.assertLess(row.index("*open:*"), row.index("Shared question") if "Shared question" in row else 10 ** 6)
+
+    def test_a_carried_line_goes_only_to_its_first_named_owner(self):
+        self.assertIn("Shared question", self.row(self.agenda, "Ann"))
+        self.assertNotIn("Shared question", self.row(self.agenda, "Bob"))
+
+    def test_a_carried_line_about_a_tracked_issue_is_not_repeated_for_its_owner(self):
+        """Issue 41 is on the tracker; a carried line naming #41 owned by someone else must
+        not put it into that person's cell as well."""
+        self.assertNotIn("Chase on issue 41", self.row(self.agenda, "Dee"))
+
+    def test_the_card_layout_is_untouched(self):
+        agenda, _ = build(CARD + CompactPostGroupsTheRepoBlockers.LABELS, note_items=ITEMS, notes=PRIOR)
+        self.assertNotIn("*open:*", agenda)
+        self.assertNotIn("*verify:*", agenda)
+
+
+class CompactFacilitatorDependenciesAreOptional(unittest.TestCase):
+    """CR-155: the room raises dependencies itself, so the facilitator's table is opt-in."""
+
+    def test_off_by_default(self):
+        build(COMPACT, note_items=ITEMS, notes=PRIOR)
+        f = files()["260924-agenda-facilitator-daily-standup.md"]
+        self.assertNotIn("## Dependencies", f)
+
+    def test_on_when_asked(self):
+        build(COMPACT_DEPS, note_items=ITEMS, notes=PRIOR)
+        f = files()["260924-agenda-facilitator-daily-standup.md"]
+        self.assertIn("## Dependencies", f)

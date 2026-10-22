@@ -427,9 +427,18 @@ def section_plan(cf: dict, day: datetime.date) -> dict[str, list[str]]:
     card = cf.get("card") if isinstance(cf.get("card"), dict) else {}
     rel = (card or {}).get("release_blockers", True)      # CR-121: default True
     blockers = "release_blockers" if rel else "blockers"
-    plan = ({"agenda":      ["decisions", "confirm", "round"],
+    # CR-155: the compact agenda keeps what the room CONFIRMS -- the milestones and the
+    # blockers -- and drops what is duplicated or raised aloud: there is no Dependencies
+    # section and no Decisions section (a person raises a dependency in their own minute;
+    # decisions come out of the milestones and the round). CR-148 as first released took
+    # the milestones and then the blockers out of the shared agenda as well, and the room
+    # had no dates and no list to confirm. The facilitator's dependencies table is
+    # optional (`compact.facilitator_dependencies`, default false) for the same reason.
+    comp_ = cf.get("compact") if isinstance(cf.get("compact"), dict) else {}
+    fac_deps_ = flag_value(comp_.get("facilitator_dependencies")) is True
+    plan = ({"agenda":      ["milestone", blockers, "confirm", "round"],
              "post":        ["milestone", blockers],
-             "facilitator": ["dependencies", "movement", "stuck"],
+             "facilitator": (["dependencies"] if fac_deps_ else []) + ["movement", "stuck"],
              "details":     ["all"]} if is_compact(cf) else
             {"agenda": ["milestone", "movement", blockers, "dependencies",
                         "decisions", "confirm", "stuck", "round", "close"],
@@ -440,24 +449,67 @@ def section_plan(cf: dict, day: datetime.date) -> dict[str, list[str]]:
     # the post. Inserted HERE rather than in two renderers, so "on its own date" is
     # stated once.
     #
-    # CR-121 vs CR-148, a real conflict, resolved in favour of CR-148 and stated here
-    # so the operator can overrule it with one line: CR-121 puts Demo "directly under
-    # the milestone", and the COMPACT agenda carries no milestone to put it under --
-    # CR-148 says that agenda is the decisions and the round, "Nothing else." Putting
-    # Demo at index 0 instead would make the compact agenda three sections on demo day
-    # and quietly repeal the layout the project opted into. So compact keeps Demo in
-    # the POST only, which is also where CR-121 itself says the demo list goes ("the
-    # Teams post carries the demo list in place of the blockers line"). To reverse it,
-    # drop the `is_compact` guard: the renderer and the lead line need no change.
+    # CR-155: the compact agenda has a milestone again, so Demo sits under it there too;
+    # the CR-148 guard that kept Demo in the post only is gone.
     if demo_on(cf, day):
         for out in ("agenda", "post"):
-            if out == "agenda" and is_compact(cf):
-                continue
             if "milestone" in plan[out]:
                 plan[out].insert(plan[out].index("milestone") + 1, "demo")
             else:
                 plan[out].insert(0, "demo")
     return plan
+
+
+def login_person(login: str, people: list[dict]) -> str | None:
+    """CR-155: the roster person a tracker login belongs to, or None.
+
+    An explicit `github:` key on a roster entry (a login or a list of logins) wins. Without
+    one, a login that STARTS with a name or alias of at least three letters belongs to
+    that person, ignoring case and punctuation; the longest such name wins, and two
+    different people tying for the longest is "unknown", never a guess. A login nobody
+    claims is None, and the item stays out of every cell rather than going to a stranger.
+    """
+    flat = lambda x: re.sub(r"[^a-z0-9]", "", str(x or "").lower())      # noqa: E731
+    lo = flat(login)
+    if not lo:
+        return None
+    for p_ in people:
+        g = p_.get("github")
+        for x in ([g] if isinstance(g, str) else list(g or [])):
+            if flat(x) == lo:
+                return p_["name"]
+    best, blen, tie = None, 0, False
+    for p_ in people:
+        for k in [p_["name"]] + list(p_.get("aliases") or []):
+            kk = flat(k)
+            if len(kk) >= 3 and lo.startswith(kk):
+                if len(kk) > blen:
+                    best, blen, tie = p_["name"], len(kk), False
+                elif len(kk) == blen and best != p_["name"]:
+                    tie = True
+    return None if tie else best
+
+
+def assigned_cells(gap: list[dict], people: list[dict]) -> dict[str, list[str]]:
+    """CR-155: each person's open gap issues (`*open:*`) and the ones waiting for them to
+    test (`*verify:*`), from the TRACKER's assignees -- not from carried lines.
+
+    On the second day of the compact layout a person did not recognise the items listed
+    under their name, because the cells had been assembled from carried lines whose owner
+    field named several people. An issue has one assignee list, and it is the tracker's.
+    """
+    out: dict[str, list[str]] = {}
+    for g in gap:
+        for login in g.get("who") or []:
+            nm = login_person(login, people)
+            if not nm:
+                continue
+            title = re.split(r"[:—;]", str(g.get("title") or ""))[0].strip()[:60]
+            mark = "*verify:*" if g.get("fixed") else "*open:*"
+            line = f"{mark} #{g['n']} {title}"
+            if line not in out.setdefault(nm, []):
+                out[nm].append(line)
+    return out
 
 
 def lead_line(cf: dict, plan: dict[str, list[str]], day: datetime.date) -> str:
@@ -472,14 +524,9 @@ def lead_line(cf: dict, plan: dict[str, list[str]], day: datetime.date) -> str:
         return ("*Demo day: the people who raised the ideas show them; then what we wait on,"
                 " and one minute each. Five to ten minutes when nothing blocks; statistics"
                 " are read offline.*\n")
-    # CR-121 + CR-148, DELIBERATE: the compact agenda never carries a blockers section
-    # of either id (CR-148: it is the decisions and the round, "Nothing else"), so the
-    # test below would always read as "no release" there -- and that is the wanted
-    # reading, not an accident of the plan's contents. Under compact the blockers live
-    # in the post, so asking the room in the AGENDA to confirm a list it cannot see
-    # would be wrong whatever `card.release_blockers` says. The key still governs the
-    # post's blockers heading; it is inert for the compact lead on purpose.
-    if is_compact(cf) or "release_blockers" not in plan["agenda"]:   # CR-121: `release_blockers: false`
+    # CR-155: the compact agenda carries the blockers again, so it asks the room to confirm
+    # them like the card; the "no release" reading is CR-121's, from the plan alone.
+    if "release_blockers" not in plan["agenda"]:   # CR-121: `release_blockers: false`
         return ("*Raise what you wait on, then one minute each. Five to ten minutes when"
                 " nothing blocks; statistics are read offline.*\n")
     return ("*Confirm the release blockers and their plan, raise what you wait on, then one minute each. "
@@ -4285,16 +4332,27 @@ def main() -> None:
             mark_ = {"blocker": "blocked", "dependency": "waiting", "decision": "decide"}
             per: dict[str, list[str]] = {}
             tasks_n: dict[str, int] = {}
+            # CR-155: under compact the cells come from what the TRACKER assigns. A carried
+            # line about an issue the tracker already lists is represented by that
+            # assignment, and a carried line goes only to its FIRST-named owner -- not to
+            # every name in an owner field, which is how a person came to be shown items
+            # that were not theirs.
+            compact_ = is_compact(cf)
+            gap_ = ((mv_x or {}).get("gap") or []) if compact_ else []
+            gap_ids_ = {f"#{g['n']}" for g in gap_}
+            asg_ = assigned_cells(gap_, people or [])
             for lab, rest, n, _g, _d in all_items:
                 if off_card(key(lab)):
                     continue
                 who = owner_of(lab, rest)
                 if who == "UNOWNED":
                     continue
+                if compact_ and any(re.search(re.escape(i_) + r"(?!\d)", f"{lab} {rest}") for i_ in gap_ids_):
+                    continue
                 k_ = kd.get(key(lab))
                 short = re.split(r"[:—;]", item_of(lab, rest))[0].strip()[:60]
-                for nm in re.split(r",|\band\b|·", who):
-                    nm = nm.strip().strip("*").lower()
+                owners_ = [x for x in (y.strip().strip("*").lower() for y in re.split(r",|\band\b|·", who)) if x]
+                for nm in (owners_[:1] if compact_ else owners_):
                     if not nm:
                         continue
                     if k_ in KINDS:
@@ -4312,7 +4370,9 @@ def main() -> None:
                         for x in per.get(k.lower(), []):
                             if x not in seen_:
                                 seen_.add(x); mine_.append(x)
-                    order_k = {"*blocked:*": 0, "*waiting:*": 1, "*decide:*": 2}
+                    mine_ = list(asg_.get(p_["name"], [])) + mine_    # CR-155: empty unless compact
+                    order_k = {"*open:*": -2, "*verify:*": -1,
+                               "*blocked:*": 0, "*waiting:*": 1, "*decide:*": 2}
                     mine_.sort(key=lambda x: order_k.get(x.split(" ", 1)[0], 3))
                     nt = max((tasks_n.get(k.lower(), 0) for k in keys_), default=0)
                     cell = " · ".join(mine_)
@@ -4392,7 +4452,7 @@ def main() -> None:
         # CR-148: the compact agenda has no Stuck? section, so the link to the details
         # file -- which `s_stuck` carries on the card -- is written here instead. The
         # link is not optional: "the rest is in the details" is the whole claim that
-        # lets the agenda be two sections, and an agenda that drops it is simply short.
+        # lets the agenda be short, and an agenda that drops it is simply short.
         if is_compact(cf):
             A += ["",
                   f"*Everything else -- the dependencies, the movement, the sources, the full"
