@@ -157,7 +157,8 @@ class Pulls(unittest.TestCase):
 
     def test_skip_note_only_when_neither_is_declared(self):
         agenda, _ = build(CF + REPOS, repo={"reads": ["docs"], "pulls": PULLS})
-        self.assertIn("neither issues nor pulls in declared reads", agenda)
+        # CR-157: the reason names the archive's recorded reads (this project declared none).
+        self.assertIn("the archive reads only docs, neither issues nor pulls", agenda)
 
     def test_teams_post_counts_merged_and_waiting(self):
         build(CF + REPOS, repo={"reads": ["pulls"], "pulls": PULLS})

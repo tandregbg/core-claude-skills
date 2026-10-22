@@ -814,6 +814,50 @@ def chat_label(c: dict) -> str:
     return str(c.get("name") or "?")
 
 
+def declared_reads(cf: dict) -> dict[str, list[str]]:
+    """CR-157: the `reads:` each declared repository asks for, keyed `owner/repo`."""
+    out: dict[str, list[str]] = {}
+    for r in (cf.get("ext") or {}).get("repos") or []:
+        url = re.sub(r"^(https?://)?(www\.)?github\.com/", "", str((r or {}).get("url") or "")).strip("/")
+        if url and (r or {}).get("reads"):
+            out[url] = [str(x) for x in r["reads"]]
+    return out
+
+
+def scope_mismatches(cf: dict) -> list[tuple[str, list[str], list[str]]]:
+    """CR-157: repositories whose ARCHIVE records fewer reads than the project declared.
+
+    A project cannot widen what an archiver fetches by editing its own config: the scope is the
+    archiver's. The recorded scope is `reads` in `<archive>/<slug>/_repo.json`. Returns
+    (repo, recorded, wanted-and-missing-from-recorded); the declaration wins where the archive
+    reads MORE, so a surplus is never reported."""
+    venture_dir = archive_dir(cf, ".githubmeta")
+    if venture_dir is None:
+        return []
+    want = declared_reads(cf)
+    out = []
+    for meta in sorted(venture_dir.glob("*/_repo.json")):
+        try:
+            info = json.loads(meta.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        repo = info.get("repo")
+        if repo not in want:
+            continue
+        rec = [str(x) for x in (info.get("reads") or [])]
+        lacking = [x for x in want[repo] if x not in rec]
+        if lacking:
+            out.append((repo, rec, lacking))
+    return out
+
+
+def scope_text(repo: str, recorded: list[str], wanted: list[str], skipped: bool = False) -> str:
+    """CR-157: one line naming both lists, and whose configuration decides."""
+    rec = ", ".join(recorded) if recorded else "nothing"
+    return (f"{repo}: the archive reads only {rec}; the project asked for {', '.join(wanted)}; "
+            "the archiver's own configuration decides" + (" — skipped" if skipped else ""))
+
+
 def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[str]:
     """Issues that changed state since the last note, from the metadata archive.
 
@@ -846,9 +890,18 @@ def from_repo(cf: dict, after: datetime.date, rec: dict | None = None) -> list[s
         # tracks its work in a separate ticket system keeps its movement in PRs, and
         # the early return on "no issues" made its appendix permanently empty while
         # the archive held the pulls. The skip note now means neither is declared.
+        # CR-157: when the project declared reads the archive does not record, say so with
+        # both lists, because the reads that count are the ARCHIVER's, not the project's.
+        want_ = declared_reads(cf).get(info["repo"])
         if "issues" not in reads and "pulls" not in reads:
-            out.append({"note": f"{info['repo']}: neither issues nor pulls in declared reads — skipped"})
+            if want_:
+                out.append({"note": scope_text(info["repo"], [str(x) for x in reads], want_, skipped=True)})
+            else:
+                out.append({"note": f"{info['repo']}: the archive reads only "
+                                    f"{', '.join(str(x) for x in reads) or 'nothing'}, neither issues nor pulls — skipped"})
             continue
+        if want_ and [x for x in want_ if x not in reads]:
+            out.append({"note": scope_text(info["repo"], [str(x) for x in reads], want_), "scope": True})
         snaps = sorted(meta.parent.glob(f"{meta.parent.name}-*.json"))
         if not snaps:
             out.append({"note": f"{info['repo']}: no snapshot in the archive"})
@@ -3110,6 +3163,7 @@ def skipped_between(skips: list[tuple[datetime.date, str]],
 # None of the expensive readers (`from_chat`, `from_repo`, `from_jira`) is called:
 # their answer is WHAT MOVED, which a pre-flight does not ask.
 READY, STALE, FAILED, MISSING, UNCHECKED = "ready", "stale", "failed", "missing", "not checked"
+NOTE = "note"          # CR-157: a difference to resolve; never fails the check
 # CR-151, proposal 6: a source the reports name and the config does not hold. Its own
 # state because it is the opposite question from the others: not *is the declared source
 # there* but *is a source missing from the declaration*, which is why it stays out of
@@ -3162,6 +3216,11 @@ def check_rows(cf: dict, md: Path, hist: list[tuple[str, Path]],
         else:
             rows.append((label, READY, _stamp(_when(rec.get("last_success")), today),
                          str(rec.get("result"))))
+
+    # CR-157: a read scope the archiver does not honour is a difference to resolve, not a
+    # failure -- the row is a NOTE and does not fail the check.
+    for repo_, rec_, lack_ in scope_mismatches(cf):
+        rows.append(("read scope", NOTE, "—", scope_text(repo_, rec_, lack_)))
 
     # Every declared report, repo-kept and vault-kept alike. A report with no age
     # is one whose date could not be read -- reported as missing, never as fresh.
@@ -3697,8 +3756,12 @@ def main() -> None:
         if notes:
             for n_ in notes:
                 # A snapshot older than the note is the one that reads as fresh and is not.
-                flag = f"STALE — {status}" if "older than the last note" in n_ else "NOT READ"
+                flag = (f"STALE — {status}" if "older than the last note" in n_
+                        else "SCOPE" if "the archive reads only" in n_ and "— skipped" not in n_
+                        else "NOT READ")
                 src.append(f"  {kind:9} {n_[:44]:44} {flag}")
+                if len(n_) > 44:       # CR-157: the reason is the point; never cut it
+                    src.append(f"            {n_}")
         else:
             src.append(f"  {kind:9} {'declared':44} read · {len([r for r in rows if not r.get('note')])} changed"
                        f" · {stale_mark(rec) or status}")

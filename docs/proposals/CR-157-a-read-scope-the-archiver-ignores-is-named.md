@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-22) |
+| **Status** | **Implemented v1.92.8** (2026-10-22) |
 | **Contract** | additive — a comparison between a declared read scope and the archive's recorded one; the source line gets a reason |
 | **Date** | 2026-10-22 |
 | **Area** | `ops` (`build_agenda.py`: the repository source and its line in the details file), `ops-config` (`external_systems.repos[].reads`) |
