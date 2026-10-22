@@ -7,6 +7,19 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.9] - 2026-10-22
+
+### Added
+
+- **CR-154 -- a daily-meeting playbook template (`ops`, contract unchanged).** `skills/ops/templates/daily-playbook.md`: the
+  generic part of a team's page about its daily meeting, in one page of checklists -- the four parts of the
+  meeting, attendance (required; a silent absence is not accepted), the four lines of a person's minute, what to
+  do before and after, the roles, where things go. The project's own parts are `{{placeholders}}` that stay
+  visible until filled. A new optional `playbook: {path, decisions, stale_after}` makes `check` say, in one line,
+  when more than `stale_after` (default 8) decisions in the register are dated after the page's `Reviewed:` date
+  (or its file date). Not built: an offer of the template at series set-up, and auto-filling the placeholders from
+  the roster and labels (see the CR). 12 new tests.
+
 ## [1.92.8] - 2026-10-22
 
 ### Changed
