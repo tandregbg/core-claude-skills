@@ -1144,6 +1144,8 @@ releases, pull requests — not cloning a codebase into the vault. The agenda
 generator honours `issues`, `pulls` and `releases` (CR-101); a repository that
 declares only `docs` produces a skip note, never an empty-looking appendix.
 
+**The archive's recorded `reads` decide what the generator can use (CR-157).** A project cannot widen what an archiver fetches by editing its own `reads:`: the scope is the archiver's own configuration, recorded per repository in the archive's `_repo.json`. When the archive records fewer reads than the project declared, the sources block names both lists (*the archive reads only docs; the project asked for pulls, releases; the archiver's own configuration decides*), flagged `SCOPE` when something is still readable and `NOT READ` when nothing is; `--check` prints the same as a `read scope` note, which never fails the check. Where the archive reads more than was declared, the declaration wins and nothing is said.
+
 ### Inheritance
 
 Resolved by the normal chain (`config_resolution_order`): the nearest `_ops.yaml`

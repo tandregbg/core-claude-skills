@@ -12,7 +12,7 @@ Next available CR number: **CR-158**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
-| CR-157 | `ops` (`build_agenda.py` repository source line), `ops-config` (`external_systems.repos[].reads`) | Low | **Proposed** (2026-10-22). When the archiver reads less than the project declared, the source line says so. A declared read scope the archiver ignored showed as *skipped* with the wrong reason |
+| CR-157 | `ops` (`build_agenda.py` repository source line), `ops-config` (`external_systems.repos[].reads`) | Low | **Implemented v1.92.8.** When the archiver reads less than the project declared, the source line says so. A declared read scope the archiver ignored showed as *skipped* with the wrong reason |
 | CR-156 | `ops` (`build_agenda.py` config finding, `round_table`), `ops-config` (`people:`) | Low | **Implemented v1.92.7.** The presence check matches names, not whole row labels, and reads declared leave. A person in the room every day was reported absent because the row label carried a bracketed alias |
 | CR-155 | `ops` (`build_agenda.py` compact plan, the round's cells), SKILL.md, CR-148's tests | **High** | **Implemented v1.92.6.** The compact agenda keeps the milestones and the blockers; its round is built from assignments. The released layout removed both and the room had no dates or list; a person was shown items that were not theirs |
 | CR-154 | `ops` (SKILL.md step 9, `templates/daily-playbook.md`), `ops-config` (`playbook:`) | Medium | **Proposed** (2026-10-22). A daily-meeting playbook template: the generic page every project's team can start from. A team page written in week one was five weeks stale; the rewrite turned out to be almost all generic |

@@ -7,6 +7,21 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.92.8] - 2026-10-22
+
+### Changed
+
+- **CR-157 -- when the archiver reads less than the project declared, the source line says so (`ops`, contract
+  unchanged).** A project declared a repository with `reads: [pulls, releases]`; its archive recorded
+  `reads: [docs]`, because the archiver's scope is its own configuration, not the project's. The generator
+  printed *neither issues nor pulls in declared reads -- skipped*, which was wrong about whose reads it meant,
+  and the sources block cut every line at 44 characters. It now compares the project's declaration with the
+  archive's recorded reads: *the archive reads only docs; the project asked for pulls, releases; the
+  archiver's own configuration decides*, in full on its own line, flagged `SCOPE` when something is still
+  readable and `NOT READ` when nothing is. `--check` prints the same as a `read scope` note (state `note`)
+  that never fails the check. Where the archive reads more than declared, the declaration wins and nothing
+  is said. 11 new tests; one CR-101 test changed to the new wording.
+
 ## [1.92.7] - 2026-10-22
 
 ### Changed
