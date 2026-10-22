@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-22) |
+| **Status** | **Implemented v1.92.6** (2026-10-22). Proposals 1 to 4 built; **proposal 5 (marking a date copied from a status report) is not built**: it needs a place for the source of a milestone to say "status report", and CR-149's `source` is free text; left for a follow-up |
 | **Contract** | changes the released behaviour of `layout: compact` (CR-148, v1.92.4): the agenda gains two sections; one optional key |
 | **Date** | 2026-10-22 |
 | **Area** | `ops` (`build_agenda.py`: the compact plan for the agenda and the facilitator document; the round's cells), SKILL.md, tests of CR-148 |

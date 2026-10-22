@@ -439,10 +439,9 @@ with no place for what the meeting was for. Both are now configurable, and both 
   -- "on staging or done", which is what there is to show -- and the lead becomes the demo one. A
   gap-label issue nobody has fixed yet is not a demo row; it stays on the card under *Release blockers*.
   After the date the card asks *demo held? record it and set the next milestone*.
-- **On `layout: compact` the Demo section is in the post, not the agenda.** CR-121 puts Demo directly
-  under the milestone and the compact agenda has no milestone to put it under, because CR-148 makes that
-  agenda the decisions and the round and nothing else. So compact keeps the demo list in the post, which
-  is where CR-121 puts it for the post anyway. The card is unaffected.
+- **On `layout: compact` the Demo section sits directly under the milestone in the agenda too** (CR-155).
+  CR-148 first kept it in the post only, because that agenda had no milestone to put it under; the
+  compact agenda has its milestone again, so CR-121 holds there as on the card.
 - **_Shown by_ is read or blank, never guessed.** The demo convention is that the person who raised an
   idea shows it, so a carried line's owner is the raiser; an issue nobody raised gets an empty cell for
   the room to fill. A plausible name against work nobody offered to present is the defect, not the blank.
@@ -460,8 +459,8 @@ redistributes what the card already computes across **four** outputs. Nothing is
 | Output | What it carries |
 |---|---|
 | **The post**, plain text in a `.txt` | The milestones as a dated list with a state each, the blockers one per line grouped *to fix* and *waiting for a test*, and the ask. No round, no dependencies, no markdown |
-| **The agenda**, screen-shared | The decisions needed and the one-minute round with each person's open items. Nothing else, plus the link to the details |
-| **The facilitator document** | Time boxes, the dependencies with every line read against its own source (CR-147) and the closed ones listed as closed, and what to watch |
+| **The agenda**, screen-shared | The milestones, the release blockers (*to fix* first, *fixed, waiting for a test* under its own heading) and the one-minute round, with each person's open items read from the tracker's assignments (CR-155). No dependencies and no decisions section, plus the link to the details |
+| **The facilitator document** | Time boxes and what to watch. The dependencies table, with every line read against its own source (CR-147) and the closed ones listed as closed, is **off by default** (`compact.facilitator_dependencies: true` turns it on): where the room raises dependencies itself, a pre-written table duplicates the round |
 | **The details file** | Unchanged and complete, linked from the agenda |
 
 - **`compact.max_words`** (default 150) is a ceiling that **holds**, and the blocker list is the part that
@@ -471,9 +470,17 @@ redistributes what the card already computes across **four** outputs. Nothing is
   the ask are never what is dropped: the milestones are declared by the project and the ask is the reason
   the post exists. The full list is in the agenda and the details. `max_words: 0` means *always warn* and
   is read as 0, not as unset.
-- **The compact lead never asks the room to confirm the release blockers.** That agenda carries no blockers
-  section of either id, so `card: {release_blockers: ...}` is inert for the compact lead by design; it still
-  governs the heading the post's blockers get.
+- **Remove only the duplication, never what the room confirms (CR-155).** The first compact release took
+  the milestones and then the blockers out of the shared agenda, and the room had no dates to look at and
+  no list to confirm. Both are in the post **and** the agenda now; the compact lead is the card's, and
+  `card: {release_blockers: false}` still gives the no-release lead.
+- **The round's cells come from the tracker's assignments (CR-155).** Each person's open `blocker` and
+  `critical` issues (`*open:*`) and the fixed ones waiting for them to test (`*verify:*`), by assignee. A
+  tracker login belongs to a roster person through an explicit `github:` key (a login or a list), else by
+  a login that starts with their name or alias (three letters or more; a tie is "unknown", never a guess).
+  A carried line goes only to its **first-named** owner, and a carried line about an issue the tracker
+  already lists is not repeated -- a person was shown items that were not theirs because an owner field
+  named several people.
 - **`compact.facilitator_suffix`** names the facilitator document; by default it is derived from
   `agenda_suffix` exactly as the details file is (`agenda-x` -> `agenda-facilitator-x`).
 - **Pronouns come from the roster, or they are `they`** (CR-143). Every generated and staged text --
