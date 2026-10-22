@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-153**
+Next available CR number: **CR-155**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-153**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-154 | `ops` (SKILL.md step 9, `templates/daily-playbook.md`), `ops-config` (`playbook:`) | Medium | **Proposed** (2026-10-22). A daily-meeting playbook template: the generic page every project's team can start from. A team page written in week one was five weeks stale; the rewrite turned out to be almost all generic |
 | CR-152 | `ecosystem.yaml` (`task_source_types`, `task_scopes`, `task_source_aliases`), `tasks` (v2 schema + writers), `ops` (`hygiene_check.py`, `check`) | Medium | **Proposed** (2026-10-21). The ledger's source vocabulary: both enums move into the contract (the CR-048 move, applied to the field it was not applied to), `scope` gains `contact`, and the shape/channel axes are split -- `source.type` stays a closed shape enum, a new optional `source.channel` carries how it arrived. The 22 legacy words are read through a declared alias map and never rewritten (CR-127's precedent); the check reports only a word that is neither canonical nor aliased, and counts aliases once per ledger. Measured: 281 rows over 26 ledgers in 22 words, and `email`+`mail` (105) beat the declared `correspondence` (6). Additive, contract 46 to 47 |
 | CR-151 | `ops` (a helper beside `build_agenda.py`, SKILL.md), `ops-config` (`external_systems.repos`) | Medium | **Implemented v1.92.5.** The repository list is derived from the status author's reports and proposed for confirmation; nothing is written without a yes, and a re-run never removes an entry itself. A project declared one repository while the release depended on at least seven, and the only place that said so was the daily report -- a count on the declared one alone showed several people with nothing merged, which was wrong and nobody had been told
 | CR-150 | `ops` (`build_agenda.py` appendix and digest, `lint`), `ops-config` (`metrics_document`) | Medium | **Implemented v1.92.4.** The generator never aggregates by person, and a lint keeps team-facing files clean of it. The details appendix names each item's author with no count per author; `metrics_document:` declares the owner-only path. The finding resolves its subject against the project's `people:` roster -- a shape heuristic reported every team and grand total as work counted per person, and a lint that does that is switched off by the first operator who reads one
