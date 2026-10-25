@@ -1182,6 +1182,62 @@ external_systems:
       default: true
 ```
 
+### `external_systems.linkedin:` -- a personal network archive, if one exists
+
+**Optional, and almost always absent.** This key defines how a LinkedIn member-data archive is
+*declared and read* **if** a vault happens to carry one. Nothing in core-skills fetches it, and no
+skill requires it: a vault without the key behaves exactly as before.
+
+It is documented here for the same reason `repos:` and `jira:` are — so that a reader walking a
+folder's config knows what the key means when it is present, rather than guessing.
+
+```yaml
+external_systems:
+  linkedin:
+    member: firstname-lastname   # whose archive this is; one member per declaration
+    levels: [graph, activity]    # which groups of data the fetcher may write
+    archive: .linkedin           # optional; the dot-folder, relative to the owner folder
+```
+
+| Field | Rule |
+|---|---|
+| `member` | Required. The archive has exactly one subject, unlike `repos:` or `chats:` |
+| `levels` | Required. What the fetcher is permitted to write. The fetcher owns the actual domain list; this says which *groups* are allowed, never which fields |
+| `archive` | Optional, default `.linkedin`. A dot-folder, excluded from routine reading like the other archives (CR-034) |
+
+**Declared under a person's own folder, not a venture's.** A personal network crosses every venture,
+so filing it under one would be wrong and duplicating it under each would be worse. That is the one
+way this archive's placement differs from `.teamschats/`, `.githubmeta/` and `.jirameta/`.
+
+**The fetch record is CR-088's, unchanged.** `<owner>/.linkedin/_fetch.json` carries `source`,
+`last_attempt`, `last_success`, `result`, `detail`, `host` and `tool`, with `result` inside the
+declared vocabulary (`ok` | `partial` | `auth_required` | `error` | `timeout`). A fetcher that found
+some data not yet prepared by the source writes `partial` and names the rest in its own fields --
+never a new `result` value, which a reader would treat as `error`.
+
+#### How a skill may read it
+
+As **standing context, never as authority** -- the same contract `/preparation` already follows when
+it reads a `_company/` facet (CR-125):
+
+| | May read | May write |
+|---|---|---|
+| The fetcher that owns it | -- | only inside its own dot-folder |
+| `/preparation`, `/ops`, any authoring skill | yes, citing the fetch date | **never** |
+
+- **Cite the fetch date** whenever a fact from it is used. A job title in a six-month-old snapshot
+  is a claim about the past, not about today.
+- **Fail soft.** Absent archive, stale archive, `result: partial` -- the skill proceeds without it
+  and says nothing, exactly as it does when a folder declares no company profile.
+- **Never create or amend a contact from it.** `_contacts/` is authored by hand; this is fetched and
+  replaced wholesale, and carries people the user has no relationship with. A machine-maintained
+  reading must not be written into a hand-maintained record.
+- **Never treat an absence as a fact.** Someone missing from the archive is not someone the user
+  does not know.
+
+**No skill in this repository reads it today.** This section defines the shape so that one could,
+and so that an archive written by an outside tool lands somewhere a reader already understands.
+
 ---
 
 ## Project-Level Overrides

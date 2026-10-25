@@ -12,6 +12,18 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 47 (2026-10-25): external_systems gains an optional `linkedin:` key --
+#   a personal member-data archive, declared under a PERSON's folder rather than a venture's,
+#   because a personal network crosses every venture. Purely definitional and almost always
+#   absent: nothing here fetches it, no skill in this repository reads it, and a vault without
+#   the key behaves exactly as before. Documented so that a reader walking a config knows what
+#   the key means when present, and so an archive written by an outside tool lands somewhere a
+#   reader already understands. Its `_fetch.json` is CR-088's unchanged, including the closed
+#   `result` vocabulary -- a source that has not finished preparing its data is `partial` with
+#   the detail beside it, never a new value, which a reader would read as `error`. The read
+#   contract is CR-125's: standing context, cite the fetch date, never write back, fail soft
+#   when absent. Never a source for creating or amending a contact. Additive.
+#
 # contract_version 46 (CR-135, 2026-10-20): the ledger uses the object model. Additive: a ledger
 #   that sets nothing behaves as before, and nothing needs migrating to be read.
 #   - tasks v2 (still schema 2): three optional fields, `verksamhet:` (a venture the vault declares, or
@@ -349,7 +361,7 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 46
+contract_version: 47
 core_skills_version: "1.92.9"
 
 # --- Schema versions ---
