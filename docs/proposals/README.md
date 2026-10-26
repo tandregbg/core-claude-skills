@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-158**
+Next available CR number: **CR-160**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-158**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-159 | `ops-base` (Template Contracts, CR-018), the pre-save check in `ops` and `transcript`, the template-contract check in `check <folder>` | Medium | **Proposed** (2026-10-26). A contract heading may be declared optional, in the `trigger: if_relevant` idiom the config already uses for a content-dependent section: `{name: Bakgrund, trigger: if_relevant}`. CR-018 check 1 is an equality, so a section that belongs only when the meeting gives it content has no expression -- and both values are wrong. Measured over 27 post-canon summaries in one series: five headings reports the 5 legitimate absences, four reports the 16 files that correctly carry it. A bare string stays required and `default` declares nothing optional, so a silent drop is still reported; the prefix comparison that passed all 27 is rejected as the original defect, not a fix. Additive |
 | CR-157 | `ops` (`build_agenda.py` repository source line), `ops-config` (`external_systems.repos[].reads`) | Low | **Implemented v1.92.8.** When the archiver reads less than the project declared, the source line says so. A declared read scope the archiver ignored showed as *skipped* with the wrong reason |
 | CR-156 | `ops` (`build_agenda.py` config finding, `round_table`), `ops-config` (`people:`) | Low | **Implemented v1.92.7.** The presence check matches names, not whole row labels, and reads declared leave. A person in the room every day was reported absent because the row label carried a bracketed alias |
 | CR-155 | `ops` (`build_agenda.py` compact plan, the round's cells), SKILL.md, CR-148's tests | **High** | **Implemented v1.92.6.** The compact agenda keeps the milestones and the blockers; its round is built from assignments. The released layout removed both and the room had no dates or list; a person was shown items that were not theirs |
