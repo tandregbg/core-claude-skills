@@ -309,11 +309,11 @@ asymmetry is in the code and reads as an oversight from the other three views.
 | Element | Rule |
 |---|---|
 | Filename | The script prints to stdout. The operator redirects it to a **stable filename** (a vault convention, e.g. `_inbox/_uppgifter.md`) -- it is meant to stay open, not to accumulate dated copies. The header says so and repeats the command that regenerates it |
-| Grouping | `## <STATE> -- N poster` then `### <context> -- N`, contexts largest first. `DATERADE FRAMÅT` is flat, with no context level |
-| States | `FÖRFALLNA`, `ODATERADE MED PRIO`, `UTAN DATUM OCH UTAN ÅLDER`, `ODATERADE`, `DATERADE FRAMÅT`, in that order. Each is defined by `due`/`created`/`priority`, so an entry lands in exactly one; empty states are omitted. Each section carries a one-line note saying what the state means |
-| Row | Six cells: `# \| Ålder \| Uppgift \| Förslag \| \| Godta`. **The signal column's header cell is empty** -- the `✓`/`?` mark appears only in the body rows, and a reader looking for a `✓/?` heading will not find one. The cells are the id with its priority, the age, the task truncated to 80 characters, the proposed bucket, the signal mark, and the operator's column |
-| Row under `DATERADE FRAMÅT` | **A different, three-cell row:** `# \| Datum \| Uppgift`, the task truncated to 74 characters. No `Förslag`, no signal mark and **no `Godta` column** -- the section exists for completeness, its proposal is `LÅT STÅ` for every entry, and there is nothing to decide. The only section that differs |
-| `Ålder` | `<N> d` for an overdue entry. For every other state the cell is a dash: `age_days` is set only when the due date has passed, so the undated states carry no age. The code falls back to the due date when the age is falsy; for a well-formed `due` that entry is never in an undated state, so **the operator sees no date here** -- with one exception: a `due` the date parser cannot read (not `YYMMDD`, or outside the calendar) leaves `age_days` unset and the raw value is printed in this column. A date in this cell therefore means the entry's `due` is malformed |
+| Grouping | `## <Verksamhet> -- N poster`, then ``### `<kontext>` -- N · projekt **<Projekt>**``. Unmapped contexts gather under `## Utan post i kartan`; the project is named when the context maps to one in PORTFÖLJEN (CR-162) |
+| States | The five states are unchanged and each entry is still in exactly one, but **a state is no longer a section** (CR-162). It travels with the row in `Läge`: `förfallen`, `prio utan datum`, `ingen ålder`, `odaterad`, `framåt YYMMDD` |
+| Row | Eight cells: `# \| Verksamhet \| Projekt \| Läge \| Uppgift \| Förslag \| \| Godta` (CR-162). **The signal column's header cell is empty** -- the `✓`/`?` mark appears only in the body rows, and a reader looking for a `✓/?` heading will not find one. The cells are the id with its priority, the venture, the project, the state, the task truncated, the proposed bucket, the signal mark, and the operator's column. `Verksamhet` and `Projekt` are a dash where the context maps to neither |
+| A forward-dated entry | **Carries a `Godta` cell like any other** (CR-162). It was previously a three-cell row in a flat `DATERADE FRAMÅT` section with nothing to decide; that section no longer exists, so the exception has nothing to attach to, and the entry is decidable -- its date can be wrong. Its `Läge` reads `framåt YYMMDD` and its proposal is `LÅT STÅ` |
+| `Läge` (was `Ålder`) | `<N> d` for an overdue entry. For every other state the cell is a dash: `age_days` is set only when the due date has passed, so the undated states carry no age. The code falls back to the due date when the age is falsy; for a well-formed `due` that entry is never in an undated state, so **the operator sees no date here** -- with one exception: a `due` the date parser cannot read (not `YYMMDD`, or outside the calendar) leaves `age_days` unset and the raw value is printed in this column. A date in this cell therefore means the entry's `due` is malformed |
 | Coverage | **Every open entry appears exactly once.** The count in the header is the ledger's own open count. A subset is a different document and must say so in its own name |
 | Header | A movement line (what closed today, shown only when something did), the open count, the proposals tallied by kind, `✓` against `?`, the `Godta` legend, and a per-state summary table of where the proposals fall |
 | `Godta` | Left **empty** by the generator. Empty means the proposal stands; the operator writes a date (`261027`), `R` for reference, `Ö` for write-off or `S` for leave standing |
@@ -321,13 +321,12 @@ asymmetry is in the code and reads as an oversight from the other three views.
 | Buckets | `NYTT DATUM`, `SÄTT DATUM`, `AVSKRIV`, `REFERENS`, `LÅT STÅ`. A prose heuristic, and labelled as one in the header: *"Förslagen är en läsning av texten, inte ett beslut."* The operator overrides any row |
 | Outside the table | A short `### Utanför tabellen` list for what is wrong with the register itself rather than with an entry -- undeclared status words, a registered file still waiting -- each with its own proposal and `Godta` cell |
 
-**The state travels with the row, it does not define the sections --** except that
-here it does both: the state is the section *and* it is readable per row through
-`Ålder` and the proposed bucket. Grouping by venture instead is a different
-question, and that is `--migration`, which maps context values to ventures and
-projects and carries no `Godta` column. Do not merge the two: the audit is per
-entry and decidable; the migration worksheet is per context value and its
-decisions belong in `_config/verksamhet-karta.yaml`.
+**The state travels with the row, it does not define the sections** (CR-162). The
+sections are ventures, context beneath them; the state is readable per row through
+`Läge` and the proposed bucket. `--migration` remains a different question, and the
+two are still not to be merged: it maps context *values* to ventures and projects,
+carries no `Godta` column, and its decisions belong in
+`_config/verksamhet-karta.yaml`. The audit is per entry and decidable.
 
 **What this subcommand never does.** It writes nothing, enforces nothing and
 decides nothing. A check that the file holds as many rows as the ledger has open

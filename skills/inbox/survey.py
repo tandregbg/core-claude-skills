@@ -403,101 +403,105 @@ def match_project(ctx, projects):
     return None
 
 
-def render_table(sv: dict, states: dict, today: date) -> str:
-    l = sv["ledger"]
-    props = {}
-    for st, rows in states.items():
-        for r in rows:
-            props[(st, r["id"])] = propose_for(st, r, today)
-    tally = {}
-    for b, _s, _w in props.values():
-        tally[b] = tally.get(b, 0) + 1
-    sure = sum(1 for b, s_, w in props.values() if s_)
+def render_living(vault, sv: dict, states: dict, today: date) -> str:
+    """One living view of the ledger: venture, then context, then the entries.
+
+    Replaces two documents that covered the same entries in two groupings -- one by
+    state, one by venture -- which is duplication, not two views. The venture is the
+    operator's primary attribute; the state travels with each row instead of
+    deciding the sections.
+    """
+    vmap = venture_map(vault)
+    projects = portfolio_projects(vault)
+    OBJ = {"rutin": "Löpande ansvar", "väntar": "Löpande ansvar (bevakning)", "idé": "Idé",
+           "reflektion": "Note / logg", "uppföljning": "ärendetyp", "samtal": "ärendetyp",
+           "möte": "ärendetyp", "kontakt": "ärendetyp", "kolla": "ärendetyp",
+           "uppföljningspunkter": "ärendetyp", "att kategorisera": "okategoriserad"}
+    STATE = {"FÖRFALLNA": "förfallen", "ODATERADE MED PRIO": "prio utan datum",
+             "UTAN DATUM OCH UTAN ÅLDER": "ingen ålder", "ODATERADE": "odaterad",
+             "DATERADE FRAMÅT": "framåt"}
+    rows = []
+    for st, items in states.items():
+        for r in items:
+            ctx = re.split(r"\s*·\s*", (r.get("context_full") or "").strip())[0].lower() or "(tomt)"
+            rows.append({**r, "_state": st, "_ctx": ctx,
+                         "_v": vmap.get(ctx) or "**?**",
+                         "_prop": propose_for(st, r, today)})
+    UNSET = ("kontextstyrd", "oklart", "ej-namngiven", "**?**")
+    STATE_ORDER = {"Personligt": 1, "kontextstyrd": 2, "oklart": 3, "ej-namngiven": 3}
+    by_v = {}
+    for r in rows:
+        by_v.setdefault(r["_v"], {}).setdefault(r["_ctx"], []).append(r)
 
     mv = sv.get("movement") or {}
     moved = mv.get("closed_today", 0) + mv.get("cancelled_today", 0)
+    l = sv["ledger"]
     out = [f"# Uppgifter — levande vy, {sv['today']}", "",
-           "> **Genererad** ur `_inbox/_tasks.yaml`. Samma filnamn varje gång: håll den öppen,",
-           "> den speglar registret efter varje pass. Kör om med",
-           "> `python3 ~/repos/core-skills/skills/inbox/survey.py --vault \"$VAULT\" --table --markdown`.",
-           "> Förslagen är en läsning av texten, inte ett beslut.", ""]
+           "> **Genererad** ur `_inbox/_tasks.yaml`, `_config/verksamhet-karta.yaml` och",
+           "> PORTFÖLJEN. Samma filnamn varje gång: håll den öppen. Kör om med",
+           "> `survey.py --vault \"$VAULT\" --table --markdown`.", "",
+           "**Verksamhet först, sedan kontext.** Tillståndet (förfallen, ingen ålder …) följer",
+           "med varje rad i stället för att bestämma sektionerna.", ""]
     if moved:
         out += [f"**I dag: {mv.get('closed_today',0)} avbockade, "
                 f"{mv.get('cancelled_today',0)} avskrivna — {moved} poster ur registret.**", ""]
-    out += [
-           f"**{l['open']} öppna poster.** Förslagen: "
-           + " · ".join(f"**{v} {k}**" for k, v in sorted(tally.items(), key=lambda kv: -kv[1]))
-           + f". **{sure}** har signalen i texten (✓), {len(props)-sure} är gissningar på formen (?).",
-           "",
-           "**Godta-kolumnen:** tom = förslaget gäller. Skriv ett **datum** (`261027`) för att datera, "
-           "`R` för referens (ut ur registret), `Ö` för avskriv, `S` för låt stå.", ""]
-    r = sv["register"]
-    small = []
-    if r["undeclared_count"]:
-        words = ", ".join(f"`{w}` ({r['by_status'].get(w, 0)})" for w in r["undeclared_status"])
-        small.append((f"Odeklarerade statusord i `_inbox.yaml`: {words}. Enumet är "
-                      "`pending \\| processing \\| processed \\| skipped`",
-                      "normalisera dem"))
-    for e in r["waiting_items"]:
-        if e["file"] == "CLAUDE.md":
-            small.append(("`CLAUDE.md` står som registerpost — det är inkorgens instruktionsfil",
-                          "ta den ur registret"))
-        else:
-            a = f"**{e['age_days']} dgr**" if e["age_days"] is not None else "—"
-            small.append((f"`{e['file']}` väntar sedan {a}", "bearbeta eller skriv av"))
-    if small:
-        out += ["### Utanför tabellen", "", "| | Att avgöra | Förslag | Godta |", "|---|---|---|---|"]
-        for n, (what, prop) in enumerate(small, 1):
-            out.append(f"| {n} | {what} | {prop} | |")
-        out += ["", "---", ""]
-    out += ["| Grupp | Poster | Förslagets tyngdpunkt |", "|---|---|---|"]
-    for st in ORDER:
-        if st not in states:
-            continue
-        rows = states[st]
-        t = {}
-        for r in rows:
-            b = props[(st, r["id"])][0]
-            t[b] = t.get(b, 0) + 1
-        out.append(f"| **{st}** | {len(rows)} | "
-                   + ", ".join(f"{v}× {k}" for k, v in sorted(t.items(), key=lambda kv: -kv[1])) + " |")
+    tally = {}
+    for r in rows:
+        tally[r["_prop"][0]] = tally.get(r["_prop"][0], 0) + 1
+    sure = sum(1 for r in rows if r["_prop"][1])
+    out += [f"**{l['open']} öppna poster.** Förslagen: "
+            + " · ".join(f"**{v} {k}**" for k, v in sorted(tally.items(), key=lambda kv: -kv[1]))
+            + f". **{sure}** har signalen i texten (✓), {len(rows)-sure} är gissningar (?).", "",
+            "**Godta:** tom = förslaget gäller. Datum (`261027`) · `R` referens · `Ö` avskriv · `S` låt stå.",
+            ""]
+    out += ["| Verksamhet | Poster | Varav att läsa |", "|---|---|---|"]
+    for v in sorted(by_v, key=lambda x: (STATE_ORDER.get(x, 0), x)):
+        n = sum(len(i) for i in by_v[v].values())
+        unread = sum(1 for cs in by_v[v].values() for r in cs if not r["_prop"][1])
+        label = {"kontextstyrd": "— *(kontextstyrda)*", "oklart": "*obeslutade*",
+                 "ej-namngiven": "*ej namngivna*", "**?**": "*utan karta*"}.get(v, f"**{v}**")
+        out.append(f"| {label} | {n} | {unread} |")
     out += ["", "---", ""]
 
-    for st in ORDER:
-        if st not in states:
-            continue
-        rows = states[st]
-        s_here = sum(1 for r in rows if props[(st, r["id"])][1])
-        out += [f"## {st} — {len(rows)} poster *({s_here} säkra, {len(rows)-s_here} att läsa)*", "",
-                f"*{STATE_NOTE[st]}*", ""]
-        if st == "DATERADE FRAMÅT":
-            out += ["| # | Datum | Uppgift |", "|---|---|---|"]
-            for r in sorted(rows, key=lambda r: str(r["due"])):
+    for v in sorted(by_v, key=lambda x: (STATE_ORDER.get(x, 0), x)):
+        cs = by_v[v]
+        n = sum(len(i) for i in cs.values())
+        head = {"kontextstyrd": "Kontextstyrda — ärendetypen är det primära",
+                "oklart": "Obeslutad verksamhet", "ej-namngiven": "Kom inte upp i genomgången",
+                "**?**": "Utan post i kartan"}.get(v, v)
+        out += [f"## {head} — {n} poster", ""]
+        if v == "kontextstyrd":
+            out += ["*Hör inte till någon affär. Tom verksamhet är ett svar, inte en lucka.*", ""]
+        elif v == "Fria projekt":
+            out += ["*Byggt för egen räkning — beslutstestets steg 7. Inte Personligt, som är livet.*", ""]
+        for ctx, items in sorted(cs.items(), key=lambda kv: -len(kv[1])):
+            pr = match_project(ctx, projects)
+            ot = OBJ.get(ctx, "")
+            h = f"### `{ctx}` — {len(items)}"
+            if pr:
+                h += f" · projekt **{pr}**"
+            if ot:
+                h += f" · *{ot}*"
+            out += [h, "",
+                    "| # | Verksamhet | Projekt | Läge | Uppgift | Förslag | | Godta |",
+                    "|---|---|---|---|---|---|---|---|"]
+            for r in sorted(items, key=lambda r: (-(r.get("age_days") or 0), r["id"])):
+                b, s_, _w = r["_prop"]
                 t = " ".join((r.get("task") or "").split())
-                t = t[:74].rsplit(" ", 1)[0] + "…" if len(t) > 74 else t
+                t = t[:70].rsplit(" ", 1)[0] + "…" if len(t) > 70 else t
                 pri = f" `{r['priority']}`" if r.get("priority") else ""
-                out.append(f"| `#{r['id']}`{pri} | {r['due']} | {t} |")
-            out += [""]
-            continue
-        by_ctx = {}
-        for r in rows:
-            by_ctx.setdefault(ctx_of(r), []).append(r)
-        for ctx, crows in sorted(by_ctx.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-            s_c = sum(1 for r in crows if props[(st, r["id"])][1])
-            out += [f"### {ctx} — {len(crows)} "
-                    f"*({s_c} säkra, {len(crows)-s_c} att läsa)*", "",
-                    "| # | Ålder | Uppgift | Förslag | | Godta |",
-                    "|---|---|---|---|---|---|"]
-            for r in sorted(crows, key=lambda r: (-(r["age_days"] or 0), r["id"])):
-                b, s_, _w = props[(st, r["id"])]
-                t = " ".join((r.get("task") or "").split())
-                t = t[:80].rsplit(" ", 1)[0] + "…" if len(t) > 80 else t
-                pri = f" `{r['priority']}`" if r.get("priority") else ""
-                a = f"{r['age_days']} d" if r.get("age_days") else (r.get("due") or "—")
-                out.append(f"| `#{r['id']}`{pri} | {a} | {t} | **{b}** | "
-                           f"{'✓' if s_ else '?'} | |")
+                st = STATE.get(r["_state"], r["_state"])
+                age = f"{r['age_days']} d" if r.get("age_days") else (r.get("due") or "")
+                lage = f"{st} {age}".strip()
+                # Verksamhet och projekt per rad, aven nar de upprepas: en rad ska ga att
+                # lasa och besluta om utan att forst lasa rubriken ovanfor (operator, 261020).
+                vcell = "—" if v in UNSET else v
+                pcell = pr or "—"
+                out.append(f"| `#{r['id']}`{pri} | {vcell} | {pcell} | {lage} | {t} | "
+                           f"**{b}** | {'✓' if s_ else '?'} | |")
             out += [""]
     return "\n".join(out)
+
 
 
 def render_undated(sv: dict, detail: dict) -> str:
@@ -665,15 +669,24 @@ def render_migration(vault, today, states) -> str:
         elif v == "Fria projekt":
             out += ["*Byggt för egen räkning, ingen såld produkt — beslutstestets steg 7 i",
                     "`_INDEX-verksamheter.md`. Skilt från Personligt, som är livet utan affär.*", ""]
-        out += ["| Verksamhet | Kontext | Projekt | Poster | Objekttyp | Id |",
-                "|---|---|---|---|---|---|"]
         for ctx, items in sorted(gs, key=lambda kv: -len(kv[1])):
-            pr = match_project(ctx, projects) or "—"
+            pr = match_project(ctx, projects)
             ot = OBJ.get(ctx, "")
-            ids = " ".join(f"`#{r['id']}`" for r in sorted(items, key=lambda r: r["id"]))
-            shown = "—" if v == "kontextstyrd" else (v if v in UNSET else f"**{v}**")
-            out.append(f"| {shown} | `{ctx}` | {pr} | {len(items)} | {ot} | {ids} |")
-        out += [""]
+            head = f"### `{ctx}` — {len(items)} poster"
+            if pr:
+                head += f" · projekt **{pr}**"
+            if ot:
+                head += f" · *{ot}*"
+            out += [head, "",
+                    "| # | Ålder | Uppgift | Godta |", "|---|---|---|---|"]
+            for r in sorted(items, key=lambda r: (-(r.get("age_days") or 0), r["id"])):
+                t = " ".join((r.get("task") or "").split())
+                t = t[:96].rsplit(" ", 1)[0] + "…" if len(t) > 96 else t
+                pri = f" `{r['priority']}`" if r.get("priority") else ""
+                a = (f"{r['age_days']} d" if r.get("age_days")
+                     else (r.get("due") or ("—" if r.get("created") else "ingen ålder")))
+                out.append(f"| `#{r['id']}`{pri} | {a} | {t} | |")
+            out += [""]
     objrows = [c for c in rows if c in OBJ]
     out += ["---", "",
             "## Vad kartan visar", "",
@@ -716,7 +729,7 @@ def main(argv=None) -> int:
         return 0
     if a.table:
         states = all_open(root, today)
-        print(render_table(sv, states, today) if a.markdown
+        print(render_living(root, sv, states, today) if a.markdown
               else json.dumps(states, ensure_ascii=False, indent=2))
         return 0
     if a.undated:
