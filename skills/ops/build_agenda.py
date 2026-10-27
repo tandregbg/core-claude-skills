@@ -2670,6 +2670,35 @@ def next_milestone(ms: list[dict], day: datetime.date) -> dict | None:
     return next((e for e in ms if e["_date"] and e["_date"] > day), None)
 
 
+def milestone_marker(e: dict, day: datetime.date, nxt: dict | None) -> str:
+    """CR-158: where a PARSED milestone date sits relative to the generated day, as words.
+
+    The card's table, the post's list and the compact post each decided this on their own,
+    and the table's branch order sent every parsed date except the next one to the
+    *unreadable* wording meant for a date that does not parse. One answer, called by all
+    three, so the surfaces cannot disagree again:
+
+    - the next date after today: `N days` (CR-149; unchanged);
+    - today: `today` -- `next_milestone` looks strictly after the day, so a milestone ON the
+      day was never "next";
+    - a passed date whose state is not `done`: `N days ago, not marked done` -- a missed
+      commitment must read as overdue, not as a typo;
+    - a passed date that is `done`, or any later future date: no marker, the date alone.
+
+    Returns "" for an entry whose date did not parse; the caller names that case.
+    """
+    d = e.get("_date")
+    if not d:
+        return ""
+    if e is nxt:
+        return f"{(d - day).days} days"
+    if d == day:
+        return "today"
+    if d < day and e.get("_state") != "done":
+        return f"{(day - d).days} days ago, not marked done"
+    return ""
+
+
 def timeline_line(ms: list[dict]) -> str:
     """Proposal 5: the dated sequence on one line, for a reader who wants it at a glance.
 
@@ -4372,8 +4401,13 @@ def main() -> None:
                 A += ["| Milestone | Date | State | Set on | Source |", "|---|---|---|---|---|"]
                 for e in ms_all:
                     when = e["_date"].isoformat() if e["_date"] else ""
-                    if e is nxt:
-                        when = f"**{when}** · **{(e['_date'] - day).days} days**"
+                    if e["_date"]:
+                        # CR-158: a PARSED date is always shown as its date, with the marker
+                        # for where it sits against today. The branch below was reached by
+                        # every parsed date but the next one.
+                        mk = milestone_marker(e, day, nxt)
+                        when = (f"**{when}**" + (f" · **{mk}**" if (e is nxt or mk == "today")
+                                                 else f" · {mk}" if mk else ""))
                     elif e.get("date"):
                         # CR-149: declared and unparseable. Shown as written -- never as
                         # "date not set", which would contradict the config.
@@ -4809,8 +4843,10 @@ def main() -> None:
                 C.append("**Milestones:**")
                 for e in ms_all:
                     when = e["_date"].isoformat() if e["_date"] else undated_phrase(e)
+                    mk = milestone_marker(e, day, nxt)      # CR-158
                     C.append(f"- {e.get('name', 'Unnamed')} — {when} · {e['_state']}"
-                             + (f" · **{(e['_date'] - day).days} days**" if e is nxt else "")
+                             + (f" · **{mk}**" if (e is nxt or mk == "today")
+                                else f" · {mk}" if mk else "")
                              + (f" · {e['source']}" if e.get("source") else ""))
                 tl = timeline_line(ms_all)
                 if tl:
@@ -4927,8 +4963,9 @@ def main() -> None:
             # The decide-by that `undated_phrase` adds is new here and wanted: a date
             # still to be decided is exactly what this post is meant to raise.
             when = e["_date"].isoformat() if e["_date"] else undated_phrase(e)
+            mk = milestone_marker(e, day, nxt)          # CR-158
             ml.append(f"- {e.get('name', 'Unnamed')}: {when}, {e['_state']}"
-                      + (f", {(e['_date'] - day).days} days" if e is nxt else ""))
+                      + (f", {mk}" if mk else ""))
         parts.append(("milestones", (["Milestones:"] + ml) if ml else
                       ["Milestones: none declared."]))
         # The blockers, one per line, grouped as the repo states them: what still has to
