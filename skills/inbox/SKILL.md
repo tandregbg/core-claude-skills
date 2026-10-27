@@ -318,7 +318,7 @@ asymmetry is in the code and reads as an oversight from the other three views.
 | Header | A movement line (what closed today, shown only when something did), the open count, the proposals tallied by kind, `✓` against `?`, the `Godta` legend, and a per-state summary table of where the proposals fall |
 | `Godta` | Left **empty** by the generator. Empty means the proposal stands; the operator writes a date (`261027`), `R` for reference, `Ö` for write-off or `S` for leave standing |
 | `✓` / `?` | Whether the proposal has a signal in the entry's own text (`✓`) or is a guess from its shape (`?`). The operator reads the guesses first |
-| Buckets | `NYTT DATUM`, `SÄTT DATUM`, `AVSKRIV`, `REFERENS`, `LÅT STÅ`. A prose heuristic, and labelled as one in the header: *"Förslagen är en läsning av texten, inte ett beslut."* The operator overrides any row |
+| Buckets | `NYTT DATUM`, `SÄTT DATUM`, `AVSKRIV`, `REFERENS`, `LÅT STÅ`. A prose heuristic with one exception: an entry the ledger declares `recurring: true` is always proposed `LÅT STÅ`, with the signal mark `✓`, unless it is overdue (CR-163). Otherwise a heuristic, and labelled as one in the header: *"Förslagen är en läsning av texten, inte ett beslut."* The operator overrides any row |
 | Outside the table | A short `### Utanför tabellen` list for what is wrong with the register itself rather than with an entry -- undeclared status words, a registered file still waiting -- each with its own proposal and `Godta` cell |
 
 **The state travels with the row, it does not define the sections** (CR-162). The

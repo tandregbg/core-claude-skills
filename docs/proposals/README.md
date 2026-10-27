@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-163**
+Next available CR number: **CR-164**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-163**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| CR-163 | `inbox` (`survey.py` `propose_for`, the `--table` row, SKILL.md `/inbox survey`), `tasks` (v2 schema) | Low | **Proposed** (2026-10-27). A standing chore declares itself with `recurring: true` and the audit stops proposing a date for it every week. The weekly maintenance entries have no date by design, but open with an action and carry none -- the exact shape of an entry that should be dated -- so the proposal was wrong, and wrong every run, which is how a column of guesses stops being read. A prefix rule on the context string is rejected: the routine entries share no naming convention, so it would have fixed half of them and added another guess. An overdue chore still falls through to `NYTT DATUM`. Optional; absent means false, so existing ledgers read unchanged |
 | CR-162 | `inbox` (`survey.py` `render_living`, the `--table --markdown` dispatch, SKILL.md `/inbox survey`) | Medium | **Proposed** (2026-10-26). The task audit is grouped by venture, with context beneath, and the state travels with the row in a `Läge` cell instead of deciding the sections; the row grows from six cells to eight and a forward-dated entry gains a `Godta` cell. Supersedes CR-138s `--table --markdown` contract: that view and `--migration` covered the same entries in two groupings, which is duplication, not two views. Also removes `render_table()`, now dead, and rewrites the SKILL.md contract that still described the superseded shape |
 | CR-161 | `ecosystem.yaml` (`vault_conventions`, `_inbox/` front matter), `transcript`, `insights`, `outbox`, `ops` (`check`) | Medium | **Proposed** (2026-10-26). An `_inbox/` item can carry `layer: shared\|member` and `owner`; an explicit `member` is never quoted into a surface the vault declares shared; absent means no rule applies. `.deepthought/member/` is a dormant surface. The same skills must run unchanged on a server's per-account vault and on a person's local vault. Depends on CR-160; platform side is DT-CR-843. |
 | CR-160 | `ecosystem.yaml` (`vault_conventions.vault_root`, contract bump 47 -> 48), `ops` (`check`), `ops-config` schema | Medium | **Proposed** (2026-10-21, renumbered from 139). The platform's record is an archive surface like `.teamschats/`: `<venture>/.deepthought/` with its `_fetch.json`, declared so `/ops check` stops calling it a stray. The platform's exporter (DT-CR-838) already writes it. |

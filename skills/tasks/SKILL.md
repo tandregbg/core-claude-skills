@@ -74,6 +74,7 @@ tasks:
     verksamhet: null             # optional (CR-135): a venture the vault declares; absent is valid
     projekt: null                # optional (CR-135): a portfolio row, matched by prefix
     private: false
+    recurring: false             # optional (CR-163): a standing chore, no date by design
     notes:
       - date: 260303
         note: "Identified"
@@ -386,6 +387,7 @@ properties:
         closed: { type: [string, integer, "null"] }      # CR-127: day it became completed or cancelled
         completed: { type: [string, integer, "null"] }   # legacy alias of closed (read only)
         private: { type: boolean }
+        recurring: { type: boolean }  # optional (CR-163); a standing chore. Absent means false
         kind: { type: string }   # optional (CR-123); legal values = the profile's task_kinds
         verksamhet: { type: [string, "null"] }  # optional (CR-135); a declared venture, or absent
         projekt: { type: [string, "null"] }     # optional (CR-135); matches a portfolio row by prefix

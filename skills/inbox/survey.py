@@ -295,6 +295,15 @@ def propose_for(state: str, row: dict, today: date) -> tuple[str, bool, str]:
     hit = DONE_MARKS.search(text)
     imp = bool(IMPERATIVE.match(first))
 
+    # A recurring chore has no date on purpose, and the audit must not keep asking
+    # for one. The entry declares itself with `recurring: true` -- a declaration,
+    # not a guess from the context string, because routine entries share no naming
+    # convention: some name the routine, some name the thing they maintain. An
+    # overdue one falls through to the state logic below, since a date that passed
+    # is a real signal even on a chore.
+    if row.get("recurring") and state != "FÖRFALLNA":
+        return ("LÅT STÅ", True, "återkommande rutin — deklarerad i registret")
+
     if state == "FÖRFALLNA":
         if hit:
             return ("AVSKRIV", True, f"texten säger ”{hit.group(0).strip()}”")
@@ -577,6 +586,7 @@ def all_open(vault, today):
         row = {"id": t["id"], "task": t.get("task", ""), "priority": t.get("priority"),
                "context_full": t.get("context"), "notes": t.get("notes") or [],
                "due": t.get("due"), "created": t.get("created"),
+               "recurring": bool(t.get("recurring")),
                "age_days": (today - d).days if d and d < today else None}
         if d and d < today:
             states["FÖRFALLNA"].append(row)
