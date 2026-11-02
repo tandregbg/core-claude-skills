@@ -93,19 +93,31 @@ Reject it, for three reasons:
 # three words mean the same thing in a card, a summary and an analytics view.
 conversation_types:
   values:
-    - practical     # what is this really about, what do we do
-    - emotional     # how this feels; the speaker wants to be heard, not solved
-    - social        # who we are to each other; relationship and standing
+    - practical     # solving a problem or making a decision; needs a solution or a concrete next step
+    - emotional     # the speaker says what they feel and wants to be heard, not solved; needs listening
+    - social        # identity and belonging; needs to be seen for who you are
   default: practical
 ```
 
-`terms` gains the Swedish and English surface words (`Konversationstyp` / `Conversation type`) so
-the line is written in the target file's language like every other heading.
+Each value carries **what that conversation needs**, because the need is what makes the field usable
+in a card. A label alone tells a preparer nothing; *needs a concrete next step* versus *needs
+listening, not solving* tells them what to walk in with. `terms` gains the Swedish and English
+surface words (`Konversationstyp` / `Conversation type`) so the line is written in the target file's
+language like every other heading.
 
 **2. `/preparation` states the expected type, and the mismatch.** The agenda card (CR-005) gains one
-line: which of the three this conversation is expected to be, and — when the preparer's own purpose
-is a different one — a single sentence naming that gap. Not a score, not a section: one line and one
-warning, in the one artifact that exists before the conversation. **[H]**
+line: which of the three this conversation is expected to be, with its need, and — when the
+preparer's own purpose is a different one — a single sentence naming that gap. Not a score, not a
+section: one line and one warning, in the one artifact that exists before the conversation. **[H]**
+
+**The mismatch is the whole point, and it is a specific failure, not a general one.** What closes a
+conversation is rarely that the other party was not cared about; it is that they were answered in
+the wrong register — a solution offered to someone who wanted to be heard. The mechanism is the
+default: **each party assumes the other wants the kind of conversation they themselves want**, so
+the mismatch is invisible from the inside and needs to be named from outside, in writing, before the
+conversation. That is what the card's warning line is for, and it is why this is not satisfied by a
+label the preparer reads and agrees with — a preparer who is about to mismatch will read `emotional`
+and still plan a solution unless the card says, in one sentence, that they are about to.
 
 **3. `/transcript` and `/ops` record the type as metadata, not as a measurement.** One line in the
 slot CR-123 and CR-124 already established, directly under the H1 beside `Themes:` and
@@ -167,7 +179,9 @@ Stated so it is not inferred, because the obvious next step is the wrong one.
 3. A value outside `conversation_types.values` is reported by `/ops check` as a hygiene finding
    (report only, in the CR-122 class), never silently accepted and never auto-corrected.
 4. An agenda card for a contact whose expected type differs from the preparer's stated purpose shows
-   the one-line gap; a card where they agree shows the type and no warning.
+   the one-line gap, naming both registers; a card where they agree shows the type with its need and
+   no warning. A card never shows a bare type word without the need — that is the form this CR
+   rejects, because it is the form a preparer can agree with and still mismatch.
 5. `/analytics` over a contact folder with mixed types returns counts per type that sum to the
    number of summaries carrying the line, and excludes those that do not — an absent line is never
    counted as `practical` by way of the default.
