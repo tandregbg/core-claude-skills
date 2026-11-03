@@ -1290,8 +1290,8 @@ it sat unprotected while its derivatives were locked. A vault with an archive ho
 points at it, and then the file leaves the vault entirely.
 
 **The pointer is written in a form that resolves from any machine.** Where the destination is a
-network share, declare the host address (`//<host>/<share>/...`), not a machine-local mount point
-(`/Volumes/share/...`) -- a mount point is true on one machine and meaningless on the next, and the
+network share, declare the host address (`//<host>/<share>/...`), not a machine-local
+mount point -- a mount point is true on one machine and meaningless on the next, and the
 entry's `audio_path` is read by whichever machine opens the vault.
 
 **Removal still requires verification.** `audio_archive` says where the counterpart goes; it does

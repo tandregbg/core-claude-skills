@@ -26,8 +26,8 @@ unchanged.
   vault wanting to rename a view had nowhere to read how.
 
 - **The pointer form is part of the rule.** Where the destination is a network share, a vault
-  declares the host address (`//<host>/<share>/...`) and not a machine-local mount point
-  (`/Volumes/share/...`): `audio_path` is read by whichever machine opens the vault, and a mount
+  declares the host address (`//<host>/<share>/...`) and not a machine-local mount
+  point: `audio_path` is read by whichever machine opens the vault, and a mount
   point is true on exactly one of them. Learned from the adopting vault, which had already written
   it that way.
 

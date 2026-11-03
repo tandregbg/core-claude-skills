@@ -37,7 +37,7 @@ when it arrived. Without it the sweep is a guess.
 **`.files/` has no ageing rule, so nothing it holds can ever be late.** It carries an implicit promise
 — *this file has a home and someone will route it there* — and the promise had been open five weeks.
 
-**And at least one entry was mis-filed at drop time**: an application build (`Trillian-1.6.0-alpha.7.zip`)
+**And at least one entry was mis-filed at drop time**: a pre-release build of an application,
 owned by its own repository, which has no vault destination and belonged in `.ephemeral/`, where it
 would have been swept in September. Filed in `.files/` it is immortal.
 
