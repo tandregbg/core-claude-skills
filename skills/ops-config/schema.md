@@ -1240,6 +1240,64 @@ and so that an archive written by an outside tool lands somewhere a reader alrea
 
 ---
 
+## `view_files:` -- the vault's own names for the files the suite must find (CR-171)
+
+**Optional; the shipped defaults are in `ops-config/base.yaml`.** A vault names its working
+surfaces in its own language. Those names are **data, not literals**: `identifier_language` has
+said since CR-049 that a word a person reads lives in a settings file, so that changing it is a
+settings change and not a code change. Two of them had nonetheless leaked into the suite as
+literals -- a triage document in a skip-list in `survey.py`, a generated view asserted in a test
+-- which meant a vault working in another language could not rename either without editing this
+repository.
+
+```yaml
+view_files:
+  triage: "<the vault's name for it>.md"      # the human-owned triage working surface (CR-022)
+  tasks_view: "<the vault's name for it>.md"  # the generated task view in _inbox/ (CR-035, CR-162)
+```
+
+**The shipped values are in `ops-config/base.yaml` and are deliberately not repeated here** --
+this page is under `skills/`, so writing them out would be the same leak the key exists to
+prevent, and `check-terms.py` rejected exactly that while this section was being written.
+
+Resolution: the suite's `ops-config/base.yaml`, then the vault's `_config/base.yaml`, which wins
+per key. A key that resolves to nothing is simply absent, and its file is then treated as ordinary
+inbox content -- no name is hardcoded as a fallback anywhere in the suite, because a default
+spelled in code is the same literal one indirection further away.
+
+`scripts/check-terms.py` rejects any of these values written as a literal in skill code, skill
+prose or a test. The settings file is where they live; nowhere else.
+
+## `vault_conventions:` -- a vault's overrides of the shared contract (CR-170)
+
+**Optional.** `ecosystem.yaml` carries the contract and its defaults. Where a vault's own
+arrangement differs, it says so here rather than by having someone remember -- and **the vault's
+declaration wins over the contract default.**
+
+```yaml
+vault_conventions:
+  audio_archive: "//<host>/<share>/<path>/"   # where routed audio goes (CR-170)
+```
+
+| Key | Means |
+|---|---|
+| `audio_archive` | Where audio goes when its entry is routed. The contract's default is `.archive/.audio/`; a vault whose audio archive lives **outside** the vault declares the real destination here. The contract requires only that a destination exist and that the inbox not be it |
+
+**Why a vault would override it.** The shipped default keeps audio inside the vault, which is
+right for a vault that is not synced and wrong for one that is: the raw recording is the source of
+both the read-blocked transcript archive and anything derived from it, and on a cloud-synced vault
+it sat unprotected while its derivatives were locked. A vault with an archive host of its own
+points at it, and then the file leaves the vault entirely.
+
+**The pointer is written in a form that resolves from any machine.** Where the destination is a
+network share, declare the host address (`//<host>/<share>/...`), not a machine-local mount point
+(`/Volumes/share/...`) -- a mount point is true on one machine and meaningless on the next, and the
+entry's `audio_path` is read by whichever machine opens the vault.
+
+**Removal still requires verification.** `audio_archive` says where the counterpart goes; it does
+not authorise deleting the vault copy. That needs a counterpart verified on `mdat` payload
+(`skills/inbox/audio_verify.py`), never on size or bytes.
+
 ## Project-Level Overrides
 
 Project configs support additional properties:

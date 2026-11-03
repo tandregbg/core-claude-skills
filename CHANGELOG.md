@@ -7,6 +7,36 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.94.1] - 2026-11-03
+
+A vault adopted CR-170 within the hour and found the half of it that was missing: the contract said
+a vault declares its audio destination and never said **where**. Documentation only, contract
+unchanged.
+
+### Changed
+
+- **`audio_archive` says where a vault overrides it, and `view_files` is documented at all
+  (`ecosystem.yaml`, `ops-config/schema.md`).** CR-170 shipped the default on the `_inbox/.audio/`
+  entry in `ecosystem.yaml` -- which is a file a vault does not edit. The first vault to adopt it
+  declared `vault_conventions.audio_archive` in its own `_config/base.yaml`, pointing at an archive
+  host outside the vault, which is exactly right and was nowhere written down. The convention now
+  states the resolution: the contract carries the default, the vault's config chain overrides it,
+  and the vault wins. `ops-config/schema.md` gains a section for `vault_conventions:` as a config
+  key and one for `view_files:` (CR-171), which shipped in `base.yaml` with no schema entry -- a
+  vault wanting to rename a view had nowhere to read how.
+
+- **The pointer form is part of the rule.** Where the destination is a network share, a vault
+  declares the host address (`//<host>/<share>/...`) and not a machine-local mount point
+  (`/Volumes/share/...`): `audio_path` is read by whichever machine opens the vault, and a mount
+  point is true on exactly one of them. Learned from the adopting vault, which had already written
+  it that way.
+
+- **Why a vault would override the default, recorded with it.** Keeping audio inside the vault is
+  right for a vault that is not synced and wrong for one that is -- the raw recording is the source
+  of both the read-blocked transcript archive and everything derived from it, and on the measured
+  vault it sat unprotected in a cloud-synced folder while its derivatives were locked. The default
+  is a default, not a recommendation.
+
 ## [1.94.0] - 2026-11-03
 
 Three rules the contract half-stated, measured on a live vault and completed (CR-169, CR-170,
