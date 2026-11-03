@@ -2,6 +2,18 @@
 
 **Last verified: 2026-10-24 (read back: tags v1.92.0 to v1.92.9 on GitHub; Marvin's version reference 1.92.9 (alignment on the MacBook 7 aligned); `README.md` **Version** and `ecosystem.yaml` `core_skills_version` 1.92.9, `contract_version` 46, the first `CHANGELOG.md` entry `[1.92.9]` with no `[Unreleased]` section; the test suite on a clean checkout of `origin/main`: 975 tests OK; `scripts/check-ecosystem-alignment.sh`: 6 aligned, 0 drifted on the Mac Studio and 1 drifted on the MacBook (Marvin's version reference); Mac Studio and MacBook both level with `origin/main` at 935abc2; the live landing page reports build 2.0.24 from 1.92.9)**
 
+**Addendum 2026-11-03 — the contract number moved and four places still name the old one.** `ecosystem.yaml`
+now reads `contract_version` **47**, taken by `5ebdc94` *"contract 47: define external_systems.linkedin"*. The
+2026-10-24 line above is left as the reading it was; it is no longer current on this one fact. **Four statements
+about the contract number are now wrong and none of them breaks anything until two of them are built in the same
+week:** the release row in A ("contract 46 unchanged since CR-135"), the contract row in A ("CR-126 takes the next
+free number (47) when built"), `CR-126`'s own header ("45 to 46 if built next"), `CR-152` ("Additive, contract 46 to
+47") and `CR-160` ("contract bump 47 -> 48", whose premise is gone — 48 is free, but not for that reason). **Which
+proposed CR gets which number is a decision, not a correction**, so the CR files are left alone; the next release
+that touches the contract should settle it and re-stamp this board. Verified this addendum only: `contract_version`
+and the HEAD it came from. The tags, the test suite, Marvin and the landing page were **not** re-checked — the
+2026-10-24 line remains the last full verification.
+
 This is core-skills' own board: what is released, what is configured, what waits and on whom, for this product
 only. core-skills is a sibling product family, not a Deep Thought component; Deep Thought's cross-product board and
 its plan are in that repository (see `CLAUDE.md`). Rows link out; the CHANGELOG, the proposals index or
