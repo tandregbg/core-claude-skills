@@ -56,9 +56,14 @@ material, never pushed).
 
 - **Trigger:** any `core_skills_version` change. The alignment check — and
   `/ops sweep` check 8 on the maintainer machine — is the scheduled nag.
-- **What:** landing page `whats_new` (both languages; the title carries the
-  version the alignment script reads), footer version, `BUILD_VERSION`, restart
-  exactly the landing app; Marvin's CLAUDE.md version reference + schema notes.
+- **What:** rebuild and deploy the landing page -- it reads `ecosystem.yaml` at
+  BUILD time, so a release is not served until someone builds. Marvin's CLAUDE.md
+  version reference + the per-release note in its `docs/contract-tracking.md`,
+  which is worth writing against Marvin's code rather than against the contract's
+  prose: the useful half is which fields a parser must stop assuming things about.
+  **The `whats_new` edit this step used to require is gone** -- it was a Flask
+  surface, dropped in the 2.0.0 rebuild, and the site's own gate reports it as
+  such. The step survived here for three releases after the surface did.
 - **How:** the runbook lives in the header of
   `scripts/check-ecosystem-alignment.sh` (CR-023).
 
