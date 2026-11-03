@@ -7,6 +7,39 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.94.2] - 2026-11-03
+
+The privacy watcher had been reading the wrong tree since it was written, and calling an empty read
+clean. Found by running `/ops check` on a vault for the first time in nine days. **Nothing leaked** --
+the blocking gate never had the defect.
+
+### Fixed
+
+- **`privacy-scan.sh --tree` scans the repository it belongs to, from any working directory (CR-172).**
+  The file list came from `git -C "$REPO" ls-files`, which prints repo-relative paths, and `xargs -0 cat`
+  ran in the **caller's** directory. The declared command in a vault config is run by `/ops check` from the
+  vault root, so the watcher read the vault: six findings measured, every one the vault's own private
+  `CLAUDE.md`, while the same command from the repository answered clean. A path existing only in the
+  repository made `cat` fail and `2>/dev/null` hid it, so most of the tree was skipped in silence -- and
+  from a directory shadowing nothing at all, `INPUT` was empty and the script printed **`[OK]
+  privacy-scan: nothing to scan` and exited 0, a clean verdict on zero bytes read.** `cat` now runs in the
+  repository, and a tracked file that cannot be read is reported as **UNSCANNED** and fails the run,
+  because keeping `2>/dev/null` would have left the silent half free to return under any other cause.
+  **The exposure was bounded and that is verified, not assumed:** the pre-push gate pipes added lines
+  through `--stdin`, which resolves no paths, is armed through `core.hooksPath`, and its denylist
+  resolves with 82 patterns; a correct full-tree scan is clean. What was lost for four months is the
+  second layer -- the sweep that sees the tree rather than one push's added lines.
+
+### Added
+
+- **`tests/test_cr172_privacy_scan_tree.py` -- 5 tests, and the one that cannot fail is deliberate.**
+  Each builds a throwaway git repository with the script inside it, so `REPO` resolves to the fixture
+  and the real repository is never touched: the verdict is directory-independent, a same-named file in
+  the caller's tree is not read, a repo-only file **is** read, an unreadable tracked file is named
+  rather than swallowed, and `--stdin` resolves no paths. **4 of the 5 fail against the pre-fix
+  script**; the fifth passes against both because the gate never had the bug, which is the fact that
+  bounded the exposure. A defect invisible for four months is a missing test, not a missing line.
+
 ## [1.94.1] - 2026-11-03
 
 A vault adopted CR-170 within the hour and found the half of it that was missing: the contract said

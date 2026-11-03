@@ -25,15 +25,32 @@ MODE="${1:---tree}"
 BUILTIN='sk-ant-[A-Za-z0-9_-]{8,}|sk-or-v1-[A-Za-z0-9]{8,}|sk-proj-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY|\b10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b|\b192\.168\.[0-9]{1,3}\.[0-9]{1,3}\b|sshpass[[:space:]]+-p'
 NAMELIKE='\b26[0-9]{4}-[a-zåäö][a-zåäö-]*_[a-zåäö-]+|_contacts/[a-zåäö][a-zåäö-]+|-[A-ZÅÄÖ][a-zåäö]+-[A-ZÅÄÖ][a-zåäö]+|display_name:[[:space:]]"[^"]+"'
 
+UNREADABLE=""
 if [ "$MODE" = "--stdin" ]; then
     INPUT="$(cat)"
 else
-    INPUT="$(git -C "$REPO" ls-files -z -- '*.md' '*.yaml' '*.yml' '*.sh' ':!:docs/audits' ':!:docs/change-requests' \
-        | xargs -0 cat 2>/dev/null)"
+    # CR-172: `git -C "$REPO" ls-files` prints REPO-RELATIVE paths, so `cat` has to run
+    # IN the repo. Reading them from the caller's directory scanned whatever happened to
+    # share a name there and SILENTLY SKIPPED every repo-only file -- `2>/dev/null` ate
+    # the errors. Run from the vault, the watcher reported the vault's own CLAUDE.md and
+    # said nothing about the repository for four months. Errors are surfaced, not hidden:
+    # a tracked file that cannot be read is an unscanned file.
+    ERRFILE="$(mktemp)"
+    INPUT="$(cd "$REPO" && git ls-files -z -- '*.md' '*.yaml' '*.yml' '*.sh' ':!:docs/audits' ':!:docs/change-requests' \
+        | xargs -0 cat 2>"$ERRFILE")"
+    UNREADABLE="$(cat "$ERRFILE")"
+    rm -f "$ERRFILE"
 fi
 [ -z "$INPUT" ] && { echo "[OK] privacy-scan: nothing to scan"; exit 0; }
 
 FAIL=0
+
+# 0. tracked files that could not be read (CR-172) -- an unscanned file is not a clean one
+if [ -n "$UNREADABLE" ]; then
+    echo "[FINDING] privacy-scan could not read $(printf '%s\n' "$UNREADABLE" | grep -c . ) tracked file(s) -- those are UNSCANNED:"
+    printf '%s\n' "$UNREADABLE" | head -3 | sed 's/^/          /'
+    FAIL=1
+fi
 
 # 1. built-in secrets
 HITS=$(printf '%s\n' "$INPUT" | grep -nE "$BUILTIN" | head -5 || true)
