@@ -7,6 +7,45 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.93.1] - 2026-11-03
+
+CR-138's detector is back on, and it found six things (`inbox`, contract unchanged). This is a
+correction of released documentation, not a new feature.
+
+### Changed
+
+- **CR-138's contract tests are re-derived against CR-162's output, and the section is corrected in
+  six places (`skills/inbox/SKILL.md`, `tests/test_cr138_survey_contract.py`).** CR-162 replaced
+  `render_table()` with `render_living()` and rewrote the `/inbox survey` section around the new
+  shape, but the tests that bind the section to the generator still called the removed function, so
+  all nine classes errored in `setUpClass` and the only detector of this format's drift was off.
+  Renaming the call was not the fix: fourteen of the thirty-two assertions described the superseded
+  output. Re-deriving them against the real output found **six claims the rewritten section still
+  carried from the old one** -- five of them stated with confidence a reader could not check:
+
+  - **`Läge` was documented as a dash for every non-overdue state.** It is the state word, with an
+    age only where there is one: `förfallen 20 d`, then the bare `odaterad`, `ingen ålder`,
+    `prio utan datum`. The dash was the old `Ålder` column's behaviour.
+  - **The header's summary table was documented as per state.** It is per venture
+    (`Verksamhet | Poster | Varav att läsa`), which is the grouping CR-162 introduced.
+  - **No ordering was stated at all.** Ventures come named-first and working-states-last, contexts
+    largest first within a venture, rows oldest first within a context.
+  - **The truncation width was unstated** after CR-162 dropped the old numbers: it is 70 characters,
+    cut at a word boundary with an ellipsis.
+  - **The `### Utanför tabellen` list is documented as part of this view and is not emitted by it.**
+    The register-level findings (an undeclared status word, a registered file still waiting) are still
+    counted and listed in the situation view (`--markdown`), but **they lost their `Godta` cell**: they
+    are reported and nowhere decided. The row now says so rather than being deleted, because a surface
+    that quietly stops being offered is how this format drifted the first time.
+  - **`--migration` was documented as carrying no `Godta` column.** It carries one. The column is
+    therefore not what separates the worksheet from the audit -- the unit is: the worksheet decides a
+    context value, the audit decides an entry.
+
+  The file now covers the CR-162 shape (eight cells, the state travelling in `Läge`, a forward-dated
+  entry decidable like any other, venture and project dashed where the context maps to neither) and
+  CR-163's standing chore. 49 tests, up from 32, and the suite is green again: **1036 tests, 0
+  failures** against 987 with 9 errors.
+
 ## [1.93.0] - 2026-11-03
 
 Four things the suite already did, named (CR-165 to CR-167) -- and one it does not, found at its own

@@ -9,11 +9,22 @@ and every assertion still passed. So the contract is checked the only way that
 binds it: build a small vault, run `survey.py` over it, and require that what the
 section documents is what the script printed.
 
+**Re-derived 2026-11-03 for CR-162 and CR-163 (v1.93.1).** CR-162 replaced
+`render_table()` with `render_living()` -- venture first, context beneath, the state
+travelling with the row in `Läge` instead of defining the sections -- and rewrote the
+section around the new shape, but this file still called the removed function, so every
+class errored and the detector was off for a week. Renaming the call was not enough:
+fourteen assertions described the superseded output. Re-deriving them found five claims
+the rewritten section still carried from the old one, each corrected in SKILL.md in the
+same release -- the `Läge` dash, the per-state header table, the context ordering, the
+truncation width, and a `### Utanför tabellen` list the living view does not emit.
+
 Invented data throughout: Acme, Bravo, Bob, Ravi, Dee.
 
     python3 -m unittest discover -s tests
 """
 import datetime
+import json
 import re
 import sys
 import tempfile
@@ -27,9 +38,11 @@ import survey as sv  # noqa: E402
 SKILL = (ROOT / "skills" / "inbox" / "SKILL.md").read_text(encoding="utf-8")
 TODAY = datetime.date(2026, 10, 21)
 
-# One open entry per state, so every branch of render_table is exercised: #1 is
+# One open entry per state, so every branch of render_living is exercised: #1 is
 # overdue, #2 has `created` and no date, #3 has a priority and no date, #4 has
-# neither, #5 is dated forward. #6 is closed and must not appear anywhere.
+# neither, #5 is dated forward. #6 is closed and must not appear anywhere. #7 is a
+# standing chore (CR-163). #8 carries a `due` the date parser cannot read. #9 is
+# long enough to be truncated, and sits in a context the venture map does not know.
 LEDGER = """tasks:
   - id: 1
     task: Ring Bob om avtalet
@@ -63,6 +76,21 @@ LEDGER = """tasks:
     context: acme
     status: completed
     completed: "261021"
+  - id: 7
+    task: Veckovis genomgang av registret
+    context: rutin
+    status: pending
+    recurring: true
+  - id: 8
+    task: Trasigt datum
+    context: acme
+    status: pending
+    due: snart
+  - id: 9
+    task: En mycket lang uppgift som skrivits ut i sin helhet och som darfor maste kortas innan den skrivs in
+    context: nyttprojekt
+    status: pending
+    created: "260801"
 """
 
 REGISTER = """items:
@@ -79,21 +107,51 @@ REGISTER = """items:
     output_file: out.md
 """
 
-OPEN_IDS = ("#1", "#2", "#3", "#4", "#5")
+# The map and the portfolio are the operator's, declared in the vault; the audit
+# groups by what they say, so the fixture has to carry both (CR-162).
+KARTA = """karta:
+  acme: Acme
+  bravo: Bravo
+  rutin: kontextstyrd
+"""
+
+PORTFOLIO = """# Projekt
+
+## PORTFÖLJEN
+
+| Projekt | Verksamhet | Läge | Nästa | Ägare | Datum | Not |
+|---|---|---|---|---|---|---|
+| Acme Omstart | Acme | aktiv | — | — | — | — |
+
+### Sammanräkning
+"""
+
+OPEN_IDS = ("#1", "#2", "#3", "#4", "#5", "#7", "#8", "#9")
 CLOSED_ID = "#6"
+# The five words the section documents for `Läge`, one per state.
+LAGE_WORDS = ("förfallen", "prio utan datum", "ingen ålder", "odaterad", "framåt")
 
 
 def section():
     """The `/inbox survey` section, up to the next sibling heading."""
     start = SKILL.index("### `/inbox survey`")
     rest = SKILL[start + 4:]
-    nxt = rest.find("\n### ")
+    nxt = rest.find("\n### `/inbox")
     return rest[:nxt] if nxt != -1 else rest
 
 
 def flat(text):
     """One line, so an assertion is about the words and not the line wrapping."""
     return " ".join(text.split())
+
+
+def body_rows(audit):
+    """The entry rows: every line that opens on an id cell."""
+    return [l for l in audit.splitlines() if l.startswith("| `#")]
+
+
+def cells(row):
+    return [c.strip() for c in row.split("|")[1:-1]]
 
 
 class Fixture(unittest.TestCase):
@@ -108,9 +166,12 @@ class Fixture(unittest.TestCase):
         (inbox / "_tasks.yaml").write_text(LEDGER, encoding="utf-8")
         (inbox / "_inbox.yaml").write_text(REGISTER, encoding="utf-8")
         (inbox / "note-one.md").write_text("a captured note\n", encoding="utf-8")
+        (cls.vault / "_config").mkdir()
+        (cls.vault / "_config" / "verksamhet-karta.yaml").write_text(KARTA, encoding="utf-8")
+        (cls.vault / "_INDEX-projekt.md").write_text(PORTFOLIO, encoding="utf-8")
         cls.states = sv.all_open(cls.vault, TODAY)
         cls.survey = sv.survey(cls.vault, TODAY)
-        cls.audit = sv.render_table(cls.survey, cls.states, TODAY)
+        cls.audit = sv.render_living(cls.vault, cls.survey, cls.states, TODAY)
         cls.section = section()
         cls.flat_section = flat(cls.section)
 
@@ -127,6 +188,23 @@ class Fixture(unittest.TestCase):
             rc = sv.main(["--vault", str(self.vault), "--today", TODAY.isoformat(), *flags])
         self.assertEqual(rc, 0)
         return buf.getvalue()
+
+    def shape_row(self, element):
+        for line in self.section.splitlines():
+            if line.startswith(f"| {element} |"):
+                return line
+        self.fail(f"the shape table has no {element} row")
+
+
+class TheFixtureIsWorthTrusting(Fixture):
+    """If the vault does not produce every documented case, the rest proves nothing."""
+
+    def test_the_audit_is_what_the_cli_prints(self):
+        self.assertEqual(self.audit.strip(), self.run_cli("--table", "--markdown").strip())
+
+    def test_the_fixture_exercises_a_mapped_and_an_unmapped_venture(self):
+        self.assertIn("## Acme — ", self.audit)
+        self.assertIn("## Utan post i kartan — ", self.audit)
 
 
 class SectionPlacement(Fixture):
@@ -153,76 +231,98 @@ class SectionPlacement(Fixture):
 class DocumentedRowIsTheGeneratedRow(Fixture):
     """DEFECT 3: the documented Row has to be the row the script prints."""
 
-    def shape_row(self, element):
-        for line in self.section.splitlines():
-            if line.startswith(f"| {element} |"):
-                return line
-        self.fail(f"the shape table has no {element} row")
-
-    def test_the_grouped_header_row_is_quoted_from_the_output(self):
-        # `| # | Ålder | Uppgift | Förslag | | Godta |` -- the signal column's
-        # header cell is empty. The section writes the pipes escaped, as a
-        # markdown table cell must.
-        self.assertIn("| # | Ålder | Uppgift | Förslag | | Godta |", self.audit)
-        self.assertIn(r"`# \| Ålder \| Uppgift \| Förslag \| \| Godta`", self.section)
+    def test_the_header_row_is_quoted_from_the_output(self):
+        # `| # | Verksamhet | Projekt | Läge | Uppgift | Förslag | | Godta |` -- the
+        # signal column's header cell is empty. The section writes the pipes escaped,
+        # as a markdown table cell must.
+        self.assertIn("| # | Verksamhet | Projekt | Läge | Uppgift | Förslag | | Godta |", self.audit)
+        self.assertIn(r"`# \| Verksamhet \| Projekt \| Läge \| Uppgift \| Förslag \| \| Godta`",
+                      self.section)
 
     def test_the_section_does_not_claim_a_signal_column_heading(self):
-        # The falsified contract the verifier planted was a `✓/?` header cell.
+        # The falsified contract an earlier verifier planted was a `✓/?` header cell.
         # It is not in the output, so it must not be in the section either.
         self.assertNotIn("| Förslag | ✓/? | Godta |", self.audit)
         self.assertNotIn(r"Förslag \| ✓/? \| Godta", self.section)
         self.assertIn("header cell is empty", self.flat_section)
 
-    def test_the_forward_dated_section_really_has_a_different_row(self):
-        # Entry #5 (due 271201) renders with three cells and no Godta column.
-        self.assertIn("| # | Datum | Uppgift |", self.audit)
-        forward = self.audit[self.audit.index("## DATERADE FRAMÅT"):]
-        self.assertNotIn("Godta", forward)
-        self.assertIn(r"`# \| Datum \| Uppgift`", self.section)
-        # And the section's own row for it must deny the three cells the output
-        # does not print, not merely name the cells it does.
-        row = self.shape_row("Row under `DATERADE FRAMÅT`")
-        for absent in ("no `Godta` column", "No `Förslag`", "no signal mark"):
-            self.assertIn(absent, row)
-
-    def test_the_documented_six_and_three_cell_counts_hold(self):
-        rows = [l for l in self.audit.splitlines()
-                if l.startswith("| `#") and "|---" not in l]
+    def test_every_row_has_the_documented_eight_cells(self):
+        rows = body_rows(self.audit)
         self.assertEqual(len(rows), len(OPEN_IDS))
-        wide = [r for r in rows if r.count("|") == 7]      # six cells
-        narrow = [r for r in rows if r.count("|") == 4]    # three cells
-        self.assertEqual(len(wide), 4)
-        self.assertEqual(len(narrow), 1)
-        self.assertIn("Six cells", self.section)
-        self.assertIn("three-cell row", self.section)
+        for r in rows:
+            self.assertEqual(len(cells(r)), 8, r)
+        self.assertIn("Eight cells", self.section)
+
+    def test_a_forward_dated_entry_is_a_row_like_any_other(self):
+        # CR-162: the flat `DATERADE FRAMÅT` section is gone, so the three-cell
+        # exception has nothing to attach to and the entry is decidable.
+        self.assertNotIn("## DATERADE FRAMÅT", self.audit)
+        forward = [r for r in body_rows(self.audit) if "framåt" in cells(r)[3]]
+        self.assertEqual(len(forward), 1)
+        self.assertEqual(len(cells(forward[0])), 8)
+        self.assertEqual(cells(forward[0])[5], "**LÅT STÅ**")
+        row = self.shape_row("A forward-dated entry")
+        self.assertIn("Carries a `Godta` cell like any other", row)
+        self.assertIn("framåt YYMMDD", row)
+
+    def test_the_cells_are_in_the_documented_order(self):
+        row = next(r for r in body_rows(self.audit) if cells(r)[0].startswith("`#1`"))
+        venture, project, lage, task, proposal, mark, godta = cells(row)[1:]
+        self.assertEqual(venture, "Acme")
+        self.assertEqual(project, "Acme Omstart")
+        self.assertTrue(lage.startswith("förfallen"), lage)
+        self.assertEqual(task, "Ring Bob om avtalet")
+        self.assertTrue(proposal.startswith("**") and proposal.endswith("**"), proposal)
+        self.assertIn(mark, ("✓", "?"))
+        self.assertEqual(godta, "")
+
+    def test_an_unmapped_context_writes_a_dash_in_both_columns(self):
+        row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#9`")
+        self.assertEqual(cells(row)[1], "—")
+        self.assertEqual(cells(row)[2], "—")
+        self.assertIn("a dash where the context maps to neither", self.flat_section)
+
+    def test_the_documented_truncation_width_is_the_real_one(self):
+        row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#9`")
+        task = cells(row)[4]
+        self.assertTrue(task.endswith("…"), task)
+        self.assertLessEqual(len(task), 71)
+        self.assertNotIn(" …", task, "truncation cuts at a word boundary")
+        self.assertIn("truncated to 70 characters", self.flat_section)
 
 
-class DocumentedStatesAreTheGeneratedStates(Fixture):
-    def states_cell(self):
-        for line in self.section.splitlines():
-            if line.startswith("| States |"):
-                return line
-        self.fail("the shape table has no States row")
+class TheStateTravelsWithTheRow(Fixture):
+    """CR-162: the five states are unchanged; a state is no longer a section."""
 
-    def test_every_state_name_in_the_section_is_one_the_script_emits(self):
+    def test_no_state_is_a_section_heading_any_more(self):
         for st in sv.ORDER:
-            self.assertIn(f"## {st} —", self.audit)
-            self.assertIn(st, self.section)
+            self.assertNotIn(f"## {st}", self.audit)
+        self.assertIn("a state is no longer a section", self.flat_section)
 
-    def test_the_states_row_lists_exactly_the_scripts_states_in_order(self):
-        # The verifier's falsification was an invented State list in this cell.
-        # Read the cell and compare it to `ORDER`, so an invented name fails.
-        import re
-        cell = self.states_cell()
-        named = [m.group(1) for m in re.finditer(r"`([A-ZÅÄÖ][A-ZÅÄÖ ]+)`", cell)]
-        self.assertEqual(named, list(sv.ORDER),
-                         "the States row does not list the script's states, in its order")
+    def test_the_sections_are_ventures_and_the_subsections_contexts(self):
+        self.assertRegex(self.audit, r"\n## [^\n]+ — \d+ poster\n")
+        self.assertRegex(self.audit, r"\n### `[^`]+` — \d+")
+        row = self.shape_row("Grouping")
+        self.assertIn("## <Verksamhet>", row)
+        self.assertIn("Utan post i kartan", row)
 
-    def test_the_documented_order_is_the_emitted_order(self):
-        seen = [st for st in sv.ORDER if f"## {st} —" in self.audit]
-        self.assertEqual(seen, list(sv.ORDER))
-        positions = [self.audit.index(f"## {st} —") for st in seen]
-        self.assertEqual(positions, sorted(positions))
+    def test_every_lage_cell_opens_on_a_documented_word(self):
+        documented = self.shape_row("States")
+        for r in body_rows(self.audit):
+            lage = cells(r)[3]
+            self.assertTrue(any(lage.startswith(w) for w in LAGE_WORDS), lage)
+            self.assertIn(lage.split()[0], documented)
+
+    def test_every_documented_word_is_one_the_script_emits(self):
+        emitted = {cells(r)[3] for r in body_rows(self.audit)}
+        for word in LAGE_WORDS:
+            self.assertTrue(any(l.startswith(word) for l in emitted),
+                            f"the section documents `{word}`, which the script did not print")
+
+    def test_the_five_states_are_still_the_scripts_five(self):
+        self.assertEqual(len(sv.ORDER), 5)
+        self.assertEqual(len(LAGE_WORDS), 5)
+        self.assertIn("The five states are unchanged", self.section)
 
     def test_every_documented_bucket_name_is_one_propose_for_can_return(self):
         emitted = {sv.propose_for(st, r, TODAY)[0]
@@ -236,13 +336,18 @@ class DocumentedCoverageRule(Fixture):
     def test_coverage_rule_is_exactly_once_and_the_output_obeys_it(self):
         self.assertIn("appears exactly once", self.flat_section)
         for i in OPEN_IDS:
-            self.assertEqual(self.audit.count(f"| `{i}`"), 1, f"{i} is not in the audit exactly once")
+            self.assertEqual(self.audit.count(f"| `{i}`"), 1,
+                             f"{i} is not in the audit exactly once")
         self.assertNotIn(f"`{CLOSED_ID}`", self.audit)
 
     def test_the_header_count_is_the_ledgers_own_open_count(self):
         self.assertIn(f"**{self.survey['ledger']['open']} öppna poster.**", self.audit)
         self.assertEqual(self.survey["ledger"]["open"], len(OPEN_IDS))
         self.assertIn("the ledger's own open count", self.flat_section)
+
+    def test_the_venture_counts_add_up_to_the_open_count(self):
+        counts = [int(m) for m in re.findall(r"\n## [^\n]+ — (\d+) poster\n", self.audit)]
+        self.assertEqual(sum(counts), len(OPEN_IDS))
 
 
 class DocumentedGodtaColumn(Fixture):
@@ -252,39 +357,110 @@ class DocumentedGodtaColumn(Fixture):
         for token in ("`261027`", "`R`", "`Ö`", "`S`"):
             self.assertIn(token, self.flat_section)
         # The legend the section quotes is the legend the generator prints.
-        self.assertIn("**Godta-kolumnen:** tom = förslaget gäller.", self.audit)
+        self.assertIn("**Godta:** tom = förslaget gäller.", self.audit)
         self.assertIn("`261027`", self.audit)
-        # Every six-cell body row ends on an empty Godta cell.
-        for line in self.audit.splitlines():
-            if line.startswith("| `#") and line.count("|") == 7:
-                self.assertTrue(line.endswith("| |"), line)
+        for row in body_rows(self.audit):
+            self.assertTrue(row.endswith("| |"), row)
+
+    def test_the_signal_mark_is_in_the_body_and_the_operator_reads_guesses_first(self):
+        marks = {cells(r)[6] for r in body_rows(self.audit)}
+        self.assertTrue(marks <= {"✓", "?"}, marks)
+        self.assertIn("The operator reads the guesses first", self.section)
 
 
-class DocumentedAlderColumn(Fixture):
-    """DEFECT 4: `Ålder` is never a due date in the grouped sections."""
+class DocumentedLageColumn(Fixture):
+    """DEFECT 4 re-derived: `Läge` carries the state, and only overdue carries an age."""
 
-    def test_only_overdue_rows_carry_an_age_and_the_rest_are_a_dash(self):
-        cells = {}
-        state = None
-        for line in self.audit.splitlines():
-            if line.startswith("## "):
-                state = line[3:].split(" —")[0]
-            elif line.startswith("| `#") and line.count("|") == 7:
-                cells[line.split("|")[1].strip()] = (state, line.split("|")[2].strip())
-        self.assertEqual(cells["`#1`"], ("FÖRFALLNA", "20 d"))
+    def test_only_an_overdue_row_carries_an_age(self):
+        by_id = {cells(r)[0]: cells(r)[3] for r in body_rows(self.audit)}
+        self.assertEqual(by_id["`#1`"], "förfallen 20 d")
         for row_id in ("`#2`", "`#3` `P1`", "`#4`"):
-            self.assertEqual(cells[row_id][1], "—", f"{row_id} should carry no age")
+            self.assertNotRegex(by_id[row_id], r"\d",
+                                f"{row_id} should carry no number in Läge")
         self.assertIn("the operator sees no date here", self.flat_section)
 
-    def test_no_undated_state_can_supply_a_due_date_to_fall_back_on(self):
-        # The documented reason, checked against the data rather than the prose:
-        # an entry without an age in a grouped state also has no `due`.
+    def test_the_cell_is_the_state_word_and_not_a_dash(self):
+        # The claim this replaces said every non-overdue cell is a dash, which was
+        # true of CR-138's `Ålder` column and never of CR-162's `Läge`.
+        for r in body_rows(self.audit):
+            self.assertNotEqual(cells(r)[3], "—")
+        row = self.shape_row("`Läge` (was `Ålder`)")
+        self.assertIn("state word", row.lower())
+        self.assertNotIn("the cell is a dash", row)
+
+    def test_no_undated_state_can_supply_a_well_formed_due_date(self):
         for st, rows in self.states.items():
             if st == "DATERADE FRAMÅT":
                 continue
             for r in rows:
-                if not r.get("age_days"):
-                    self.assertFalse(r.get("due"), f"{st} #{r['id']} could render a due date")
+                if not r.get("age_days") and r.get("due"):
+                    self.assertIsNone(sv.as_date(r["due"]),
+                                      f"{st} #{r['id']} could render a well-formed due date")
+
+    def test_an_unparseable_due_prints_its_raw_value_beside_the_state(self):
+        # The documented exception: `age_days` stays unset for a `due` the date
+        # parser cannot read, so the fallback prints the raw string -- the one way
+        # a date reaches this column.
+        row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#8`")
+        self.assertEqual(cells(row)[3], "ingen ålder snart")
+        self.assertIn("the raw value is printed in this column", self.flat_section)
+
+
+class DocumentedHeader(Fixture):
+    def test_every_documented_header_element_is_in_the_header(self):
+        head = self.audit.split("\n## ")[0]
+        self.assertIn("öppna poster", head)
+        self.assertIn("Godta", head)
+        self.assertIn("✓", head)
+        self.assertIn("?", head)
+        self.assertIn("Förslagen:", head)
+
+    def test_the_movement_line_appears_only_when_something_moved(self):
+        head = self.audit.split("\n## ")[0]
+        self.assertIn("ur registret.**", head)          # #6 was completed today
+        self.assertIn("shown only when something did", self.flat_section)
+
+    def test_the_summary_table_is_per_venture_not_per_state(self):
+        # The claim this replaces said per-state, which was CR-138's grouping.
+        head = self.audit.split("\n## ")[0]
+        self.assertIn("| Verksamhet | Poster | Varav att läsa |", head)
+        for st in sv.ORDER:
+            self.assertNotIn(st, head)
+        self.assertIn("summary table of where the proposals fall, per venture",
+                      self.flat_section)
+
+    def test_the_header_repeats_the_command_that_regenerates_it(self):
+        self.assertIn("--table --markdown", self.audit.split("\n## ")[0])
+        self.assertIn("repeats the command that regenerates it", self.flat_section)
+
+
+class DocumentedProposals(Fixture):
+    def test_a_standing_chore_is_always_let_be_with_a_signal(self):
+        # CR-163, documented in the Buckets row.
+        row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#7`")
+        self.assertEqual(cells(row)[5], "**LÅT STÅ**")
+        self.assertEqual(cells(row)[6], "✓")
+        self.assertIn("`recurring: true` is always proposed `LÅT STÅ`", self.flat_section)
+
+    def test_the_proposals_are_labelled_a_reading_and_not_a_decision(self):
+        self.assertIn("Förslagen är en läsning av texten, inte ett beslut.", self.flat_section)
+
+
+class DocumentedOrdering(Fixture):
+    def test_contexts_are_ordered_largest_first(self):
+        self.assertIn("contexts largest first", self.flat_section)
+        for block in self.audit.split("\n## ")[1:]:
+            counts = [int(m) for m in re.findall(r"^### `[^`]+` — (\d+)", block, re.M)]
+            self.assertEqual(counts, sorted(counts, reverse=True),
+                             "a context heading is out of order: %r" % counts)
+
+    def test_rows_are_ordered_oldest_first_within_a_context(self):
+        for block in self.audit.split("\n### ")[1:]:
+            ages = []
+            for r in body_rows(block):
+                m = re.match(r"förfallen (\d+) d", cells(r)[3])
+                ages.append(int(m.group(1)) if m else 0)
+            self.assertEqual(ages, sorted(ages, reverse=True), ages)
 
 
 class DocumentedViewMatrix(Fixture):
@@ -304,7 +480,8 @@ class DocumentedViewMatrix(Fixture):
             ("--undated", "--markdown"): self.run_cli("--undated", "--markdown"),
             ("--migration",): self.run_cli("--migration"),
         }
-        self.assertEqual(len(set(views.values())), len(views), "two documented views render the same thing")
+        self.assertEqual(len(set(views.values())), len(views),
+                         "two documented views render the same thing")
         for flags in views:
             cell = "*(no flag)*" if not flags else "`" + " ".join(flags) + "`"
             self.assertIn(f"| {cell} |", self.section)
@@ -315,7 +492,6 @@ class DocumentedViewMatrix(Fixture):
         self.assertNotIn("| `--migration --markdown` |", self.section)
 
     def test_table_and_undated_without_markdown_print_json(self):
-        import json
         json.loads(self.run_cli("--table"))
         json.loads(self.run_cli("--undated"))
         json.loads(self.run_cli())
@@ -327,17 +503,21 @@ class DocumentedViewMatrix(Fixture):
                          self.run_cli("--migration"))
         self.assertEqual(self.run_cli("--table", "--undated", "--markdown"),
                          self.run_cli("--table", "--markdown"))
-        self.assertEqual(self.run_cli("--undated", "--markdown"),
-                         self.run_cli("--undated", "--markdown"))
         self.assertIn("`--migration` wins over `--table`, which wins over `--undated`",
                       self.flat_section)
 
-    def test_the_venture_view_is_placed_where_it_really_lives(self):
-        # The venture-first view is `--migration`, not the audit; CR-138's own
-        # table put that grouping on the audit, and the section corrects it.
-        self.assertIn("venture", self.section)
+    def test_the_migration_worksheet_is_still_a_different_question(self):
+        # CR-162 moved the venture grouping into the audit, so the two views now
+        # look alike and the section has to say what still separates them. It is
+        # NOT the `Godta` column: the worksheet has one too, which the section
+        # denied until this was re-derived. The unit is what differs.
         self.assertIn("verksamhet-karta.yaml", self.section)
-        self.assertNotIn("Godta", self.run_cli("--migration"))
+        migration = self.run_cli("--migration")
+        self.assertIn("| # | Ålder | Uppgift | Godta |", migration)
+        self.assertIn("the column is not what tells the two apart", self.flat_section)
+        self.assertIn("the worksheet decides a context value, the audit decides an entry",
+                      self.flat_section)
+        self.assertIn("it maps context *values* to ventures and projects", self.flat_section)
 
 
 class ScriptDocstringAgreesWithTheSection(Fixture):
@@ -360,76 +540,28 @@ class ScriptDocstringAgreesWithTheSection(Fixture):
 
 
 class EveryShapeClaimIsBoundToTheOutput(Fixture):
-    """The rest of the shape table, asserted against what the script prints.
+    """Claims the living view does NOT keep, so the section may not make them."""
 
-    The first round of this test file checked that prose was PRESENT in the section,
-    which cannot tell a true claim from a false one: nine falsified values were planted
-    and four survived. These are those four, plus the malformed-`due` exception -- each
-    read out of the generated string, so a wrong document fails the suite.
-    """
+    def test_the_section_does_not_promise_an_outside_the_table_list(self):
+        # `render_table` ended with `### Utanför tabellen` and its own `Godta`
+        # column; `render_living` does not emit it. The register-level findings
+        # live in the situation view instead, where they are not decidable.
+        self.assertNotIn("### Utanför tabellen", self.audit)
+        self.assertIn("odeklarerat statusord", self.run_cli("--markdown"))
+        self.assertIn("the living view does not emit it", self.flat_section)
 
-    def test_the_documented_truncation_lengths_are_the_real_ones(self):
-        # Both lengths are quoted in the section. A row truncated at a different
-        # width would make the documented number a guess.
-        six = [l for l in self.audit.splitlines() if l.count("|") == 7]
-        three = [l for l in self.audit.splitlines() if l.count("|") == 4]
-        self.assertTrue(six and three, "the fixture must produce both row shapes")
-        for line in six:
-            self.assertLessEqual(len(line.split("|")[4].strip()), 80)
-        for line in three:
-            self.assertLessEqual(len(line.split("|")[3].strip()), 74)
-        self.assertIn("truncated to 80 characters", self.flat_section)
-        self.assertIn("truncated to 74 characters", self.flat_section)
+    def test_the_section_does_not_describe_a_flat_forward_dated_section(self):
+        self.assertNotIn("is flat, with no context level", self.section)
 
-    def test_contexts_are_ordered_largest_first(self):
-        self.assertIn("contexts largest first", self.flat_section)
-        for block in self.audit.split("\n## ")[1:]:
-            counts = [int(m) for m in re.findall(r"^### .*? -- (\d+)$", block, re.M)]
-            self.assertEqual(counts, sorted(counts, reverse=True),
-                             "a context heading is out of order: %r" % counts)
+    def test_the_audit_writes_no_file(self):
+        before = sorted(p.name for p in (self.vault / "_inbox").iterdir())
+        self.run_cli("--table", "--markdown")
+        self.assertEqual(sorted(p.name for p in (self.vault / "_inbox").iterdir()), before)
+        self.assertIn("the script writes no file", self.flat_section)
 
-    def test_the_forward_dated_section_has_no_context_level(self):
-        self.assertIn("`DATERADE FRAMÅT` is flat, with no context level", self.section)
-        for block in self.audit.split("\n## ")[1:]:
-            if block.startswith("DATERADE FRAMÅT"):
-                self.assertNotIn("\n### ", block)
-                break
-        else:
-            self.fail("the fixture must produce a DATERADE FRAMÅT section")
-
-    def test_every_header_element_is_in_the_header(self):
-        # The header element row listed four things; an invented list of four
-        # passed the earlier prose check.
-        head = self.audit.split("\n## ")[0]
-        self.assertRegex(head, r"\d+ öppna|öppna poster|öppna: \d+")
-        self.assertIn("Godta", head)
-        self.assertIn("✓", head)
-        self.assertIn("?", head)
-        self.assertIn("|", head, "the header carries a summary table")
-
-    def test_the_outside_the_table_heading_is_the_scripts_own(self):
-        self.assertIn("### Utanför tabellen", self.section)
-        self.assertIn("### Utanför tabellen", self.audit)
-
-    def test_an_unparseable_due_prints_its_raw_value_in_the_age_column(self):
-        # The documented exception: `age_days` stays unset for a `due` the date
-        # parser cannot read, so the fallback prints the raw string from an
-        # undated state -- the one way a date reaches this column.
-        led = ("tasks:\n"
-               "  - id: 91\n    task: Malformed due\n    context: acme\n"
-               "    status: pending\n    created: \"260801\"\n    due: snart\n")
-        with tempfile.TemporaryDirectory() as tmp:
-            v = Path(tmp)
-            (v / "_inbox").mkdir()
-            (v / "_inbox" / "_tasks.yaml").write_text(led, encoding="utf-8")
-            (v / "_inbox" / "_inbox.yaml").write_text(REGISTER, encoding="utf-8")
-            states = sv.all_open(v, TODAY)
-            rendered = sv.render_table(sv.survey(v, TODAY), states, TODAY)
-        self.assertNotIn("FÖRFALLNA", rendered, "an unreadable due is not overdue")
-        row = [l for l in rendered.splitlines() if "Malformed due" in l]
-        self.assertTrue(row, "the entry must still appear exactly once")
-        self.assertEqual(row[0].split("|")[2].strip(), "snart")
-        self.assertIn("the raw value is printed in this column", self.flat_section)
+    def test_it_enforces_and_decides_nothing(self):
+        self.assertIn("It writes nothing, enforces nothing and decides nothing",
+                      self.flat_section)
 
 
 if __name__ == "__main__":
