@@ -4,7 +4,7 @@
 |---|---|
 | **Area** | `ecosystem.yaml` (`terms`), `scripts/check-terms.py` (coverage follows from the entry), the prose in `ops-base`, `ops`, `transcript`, `outbox` and `company` where the idea is currently spelled out ad hoc |
 | **Priority** | Medium |
-| **Status** | Proposed (2026-11-03) |
+| **Status** | **Implemented v1.93.0** (2026-11-03) |
 | **Contract** | `terms` gains one entry. Additive; **no `contract_version` bump** — a `terms` row is a vocabulary addition, not a shape change (CR-164's precedent, which adds to the same list without naming a bump) |
 | **Related CRs** | **CR-089** (one term per concept — the rule this uses), **CR-062** (`working_loop`, where `manual` and `why_manual` live), **CR-164** (also adds to `terms`; the two entries do not collide, but whichever lands second rebases its position in the list) |
 
@@ -73,11 +73,14 @@ the same one.
 
 | Check | State |
 |---|---|
-| `scripts/check-terms.py` passes with the entry present | **[H]** |
-| The three `avoid` phrases are flagged where they occur in skill prose | **[H]** — run before merge; the result decides whether this is vocabulary hygiene or a real drift |
+| `scripts/check-terms.py` passes with the entry present | **[E]** — with two of the three phrases, not three (below) |
+| The three `avoid` phrases are flagged where they occur in skill prose | **[E] run 2026-11-03, and it changed the entry.** `approval step` and `human in the loop`: zero uses, banned as proposed. **`sign-off`: five uses, all in the ordinary meaning** — `/ops` (no greeting or sign-off in an email), `/preparation` (`[STATUS]` means an update or sign-off is needed; an external counterpart's mandate and who they need sign-off from), `/company` `contract.md` twice (a contact named by role; a document that looks ratified but carries no sign-off). None is the checkpoint. The `terms` rule above the list says a word with a legitimate second meaning is explained in `note` instead of being banned, so **`sign-off` is not in `avoid`** and the note says why. Banning it would have failed the check it was added to serve |
 | No collision with CR-164's `terms` additions (`Konversationstyp` / `Conversation type`) | **[E]** verified 2026-11-03 against the CR-164 file |
 | `contract_version` unchanged | **[E]** by construction |
 
-A count worth taking before merge **[H]**: how many places in `skills/**/*.md` state the principle
-in their own words. If the answer is the five already identified, this is hygiene. If it is
-substantially more, the next CR is consolidation, not vocabulary.
+A count worth taking before merge **[E] taken 2026-11-03**: nine statements of the principle in its
+own words, across eight files — `/ops` (3), `/outbox` (2), `/company` `contract.md` (2), and one each
+in `/transcript`, `/preparation`, `/inbox`, `/handoff` and `/company` `SKILL.md`. That is the five
+already identified plus four of the same kind, not a different order of magnitude: **hygiene, not
+consolidation.** No prose was rewritten in this release — the entry gives the idea a name so that the
+next skill to state it has one to use.

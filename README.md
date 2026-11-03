@@ -1,12 +1,12 @@
 # core-skills
 
-**Version:** 1.92.9
+**Version:** 1.93.0
 
 **[core-skills.doable.services](https://core-skills.doable.services)** — what it is, how a day fits together, install guide and FAQ.
 
 Claude Code skills for operational documentation, transcript processing, task tracking, and team coordination — with a **knowledge loop** that compounds: every meeting feeds an insights corpus, confirmed patterns become standing rules for the skills, and the corpus is synthesized into a crosslinked knowledge wiki with a read-first index. Capture once; the system gets smarter and the knowledge stays readable.
 
-**Releases:** [`CHANGELOG.md`](CHANGELOG.md) — 123 entries, newest first. This
+**Releases:** [`CHANGELOG.md`](CHANGELOG.md), newest first. This
 file used to repeat the last 34 of them; it no longer does, because a second
 copy of a changelog is a second thing to keep true.
 
@@ -21,6 +21,7 @@ window, where a session starts. **A person cannot run the loop before they can r
 
 | | |
 |---|---|
+| What will this know about me once it has been running a while? | Four things, each produced by a different part and each readable on its own. How the business sounds and what it may claim, kept with the source of every statement and checked for drift. How the work is done, which is the skills themselves and the folder's own config. What has been learned, separated into what is confirmed and what is still a hypothesis. And the declaration of what reads what, and where the boundaries are. None of it is a model of you: it is files you can open, correct and delete. |
 | Where do I start a session, and why does it matter? | Start inside the vault folder, not your home directory. A session started above the vault searches everything beside it too, and answers then mix material from places that have nothing to do with each other. The vault root is the folder holding _inbox/ and _outbox/. |
 | What are inbox and outbox? | _inbox/ is where unprocessed input lands and waits to be classified — a door, not a home, so it normally holds very few files. _outbox/ is where outgoing material is staged before it is sent, and it keeps the record of what was sent when. One of each, both at the vault root; per-folder copies are not part of the contract. |
 | Why do some folders start with a dot and others with an underscore? | The prefix answers one question: is this read in everyday work? Underscore means yes and sorts it to the top. Dot means rarely, on demand, or never. Who WRITES a file is a separate thing and never a reason for a prefix — _insights.yaml is machine-written and still carries an underscore, because skills read it automatically. |
@@ -234,7 +235,7 @@ It declares:
 - **`vault_conventions`** (CR-010, contract_version >= 2) -- authoritative declaration of every file the suite produces or consumes in a user's vault. Each entry documents path pattern, purpose, schema link, writers, readers, and lifecycle. Three sections: `vault_root`, `per_folder`, and cross-cutting `conventions` (key renamed from `rules` by CR-092; each declares a level — invariant, standard or guideline) (vault-relative paths, single inbox/outbox, config resolution order, naming, audio/transcript pairing).
 - **Visualisation features** -- the page list Marvin renders
 
-The contract is versioned (`contract_version: 46`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
+The contract is versioned (`contract_version: 47`). Bumps are additive when possible -- older clients ignore unknown blocks; newer clients get the additional structured declarations. Run [`scripts/check-ecosystem-alignment.sh`](scripts/check-ecosystem-alignment.sh) after editing to verify Marvin's CLAUDE.md and the landing page reference the same `core_skills_version`; it also runs [`scripts/check-terms.py`](scripts/check-terms.py), which compares every SKILL.md's subcommands with the contract and rejects the `avoid:` phrases.
 
 ## Architecture
 

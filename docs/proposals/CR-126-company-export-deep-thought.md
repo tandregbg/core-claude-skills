@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | **Proposed 2026-10-14**, build after 2026-10-27 (committed locally; not pushed, like 1.91.0) |
-| **Contract** | additive, `contract_version` to the next free number (written as 43 to 44 before CR-127 and CR-128 took 44 and 45, so 45 to 46 if built next), `ops_config` 1.6 to 1.7. A new export target and an optional `company.deep_thought:` block. A vault that sets nothing behaves as before |
+| **Contract** | additive, `contract_version` to **the next free number at implementation** -- 48 as of 1.93.0 (written 43 to 44 when filed; 44 to 47 were taken by CR-127, CR-128, CR-135 and `external_systems.linkedin` while this waited, which is why the number is not written as a constant here), `ops_config` 1.6 to 1.7. A new export target and an optional `company.deep_thought:` block. A vault that sets nothing behaves as before |
 | **Date** | 2026-10-14 |
 | **Area** | `skills/company` (`export`), `skills/company/references/contract.md` (section 7), `ops-config` (`company.deep_thought`), `docs/schemas/` (two export schemas), tests |
 | **Related CRs** | CR-125 (the profile and its contract), Deep Thought DT-CR-745 (a tag's context can be owned by the vault), DT-CR-740 (the other direction, `_context.md`), record-me-macos MAC-CR-007 (sends the export), MAC-CR-003 |
@@ -95,7 +95,7 @@ copy marked as owned by the vault, read-only there, so the profile stays the pla
 2. The two schemas; `ops-config` `company.deep_thought` with comments; `/company check` lines.
 3. Tests with an invented company: opt-out writes nothing; a `strategy` sentence and a never-say word never appear;
    `notes` is at most 2,000 characters; the hash is stable for an unchanged profile.
-4. Release: CHANGELOG, contract 44. **No push until the owner says so** (as CR-125).
+4. Release: CHANGELOG, contract at the next free number (see the header). **No push until the owner says so** (as CR-125).
 
 ## Open questions
 

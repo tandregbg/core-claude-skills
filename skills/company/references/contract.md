@@ -5,6 +5,10 @@ and the rules every file follows. This file is the whole contract. It contains *
 what to ask, in which order, to what standard, belongs to an optional template the skill reads from
 `company.template:` (see SKILL.md). Without a template the skill works with the plain skeleton below.
 
+Every rule below serves one property: **a profile is source-backed, never self-described** -- each statement
+carries where it came from, staleness is reported rather than assumed away, and a missing fact stays a visible
+gap (CR-167).
+
 ## 1. Where
 
 One folder per organisation, at the top of that organisation's area:

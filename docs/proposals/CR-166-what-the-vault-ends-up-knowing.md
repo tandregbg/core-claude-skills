@@ -4,7 +4,7 @@
 |---|---|
 | **Area** | `ecosystem.yaml` (`orientation`), the `README.md` orientation block, the landing page `orientation` route (renders the contract, no edit needed), `scripts/` (a staleness check the block does not have) |
 | **Priority** | Medium |
-| **Status** | Proposed (2026-11-03) |
+| **Status** | **Implemented v1.93.0** (2026-11-03) |
 | **Contract** | `orientation` gains one entry. Additive; no `contract_version` bump — CR-077 established the list and adding to it is the intended use |
 | **Related CRs** | **CR-077** (the orientation layer and its rule: *rendered, never restated*), **CR-062** (`working_loop`, rendered the same way and with the staleness check this one lacks), CR-125 (`/company`, one of the four things the answer names), CR-013 and CR-027 (`/insights` and the knowledge wiki, two more) |
 
@@ -91,9 +91,9 @@ preferable, because two scripts doing the same job is the same defect one layer 
 
 | Check | State |
 |---|---|
-| The entry's `sources` resolve to real declarations | **[H]** |
-| The README orientation block, re-rendered, contains the new entry | **[H]** |
-| The new check fails on a hand-edited block and passes after `--write` | **[H]** |
+| The entry's `sources` resolve to real declarations | **[E]** — and the check now enforces it for every entry: `render-loop.py` resolves a dotted path through the contract (a list of mappings keyed by `id`, `name` or `path`, so `skills.company` resolves). All eight pre-existing entries resolve unchanged; a bogus path is reported |
+| The README orientation block, re-rendered, contains the new entry | **[E]** — and the renderer reproduces the eight existing rows **byte for byte**: the whole README diff is the one added row, which is the evidence that the generated block and the hand-maintained one were the same text |
+| The new check fails on a hand-edited block and passes after `--write` | **[E]** — tried both ways, and through `check-components.py`, which the alignment check runs |
 | The landing page `orientation` route shows the entry after a rebuild against the local contract | **[H]** — the landing build reads `ecosystem.yaml` locally, so this can be confirmed before any push |
 | No proposed CR touches `orientation` | **[E]** verified 2026-11-03 across `docs/proposals/CR-12*` to `CR-16*` |
 

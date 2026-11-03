@@ -16,6 +16,13 @@ what they carry, the rules, the checks. It carries **no questions and no method*
 to what standard, comes from an optional template you point at with `company.template:`. Without one the skill
 still works with the plain skeleton; it tells you so. Nothing in this repository reproduces a template.
 
+**Source-backed, not self-described (CR-167).** A facet file is built from sources and records them: every
+statement can be traced to where it came from, `check` reports when the sources have moved on, and a fact
+nobody has is written as a gap rather than filled in. Where the only source is a person, that is recorded too
+-- an owner's answer is a dated `interview:<date>` source, not an unmarked fact. A profile written once from
+memory is a different object with the same filename: it is as true as the day it was written and has no way
+to say so.
+
 The contract is `references/contract.md`; read it before writing a profile file.
 
 ---

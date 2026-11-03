@@ -7,6 +7,99 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.93.0] - 2026-11-03
+
+Four things the suite already did, named (CR-165 to CR-167) -- and one it does not, found at its own
+merge gate (CR-168, sent back). **`contract_version` 47 is published for the first time by this
+release**: it was committed to `main` on 2026-10-25 and had no CHANGELOG entry, which is also why
+this is a minor and not a patch. Two implementations already on `main` ship with it, named below.
+
+### Added
+
+- **CR-165 -- the checkpoint has a name (`ecosystem.yaml` `terms`, contract unchanged; a `terms` row is
+  a vocabulary addition, not a shape change).** The suite's load-bearing idea -- the place where a person
+  decides, because generating the obvious answer would be confidently wrong in a way the reader could not
+  check -- was declared three times as `manual: true` with a reason and named nowhere, so the landing page
+  could render only a count (`3 you`, a number with no noun) and `check-terms.py` had nothing to be
+  consistent with. One entry: `checkpoint` / `kontrollpunkt`, with the note that it IS the work rather than
+  a stage after it. **The merge check changed the entry.** Of the three phrases the CR proposed to ban,
+  `approval step` and `human in the loop` occur nowhere and are banned; **`sign-off` occurs five times in
+  skill prose in its ordinary meaning** (an email without one, `[STATUS]` meaning an update or sign-off is
+  needed, an external counterpart's sign-off chain, and twice in `/company`'s contract), none of them the
+  checkpoint. The rule above the `terms` list says a word with a legitimate second meaning is explained in
+  `note` instead of being banned, so it is -- banning it would have failed the check it was added to serve.
+  The count the CR asked for: nine ad-hoc statements of the principle across eight files, which is the
+  hygiene case and not the consolidation case. No skill prose was rewritten. 9 new tests.
+
+- **CR-166 -- an orientation entry for what the vault ends up knowing, and the check that keeps the block
+  honest (`ecosystem.yaml` `orientation`, `scripts/render-loop.py`, contract unchanged).** The question a
+  person asks before any of the others -- *what will this know about me once it has been running a while?*
+  -- had no answer in the orientation set, although all four parts of the answer have shipped for releases:
+  the company profile, the skills and the folder's config, the insights corpus split into confirmed and
+  hypothesis, and the declaration of what reads what. The entry is placed first and ends on the sentence the
+  CR called load-bearing: none of it is a model of you, it is files you can open, correct and delete.
+  **The second half is the real change.** `orientation` carried CR-077's promise *rendered, never restated*
+  and nothing enforced it: no script referenced the block, so it could drift from the declaration silently.
+  `render-loop.py` now renders and checks **both** README blocks (one script, because two scripts doing the
+  same job is the same defect one layer up) and additionally **resolves every entry's `sources`** against
+  the contract, so an answer may not cite a declaration that does not exist. `check-components.py` already
+  ran it, so the alignment check covers orientation from today. Evidence that the generated block and the
+  hand-maintained one were the same text: the renderer reproduces the eight existing rows byte for byte, and
+  the whole README diff is the one added row. 13 new tests.
+
+- **CR-167 -- the company profile says what it is not (`skills/company`, no contract, no schema).**
+  `/company` stated its structure and never its one durable property, so it read as the weaker thing it
+  resembles: a profile written once from memory. One paragraph in `SKILL.md` after *Open and optional* and
+  one sentence in the opening of `references/contract.md` (section 7 untouched, reserved for CR-126 and
+  CR-130): source-backed, not self-described -- every statement traceable, `check` reporting when the
+  sources have moved on, a fact nobody has written as a gap. **One clause was added at the merge:** where
+  the only source is a person, that is recorded too, as a dated `interview:<date>` source rather than an
+  unmarked fact. Without it the paragraph would have claimed the skill refuses an input it accepts by
+  design. No external product, method or person is named. 9 new tests.
+
+### Changed
+
+- **The README no longer counts the entries in this file.** The line read *123 entries* and was written
+  when there were 157; it had never been updated and said 123 against 166 today. The sentence next to it
+  argues that a second copy of a changelog is a second thing to keep true, and a count of it is the same
+  thing one size smaller, so the number is gone rather than corrected.
+
+- **The contract number is settled where three proposals disagreed about it (`docs/proposals/`).**
+  `contract_version` moved to 47 on 2026-10-25 and four statements still named the old one. CR-126 ("45 to
+  46 if built next") and CR-152 ("46 to 47") now say *the next free number at implementation* and name 48 as
+  the value today, because a number written as a constant in a waiting proposal is drift with a date on it;
+  CR-160 needed no change -- its own numbering note already explains why its bump is 47 to 48. The board's
+  2026-11-03 addendum asked the next release touching the contract to settle this.
+
+### Not changed, and why
+
+- **CR-168 was rewritten instead of merged.** It claimed the layers are built from the record of work that
+  happened and never from a description of how the work is done, and made its own merge conditional on that
+  claim being read back against the code rather than the documentation. It was, and **two input paths build
+  a durable layer from what a person said**: `/company intake` writes an owner's interview answers into a
+  facet file, and `/insights scan-claude-md` maps a folder's `CLAUDE.md` -- a written description of how the
+  work is done -- into insights that the CR-013 lifecycle can promote to a rule loaded as a standing
+  instruction. Neither is a defect and neither should be removed: a company's voice and a folder's
+  conventions exist nowhere but in what a person says about them. The claim the suite does keep is narrower
+  and is now the CR's: every layer rests on a **recorded** source, dated and attributable, never on recall
+  at the moment of writing -- the interview answer becomes a source `check` can call stale, and the
+  `CLAUDE.md` entries are deleted and re-extracted when the file moves. The README sentence belongs to the
+  next round; rewriting it in the session that found the fault would skip the reading the gate exists to
+  force.
+
+### Shipping with this release, implemented earlier
+
+- **Contract 47 (2026-10-25) -- `external_systems.linkedin`, defined.** Purely definitional: nothing in this
+  repository fetches or reads it, and a vault without the key behaves exactly as before. Declared so a reader
+  walking a config knows what the key means when present. No CHANGELOG entry existed until now.
+- **CR-162 (2026-10-26) -- the task audit is grouped by venture and the state travels with the row**, and
+  **CR-163 (2026-10-27) -- a standing chore declares itself with `recurring: true`** (`skills/inbox`
+  `survey.py`, `skills/tasks` schema). Both were committed to `main` before this release. **Known gap:**
+  CR-162 replaced `render_table()` with `render_living()` and rewrote the `/inbox survey` section around the
+  new shape, but CR-138's nine contract tests still call the removed function and describe the superseded
+  output, so they error. They are not fixed here -- re-deriving a shape contract belongs with the change that
+  moved the shape, not with an unrelated release -- and the gap is on the ops board.
+
 ## [1.92.9] - 2026-10-22
 
 ### Added

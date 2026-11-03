@@ -362,7 +362,7 @@
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
 contract_version: 47
-core_skills_version: "1.92.9"
+core_skills_version: "1.93.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -570,6 +570,8 @@ terms:
   - {id: standard, en: standard, sv: standard, note: "a convention's middle level: holds generally, exceptions named (CR-037, CR-092)"}
   - {id: wiki, en: wiki, sv: wiki, verb: compound, avoid: ["knowledge base"]}
   - {id: handoff, en: handoff, sv: överlämning, file: handoff}
+  # where a person decides (CR-165)
+  - {id: checkpoint, en: checkpoint, sv: kontrollpunkt, note: "the place where a person decides because generated confidence would not be checkable. Declared by `manual: true` in working_loop, and the same principle behind every seal, every gap marker and every refusal to infer an owner - the checkpoint IS the work, not a stage after it, and the process serves the person who owns the outcome rather than the person serving the process. `sign-off` is deliberately NOT in `avoid`: a third party's approval of a document is a legitimate second meaning this suite uses in /preparation and /company, and the rule above explains such a word instead of banning it", avoid: ["approval step", "human in the loop"]}
   # movement and retirement
   - {id: fetch, en: fetch, sv: hämta, verb: fetch, note: "an external system into a local archive; component ids keep 'archiver'"}
   - {id: archive, en: archive, sv: arkiv, note: "the fetched local copy only"}
@@ -1203,6 +1205,18 @@ components:
 # `sources` names the declarations the answer derives from, so an answer that drifts
 # from the contract can be caught.
 orientation:
+  - id: what_it_knows
+    question: "What will this know about me once it has been running a while?"
+    answer: >-
+      Four things, each produced by a different part and each readable on its own.
+      How the business sounds and what it may claim, kept with the source of every
+      statement and checked for drift. How the work is done, which is the skills
+      themselves and the folder's own config. What has been learned, separated into
+      what is confirmed and what is still a hypothesis. And the declaration of what
+      reads what, and where the boundaries are. None of it is a model of you: it is
+      files you can open, correct and delete.
+    sources: [vault_conventions, skills.company, skills.insights, components]
+
   - id: where_to_start
     question: "Where do I start a session, and why does it matter?"
     answer: >-

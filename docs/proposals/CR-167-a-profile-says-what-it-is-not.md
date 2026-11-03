@@ -4,7 +4,7 @@
 |---|---|
 | **Area** | `skills/company/SKILL.md` (the opening, beside *Open and optional*), `skills/company/references/contract.md` (the opening statement, **not** section 7) |
 | **Priority** | Medium |
-| **Status** | Proposed (2026-11-03) |
+| **Status** | **Implemented v1.93.0** (2026-11-03) |
 | **Contract** | None. Documentation only — no schema, no new field, no behaviour change |
 | **Related CRs** | **CR-125** (the profile and its open contract — this states a property CR-125 built but never claimed), **CR-126** (`export deep-thought`) and **CR-130** (`export agent-core`) both touch `skills/company`, but only `export` and **contract.md section 7**; this CR deliberately stays out of that section so the three do not collide |
 
@@ -71,6 +71,13 @@ section, so that a reader of the contract meets the property before the file for
 | The paragraph names no external product, method or person | **[E]** by construction; re-read at merge, and the pre-push guard is the backstop |
 | `contract.md` section 7 is untouched | **[E]** by construction — the collision check that motivated the placement |
 | No behaviour, schema or test changes | **[E]** by construction |
+
+**One sentence was added at the merge [E].** Reading the skill back for row 1 showed that where a fact
+exists only in what a person says, `/company` accepts it — and records it as a dated `interview:<date>`
+source (intake step 4). A paragraph claiming only *built from sources* would have been read as refusing
+that input. The shipped paragraph says it: *"Where the only source is a person, that is recorded too — an
+owner's answer is a dated `interview:<date>` source, not an unmarked fact."* This is the same finding that
+sent CR-168 back for a rewrite, met from the other side.
 
 One open question for the merge **[H]**: whether the same paragraph belongs in the landing page's
 company-profile route, which has its own hand-written copy. It probably does, but that is the landing
