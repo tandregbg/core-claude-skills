@@ -5,7 +5,7 @@
 | **Status** | **Proposed 2026-10-21** |
 | **Contract** | additive -- one new declared surface and its fetch record. No existing path is renamed, no writer loses a surface |
 | **Date** | 2026-10-21 |
-| **Area** | `ecosystem.yaml` (`vault_conventions.vault_root`, contract bump 47 -> 48), `ops` (`check`), `ops-config` schema |
+| **Area** | `ecosystem.yaml` (`vault_conventions.vault_root`, contract bump to the next free number -- 49 as of 1.94.0), `ops` (`check`), `ops-config` schema |
 | **Related CRs** | the handover CR (written 2026-10-13, never landed on this branch -- see *A numbering note* below), CR-010 (vault conventions), CR-034 (`_` and `.` prefixes), CR-036 (placement and singletons), CR-038 (generated-view isolation), CR-047 and CR-088 (the chat archive and its `_fetch.json`, the precedent this copies), CR-012 (the inbox schema), CR-071 (a missing record is reported, never omitted), CR-027 (`.knowledge/wiki/` is generated); Deep Thought DT-CR-838 (the writer), DT-CR-740 part B (the handover contract), DT-CR-675 (the note per source) |
 | **Depends On** | Nothing. DT-CR-740 part B is deployed, which also unblocks the handover CR |
 
@@ -14,7 +14,10 @@
 Filed on 2026-10-21 as CR-139 on a local branch. By the time it was pushed (2026-10-26) CR-139
 through CR-157 had been taken upstream, so it is **CR-160**; the platform's documents that said
 "CS-CR-139" mean this CR. The contract it bumps moved from 46 to 47 in the meantime (the
-`external_systems.linkedin` entry), so the bump here is 47 to 48.
+`external_systems.linkedin` entry) and to 48 with CR-169, CR-170 and CR-171 (v1.94.0), so the
+bump here is to **the next free number at implementation** -- 49 today. The number is not
+written as a constant for the same reason CR-126 and CR-152 stopped doing so: a waiting
+proposal that names a number is drift with a date on it.
 
 ## A numbering note, before anything else
 

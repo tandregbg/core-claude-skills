@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | **Proposed** (2026-10-21) |
-| **Contract** | `contract_version` to the next free number -- 47 → **48** as of 1.93.0 (47 went to `external_systems.linkedin`) (**additive**): two enums move into `ecosystem.yaml`, `scope` gains one value, the task schema gains one optional field, and an alias map is declared. Every existing ledger stays readable and nothing is rewritten |
+| **Contract** | `contract_version` to the next free number -- 48 → **49** as of 1.94.0 (47 went to `external_systems.linkedin`, 48 to CR-169/170/171) (**additive**): two enums move into `ecosystem.yaml`, `scope` gains one value, the task schema gains one optional field, and an alias map is declared. Every existing ledger stays readable and nothing is rewritten |
 | **Date** | 2026-10-21 |
 | **Area** | `ecosystem.yaml` (`task_source_types`, `task_scopes`, `task_source_aliases`), `tasks` (v2 schema + writers), `ops` (`hygiene_check.py`, `check`) |
 | **Related CRs** | **CR-048** (the status enum was moved into the contract for exactly this reason), CR-080 (`correspondence` as a source type), CR-105 (`content`: incoming material is not a meeting), CR-122 (the enum check that surfaced this), CR-127 (`closed:`, and the precedent for reading a legacy field without migrating), CR-135 (the object-model fields beside these), CR-120 (a check that cries wolf is one an operator learns to ignore) |

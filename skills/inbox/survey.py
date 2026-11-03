@@ -149,8 +149,9 @@ def survey(vault: Path, today: date, stale_days: int = 30) -> dict:
             {"id": t["id"], "task": t.get("task", ""), "priority": t.get("priority")})
 
     # --- the folder: a door, not a dwelling --------------------------------
+    vf = view_files(vault)
     resident = {"_capture.md", "_frame.md", "_ideas.md", "_inbox.yaml", "_tasks.yaml",
-                "CLAUDE.md", "daglig-triage.md"}
+                "CLAUDE.md"} | {v for v in vf.values() if v}
     files = sorted(p.name for p in inbox.iterdir()
                    if p.is_file() and not p.name.startswith("."))
     return {
@@ -353,6 +354,34 @@ STATE_NOTE = {
 }
 ORDER = ["FÖRFALLNA", "ODATERADE MED PRIO", "UTAN DATUM OCH UTAN ÅLDER", "ODATERADE",
          "DATERADE FRAMÅT"]
+
+
+def view_files(vault):
+    """The vault's own names for the files this script must find by name (CR-171).
+
+    A display filename is DATA, not a literal: `identifier_language` says the words a
+    person reads live in a settings file so that changing one is a settings change. The
+    triage document's name was hardcoded here, which meant a vault working in another
+    language could not rename it without editing this script -- exactly the coupling the
+    rule forbids, arrived after the rule shipped.
+
+    Resolution: the suite's `ops-config/base.yaml` (where the shipped names live), then the
+    vault's own `_config/base.yaml`, which wins. NO NAME IS WRITTEN IN THIS FILE -- a default
+    spelled here would be the same literal one indirection further away, and the check added
+    by CR-171 would be right to reject it. A key that resolves to nothing is simply absent
+    from the result, and its file is then treated as ordinary content.
+    """
+    import yaml
+    out = {}
+    for f in (Path(__file__).resolve().parent.parent / "ops-config" / "base.yaml",
+              Path(vault) / "_config" / "base.yaml"):
+        try:
+            if f.is_file():
+                d = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+                out.update({k: str(v) for k, v in (d.get("view_files") or {}).items() if v})
+        except Exception:
+            pass                                  # a settings file that will not parse is not fatal here
+    return out
 
 
 def venture_map(vault):

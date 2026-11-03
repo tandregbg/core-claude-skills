@@ -77,6 +77,18 @@ status_terminology: {}
 # No structured issue IDs by default
 issue_id_format: null
 
+# The vault's own names for files the suite must find by name (CR-171).
+# These are DISPLAY names and therefore DATA: identifier_language says a word a person
+# reads lives in a settings file, so changing it is a settings change and not a code
+# change. A vault working in another language overrides these and renames nothing in
+# the suite. scripts/check-terms.py rejects any of these values written as a literal in
+# skill code, skill prose or a test -- this file and the config chain are where they live.
+# The defaults are the names the first vault used; they are examples of the
+# system_file_language test passing, not a requirement (CR-171).
+view_files:
+  triage: "daglig-triage.md"     # the human-owned triage working surface (CR-022)
+  tasks_view: "_uppgifter.md"    # the generated task view in _inbox/ (CR-035, CR-162)
+
 # Minimal workflow by default
 workflows:
   update_files:

@@ -7,6 +7,94 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.94.0] - 2026-11-03
+
+Three rules the contract half-stated, measured on a live vault and completed (CR-169, CR-170,
+CR-171). **Contract 48**, additive: a vault that declares none of the new keys behaves exactly as
+before. One bump for three changes, because the same readers read all three and one contract step is
+easier to adopt than three.
+
+### Added
+
+- **CR-170 -- audio has an exit, and a verification that makes removal defensible (`inbox`, `ops`,
+  contract 48).** `audio_transcript_pairing` is an invariant and was half a rule: it said where audio
+  **is** and nothing about where it **goes**, so the folder only ever grew. Measured: **64 files,
+  1.6 GB in 14 days, ~115 MB a day**, 15 of them already orphaned by a transcript that had been
+  archived without them. The cause is a broken chain, not a vault quirk -- a watcher was retired and
+  the recorder that replaced it satisfied the pairing rule on day one while nothing took over the
+  exit. **Any suite that swaps a capture tool has this failure available to it.**
+
+  The rule now has a disposition half: routed audio leaves the inbox for a declared `audio_archive`
+  (default `.archive/.audio/`), and the entry keeps `audio_path`, `audio_path_was` and
+  `audio_archived` so a file in an archive can still be resolved back to its conversation -- on one
+  measured archive 69 of 495 files carried a recorder's default name and only the vault register
+  could say what they were.
+
+  **The verification shipped as code**, `skills/inbox/audio_verify.py`, because a method that decides
+  whether a file may be deleted and lives only in a paragraph is one every caller re-implements. It
+  walks the ISO-BMFF boxes, concatenates every `mdat` payload and hashes that. The reason is
+  measured: of 64 pairs, 37 existed in the archive and **none was byte-identical** -- 160 to 200
+  bytes of container timestamps and sequence numbers -- while **64 of 64 matched on `mdat`**. A byte
+  compare calls every one a different recording; a threshold on how much differs is worse, because
+  the differing tail is proportional to the file, so the rule is most permissive exactly where the
+  stakes are highest. A file with no `mdat` is hashed whole and **says so** -- a comparison whose two
+  sides used different bases never reports verified. The tool reports and never removes: **27 of the
+  64 existed only in the vault**, 8 of them meeting recordings from a machine that was never in the
+  chain, and a sweep written without this rule would have deleted them. 21 new tests, including the
+  measured situation rebuilt on disk.
+
+- **CR-169 -- the two drop zones, and what ages them (`ops`, contract 48).** The contract declared one
+  drop zone and the vaults used two. `.archive/` against `.ephemeral/` is stale against junk;
+  `<inbox>/.files/` against `.ephemeral/` is **destined against undestined, decided at the drop** --
+  and that second distinction lived only in one vault's own `CLAUDE.md`. It is the rule that makes
+  the 14-day sweep safe: anything allowed to die was declared homeless on arrival, and a sweep over
+  material routed by gravity is a guess.
+
+  Both zones had failed, in opposite directions, which is what an uncounted rule does: **`.files/`
+  had no ageing rule at all**, so nothing in it could ever be late (8 entries, 52 MB, all past use,
+  the oldest five weeks, including a build artifact owned by another repository that belonged in
+  `.ephemeral/` and was instead immortal); `.ephemeral/` had **33 of 44** entries past the sweep.
+  `stale_vs_junk` now names three destinations and the question that routes to each, both ageing
+  zones declare `stale_after_days` (14) on their own entry, and `/ops check` reports each with its
+  own meaning -- *a promise nobody kept* against *a sweep that has not run*. Report only; the defect
+  measured was an unreported backlog, not an unexecuted deletion. 14 new tests.
+
+- **CR-171 -- a vault's file names are data to the suite, and a check keeps them out of it
+  (`ecosystem.yaml`, `inbox`, `ops-config`, `scripts/check-terms.py`, contract 48).** Two halves. The
+  grandfather clause in `system_file_language` recorded its **reason as an enumerated list** of five
+  Swedish register names, when the reason is a test: *is the name read by a script, and does renaming
+  cost more than the consistency gains?* A list goes stale where the test would not -- one vault had
+  four more files meeting the same test and named in no list, so a reader comparing vault against
+  contract found four violations that were not violations. The clause is now the test, with the list
+  kept as examples, and the vault declares its own in `view_files`.
+
+  The sharper half: **two vault-local display filenames had leaked into the suite as literals** -- a
+  triage document in a skip-list in `survey.py`, a generated view asserted as contract text in a test
+  -- which is exactly what `identifier_language` has forbidden since CR-049, and both arrived *after*
+  that rule shipped. A vault working in English could not rename either without editing this
+  repository. The names now live in `view_files` in the config chain, `survey.py` reads them, and
+  `check-terms.py` rejects any of them written as a literal in skill code, skill prose or a test.
+  **The first implementation failed its own check**: it kept the names as a `DEFAULT_VIEW_FILES` dict
+  in the script, which is the same literal one indirection further away. They exist in exactly one
+  place in this repository now. 14 new tests, one of which plants the leak and requires the check to
+  catch it -- a check that cannot be made to fail is not evidence of a clean tree.
+
+### Changed
+
+- **The contract's own prose carried a retired command.** The `.ephemeral/` entry read *"/ops sweep
+  flags content >14 days"*; `sweep` became `check` in 1.79.0 (CR-089), three releases before this
+  one. `check-terms.py` watches the skills and the README for retired names and has never read
+  `ecosystem.yaml`, so the contract was the one surface where a rename could rot unseen. Corrected,
+  with a test that walks `vault_conventions` for every retired command name.
+
+- **Three waiting proposals stopped naming a contract number.** CR-126, CR-152 and CR-160 each said
+  which number they would take; 48 went to this release, so all three were wrong again within a
+  fortnight. They now say *the next free number at implementation* and name today's value as a hint.
+  This is the same correction 1.93.0 made for two of them, applied to the third and re-pointed --
+  which is the argument for the wording rather than for the number.
+
+**1085 tests, 49 new, no failures.**
+
 ## [1.93.1] - 2026-11-03
 
 CR-138's detector is back on, and it found six things (`inbox`, contract unchanged). This is a

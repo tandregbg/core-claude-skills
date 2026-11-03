@@ -37,6 +37,8 @@ import survey as sv  # noqa: E402
 
 SKILL = (ROOT / "skills" / "inbox" / "SKILL.md").read_text(encoding="utf-8")
 TODAY = datetime.date(2026, 10, 21)
+# The vault's own view names, from settings rather than from a literal here (CR-171).
+VIEW_FILES = sv.view_files(ROOT / "nonexistent-vault")
 
 # One open entry per state, so every branch of render_living is exercised: #1 is
 # overdue, #2 has `created` and no date, #3 has a priority and no date, #4 has
@@ -214,16 +216,21 @@ class SectionPlacement(Fixture):
         self.assertLess(SKILL.index("### `/inbox survey`"), SKILL.index("### `/inbox help`"))
 
     def test_names_the_generator_and_the_stable_filename(self):
+        # CR-171: the stable filename is the vault's, so the section names the SETTINGS
+        # KEY and never the name. Asserting the name here is what made this test file one
+        # of the two places the name leaked into the suite.
         self.assertIn("survey.py", self.section)
-        self.assertIn("_inbox/_uppgifter.md", self.section)
+        self.assertIn("view_files.tasks_view", self.section)
         self.assertIn("stable filename", self.section)
+        for name in VIEW_FILES.values():
+            self.assertNotIn(name, self.section, "a vault's display filename is not ours to spell")
 
     def test_the_failure_is_named_in_one_line(self):
         self.assertIn("a subset presented in this file's name is a regression",
                       self.flat_section)
 
     def test_relationship_to_the_triage_doc_is_stated(self):
-        self.assertIn("daglig-triage.md", self.flat_section)
+        self.assertIn("view_files.triage", self.flat_section)
         self.assertIn("what do I do now", self.flat_section)
         self.assertIn("what is there", self.flat_section)
 

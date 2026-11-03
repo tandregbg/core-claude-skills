@@ -92,7 +92,9 @@ confidence: high                      # str: high|medium|low (classifier confide
 source:
   type: audio                         # str: audio|email|paste|file|api|manual
   origin: voice_memo                  # str: free-form, e.g. voice_memo|dropbox|gmail|api|web_ui
-  audio_path: _inbox/.audio/250423-142214-meeting-notes.m4a   # str: vault-relative
+  audio_path: _inbox/.audio/250423-142214-meeting-notes.m4a   # str: vault-relative; MOVES on archive (CR-170)
+  audio_path_was: _inbox/.audio/250423-142214-meeting-notes.m4a  # str: the previous location (CR-170)
+  audio_archived: '261103'            # str YYMMDD: when the audio left the inbox (CR-170)
   audio_duration_sec: 142             # int
   ingestion_tool: trillian            # str: trillian|deep-thought|user|web_ui|...
   external_id: dt_abc123              # str: identifier in upstream system
@@ -196,10 +198,33 @@ should:
 - List orphan audio in status output (e.g. "1 audio awaiting transcript").
 - Not auto-classify or auto-process orphan audio -- wait for the markdown.
 
-**Retention** is user-configurable. Default: keep audio indefinitely (paired
-with archived transcript in `.archive/.audio/`). A future
-`/inbox prune --older-than 30d` subcommand can reclaim space. The schema
-itself takes no position on retention.
+**The audio has an exit (CR-170).** When the entry is routed, the audio leaves
+`_inbox/.audio/` for the vault's declared `audio_archive` (`vault_conventions`,
+default `.archive/.audio/`). The three pointer fields above travel with it:
+`audio_path` to the new location, `audio_path_was` to the old one, and
+`audio_archived` to the date. Pairing by basename stays canonical -- the pointers
+exist so that a file sitting in an archive can still be resolved back to the
+conversation it belongs to, which is what 69 unaddressable files out of 495 on one
+measured archive could not do.
+
+**Retention beyond the exit is user-configurable**, and the schema takes no
+position on it. What the schema does take a position on is that the inbox is not
+where audio lives: before CR-170 this section read *keep audio indefinitely*,
+which one vault did, reaching 64 files and 1.6 GB in a synced folder in 14 days.
+
+**Removing a vault copy requires a verified counterpart**, compared on the `mdat`
+payload rather than on bytes:
+
+```
+python3 ~/.claude/skills/inbox/audio_verify.py --dir _inbox/.audio --against <audio_archive>
+```
+
+Of 64 measured pairs, 37 existed in the archive and **none was byte-identical** --
+160 to 200 bytes of container timestamps and sequence numbers rewritten by whatever
+last muxed the file -- while 64 of 64 matched on `mdat`. A byte compare calls every
+one of them a different recording; a threshold on how much differs is worse, because
+the differing tail is proportional to the file. A pair that does not verify, or one
+with no counterpart at all, is kept and reported.
 
 ---
 

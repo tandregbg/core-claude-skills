@@ -45,7 +45,7 @@ Accept raw content (pasted text, file path, or inline text), classify it, store 
    - Multiple speakers, timestamps, speaker labels -> `voice_memo`
    - "From:", "Subject:", email headers -> `email`
    - File path provided -> read the file, detect type from content
-   - **Binary or non-markdown file path** (PDF, CSV/xlsx, image, media, archive) -> `file_drop` (CR-024): move/copy the file into `_inbox/.files/<id>.<ext>` and create the paired stub with `source.file_path` and a type-based classification guess (PDF/document → summarize into a folder; CSV/xlsx → project data; image/media → attachment). Files >~25 MB: flag the size and offer process-in-place + reference-stub archiving instead of moving the blob. Full convention in [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) "File drops".
+   - **Binary or non-markdown file path** (PDF, CSV/xlsx, image, media, archive) -> `file_drop` (CR-024). **Ask the drop-zone question first (CR-169): does this file have a vault destination?** If it does, it is in transit and goes to `_inbox/.files/<id>.<ext>`, which ages -- an entry past `stale_after_days` is a promise nobody kept. If it does not (a build artifact, a release archive, a scratch export owned by some other repository), it belongs in `.ephemeral/`, where it may die. The decision is taken at the drop, not later by gravity: a file with no home, filed as if it had one, is immortal. Then move/copy the file into `_inbox/.files/<id>.<ext>` and create the paired stub with `source.file_path` and a type-based classification guess (PDF/document → summarize into a folder; CSV/xlsx → project data; image/media → attachment). Files >~25 MB: flag the size and offer process-in-place + reference-stub archiving instead of moving the blob. Full convention in [`docs/schemas/inbox.md`](../../docs/schemas/inbox.md) "File drops".
    - Short text, no structure -> `quick_note`
    - Everything else -> `raw_text`
 
@@ -171,7 +171,7 @@ Process one item by ID, or all unprocessed items (status `new` or `classified`) 
 5. **Execute the downstream skill** -- actually run `/transcript`, `/ops`, or `/tasks add` as appropriate
 6. After the downstream skill completes, update frontmatter:
    - `status: processed`, `processed_at`, `processed_by`, `output_file`
-7. Move `<id>.md` to `_inbox/.archive/<id>.md` (and paired audio to `.archive/.audio/<id>.m4a` if present); set `archived_to`
+7. Move `<id>.md` to `_inbox/.archive/<id>.md`; set `archived_to`. **The paired audio leaves with it (CR-170)** -- to the vault's declared `audio_archive` (`vault_conventions`, default `.archive/.audio/`), never left behind in `_inbox/.audio/`. Update the entry so the file can still be found: `audio_path` to the new location, `audio_path_was` to the old one, `audio_archived` to today. An archive whose filenames cannot be resolved back to a conversation is a heap -- on one measured archive 69 of 495 files carried a recorder's default name and only the vault register could say what they were. **Before removing any vault copy**, verify the counterpart on content rather than bytes: `python3 "${CLAUDE_SKILL_DIR}/audio_verify.py" --dir _inbox/.audio --against <audio_archive>`. A pair that does not verify is kept and reported; a file with no counterpart is kept, because for 27 of 64 measured files the inbox was the only copy
    - **File drops (CR-024):** the source file in `.files/` moves WITH the output -- to the target folder's `.attachments/` when it should accompany the content (ask if unclear), else to `_inbox/.archive/.files/<id>.<ext>`. Record the final path in the stub before archiving it.
 8. Rebuild `_inbox.yaml` from current frontmatter
 
@@ -275,7 +275,8 @@ the open entries under the audit's filename reads as reasonable unless the row
 count is checked against the ledger, which nobody does.
 
 **Relationship to the triage doc.** Both render `_inbox/_tasks.yaml`, and they
-are not duplicates. `daglig-triage.md` answers *what do I do now* and is
+are not duplicates. The triage document -- whatever the vault calls it, declared
+as `view_files.triage` (CR-171) -- answers *what do I do now* and is
 deliberately cut to the dated and the prioritised; this audit answers *what is
 there* and is complete. Drop either and the other does not cover it -- the
 triage cannot surface an entry it filters out, and the audit is far too long to
@@ -308,7 +309,7 @@ asymmetry is in the code and reads as an oversight from the other three views.
 
 | Element | Rule |
 |---|---|
-| Filename | The script prints to stdout. The operator redirects it to a **stable filename** (a vault convention, e.g. `_inbox/_uppgifter.md`) -- it is meant to stay open, not to accumulate dated copies. The header says so and repeats the command that regenerates it |
+| Filename | The script prints to stdout. The operator redirects it to a **stable filename** under `_inbox/`, declared as `view_files.tasks_view` in the config chain and never spelled in this suite (CR-171) -- it is meant to stay open, not to accumulate dated copies. The header says so and repeats the command that regenerates it |
 | Grouping | `## <Verksamhet> -- N poster`, then ``### `<kontext>` -- N · projekt **<Projekt>**``. Unmapped contexts gather under `## Utan post i kartan`; the project is named when the context maps to one in PORTFÖLJEN (CR-162). Ventures are ordered with the named ones first and the working states last, **contexts largest first** within a venture, and rows oldest first within a context |
 | States | The five states are unchanged and each entry is still in exactly one, but **a state is no longer a section** (CR-162). It travels with the row in `Läge`: `förfallen`, `prio utan datum`, `ingen ålder`, `odaterad`, `framåt YYMMDD` |
 | Row | Eight cells: `# \| Verksamhet \| Projekt \| Läge \| Uppgift \| Förslag \| \| Godta` (CR-162). **The signal column's header cell is empty** -- the `✓`/`?` mark appears only in the body rows, and a reader looking for a `✓/?` heading will not find one. The cells are the id with its priority, the venture, the project, the state, the task **truncated to 70 characters** at a word boundary with an ellipsis, the proposed bucket, the signal mark, and the operator's column. `Verksamhet` and `Projekt` are a dash where the context maps to neither |

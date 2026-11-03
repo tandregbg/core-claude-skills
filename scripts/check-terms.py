@@ -171,9 +171,59 @@ def check_retired():
     return 0
 
 
+# CR-171: a vault's own file names are DATA. `identifier_language` has said since CR-049
+# that a word a person reads lives in a settings file so that changing it is a settings
+# change -- and two display filenames leaked into the suite AFTER that rule shipped: a
+# triage document in a skip-list in code, and a generated view asserted as contract text in
+# a test. A vault working in another language could not rename either without editing this
+# repository. The names live in `view_files` in ops-config/base.yaml and the vault's config
+# chain; SETTINGS is where they are allowed to appear, and nowhere else.
+SETTINGS = ("skills/ops-config/base.yaml",)
+
+
+def view_file_names():
+    import yaml
+    f = ROOT / "skills" / "ops-config" / "base.yaml"
+    d = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+    return {str(v) for v in (d.get("view_files") or {}).values() if v}
+
+
+def check_view_literals():
+    """No vault-local display filename as a literal in skill code, skill prose or a test."""
+    names = view_file_names()
+    if not names:
+        print("[OK] view filenames: none declared, nothing to check")
+        return 0
+    files = [p for p in sorted((ROOT / "skills").rglob("*"))
+             if p.is_file() and p.suffix in (".md", ".py", ".yaml")]
+    files += [p for p in sorted((ROOT / "tests").glob("*.py"))]
+    files += [p for p in sorted((ROOT / "scripts").glob("*.py")) if p.name != "check-terms.py"]
+    files += [p for p in PROSE if p.exists()]
+    hits = []
+    for f in files:
+        if str(f.relative_to(ROOT)) in SETTINGS:
+            continue
+        try:
+            lines = f.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            continue
+        for n, line in enumerate(lines, 1):
+            for name in names:
+                if name in line:
+                    hits.append(f"{f.relative_to(ROOT)}:{n}: '{name}' -- read it from `view_files`")
+    if hits:
+        print(f"[DRIFT] view filenames: {len(hits)} literal(s) outside settings (CR-171)")
+        for h in hits[:40]:
+            print(f"        {h}")
+        return 1
+    print(f"[OK] view filenames: {len(names)} declared, none literal in {len(files)} files")
+    return 0
+
+
 def main():
     doc = contract()
-    drift = check_subcommands(doc) + check_terms(doc) + check_retired()
+    drift = (check_subcommands(doc) + check_terms(doc) + check_retired()
+             + check_view_literals())
     return 1 if drift else 0
 
 
