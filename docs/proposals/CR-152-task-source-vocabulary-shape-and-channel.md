@@ -55,6 +55,41 @@ was left where it was.**
 `management` (2), `domain` (1). The six are task ledgers inside contact folders — a shape the vault has
 had since the beginning, with **no correct value to write**. That is not drift; that is a missing word.
 
+## Whole-vault evidence, 2026-11-04
+
+The figures above were taken on **one large venture**. The vault-wide audit of 2026-11-04 ran the
+same check over every ledger and the shape held, wider than it looked:
+
+**[E] 20 distinct undeclared `source.type` values across the vault**, against an enum of six
+(`meeting`, `decision`, `manual`, `imported`, plus the declared `content` and `correspondence`):
+
+| Value | Ledgers |
+|---|---|
+| `email` | **14** |
+| `reference` | 6 |
+| `analysis` | 4 |
+| `document` | 3 |
+| `mail`, `note`, `outbox`, `async` | 2 each |
+| `agreement`, `audit`, `chat`, `conversation`, `cr`, `external`, `file`, `leverans`, `message`, `observation`, `preparation`, `sms` | 1 each |
+
+**Three readings the distribution supports, which a single venture could not:**
+
+1. **`email` is not an edge case.** Fourteen ledgers is the whole long tail put together, and
+   `mail` is the same value spelled differently in two more — which is what the alias map in the
+   proposal is for.
+2. **The tail is not noise either.** `agreement`, `cr`, `leverans` and `audit` each name a real
+   origin a task can have; they are vocabulary the vault grew because the enum had no word. An
+   enum that forces eighteen of these into `manual` loses exactly the thing `source.type` exists
+   to record.
+3. **One-ledger values are where the channel key earns its place.** A value used once is a local
+   convention, and the proposal's split — a small contract enum plus a free `channel` — is what
+   keeps the contract short without flattening the long tail into `manual`.
+
+Also found, same run: **`status: waiting` on 4 tasks** in one customer ledger (against the CR-048
+enum) and **`scope: management`** in one project ledger (against `root|org|project|personal`). Both
+are the same failure in the two other enums this CR does not touch; whether they join it or stay
+reported is a decision for implementation.
+
 ## Proposal
 
 ### 1. Both enums move into `ecosystem.yaml`, and the checker reads them
