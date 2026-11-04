@@ -167,7 +167,15 @@ Before including a contact in named output:
    - **By file extension** — count per extension
    - **By day of week** — weekday vs weekend pattern with bar chart
 9. Compute **top 5 busiest dates** — date, day of week, count
-10. Write to `.analytics/YYMMDD-vault-overview.md`
+10. **Compute the knowledge-loop ratio (CR-175):** run
+    `python3 ~/.claude/skills/insights/compile_status.py <vault> --json` and record ledgers, entries and the
+    never/stale/current split as a row in the snapshot. Do **not** recompute it here -- the same script answers
+    for `/ops check` and `/insights status`, and three implementations of one number is three numbers.
+    **Why it belongs in a trend file rather than only in a check:** a check says whether the loop is behind
+    today; the snapshot series says whether capture is outpacing synthesis. Those are different questions, and
+    the second is the one that decides whether the cadence needs to change or a single run will clear it.
+    A ratio that degrades steadily across snapshots is a cadence finding; one that jumps once is a backlog.
+11. Write to `.analytics/YYMMDD-vault-overview.md`
 
 **Output format:**
 

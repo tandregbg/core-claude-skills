@@ -1409,6 +1409,20 @@ Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations
 
 1. **Index lag** -- README.md / meetings/README.md whose newest referenced date lags the folder's newest `YYMMDD-*` file or CHANGELOG head entry by >14 days. CHANGELOGs are the heartbeat; READMEs are the lag indicator -- compare them per folder.
 2. **Ledger rot** -- `_tasks.yaml` with open tasks whose `last_updated` lags folder activity by >30 days; `_insights.yaml` whose `last_compiled` stamp is absent or >30 days older than its newest entry (compile never ran / is stale).
+   **Open the class with the total, before any per-folder finding (CR-175):**
+   ```
+   python3 ~/.claude/skills/insights/compile_status.py <vault> --quiet
+   ```
+   One line -- *insights: N ledgers, M entries. A never compiled, B stale (>30d), C current.* -- plus what it
+   costs in words when any ledger has never been compiled. **The per-folder findings are the same findings as
+   before; what was missing was the sentence.** CR-020 wrote the stamp so a never-running loop would be visible,
+   and this check has read it correctly all along -- once per folder. On a 133-ledger vault that means the
+   operator meets the fact 42 times among a thousand other findings and never once sees the number 42, which is
+   how a third of a corpus sat out of the loop for months. **NEVER and STALE are separate counts** and not one
+   finding with an `or` in it: a ledger with no stamp has never been read back since the folder was created
+   (a setup gap), a stale one ran and then stopped (a cadence gap), and the two have different fixes.
+   The script is the arithmetic for `/insights status` and `/analytics` too, so the three cannot report
+   different numbers for one corpus. It reads; it compiles nothing.
    **Resolve the ledger mode first (CR-041).** Read `workflows.task_ledger.mode` before judging a missing `_tasks.yaml`:
    - `local` (default): as above, unchanged.
    - `external`: the rot check is **skipped and replaced by two others** -- (a) **incoherent declaration**: `system` or `pointer` absent, or the pointer unresolvable; that is the real failure mode for this shape, and it is silent otherwise. (b) **The duplicate the declaration exists to prevent**: a folder declaring `external` that nonetheless contains a `_tasks.yaml`. Report both as findings with the same weight as rot.

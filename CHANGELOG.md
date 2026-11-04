@@ -7,6 +7,32 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.94.4] - 2026-11-04
+
+### Added
+
+- **CR-175 -- the compile backlog is one number, computed once (`insights`, `ops`, `analytics`,
+  contract unchanged).** CR-020 wrote `last_compiled` so that a never-running synthesis loop would be
+  visible instead of silent, and `check` class 2 has read it correctly ever since -- **per folder**.
+  On a 133-ledger vault that means the operator meets the fact once per folder, scattered through a
+  report carrying eleven other classes, and nothing anywhere states the total. Measured the day
+  before this release: **24 ledgers never compiled, 18 stale, 3,389 entries** -- a third of the
+  corpus outside the loop, found by a session rather than by the check that was already watching it.
+
+  `skills/insights/compile_status.py` is the arithmetic, and `check` class 2, `/insights status` and
+  `/analytics` all call it rather than each implementing the count -- three implementations of one
+  number is three numbers, which is why CR-100 put promotion's gates in one script. **Never and stale
+  are separate counts**, not one finding with an `or` in it: no stamp means the loop has never run in
+  that folder (a setup gap), stale means it ran and stopped (a cadence gap), and the fixes differ.
+
+  Two things the first run against a real vault added to the proposal. **An unreadable ledger is a
+  third state**: two files are outside the loop entirely -- one parses as a list, one not at all
+  (CR-177) -- and they are neither never-compiled nor stale, so counting them as either would have
+  hidden the worst case behind the smaller ones. And **`/analytics` records the ratio as a trend**,
+  because a check answers whether the loop is behind today while the snapshot series answers whether
+  capture is outpacing synthesis -- the second is what decides between a cadence change and a single
+  run. Nothing compiles, promotes or writes. 15 new tests.
+
 ## [1.94.3] - 2026-11-04
 
 Found by running the first full compile over a 133-ledger corpus: the scan could not start.

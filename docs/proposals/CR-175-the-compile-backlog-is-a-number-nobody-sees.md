@@ -2,8 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-04) |
+| **Status** | **Implemented v1.94.4** (2026-11-04) |
 | **Contract** | none — one aggregate line in an existing check, one existing stamp read differently |
+| **Implemented as** | `skills/insights/compile_status.py` — the arithmetic in one place, read by `/ops check` class 2, `/insights status` and `/analytics` |
 | **Date** | 2026-11-04 |
 | **Area** | `ops` (`check` class 2), `insights` (`status`), `analytics` |
 | **Related CRs** | **CR-020** (the `last_compiled` stamp, written so a never-running loop is visible instead of silent), CR-013 (the hypothesis → rule lifecycle this feeds), CR-094 and CR-098 (why promotion is hard and honest), CR-027 (the wiki the corpus renders into), CR-019 (the sweep that reports what nobody looks at) |
@@ -92,3 +93,24 @@ This CR is about knowing how much has never reached them.
 - Never-compiled and stale are separate counts with separate wording.
 - `/insights status` prints the same three numbers for the vault.
 - Nothing is compiled, promoted or written by any of it.
+
+## As implemented (v1.94.4)
+
+**The line is a script, not three paragraphs.** `compile_status.py` computes ledgers, entries and the
+never/stale/current split; `check` class 2, `/insights status` and `/analytics` all call it. Writing
+the arithmetic three times would have produced three numbers for one corpus, which is the defect
+CR-100 put promotion's gates in one script to avoid.
+
+**Two things the implementation added that the proposal did not ask for**, both because the first
+run against a real vault showed them:
+
+- **An unreadable ledger is a third state, not a missing one.** Two files on the measured vault are
+  outside the loop entirely -- one parses as a list, one does not parse at all (CR-177). They are
+  neither never-compiled nor stale: they cannot be compiled. Counting them anywhere else would have
+  inflated `current`, and omitting them would have hidden the worst case behind the smaller ones.
+- **`--quiet` exists for `check`.** Class 2 prints one line before its per-folder findings; the full
+  folder listing belongs in `/insights status`, where a person is already looking at the corpus.
+
+**Measured immediately after the first full compile:** `131 ledgers, 3386 entries, 0 never compiled,
+0 stale, 131 current, 2 unreadable` -- against 24 / 18 / 95 the day before. The line now says in one
+read what took a session to find. 15 new tests.

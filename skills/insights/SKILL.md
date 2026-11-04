@@ -272,6 +272,12 @@ Skipped 3 files (no CHANGELOG.md parent).
 
 **Steps:**
 
+0. **Print the compile backlog first (CR-175):** `python3 ~/.claude/skills/insights/compile_status.py <vault>`.
+   One line -- ledgers, entries, never compiled, stale, current -- then the folders behind each count, **never
+   and stale listed apart** because a setup gap and a cadence gap have different fixes. `status` answered for the
+   folder in hand; this is the answer for the corpus, and it is the number a person is actually deciding on.
+   Unreadable files are named here rather than dropped: a ledger that cannot be parsed is outside the loop
+   entirely, which is worse than being stale and is invisible in every per-folder count.
 1. Scan vault for all `_insights.yaml` files
 2. Scan vault for all folders with CHANGELOG.md (potential insight targets)
 
