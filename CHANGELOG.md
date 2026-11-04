@@ -7,6 +7,27 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.94.3] - 2026-11-04
+
+Found by running the first full compile over a 133-ledger corpus: the scan could not start.
+
+### Fixed
+
+- **CR-177 -- one malformed `_insights.yaml` no longer takes the whole candidate scan down
+  (`insights`, contract unchanged).** `promotion_candidates.py` is the single arithmetic for
+  promotion by CR-100's design -- compile reads it and a review surface reads it -- which makes it a
+  chokepoint. One file in one folder of one venture parses as a **list** rather than a mapping (a
+  hand-written corpus in a foreign schema: `topic:` and `insight:`, ISO dates, no `insights:` key),
+  and `doc.get` then raised `AttributeError` outside the existing `except`, stopping the scan for
+  all 133 folders. A file that does not parse at all was already caught and named; a file that
+  parses into the wrong shape has the same outcome and now gets the same treatment -- an entry in
+  `unreadable` with a reason naming the type found. CR-145's rule, applied where it was missing: a
+  source that cannot be read is named in the output, and a crash is not a report. The run then
+  completed: 130 folders scanned, 76 candidate groups, 2 files reported. Neither file is repaired
+  here -- they are vault data, and `/insights migrate` is the tool. Whether `compile`, `status` and
+  `synthesize` have the same hole in their own corpus walks is not asserted from one fix. 6 new
+  tests.
+
 ## [1.94.2] - 2026-11-03
 
 The privacy watcher had been reading the wrong tree since it was written, and calling an empty read

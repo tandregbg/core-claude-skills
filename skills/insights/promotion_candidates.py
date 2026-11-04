@@ -318,6 +318,16 @@ def scan(root: Path, threshold: int, topic_tags, profile_override: dict | None =
         except (OSError, yaml.YAMLError) as error:
             report["unreadable"].append({"file": str(f), "error": type(error).__name__})
             continue
+        if not isinstance(doc, dict):
+            # A file that parses but is not a mapping -- a bare list of entries, which is
+            # how a hand-written or foreign-schema file reads. It is the SAME outcome as a
+            # parse error (this scan cannot use it) and belongs in the same list. Before
+            # CR-177 it raised AttributeError on `doc.get` and took the whole vault scan
+            # down: one malformed file, and the arithmetic for every other folder went with
+            # it. A skipped source that announces itself is honest; a crash is not a report.
+            report["unreadable"].append({"file": str(f),
+                                         "error": f"not a mapping ({type(doc).__name__})"})
+            continue
         report["folders_scanned"] += 1
         folder = f.parent
         try:
