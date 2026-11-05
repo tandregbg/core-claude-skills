@@ -7,6 +7,42 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.96.0] - 2026-11-05
+
+**Contract 50.** The first change this suite proposed to itself, from its own compiled patterns,
+and shipped the same day.
+
+### Added
+
+- **CR-178 -- `feedback_steps`: the step an `edge_case` names is an identifier
+  (`ecosystem.yaml`, `transcript`, `ops`, contract 50, additive).** `source.step` had **120
+  distinct spellings** across 362 feedback entries -- `1`, `Step 1`, `Step 1 -- speaker
+  attribution`, `Step 1 (proper-noun verification)`, `step 1 / CR-016` -- of which **273 name the
+  same step**, Step 1 of `/transcript`, where parsing and speaker attribution happen. The skill
+  asked for *"step number where it occurred"*: a description, in a field that is an identifier.
+
+  **The cost is not untidiness.** `/insights compile` Pass 1 is specified to cluster execution
+  feedback by `skill` + `step`. With 120 values it cannot, so the 261105 run clustered on tag
+  families instead and the grouping the field exists for was never performed -- silently, because
+  the pass still produced output. A field that defeats its only reader is worse than an absent one,
+  because it looks like it works.
+
+  **Third instance of one defect**, which is the argument for fixing rather than tolerating it:
+  CR-049 stated that an identifier is not free text, CR-152 fixed it in the task ledger's
+  `source.type` two days earlier, and this is the field next door written by the same two skills.
+  The steps are declared per skill as **strings** (`"5.4"` and `"5.5"` as floats would collide),
+  each with a label, and a test asserts every declared id has a real `## Step N:` heading so the
+  list cannot drift from what it names. Nothing is rewritten: the id is recoverable from the first
+  token in **313 of 362** entries, so CR-127's precedent holds and no alias map is needed.
+  11 new tests.
+
+### How it got here
+
+- **`/insights propose` ran for the first time** and produced three proposals from the patterns
+  `/insights compile` had compiled the day before. This is one of them, taken from proposal to CR
+  to release in a day. The other two touch how `/transcript` reports speaker attribution and proper
+  nouns and are left for a person to read -- they change judgement, not a data shape.
+
 ## [1.95.0] - 2026-11-05
 
 **Contract 49.** The ledger's source vocabulary becomes the contract's, and the shape of a thing is

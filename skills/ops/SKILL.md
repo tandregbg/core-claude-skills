@@ -1819,6 +1819,14 @@ After updating files, scan the meeting summary for durable insights worth accumu
 
 **Swedish characters:** When writing Swedish content in `_insights.yaml`, ALL words MUST use correct å, ä, ö. YAML files are equally prone to missing characters.
 
+**`source.step` is an identifier (CR-178).** Any `edge_case` or `correction` this skill writes --
+from Step 5.5 here, or from the template-contract check in Step 8 -- carries the **step id alone**
+(`"1"`, `"5.5"`, `"9"`) from `feedback_steps` in `ecosystem.yaml`, naming **where the problem
+occurred** rather than where the entry was written. What the entry is *about* goes in `tags`. The
+field was free text and accumulated 120 spellings of a handful of values across both skills, which
+is what stopped `/insights compile` Pass 1 from clustering on `skill` + `step` at all. Existing
+entries are read and never rewritten.
+
 **Additional ops-specific sources:**
 - Strategic decisions from `domain_additions` -> `decision` type
 - Cleared agenda items with resolution -> `learning` or `decision` type

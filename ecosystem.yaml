@@ -12,6 +12,14 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 50 (CR-178, 2026-11-05, v1.96.0): `feedback_steps` declares the steps an
+#   edge_case or correction may name. Additive, and the third instance of one shape: CR-049
+#   stated that an identifier is not free text, CR-152 fixed it in the task ledger's
+#   `source.type`, and this fixes it in the neighbouring `source.step`, which had 120
+#   spellings of a handful of values. Nothing is rewritten -- the id is recoverable from the
+#   first token of every spelling observed -- and a reader that ignores the block reads what
+#   it read at 49.
+#
 # contract_version 49 (CR-152, 2026-11-05, v1.95.0): the ledger's source vocabulary is
 #   declared, and shape is separated from channel. Additive: `task_source_types` and
 #   `task_scopes` move out of hygiene_check.py into the contract (where CR-048 put the
@@ -389,8 +397,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 49
-core_skills_version: "1.95.0"
+contract_version: 50
+core_skills_version: "1.96.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -449,6 +457,52 @@ task_attributes:
     - Länk
     - Note/logg
   note: "verksamhet is optional: absent means the entry is nobody's business, which is a valid answer and not a gap."
+
+# --- Feedback steps (CR-178) ---
+# `source.step` on an edge_case or correction names WHERE THE PROBLEM OCCURRED -- not where
+# the entry was written. 273 of 362 entries name Step 1 of /transcript, which is parsing and
+# speaker attribution; they were all written by Step 4.5, which is the silent feedback step.
+#
+# It is an identifier, and it was free text: 120 distinct spellings of the same handful of
+# steps -- `1`, `Step 1`, `Step 1 -- speaker attribution`, `step 1 / CR-016`,
+# `1 (speaker attribution)`. The id is recoverable from the first token in 313 of 362, which
+# is why no alias map is needed and nothing is rewritten (CR-127's precedent). What the
+# spelling cost was the grouping: /insights compile Pass 1 is specified to cluster feedback
+# by skill + step and cannot, so the 261105 run clustered on tag families instead. A field
+# that defeats its only reader is worse than an absent one, because it looks like it works.
+#
+# Same defect as CR-049 named and CR-152 fixed in the task ledger's `source.type` two days
+# before this. Third instance, same shape, same fix: declare the values, write from the list,
+# put what the entry is ABOUT in `tags` -- the field that already exists for it.
+feedback_steps:
+  transcript:
+    "0.5": load applicable rules
+    "1": create the summary (parsing, speaker attribution, proper nouns)
+    "1.5": link to preparation
+    "2": file organization
+    "2.5": archive the raw transcript
+    "3": changelog
+    "3.5": knowledge extraction
+    "4": task import
+    "4.5": execution feedback (where an entry is WRITTEN; rarely where a problem occurs)
+  ops:
+    "0.5": load applicable rules
+    "1": parse input
+    "2": determine summary format
+    "3": create meeting summary
+    "4": domain additions
+    "5": update files
+    "5.4": archive the raw source
+    "5.5": knowledge extraction
+    "6": propagate actions
+    "7": manage agenda
+    "8": language and output
+    "9": post-processing (where an entry is WRITTEN)
+  insights:
+    compile: the compile pass itself
+  outbox:
+    staging: staging an item
+    close: closing a resolved item
 
 # --- Task source vocabulary (CR-152) ---
 # The SHAPE of the thing a task came from, and -- separately -- the CHANNEL it arrived

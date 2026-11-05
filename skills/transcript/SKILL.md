@@ -749,12 +749,26 @@ If `workflows.knowledge_extraction.evolution.enabled` is true (check `base.yaml`
   source:
     file: "YYMMDD-summary-*.md"
     skill: transcript
-    step: "step number where it occurred"
+    step: "1"               # the id alone, from feedback_steps (CR-178)
   tags: [max, five, keywords]
   status: active
 ```
 
 Follow the same `_insights.yaml` format, dedup rules, vocabulary guard, and reusability rules as Step 3.5 knowledge extraction.
+
+**`step` is an identifier, not a description (CR-178).** Write the **step id alone** -- `"1"`,
+`"3.5"`, `"4.5"` -- from `feedback_steps` in `ecosystem.yaml`, and put what the entry is *about*
+in `tags`, which is the field that exists for it. The id names **where the problem occurred**, not
+where this entry is being written: an attribution failure logged here is `step: "1"`, because Step 1
+is where the parsing happened.
+
+Measured before the rule existed: **120 distinct spellings** of a handful of steps across 362
+entries -- `1`, `Step 1`, `Step 1 -- speaker attribution`, `step 1 / CR-016`,
+`1 (speaker attribution)`. The cost was not untidiness. `/insights compile` Pass 1 is specified to
+cluster feedback by `skill` + `step`, and with 120 values it cannot: the 261105 run clustered on tag
+families instead and the grouping the field exists for was never performed. Existing entries are
+**read, never rewritten** (CR-127) -- the id is recoverable from the first token of every spelling
+observed.
 
 ---
 
