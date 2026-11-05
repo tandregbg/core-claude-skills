@@ -1198,7 +1198,13 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    `python3 ~/.claude/skills/ops/hygiene_check.py <folder>` and report its lines under their kinds:
    `links` (a raw `(`, `)` or space in a Markdown link target, or a relative target that does not
    exist), `yaml` (escaped letters such as `\xE5`: a file an agent re-dumped), `tasks` (`_tasks.yaml`
-   outside its declared enums, including a `kind` the profile does not declare), `profile` (an unknown
+   outside its declared enums, including a `kind` the profile does not declare -- **the enums are the
+   contract's since CR-152** (`task_source_types`, `task_scopes`), and a **legacy spelling declared in
+   `task_source_aliases` is not a finding**: it is read, never rewritten, and reported as one advisory
+   line per ledger naming the words and what they resolve to. What survives is a word that is neither
+   canonical nor aliased, which is a one-line question for a person -- either it earns a row in the
+   alias map or it is a typo. Measured on one vault the change took the class from 281 per-row
+   findings over 22 words to 27 advisories and 2 real questions), `profile` (an unknown
    profile name) and `themes` (the registry checks, when themes are enabled: registry, summary line and
    insights disagreeing in any direction, unknown or merged ids, too many primary themes, a missing
    synthesis page). Under `tasks` it also reports a finished task with neither `closed:` nor the

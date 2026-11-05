@@ -63,7 +63,8 @@ tasks:
     task: "Fix database connection issue"
     tags: [backend]
     source:
-      type: meeting
+      type: meeting              # the SHAPE, from task_source_types in the contract
+      channel: email             # OPTIONAL (CR-152): how it arrived. Free text, never checked
       file: "meetings/260303-daily-standup.md"
     priority: P0
     due: 260307
@@ -376,10 +377,39 @@ properties:
         source:
           type: object
           properties:
-            type: { enum: [meeting, decision, manual, imported] }
+            type: { enum: [meeting, decision, manual, imported, content, correspondence, analysis] }
+            channel: { type: string }      # open by design (CR-152)
             file: { type: string }
             section: { type: string }
         priority: { enum: [P0, P1, P2, P3] }
+```
+
+### `source.type` is the shape; `source.channel` is how it arrived (CR-152)
+
+**Two questions, and the field used to ask only the first.** `type` says what kind of thing the task
+came from -- a meeting, a decision, a two-way thread, material received, something the owner derived
+from reading their own data. `channel` says how it reached them -- `email`, `chat`, `sms`, `teams`,
+`voice-memo`, `file`, `call`.
+
+A person filing a task knows the channel **before** they know the shape, which is why one vault
+accumulated twenty-two undeclared words in `type`: `email` and `mail` held 105 rows while
+`correspondence`, the declared word for the same material, held 6. Those were not wrong answers --
+they were right answers to the question the field was not asking.
+
+| | |
+|---|---|
+| `type` | **Closed.** `task_source_types` in `ecosystem.yaml`. A word not in it is a finding |
+| `channel` | **Open, and deliberately so.** Channels are whatever the world does next; closing this list would buy about a year before the same twenty-two words came back somewhere else. Declared starter set only, no check of its own |
+
+**Legacy spellings are read, never written and never rewritten.** `task_source_aliases` in the
+contract maps each old word to its `{type, channel}` pair. A row that says `type: email` keeps saying
+it; the reader resolves it, and `/ops check` reports the ledger's habit in **one advisory line**
+rather than one finding per row. Backfilling a guess over 281 rows would be worse than the gap and is
+the re-dump CR-122 forbids -- the same call CR-127 made one field over.
+
+**When you write a new row:** use the canonical pair. `type: correspondence, channel: email` --
+not `type: email`.
+
         due: { type: [string, integer, "null"] }
         created: { type: [string, integer] }
         status: { enum: [pending, in_progress, blocked, completed, cancelled] }

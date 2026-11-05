@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-10-21) |
+| **Status** | **Implemented v1.95.0** (2026-11-05), contract 49 |
 | **Contract** | `contract_version` to the next free number -- 48 → **49** as of 1.94.0 (47 went to `external_systems.linkedin`, 48 to CR-169/170/171) (**additive**): two enums move into `ecosystem.yaml`, `scope` gains one value, the task schema gains one optional field, and an alias map is declared. Every existing ledger stays readable and nothing is rewritten |
 | **Date** | 2026-10-21 |
 | **Area** | `ecosystem.yaml` (`task_source_types`, `task_scopes`, `task_source_aliases`), `tasks` (v2 schema + writers), `ops` (`hygiene_check.py`, `check`) |
@@ -199,3 +199,38 @@ either it earns a row in the alias map or it is a typo, and both are one-line an
 | `skills/ops/hygiene_check.py` | Read both enums and the alias map from the contract; per-ledger advisory instead of per-row findings |
 | `skills/ops/SKILL.md` | The `tasks` check's description, under `check <folder>` and the vault sweep |
 | `CHANGELOG.md` · `docs/proposals/README.md` | Release entry and the index row moved on implementation (CR-020) |
+
+## As implemented (v1.95.0), including both open questions
+
+**Open question 1 is settled by looking at the rows.** `analysis` **is** a shape the vocabulary
+lacked and is now declared: 22 rows over four ledgers, and read together they are one thing -- work
+the owner raised from their own reading of their own material (company books, a dataset, a draft,
+an SEO audit). `manual` does not carry that provenance and `content` is material someone else sent.
+
+**`async` is not**, and is deliberately in neither list. Row by row it is a written pre-meeting
+update, a self-raised infrastructure task and three items lifted from a spreadsheet: it is defined
+by what it is *not* -- it did not come from a meeting. Mapping it to the nearest word is how the
+nearest word loses its meaning, so it stays a finding. Two ledgers, two advisory-sized questions
+for a person, which is the right outcome rather than a residue.
+
+**Open question 2, likewise.** `domain` is a meetings folder and `management` two per-person 1-on-1
+folders, all three inside an organisation and none of them a project, a person or a contact. Both
+are aliased to `org` through a new `task_scope_aliases` -- the same read-never-write mechanism as
+the source aliases, which the CR declared for one field and not the other.
+
+**Three aliases beyond the proposed map**, each a word the whole-vault scan found: `observation` and
+`audit` resolve to `analysis` (they are the same shape), `leverans` to `decision`.
+
+### Measured effect on the vault that produced the CR
+
+| | Before | After |
+|---|---|---|
+| `tasks` findings | 85 | **60** |
+| of which per-ledger legacy advisories | 0 | 27 |
+| genuine `source.type` findings | 20 distinct words, per row | **2** (both `async`) |
+| `scope` findings | 3 hard | 3 advisory, 0 hard |
+
+**Two CR-122 tests were re-derived rather than loosened.** One asserted the old per-row wording for
+`email`; it now asserts the advisory and still asserts the thing it was written for -- one line for
+eight rows. The other counted four findings on a fixture whose fourth was `analysis`, which is a
+declared word now, so it asserts three and that `analysis` produces nothing. 18 new tests.

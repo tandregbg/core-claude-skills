@@ -12,6 +12,19 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 49 (CR-152, 2026-11-05, v1.95.0): the ledger's source vocabulary is
+#   declared, and shape is separated from channel. Additive: `task_source_types` and
+#   `task_scopes` move out of hygiene_check.py into the contract (where CR-048 put the
+#   status enum, for the reason this CR demonstrates), each gaining one value -- `analysis`
+#   for work the owner derived from reading their own material, `contact` for a ledger in a
+#   contact folder, a shape the vault has had from the start with no correct value to write.
+#   `task_source_aliases` and `task_scope_aliases` declare the legacy spellings as READ-only:
+#   nothing is rewritten, and an aliased word stops being reported per row. `source.channel`
+#   is a new optional task field, deliberately OPEN -- the closed half of this problem is
+#   what produced twenty-two dialects, and reproducing it in the new field would buy a year.
+#   Every existing ledger stays readable; a reader that ignores the new blocks reads what it
+#   read at 48.
+#
 # contract_version 48 (2026-11-03, v1.94.0): three additive declarations shipped together,
 #   because the same readers read all three and one contract step is easier to adopt than
 #   three. CR-169: `stale_vs_junk` names THREE destinations, not two -- `.archive/` (stale),
@@ -376,8 +389,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 48
-core_skills_version: "1.94.4"
+contract_version: 49
+core_skills_version: "1.95.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -436,6 +449,84 @@ task_attributes:
     - Länk
     - Note/logg
   note: "verksamhet is optional: absent means the entry is nobody's business, which is a valid answer and not a gap."
+
+# --- Task source vocabulary (CR-152) ---
+# The SHAPE of the thing a task came from, and -- separately -- the CHANNEL it arrived
+# through. They were one field, and the field only asked the first question: a person
+# filing a task knows the channel before they know the shape, so they wrote `email`,
+# `chat`, `sms`. Measured on one vault: `email` plus `mail` held 105 rows against 6 for
+# `correspondence`, the declared word for the same material. A declared word losing 105
+# to 6 is not a discipline problem; it is a vocabulary that does not fit what people
+# record. Both enums lived as tuples inside hygiene_check.py until now -- the same place
+# the status enum lived before CR-048 moved it here, with a rationale that reads as a
+# prediction of this one: "declared here because it was not, and three other dialects
+# grew in its absence". Twenty-two grew in the neighbouring field.
+task_source_types:                   # closed: the shape
+  - meeting
+  - decision
+  - manual
+  - imported
+  - content                          # one-way material received (CR-105)
+  - correspondence                   # a two-way thread (CR-080)
+  - analysis                         # NEW (CR-152): the owner derived it from reading their
+                                     # own material -- books, a dataset, a draft. Close to
+                                     # `manual` but carrying a provenance `manual` does not.
+                                     # 22 rows over four ledgers on the measured vault
+task_scopes:                         # closed: whose ledger this is
+  - root
+  - org
+  - project
+  - personal
+  - contact                          # NEW (CR-152): a ledger inside a contact folder -- a
+                                     # shape the vault has had from the beginning with no
+                                     # correct value to write. 6 ledgers measured
+# Legacy spellings: READ, never written, never rewritten in place. CR-127 settled the
+# precedent one field over -- a backfilled guess is worse than a gap, and rewriting 281
+# rows is the re-dump CR-122 forbids. A writer uses the canonical pair; a reader resolves
+# the old word and says nothing about it beyond one advisory line per ledger.
+task_source_aliases:
+  email:           {type: correspondence, channel: email}
+  mail:            {type: correspondence, channel: email}
+  chat:            {type: correspondence, channel: chat}
+  teams-chat:      {type: correspondence, channel: chat}
+  message:         {type: correspondence, channel: chat}
+  sms:             {type: correspondence, channel: sms}
+  voice-memo:      {type: manual,         channel: voice-memo}
+  document:        {type: content}
+  file:            {type: content,        channel: file}
+  note:            {type: manual}
+  reference:       {type: content}
+  written_input:   {type: content}
+  domain_sheet:    {type: content,        channel: file}
+  external:        {type: imported}
+  outbox:          {type: manual}
+  cr:              {type: decision}
+  agreement:       {type: decision}
+  conversation:    {type: meeting}
+  preparation:     {type: meeting}
+  personal_ledger: {type: imported}
+  observation:     {type: analysis}
+  audit:           {type: analysis}
+  leverans:        {type: decision}
+# `async` is deliberately absent from both lists. Looked at row by row it is not a shape:
+# the rows under it are a written pre-meeting update, a self-raised infrastructure task and
+# three items lifted from a spreadsheet. It is defined by what it is NOT -- it did not come
+# from a meeting -- and mapping a shape to the nearest word is how the nearest word loses
+# its meaning. It stays a finding, once per ledger, which is a question for a person.
+task_scope_aliases:                  # same rule: read, never written
+  management:      org               # a per-person folder inside an organisation
+  domain:          org               # an area folder inside an organisation
+# The channel is OPEN on purpose. The closed half of this problem should not be reproduced
+# in the new field: channels are whatever the world does next. Declared starter set only,
+# no checker finding of its own.
+task_source_channels_seen:
+  - email
+  - chat
+  - sms
+  - teams
+  - voice-memo
+  - file
+  - call
 
 # --- Insight type enums ---
 insight_types:

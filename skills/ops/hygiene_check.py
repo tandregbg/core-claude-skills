@@ -113,10 +113,12 @@ SEALED = (".handoff",)
 PRIVATE = (".notes/board-private",)
 OUTGOING = ("_outbox",)
 ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
-# The tasks schema's four, plus the two source kinds the contract declared later as terms
-# (content, CR-105; correspondence, CR-080): a task from a report or a mail thread is not drift.
-SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence")
-SCOPES = ("root", "org", "project", "personal")
+# CR-152: both enums are the CONTRACT's, not this file's. They lived here as tuples, which is
+# exactly where the status enum lived before CR-048 moved it -- and twenty-two dialects grew in
+# this field while that one was fixed. The tuples below are a fallback for a broken contract
+# read, never the source of truth.
+SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence", "analysis")
+SCOPES = ("root", "org", "project", "personal", "contact")
 PRIORITIES = ("P0", "P1", "P2", "P3")
 CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred", "persons", "pronouns")
 RAW_PENDING_DAYS = 14
@@ -340,6 +342,30 @@ def task_statuses() -> tuple:
         return ("pending", "in_progress", "blocked", "completed", "cancelled")
 
 
+def _contract() -> dict:
+    try:
+        return yaml.safe_load(ECOSYSTEM.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+
+
+def task_vocabulary() -> tuple:
+    """(types, scopes, source aliases, scope aliases) -- the contract's, with a fallback.
+
+    CR-152. An ALIAS is a legacy spelling that is read and never written: the row stays as
+    it is, the reader resolves it, and the check says so once per ledger instead of once per
+    row. That distinction is the whole point -- 281 per-row findings over 22 words is a wall
+    an operator learns to scroll past (CR-120), while "this ledger still writes three legacy
+    words" is one line somebody can act on.
+    """
+    doc = _contract()
+    types = tuple(doc.get("task_source_types") or ()) or SOURCE_TYPES
+    scopes = tuple(doc.get("task_scopes") or ()) or SCOPES
+    src_alias = {str(k): v for k, v in (doc.get("task_source_aliases") or {}).items()}
+    scope_alias = {str(k): str(v) for k, v in (doc.get("task_scope_aliases") or {}).items()}
+    return types, scopes, src_alias, scope_alias
+
+
 def task_finished() -> tuple:
     try:
         ts = (yaml.safe_load(ECOSYSTEM.read_text(encoding="utf-8")) or {}).get("task_statuses") or {}
@@ -350,6 +376,7 @@ def task_finished() -> tuple:
 
 def check_tasks(root: Path) -> list:
     found, statuses = [], task_statuses()
+    source_types, scope_values, source_aliases, scope_aliases = task_vocabulary()
     finished = task_finished()
     attrs = task_attributes.load(root)      # CR-135: the vault's declared vocabulary
     used_projects = []
@@ -363,8 +390,15 @@ def check_tasks(root: Path) -> list:
             continue
         kinds = tuple(profiles.resolve(p.parent)["values"].get("task_kinds") or ())
         scope = doc.get("scope")
-        if scope is not None and scope not in SCOPES:
-            found.append(_finding("tasks", p, None, f"scope '{scope}' is not one of {', '.join(SCOPES)}", root))
+        if scope is not None and scope not in scope_values:
+            if scope in scope_aliases:
+                found.append(_finding("tasks", p, None,
+                                      f"scope '{scope}' is a legacy spelling read as "
+                                      f"'{scope_aliases[scope]}' (CR-152); no row is rewritten", root))
+            else:
+                found.append(_finding("tasks", p, None,
+                                      f"scope '{scope}' is not one of {', '.join(scope_values)}", root))
+        aliased = {}                    # legacy source word -> [task ids] (CR-152)
         groups = {}                     # (field, value) -> [task ids]
         unclosed = []                   # finished, with no closing day (CR-127)
         attr_groups = {}                # (field, message) -> [task ids] (CR-135)
@@ -386,8 +420,12 @@ def check_tasks(root: Path) -> list:
                 note("priority", pr, tid)
             src = t.get("source")
             stype = src.get("type") if isinstance(src, dict) else None
-            if stype is not None and stype not in SOURCE_TYPES:
-                note("source.type", stype, tid)
+            if stype is not None and stype not in source_types:
+                # An aliased word is legacy, not drift: counted once per ledger below.
+                if stype in source_aliases:
+                    aliased.setdefault(stype, []).append(tid)
+                else:
+                    note("source.type", stype, tid)
             kind = t.get("kind")
             if kind is not None and kinds and kind not in kinds:
                 note("kind", kind, tid)
@@ -397,7 +435,20 @@ def check_tasks(root: Path) -> list:
                 used_projects.append(t["projekt"])
             for fld, _val, msg in task_attributes.validate(t, attrs):
                 attr_groups.setdefault((fld, msg), []).append(tid)
-        legal = {"status": statuses, "priority": PRIORITIES, "source.type": SOURCE_TYPES, "kind": kinds}
+        if aliased:
+            # One line for the ledger, not one per row: the rows are readable and are never
+            # rewritten (CR-127's precedent), so what a person can act on is the ledger's
+            # habit, not each occurrence of it.
+            words = ", ".join(f"{w} -> {source_aliases[w].get('type')}"
+                              + (f" / channel {source_aliases[w]['channel']}"
+                                 if source_aliases[w].get("channel") else "")
+                              for w in sorted(aliased))
+            n = sum(len(v) for v in aliased.values())
+            found.append(_finding("tasks", p, None,
+                                  f"{n} task(s) use a legacy source word, read through the contract's "
+                                  f"alias map (CR-152): {words}. New writes use the canonical pair; "
+                                  f"nothing here is rewritten", root))
+        legal = {"status": statuses, "priority": PRIORITIES, "source.type": source_types, "kind": kinds}
         for (field, value), ids in groups.items():
             shown = ", ".join(str(i) for i in ids[:5]) + (f" and {len(ids) - 5} more" if len(ids) > 5 else "")
             if field == "task":

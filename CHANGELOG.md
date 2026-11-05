@@ -7,6 +7,50 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.95.0] - 2026-11-05
+
+**Contract 49.** The ledger's source vocabulary becomes the contract's, and the shape of a thing is
+separated from the channel it arrived through.
+
+### Added
+
+- **CR-152 -- `task_source_types`, `task_scopes`, the alias maps and `source.channel`
+  (`ecosystem.yaml`, `tasks`, `ops`, contract 49, additive).** Both enums lived as tuples inside
+  `hygiene_check.py` -- the same place the status enum lived before CR-048 moved it into the
+  contract, with a rationale that reads as a prediction of this release: *declared here because it
+  was not, and three other dialects grew in its absence.* Three grew in the status field. **Twenty
+  grew in the neighbouring one**, because `type` asks for the shape and a person filing a task knows
+  the channel first: across the vault `email` appears in fourteen ledgers, and on the venture that
+  produced the CR `email` plus `mail` held 105 rows against **6** for `correspondence`, the declared
+  word for the same material. A declared word losing 105 to 6 is not a discipline problem.
+
+  `source.channel` is new, optional and **open on purpose** -- a declared starter set, no checker of
+  its own. Closing it would reproduce in the new field exactly what produced the dialects in the old
+  one. Legacy spellings are declared in `task_source_aliases` and are **read, never written and
+  never rewritten** (CR-127's precedent one field over): an aliased word is reported as one advisory
+  line per ledger naming what it resolves to, not as a finding per row.
+
+  **Both of the CR's open questions were settled by reading the rows rather than deciding in the
+  abstract.** `analysis` is a shape the vocabulary genuinely lacked -- 22 rows over four ledgers,
+  all of them work the owner raised from their own reading of their own material, which `manual`
+  does not carry and `content` is not -- and is now declared. **`async` is not a shape** and is
+  deliberately in neither list: row by row it is a pre-meeting update, a self-raised infrastructure
+  task and three spreadsheet items, defined by what it is *not*, and mapping it to the nearest word
+  is how the nearest word loses its meaning. It stays a finding, which is a question for a person.
+  `scope` gains `contact` (six ledgers, a shape with no correct value to write since the vault
+  began), and `domain` and `management` alias to `org` through a new `task_scope_aliases`.
+
+  Measured on the vault that produced it: **85 task findings became 60** -- 27 per-ledger legacy
+  advisories, 3 advisory scope lines, and **2 genuine findings**, both `async`. 18 new tests.
+
+### Changed
+
+- **Two CR-122 tests re-derived, not loosened.** One asserted the old per-row wording for `email`;
+  it now asserts the advisory and still asserts what it was written to protect -- one line for eight
+  rows. The other counted four findings on a fixture whose fourth was `analysis`, now a declared
+  word, so it asserts three and that `analysis` produces nothing. A test that encodes a contract has
+  to move when the contract does, and renaming the assertion would have hidden the change (CR-138).
+
 ## [1.94.4] - 2026-11-04
 
 ### Added

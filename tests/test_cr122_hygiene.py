@@ -132,11 +132,14 @@ class Tasks(unittest.TestCase):
                 "  - {id: 2, task: Link the guest page, status: pending, priority: P3, created: 260101}\n",
                 encoding="utf-8")
             msgs = [f["message"] for f in hc.check_tasks(d)]
-            self.assertEqual(len(msgs), 4, msgs)
+            # CR-152 made `analysis` a declared source type, so this fixture's fourth
+            # finding is gone BY DESIGN -- the word was a real shape the enum lacked.
+            # The other three still fire, and `analysis` must now produce nothing.
+            self.assertEqual(len(msgs), 3, msgs)
             self.assertTrue(any("`title`" in m for m in msgs))
             self.assertTrue(any("archived" in m for m in msgs))
             self.assertTrue(any("editorial" in m for m in msgs))
-            self.assertTrue(any("analysis" in m for m in msgs))
+            self.assertFalse(any("analysis" in m for m in msgs))
 
     def test_one_line_per_value_and_declared_source_terms_accepted(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -147,8 +150,13 @@ class Tasks(unittest.TestCase):
             (d / "_tasks.yaml").write_text("version: 2\ncontext: acme\nscope: project\nnext_id: 10\ntasks:\n" + rows,
                                            encoding="utf-8")
             [f] = hc.check_tasks(d)
-            self.assertIn("'email' on 8 task(s)", f["message"])
-            self.assertIn("and 3 more", f["message"])
+            # Still ONE line for eight rows -- this test's point, and CR-152 keeps it.
+            # What changed is which line: `email` is now a declared legacy spelling, so it
+            # is reported as a per-ledger advisory naming what it resolves to, rather than
+            # as drift. `content` was and remains silent.
+            self.assertIn("8 task(s) use a legacy source word", f["message"])
+            self.assertIn("email -> correspondence", f["message"])
+            self.assertIn("nothing here is rewritten", f["message"])
 
     def test_kind_checked_only_against_a_profile(self):
         with tempfile.TemporaryDirectory() as tmp:
