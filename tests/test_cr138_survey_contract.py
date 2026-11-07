@@ -242,9 +242,9 @@ class DocumentedRowIsTheGeneratedRow(Fixture):
         # `| # | Verksamhet | Projekt | Läge | Uppgift | Förslag | | Godta |` -- the
         # signal column's header cell is empty. The section writes the pipes escaped,
         # as a markdown table cell must.
-        self.assertIn("| # | Verksamhet | Projekt | Läge | Uppgift | Förslag | | Godta |", self.audit)
-        self.assertIn(r"`# \| Verksamhet \| Projekt \| Läge \| Uppgift \| Förslag \| \| Godta`",
-                      self.section)
+        # CR-173: venture and project moved into the heading; the context took their place.
+        self.assertIn("| # | Kontext | Läge | Uppgift | Förslag | | Godta |", self.audit)
+        self.assertIn(r"`# \| Kontext \| Läge \| Uppgift \| Förslag \| \| Godta`", self.section)
 
     def test_the_section_does_not_claim_a_signal_column_heading(self):
         # The falsified contract an earlier verifier planted was a `✓/?` header cell.
@@ -253,45 +253,46 @@ class DocumentedRowIsTheGeneratedRow(Fixture):
         self.assertNotIn(r"Förslag \| ✓/? \| Godta", self.section)
         self.assertIn("header cell is empty", self.flat_section)
 
-    def test_every_row_has_the_documented_eight_cells(self):
+    def test_every_row_has_the_documented_seven_cells(self):
         rows = body_rows(self.audit)
         self.assertEqual(len(rows), len(OPEN_IDS))
         for r in rows:
-            self.assertEqual(len(cells(r)), 8, r)
-        self.assertIn("Eight cells", self.section)
+            self.assertEqual(len(cells(r)), 7, r)
+        self.assertIn("Seven cells", self.section)
 
     def test_a_forward_dated_entry_is_a_row_like_any_other(self):
         # CR-162: the flat `DATERADE FRAMÅT` section is gone, so the three-cell
         # exception has nothing to attach to and the entry is decidable.
         self.assertNotIn("## DATERADE FRAMÅT", self.audit)
-        forward = [r for r in body_rows(self.audit) if "framåt" in cells(r)[3]]
+        forward = [r for r in body_rows(self.audit) if "framåt" in cells(r)[2]]
         self.assertEqual(len(forward), 1)
-        self.assertEqual(len(cells(forward[0])), 8)
-        self.assertEqual(cells(forward[0])[5], "**LÅT STÅ**")
+        self.assertEqual(len(cells(forward[0])), 7)
+        self.assertEqual(cells(forward[0])[4], "**LÅT STÅ**")
         row = self.shape_row("A forward-dated entry")
         self.assertIn("Carries a `Godta` cell like any other", row)
         self.assertIn("framåt YYMMDD", row)
 
     def test_the_cells_are_in_the_documented_order(self):
         row = next(r for r in body_rows(self.audit) if cells(r)[0].startswith("`#1`"))
-        venture, project, lage, task, proposal, mark, godta = cells(row)[1:]
-        self.assertEqual(venture, "Acme")
-        self.assertEqual(project, "Acme Omstart")
+        context, lage, task, proposal, mark, godta = cells(row)[1:]
+        # CR-173: venture and project are asserted on the heading instead, below.
+        self.assertTrue(context.startswith("`") and context.endswith("`"), context)
         self.assertTrue(lage.startswith("förfallen"), lage)
         self.assertEqual(task, "Ring Bob om avtalet")
         self.assertTrue(proposal.startswith("**") and proposal.endswith("**"), proposal)
         self.assertIn(mark, ("✓", "?"))
         self.assertEqual(godta, "")
 
-    def test_an_unmapped_context_writes_a_dash_in_both_columns(self):
+    def test_an_unmapped_context_is_written_verbatim_in_its_own_cell(self):
+        """CR-173: the two dashes are gone -- the row carries the context, not the map's miss."""
         row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#9`")
-        self.assertEqual(cells(row)[1], "—")
-        self.assertEqual(cells(row)[2], "—")
-        self.assertIn("a dash where the context maps to neither", self.flat_section)
+        self.assertTrue(cells(row)[1].startswith("`"), cells(row)[1])
+        self.assertIn("Utan post i kartan", self.audit)
+        self.assertIn("the context verbatim", self.flat_section)
 
     def test_the_documented_truncation_width_is_the_real_one(self):
         row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#9`")
-        task = cells(row)[4]
+        task = cells(row)[3]
         self.assertTrue(task.endswith("…"), task)
         self.assertLessEqual(len(task), 71)
         self.assertNotIn(" …", task, "truncation cuts at a word boundary")
@@ -306,22 +307,25 @@ class TheStateTravelsWithTheRow(Fixture):
             self.assertNotIn(f"## {st}", self.audit)
         self.assertIn("a state is no longer a section", self.flat_section)
 
-    def test_the_sections_are_ventures_and_the_subsections_contexts(self):
-        self.assertRegex(self.audit, r"\n## [^\n]+ — \d+ poster\n")
-        self.assertRegex(self.audit, r"\n### `[^`]+` — \d+")
+    def test_the_sections_are_ventures_and_the_subsections_projects(self):
+        """CR-173: venture, then project, then the rows -- the context is no longer a heading."""
+        self.assertRegex(self.audit, r"\n## [^\n]+ — \d+ post(?:er)?\n")
+        self.assertRegex(self.audit, r"\n### [^\n]*(\*\*[^*]+\*\*|utan projekt) — \d+ post(?:er)?\n")
+        self.assertIn("utan projekt", self.audit)
         row = self.shape_row("Grouping")
         self.assertIn("## <Verksamhet>", row)
+        self.assertIn("utan projekt", row)
         self.assertIn("Utan post i kartan", row)
 
     def test_every_lage_cell_opens_on_a_documented_word(self):
         documented = self.shape_row("States")
         for r in body_rows(self.audit):
-            lage = cells(r)[3]
+            lage = cells(r)[2]
             self.assertTrue(any(lage.startswith(w) for w in LAGE_WORDS), lage)
             self.assertIn(lage.split()[0], documented)
 
     def test_every_documented_word_is_one_the_script_emits(self):
-        emitted = {cells(r)[3] for r in body_rows(self.audit)}
+        emitted = {cells(r)[2] for r in body_rows(self.audit)}
         for word in LAGE_WORDS:
             self.assertTrue(any(l.startswith(word) for l in emitted),
                             f"the section documents `{word}`, which the script did not print")
@@ -353,7 +357,7 @@ class DocumentedCoverageRule(Fixture):
         self.assertIn("the ledger's own open count", self.flat_section)
 
     def test_the_venture_counts_add_up_to_the_open_count(self):
-        counts = [int(m) for m in re.findall(r"\n## [^\n]+ — (\d+) poster\n", self.audit)]
+        counts = [int(m) for m in re.findall(r"\n## [^\n]+ — (\d+) post(?:er)?\n", self.audit)]
         self.assertEqual(sum(counts), len(OPEN_IDS))
 
 
@@ -370,7 +374,7 @@ class DocumentedGodtaColumn(Fixture):
             self.assertTrue(row.endswith("| |"), row)
 
     def test_the_signal_mark_is_in_the_body_and_the_operator_reads_guesses_first(self):
-        marks = {cells(r)[6] for r in body_rows(self.audit)}
+        marks = {cells(r)[5] for r in body_rows(self.audit)}
         self.assertTrue(marks <= {"✓", "?"}, marks)
         self.assertIn("The operator reads the guesses first", self.section)
 
@@ -379,7 +383,7 @@ class DocumentedLageColumn(Fixture):
     """DEFECT 4 re-derived: `Läge` carries the state, and only overdue carries an age."""
 
     def test_only_an_overdue_row_carries_an_age(self):
-        by_id = {cells(r)[0]: cells(r)[3] for r in body_rows(self.audit)}
+        by_id = {cells(r)[0]: cells(r)[2] for r in body_rows(self.audit)}
         self.assertEqual(by_id["`#1`"], "förfallen 20 d")
         for row_id in ("`#2`", "`#3` `P1`", "`#4`"):
             self.assertNotRegex(by_id[row_id], r"\d",
@@ -390,7 +394,7 @@ class DocumentedLageColumn(Fixture):
         # The claim this replaces said every non-overdue cell is a dash, which was
         # true of CR-138's `Ålder` column and never of CR-162's `Läge`.
         for r in body_rows(self.audit):
-            self.assertNotEqual(cells(r)[3], "—")
+            self.assertNotEqual(cells(r)[2], "—")
         row = self.shape_row("`Läge` (was `Ålder`)")
         self.assertIn("state word", row.lower())
         self.assertNotIn("the cell is a dash", row)
@@ -409,7 +413,7 @@ class DocumentedLageColumn(Fixture):
         # parser cannot read, so the fallback prints the raw string -- the one way
         # a date reaches this column.
         row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#8`")
-        self.assertEqual(cells(row)[3], "ingen ålder snart")
+        self.assertEqual(cells(row)[2], "ingen ålder snart")
         self.assertIn("the raw value is printed in this column", self.flat_section)
 
 
@@ -445,8 +449,8 @@ class DocumentedProposals(Fixture):
     def test_a_standing_chore_is_always_let_be_with_a_signal(self):
         # CR-163, documented in the Buckets row.
         row = next(r for r in body_rows(self.audit) if cells(r)[0] == "`#7`")
-        self.assertEqual(cells(row)[5], "**LÅT STÅ**")
-        self.assertEqual(cells(row)[6], "✓")
+        self.assertEqual(cells(row)[4], "**LÅT STÅ**")
+        self.assertEqual(cells(row)[5], "✓")
         self.assertIn("`recurring: true` is always proposed `LÅT STÅ`", self.flat_section)
 
     def test_the_proposals_are_labelled_a_reading_and_not_a_decision(self):
@@ -454,18 +458,25 @@ class DocumentedProposals(Fixture):
 
 
 class DocumentedOrdering(Fixture):
-    def test_contexts_are_ordered_largest_first(self):
-        self.assertIn("contexts largest first", self.flat_section)
+    def test_project_groups_are_ordered_largest_first_with_no_project_last(self):
+        """CR-173: the subsections are projects, and `utan projekt` sorts last whatever its size."""
+        self.assertIn("project groups largest first", self.flat_section)
         for block in self.audit.split("\n## ")[1:]:
-            counts = [int(m) for m in re.findall(r"^### `[^`]+` — (\d+)", block, re.M)]
-            self.assertEqual(counts, sorted(counts, reverse=True),
-                             "a context heading is out of order: %r" % counts)
+            heads = re.findall(r"^### ([^\n]*?) — (\d+) post(?:er)?$", block, re.M)
+            if not heads:
+                continue
+            named = [int(n) for h, n in heads if "utan projekt" not in h]
+            self.assertEqual(named, sorted(named, reverse=True),
+                             "a project heading is out of order: %r" % named)
+            tail = [i for i, (h, _n) in enumerate(heads) if "utan projekt" in h]
+            for i in tail:
+                self.assertEqual(i, len(heads) - 1, "`utan projekt` must sort last")
 
     def test_rows_are_ordered_oldest_first_within_a_context(self):
         for block in self.audit.split("\n### ")[1:]:
             ages = []
             for r in body_rows(block):
-                m = re.match(r"förfallen (\d+) d", cells(r)[3])
+                m = re.match(r"förfallen (\d+) d", cells(r)[2])
                 ages.append(int(m.group(1)) if m else 0)
             self.assertEqual(ages, sorted(ages, reverse=True), ages)
 

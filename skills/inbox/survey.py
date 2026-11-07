@@ -422,15 +422,20 @@ def portfolio_projects(vault):
     return out
 
 
-def match_project(ctx, projects):
+def match_project(ctx, projects, ventures=()):
     """A context matches a portfolio row when one is a prefix of the other.
 
-    Prefix rather than equality: a context reads `goa` where the portfolio row is
-    `Goa 2026`. Equality matched 2 of 50 values on one vault; prefix is what makes
+    Prefix rather than equality: a context reads `bravo` where the portfolio row is
+    `Kickoff 2026`. Equality matched 2 of 50 values on one vault; prefix is what makes
     the field checkable in both directions.
     """
     key = re.sub(r"[^a-z0-9åäö]", "", (ctx or "").lower())
     if not key:
+        return None
+    # CR-173: a context that IS a venture name is not a project abbreviation. Without this,
+    # `acme` prefix-matches `Acme Omstart` and labels every Acme entry with one
+    # project -- 104 of 125 on the measured vault, and falsely for nearly all of them.
+    if key in {re.sub(r"[^a-z0-9åäö]", "", str(v).lower()) for v in ventures}:
         return None
     if len(key) < 3:
         # Too short to be a prefix of anything, but a row that short ('Ål') matches itself.
@@ -439,6 +444,9 @@ def match_project(ctx, projects):
         if pkey == key or pkey.startswith(key) or key.startswith(pkey):
             return name
     return None
+
+
+NOPROJ = "utan projekt"
 
 
 def render_living(vault, sv: dict, states: dict, today: date) -> str:
@@ -467,9 +475,13 @@ def render_living(vault, sv: dict, states: dict, today: date) -> str:
                          "_prop": propose_for(st, r, today)})
     UNSET = ("kontextstyrd", "oklart", "ej-namngiven", "**?**")
     STATE_ORDER = {"Personligt": 1, "kontextstyrd": 2, "oklart": 3, "ej-namngiven": 3}
+    # CR-173: venture -> project -> entries. The context moves into the row, because the
+    # operator reads the view by project and the slug was never the organising key.
+    ventures = set(vmap.values())
     by_v = {}
     for r in rows:
-        by_v.setdefault(r["_v"], {}).setdefault(r["_ctx"], []).append(r)
+        r["_pr"] = match_project(r["_ctx"], projects, ventures)
+        by_v.setdefault(r["_v"], {}).setdefault(r["_pr"] or NOPROJ, []).append(r)
 
     mv = sv.get("movement") or {}
     moved = mv.get("closed_today", 0) + mv.get("cancelled_today", 0)
@@ -478,8 +490,8 @@ def render_living(vault, sv: dict, states: dict, today: date) -> str:
            "> **Genererad** ur `_inbox/_tasks.yaml`, `_config/verksamhet-karta.yaml` och",
            "> PORTFÖLJEN. Samma filnamn varje gång: håll den öppen. Kör om med",
            "> `survey.py --vault \"$VAULT\" --table --markdown`.", "",
-           "**Verksamhet först, sedan kontext.** Tillståndet (förfallen, ingen ålder …) följer",
-           "med varje rad i stället för att bestämma sektionerna.", ""]
+           "**Verksamhet, sedan projekt, sedan posterna.** Kontexten står per rad; tillståndet",
+           "(förfallen, ingen ålder …) följer med raden i stället för att bestämma sektionerna.", ""]
     if moved:
         out += [f"**I dag: {mv.get('closed_today',0)} avbockade, "
                 f"{mv.get('cancelled_today',0)} avskrivna — {moved} poster ur registret.**", ""]
@@ -507,23 +519,34 @@ def render_living(vault, sv: dict, states: dict, today: date) -> str:
         head = {"kontextstyrd": "Kontextstyrda — ärendetypen är det primära",
                 "oklart": "Obeslutad verksamhet", "ej-namngiven": "Kom inte upp i genomgången",
                 "**?**": "Utan post i kartan"}.get(v, v)
-        out += [f"## {head} — {n} poster", ""]
+        out += [f"## {head} — {n} {'post' if n == 1 else 'poster'}", ""]
         if v == "kontextstyrd":
             out += ["*Hör inte till någon affär. Tom verksamhet är ett svar, inte en lucka.*", ""]
         elif v == "Fria projekt":
             out += ["*Byggt för egen räkning — beslutstestets steg 7. Inte Personligt, som är livet.*", ""]
-        for ctx, items in sorted(cs.items(), key=lambda kv: -len(kv[1])):
-            pr = match_project(ctx, projects)
-            ot = OBJ.get(ctx, "")
-            h = f"### `{ctx}` — {len(items)}"
-            if pr:
-                h += f" · projekt **{pr}**"
-            if ot:
-                h += f" · *{ot}*"
-            out += [h, "",
-                    "| # | Verksamhet | Projekt | Läge | Uppgift | Förslag | | Godta |",
-                    "|---|---|---|---|---|---|---|---|"]
-            for r in sorted(items, key=lambda r: (-(r.get("age_days") or 0), r["id"])):
+        vlabel = "—" if v in UNSET else v
+        for pr, items in sorted(cs.items(), key=lambda kv: (kv[0] == NOPROJ, -len(kv[1]), kv[0])):
+            label_p = pr if pr == NOPROJ else f"**{pr}**"
+            head_p = label_p if v in UNSET else f"{vlabel} · {label_p}"
+            n_p = "post" if len(items) == 1 else "poster"
+            out += [f"### {head_p} — {len(items)} {n_p}", ""]
+            ctxs = sorted({r["_ctx"] for r in items})
+            if len(ctxs) > 1:
+                out += ["*Kontexter: " + " · ".join(f"`{c}`" for c in ctxs[:12])
+                        + (f" och {len(ctxs)-12} till" if len(ctxs) > 12 else "") + "*", ""]
+            ot = {OBJ.get(c, "") for c in ctxs} - {""}
+            if len(ot) == 1:
+                out += [f"*{ot.pop()}*", ""]
+            out += ["| # | Kontext | Läge | Uppgift | Förslag | | Godta |",
+                    "|---|---|---|---|---|---|---|"]
+            # CR-173: in a project group the age is what ranks a row. In an `utan projekt`
+            # group the context is the only thing that distinguishes one row from the next,
+            # so rows cluster by context and then run in id order (operator, 261105).
+            if pr == NOPROJ:
+                order = lambda r: (r["_ctx"], r["id"])
+            else:
+                order = lambda r: (-(r.get("age_days") or 0), r["id"])
+            for r in sorted(items, key=order):
                 b, s_, _w = r["_prop"]
                 t = " ".join((r.get("task") or "").split())
                 t = t[:70].rsplit(" ", 1)[0] + "…" if len(t) > 70 else t
@@ -531,11 +554,9 @@ def render_living(vault, sv: dict, states: dict, today: date) -> str:
                 st = STATE.get(r["_state"], r["_state"])
                 age = f"{r['age_days']} d" if r.get("age_days") else (r.get("due") or "")
                 lage = f"{st} {age}".strip()
-                # Verksamhet och projekt per rad, aven nar de upprepas: en rad ska ga att
-                # lasa och besluta om utan att forst lasa rubriken ovanfor (operator, 261020).
-                vcell = "—" if v in UNSET else v
-                pcell = pr or "—"
-                out.append(f"| `#{r['id']}`{pri} | {vcell} | {pcell} | {lage} | {t} | "
+                # CR-173: venture and project now sit in the heading two levels up; the
+                # context is what distinguishes one row from the next inside a project.
+                out.append(f"| `#{r['id']}`{pri} | `{r['_ctx']}` | {lage} | {t} | "
                            f"**{b}** | {'✓' if s_ else '?'} | |")
             out += [""]
     return "\n".join(out)

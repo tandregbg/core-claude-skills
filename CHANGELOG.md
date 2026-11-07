@@ -7,6 +7,27 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.96.1] - 2026-11-05
+
+### Fixed
+
+- **CR-173: the living task view grouped by context and called it a project.** `match_project`
+  prefix-matched in both directions, which is right for `kickoff` -> `Kickoff 2026` and wrong when the
+  context IS the venture's name: `acme` matched `Acme Omstart`. **Measured on the operator's
+  vault: 104 of 125 Acme entries carried a project label that was false for nearly all of them**,
+  and falsely in a heading suffix, which reads as decoration rather than as a claim. A context equal
+  to a venture name now matches no project.
+
+### Changed
+
+- **CR-173: `--table --markdown` groups venture -> project -> entries** (was venture -> context).
+  Headings read `### <Venture> · **<Project>** — N poster`, a group with no project is headed
+  `utan projekt` and sorts last whatever its size, and the row is **seven cells**
+  (`# | Kontext | Läge | Uppgift | Förslag | | Godta`) — venture and project moved into the heading
+  and the context took their place. This reverses the 261020 note that a row be readable without its
+  heading; taken knowingly, at the operator's request, because that note was written when the
+  heading led with a slug.
+
 ## [1.96.0] - 2026-11-05
 
 **Contract 50.** The first change this suite proposed to itself, from its own compiled patterns,
