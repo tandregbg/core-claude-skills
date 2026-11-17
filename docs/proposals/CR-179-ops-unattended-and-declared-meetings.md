@@ -6,7 +6,7 @@
 | **Contract** | New: `meetings:` in a project's ops config — when a recurring meeting happens and what may run around it. Additive; a reader that ignores it reads what it read before |
 | **Date** | 2026-11-17 |
 | **Area** | `ecosystem.yaml` (`meetings` schema), `ops` (`prepare`, the process path, a new `apply` step, `orient` block 1), `build_agenda.py` / `project_brief.py` (read the declaration) |
-| **Related CRs** | **CR-082** / **CR-107** (the generated agenda and its card — the deterministic half of a preparation), **CR-087** (`external_systems.transcripts`, where a series is recorded), **CR-088** (`_fetch.json` — how a stale source is reported), CR-061 (`orient`), CR-071 (`default:` is a send concept, not a read concept); vault-tools CR-009 (the scheduler that calls this) |
+| **Related CRs** | **CR-082** / **CR-107** (the generated agenda and its card — the deterministic half of a preparation), **CR-087** (`external_systems.transcripts`, where a series is recorded), **CR-088** (`_fetch.json` — how a stale source is reported), CR-061 (`orient`), CR-071 (`default:` is a send concept, not a read concept); vault-tools CR-011 (the scheduler that calls this) |
 
 Marks: **[E]** observed · **[H]** not yet run.
 
@@ -20,7 +20,7 @@ hold the meeting, paste the transcript, process it, write the recap, stage it. M
 deterministic — the archives are fetched on a schedule and `build_agenda.py` builds the card — and
 the rest is model work that does not need a person **until the result is reviewed**.
 
-A companion scheduler (vault-tools CR-009) will start these steps at fixed times: the preparation 45
+A companion scheduler (vault-tools CR-011) will start these steps at fixed times: the preparation 45
 minutes before the meeting, the processing once the recording's transcript exists. A skill cannot start
 a session; the scheduler can. What the scheduler cannot do is decide **what a run may do with nobody
 there**. That is this suite's to say, because it owns what the files mean.
@@ -122,5 +122,5 @@ run cleanly for a while — trust that is earned, per series, in config, not ass
   true`). Four operations; all or nothing; YAML ledgers re-parsed; dot-folders and paths out of the vault
   refused; applied ids recorded in the report.
 - **Tests:** `tests/test_cr179_unattended.py`, 58 tests (47 at implementation, 11 from the review), one class per bullet of the Tests section.
-- **[H] Not run against a live series.** The scheduler (vault-tools CR-009) does not exist yet; the
+- **[H] Not run against a live series.** The scheduler (vault-tools CR-011) does not exist yet; the
   unattended path has run only in the test vaults.
