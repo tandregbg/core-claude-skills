@@ -1,4 +1,4 @@
-# Configuration Schema v1.7
+# Configuration Schema v1.8
 
 ## Overview
 
@@ -850,6 +850,50 @@ meeting_types:
   bob_ravi_1on1:
     preparation_mode: single
 ```
+
+
+---
+
+## Meetings (CR-179, v1.8)
+
+Optional. **When a recurring meeting happens, and what may run around it with nobody there.**
+Top-level, beside `meeting_types`. Read by `/ops orient` for the next session, by an unattended
+`/ops prepare` or `/ops process` for permission, and by an external scheduler for the times.
+
+```yaml
+meetings:
+  - type: standup                     # a key in meeting_types; names the preparation mode
+    days: [mon, thu]                  # mon..sun or full names, or: weekdays, daily
+    time: "08:30"
+    timezone: Europe/Stockholm        # optional; the machine's own zone when absent
+    duration: 30m                     # default 30m
+    prepare_lead: 45m                 # default 45m; the preparation starts here, ready 15m later
+    transcript_wait: 4h               # default 4h after the end
+    unattended: [prepare, process]    # what may run with nobody there; absent = nothing
+    apply_ledgers: false              # default false; see /ops apply
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | The meeting type. Should be a key in `meeting_types`; a type that is not is reported, and its preparation mode defaults to `single` |
+| `days` | Yes | Days the series meets. An unknown day is dropped and reported -- a typo never empties the schedule |
+| `time` | Yes | `HH:MM`, in `timezone` |
+| `timezone` | No | IANA name. An unknown zone skips the entry with a problem rather than guessing a zone |
+| `duration`, `prepare_lead`, `transcript_wait` | No | `30m`, `4h`, `1h30m` or a bare number of minutes |
+| `unattended` | No | `prepare` and/or `process`. **Absent means nothing runs unattended**; an unknown step is dropped and reported |
+| `apply_ledgers` | No | `true` lets an unattended run write the ledger changes it proposes. Meant to be set once a series has run cleanly for a while |
+
+**Absent means off.** A series without `meetings:` is never touched by a scheduler and every
+reader behaves as before. Resolution reads the folder's **own** config only: walking up, the first
+directory holding `.claude/ops-config.yaml` or `_ops.yaml` is where the declaration must be, and if
+neither file there has `meetings:` the folder declares nothing. A schedule -- and with it an
+unattended permission -- is never inherited from an org or vault layer. The list is taken whole;
+`meetings: []` declares none.
+`python3 ~/.claude/skills/ops/meeting_schedule.py --dir <folder>` prints what resolves, with the
+next meeting's windows and any problem.
+
+Where `schedule_days`/`meets` are not declared for carry-forward, the agenda generator reads the
+declared days from here, ahead of the older `meeting_types.<type>.schedule` shape.
 
 ---
 

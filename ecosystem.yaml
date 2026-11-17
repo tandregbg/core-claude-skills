@@ -12,6 +12,13 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 51 (CR-179, 2026-11-17, v1.97.0): `meetings` declares when a recurring
+#   meeting happens and what may run around it with nobody there. Additive: the block is read
+#   from a project's config (ops_config schema 1.8), absent means off, and a reader that
+#   ignores it reads what it read at 50. Also declared here: the unattended run's four
+#   differences, the `[OPEN: ...]` marker, and the run report in `<project>/.runs/`, which
+#   `/ops apply` reads. Nothing in the suite sends, unattended or not.
+#
 # contract_version 50 (CR-178, 2026-11-05, v1.96.0): `feedback_steps` declares the steps an
 #   edge_case or correction may name. Additive, and the third instance of one shape: CR-049
 #   stated that an identifier is not free text, CR-152 fixed it in the task ledger's
@@ -397,8 +404,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 50
-core_skills_version: "1.96.0"
+contract_version: 51
+core_skills_version: "1.97.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -422,7 +429,7 @@ core_skills_version: "1.96.0"
 # still schema 2.
 # tasks: optional `verksamhet`, `projekt`, `objekttyp` (CR-135); still schema 2.
 schemas:
-  ops_config: "1.7"
+  ops_config: "1.8"
   contact_meta: "1.1"
   tasks: 2
   insights: 3
@@ -457,6 +464,44 @@ task_attributes:
     - Länk
     - Note/logg
   note: "verksamhet is optional: absent means the entry is nobody's business, which is a valid answer and not a gap."
+
+# --- Declared meetings and unattended runs (CR-179) ---
+# A scheduler outside this suite can START a step at a fixed time; it cannot decide what a run
+# may do with nobody there. That is this suite's to say, because it owns what the files mean.
+# Three series wrote their meeting time in three shapes and nothing could read all three, so
+# the declaration is one block in the project's config (ops_config schema 1.8), read from the
+# folder's OWN config only (the first directory walking up that holds a config file) -- never
+# inherited from an org or vault layer, `meetings: []` declares none -- by one reader,
+# skills/ops/meeting_schedule.py.
+meetings:
+  config_key: meetings
+  absent: "off -- a series without `meetings:` is never touched by a scheduler, and every reader behaves as before"
+  fields:
+    type: {required: true, note: "a key in meeting_types; names the preparation mode"}
+    days: {required: true, values: "mon..sun (or full names), or weekdays, or daily; an unknown day is dropped and reported, never empties the schedule"}
+    time: {required: true, format: "HH:MM"}
+    timezone: {required: false, format: "IANA zone name", default: "the machine's own zone"}
+    duration: {required: false, default: "30m"}
+    prepare_lead: {required: false, default: "45m", note: "the preparation starts this long before the meeting and is ready 15 minutes later"}
+    transcript_wait: {required: false, default: "4h", note: "how long after the end to look for the recording"}
+    unattended: {required: false, default: [], values: [prepare, process], note: "opt-in per step; absent = nothing runs unattended"}
+    apply_ledgers: {required: false, default: false, note: "true lets an unattended run write the ledger changes it proposes; trust earned per series, in config"}
+  durations: "30m, 4h, 1h30m, or a bare number of minutes"
+  unattended_run:
+    questions: "not asked -- written as `[OPEN: <question>]` where they arise and listed first in the run report"
+    outbox_status: "always draft; never ready or sent. A person promotes it"
+    ledgers: "CHANGELOG.md, _tasks.yaml, _insights.yaml, the meetings README and rolling plans are PROPOSED, not written, unless apply_ledgers: true"
+    files: "new dated files only -- the agenda set, the summary, its own _outbox/ folder, the archived copy of the transcript it was handed. An existing file at an output path stops the run; it is never edited"
+    fetch_problems: "a declared source whose fetch record is not ok puts a `## Fetch problems` block on the card"
+    sends: never
+  open_marker: "[OPEN: <question>]"
+  run_report:
+    path: "<project>/.runs/YYMMDD-<step>[-<type>].md"
+    writer: "skills/ops/run_report.py write"
+    shape: "YAML frontmatter (run_report: 1, step, type, date, status, open, fetch_problems, problems, written, proposed, applied, applied_at, applied_by) and the same facts as a body"
+    proposed_ops: [insert_before, insert_after, append, create]
+    note: "the session's final output, so a scheduler can forward it as the notification"
+  apply: "/ops apply <folder> [YYMMDD] -- shows the pending proposals and writes them on confirmation, all or nothing, then records them as applied in the report"
 
 # --- Feedback steps (CR-178) ---
 # `source.step` on an edge_case or correction names WHERE THE PROBLEM OCCURRED -- not where
@@ -656,7 +701,7 @@ skills:
     - name: ops
       description: "The config layer over prepare and process, plus orient, check and project set-up — config-driven for any organization."
       badge: Primary
-      subcommands: [process, prepare, orient, check, status, project list, project new, project close, normalize, help]
+      subcommands: [process, prepare, apply, orient, check, status, project list, project new, project close, normalize, help]
     - name: outbox
       description: "Lifecycle management for `_outbox/` items — list pending, close resolved ones into their contact or project folder."
       badge: Utility
@@ -1029,6 +1074,13 @@ vault_conventions:
       writers: ["/company", "user (manual)"]
       readers: ["/ops", "/preparation", "/company", "marvin", "skills in other repositories that write for a company"]
       lifecycle: "live; edited in place as facts change, reviewed on its own cadence, checked by /company check and /ops check. exports/ is derived and regenerated, never hand-edited. A profile file outside _company/ is a copy and is reported"
+
+    - path: "<project>/.runs/"
+      purpose: "Unattended run reports (CR-179): one new dated file per scheduled prepare or process run -- the open questions it could not ask, the fetch problems, the files it wrote, and the ledger changes it proposed. A dot-folder: read when a run is reviewed or applied, not in daily use"
+      schema: "ecosystem.yaml meetings.run_report"
+      writers: ["/ops (an unattended run writes a report; /ops apply records which changes it applied)"]
+      readers: ["/ops apply", "the scheduler that started the run (forwards the report as its notification)", "user"]
+      lifecycle: "append; a report is never rewritten except to record what was applied. Same-day reruns get a letter after the date"
 
     - path: "<folder>/_themes.yaml"
       purpose: "Themes registry (CR-124): the subjects a series keeps returning to, with the units and insights that carry them. Opt-in per project (themes.enabled)"

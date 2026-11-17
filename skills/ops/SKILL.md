@@ -2,7 +2,7 @@
 name: ops
 description: Process meeting content into structured documentation -- summaries, decision tracking, action propagation, file updates. Config-driven for any organization. Replaces project-ops, bravo-ops, management-ops, marketing-ops.
 user-invocable: true
-argument-hint: [process <content> | prepare [type] | orient <folder> | check [<folder>] | status | project list | project new <name> | project close <name> | normalize <path> | help | meeting content, transcript, or standup notes]
+argument-hint: [process <content> | prepare [type] | prepare --unattended [type] | apply <folder> [YYMMDD] | orient <folder> | check [<folder>] | status | project list | project new <name> | project close <name> | normalize <path> | help | meeting content, transcript, or standup notes]
 ---
 
 # Operations Framework
@@ -20,7 +20,8 @@ Unified meeting and operations processing. Behaviour is driven by config -- the 
 **The subcommands are the loop's verbs (CR-089).** `/ops` is the config layer over two of them
 (`prepare`, `process` — `/preparation` and `/transcript` are their config-free forms) and owns three
 more (`orient`, `check`, and `declare` through `project new` and `status`). `normalize` and `help`
-sit outside the loop and are named for what they repair or explain.
+sit outside the loop and are named for what they repair or explain. `apply` (CR-179) writes the ledger
+changes an unattended `prepare` or `process` proposed -- the attended half of a run nobody watched.
 
 **Renamed in v1.79.0 (CR-089), old names removed in v1.81.0.** `brief` is `orient`, `lint` is
 `check <folder>`, `sweep` is `check` (vault), `projects` is `project list`. An old name is not
@@ -32,6 +33,10 @@ recognised: say which subcommand it became, and do not run it.
 
 Runs the PROCESSING FLOW below (Steps 0.5–9). This is the loop's `process` step; `/transcript` is
 the same step for a folder with no config.
+
+**`--unattended` (CR-179)** is the same flow started by a scheduler with nobody there: questions become
+`[OPEN: ...]` markers, ledgers are proposed rather than written, and the run report is the final output.
+Allowed only where `meetings:` declares it -- see *Unattended runs* below.
 
 **When the input is incoming material rather than a meeting (CR-105)** — a report, a newsletter,
 an automated digest, a vendor's weekly mail — `process` writes a **content** file instead of a
@@ -250,7 +255,7 @@ drifts fails the check rather than misleading a reader.
 
 ### `prepare` -- Create pre-meeting preparation
 
-**Trigger:** `/ops prepare [type] [async-updates]`
+**Trigger:** `/ops prepare [type] [async-updates]` · `/ops prepare --unattended [type]` (CR-179, a scheduled run -- see *Unattended runs* below)
 
 Generate a structured preparation document for an upcoming team meeting. When the organisation has a `<org>/_company/` (CR-125), the `company`, `positioning` and `strategy` facets are read as standing context and cited by facet, never copied in; silent when there is none. Pulls context from recent meetings, tasks, and optionally incorporates pre-submitted async updates from team members.
 
@@ -838,6 +843,119 @@ After the meeting, when `/ops [transcript]` is run:
 
 ---
 
+### Unattended runs -- prepare and process with nobody there (CR-179)
+
+**Trigger:** `/ops prepare --unattended [type]` · `/ops process --unattended <transcript>` -- started by a
+scheduler outside this suite, never by a person who is present. A skill cannot start a session; what this
+suite owns is what such a run **may do**, because it owns what the files mean.
+
+**Absent means off.** A run is allowed only where the series declares it, in `meetings:` (ops-config
+schema 1.8), in the folder's **own** config -- the first directory walking up that holds
+`.claude/ops-config.yaml` or `_ops.yaml`. An org's declaration never reaches a project beneath it:
+
+```
+python3 ~/.claude/skills/ops/run_report.py allowed --dir <project>/meetings --step prepare [--type standup]
+```
+
+Exit 0 prints the declared meeting; anything else prints why and **the run stops there, writing
+nothing.** `unattended:` is opt-in per step, so a series can automate its preparation and keep
+processing by hand. `python3 ~/.claude/skills/ops/meeting_schedule.py --dir <folder> --json` prints the
+declaration with the next meeting's windows (start, `prepare_at`, `ready_by` = `prepare_lead` minus 15
+minutes before the start, `transcript_by`) -- the scheduler's arithmetic, stated once here.
+
+**The same steps as attended, with four differences:**
+
+| | Attended | Unattended |
+|---|---|---|
+| A question the skill would ask | asked | **not asked.** Written into the output as `[OPEN: <question>]` at the point it arises, and listed at the top of the run report |
+| Outbox status | as today | **always `draft`.** Never `klar-att-skicka`, never a sent status. A person promotes it |
+| Shared ledgers (`CHANGELOG.md`, `_tasks.yaml`, `_insights.yaml`, the meetings README, rolling plans) | written | **proposed, not written**, unless the meeting declares `apply_ledgers: true` |
+| Files it may create | any the step needs | **new dated files only**: the agenda set, the summary, its own `_outbox/` folder, the archived copy of the transcript the scheduler handed it. An existing file is never edited |
+
+**The `[OPEN: ...]` marker.** Every point where the attended path says *ask*, *confirm* or *flag and wait*
+-- an ambiguous speaker attribution, routing, a name variant not in the roster (CR-017), "is this the
+right milestone", which of two recordings -- becomes one marker, in place, with the question a person
+would have been asked. Never a guess in its place: **the card rule holds**, and a card that cannot be
+filled says so on the card (`[OPEN]`) rather than filling it. An item whose owner is the open question
+keeps the owner `?`. A summary with open markers is still written; a ledger line that depends on one is
+not proposed.
+
+**Before writing anything, check every output path:**
+
+```
+python3 ~/.claude/skills/ops/run_report.py guard <every path the run will create>
+```
+
+Exit 3 names the file that exists. **The run stops, edits nothing, and its report says why**
+(`write --stopped "<reason>"`). The generator does the same for the whole agenda set:
+`build_agenda.py --unattended` refuses when *any* of the agenda, its details file, the facilitator
+document or the posts exists -- the attended guard checks the agenda alone.
+
+**A stale source is reported, not hidden.** `build_agenda.py --unattended` puts a `## Fetch problems`
+block on the card whenever a declared source's fetch record (CR-088) says `auth_required`, `error` or
+`timeout`; the attended header line stays, and the block is mandatory, not optional. The run report
+copies it.
+
+**Ledgers are proposals.** Steps 5, 5.5, 6, 9 (task import, carry-forward registers, rolling plans) and
+the meetings README write nothing in an unattended run. Each change they would make is written instead
+as one entry in a proposal file -- `file` (relative to the project folder), `op` (`insert_before`,
+`insert_after`, `append` or `create`), `anchor` (one whole line, present exactly once, for an insert),
+`text`, and an optional `why` -- and handed to the report. With `apply_ledgers: true` the run then applies
+them itself (`run_report.py apply <folder> <YYMMDD> --write --unattended`, which refuses unless the
+declaration says so). Trust is earned per series, in config, never assumed by default.
+
+**The run report is the session's final output:**
+
+```
+python3 ~/.claude/skills/ops/run_report.py write --dir <project>/meetings --step prepare|process \
+    --date YYMMDD [--type <type>] --written <every file written> [--proposed <proposals.yaml>] [--stopped <reason>]
+```
+
+It collects every `[OPEN]` marker from the files written, the fetch problems, the files, and the ledger
+changes proposed; it reports a written file that is not dated and an outbox manifest whose status is
+not `draft`. It is kept as a new dated file in `<project>/.runs/` (a same-day rerun gets a letter,
+`261119b-`) and printed, so the scheduler can forward it as the notification. **Print it last, and
+nothing after it.**
+
+**Unchanged:** nothing in this suite sends, unattended or not -- the outbox stops at staged. The read
+restriction on raw transcripts stands: the process step reads the one transcript it was handed, for the
+summary it writes from it, as the attended path does. The recap stays offered, not written (Step 9).
+The attended path is the same in every step.
+
+### `apply <folder> [YYMMDD]` -- write an unattended run's ledger changes, from the attended session (CR-179)
+
+**Trigger:** `/ops apply <folder> [YYMMDD]`
+
+The interactive session is where shared files are edited, so two writers never touch the same ledger at
+once. `apply` reads the run reports in the folder's `.runs/` that still have pending changes -- for that
+date, or the newest date with any -- and **shows them before anything is written**:
+
+```
+python3 ~/.claude/skills/ops/run_report.py apply <folder> [YYMMDD]            # shows, writes nothing
+python3 ~/.claude/skills/ops/run_report.py apply <folder> [YYMMDD] --write    # after confirmation
+python3 ~/.claude/skills/ops/run_report.py apply <folder> [YYMMDD] --only 1,3 --write
+python3 ~/.claude/skills/ops/run_report.py apply <folder> 261119 --only 261119-prepare-standup#1 --write
+```
+
+Change ids are numbered per report: bare ids are accepted only when one report is pending; with more
+than one, name the report (`<report>#<id>`), or `--only` is refused.
+
+1. Answer the report's `[OPEN]` questions first. A change that depended on one may need editing in the
+   summary before it is applied -- or leaving out with `--only`.
+2. Show the changes and ask. **Write only on confirmation.**
+3. `--write` computes every change in memory first and **writes nothing if any fails**: an anchor
+   missing or present more than once, a YAML ledger that would no longer parse, a `create` over an
+   existing file or into a folder that does not exist, a path into a dot-folder or outside the vault.
+   A report that no longer parses is named and skipped, never a crash. A file changed since the run is named
+   and still applied by its anchor.
+4. It writes exactly the proposed text, and nothing else -- each file staged beside its target and
+   renamed into place -- and records in the report which changes were applied, when and by whom, file
+   by file as each lands -- so the same change is never applied twice, not even after a failure part-way.
+
+**Never edit a run report by hand to change what is applied**; propose again from the summary instead.
+
+---
+
 ### `normalize` -- Restore Swedish characters in hand-written docs (CR-007)
 
 **Trigger:** `/ops normalize <path> [--dry-run] [--strict-no-ambiguous]`
@@ -1162,7 +1280,10 @@ brief only a person can fix; re-running the fetch does nothing.
 1. **Loop position** — newest note, next session, **whether that agenda exists yet** — and, if it does,
    whether its digest is still unread (*generated, digest not filled*, CR-101). The common failure
    is not a missing note but a missing next agenda, and nothing else surfaces it; the second most
-   common is an agenda that exists and is still a draft.
+   common is an agenda that exists and is still a draft. **Where the series declares `meetings:`
+   (CR-179) the next session is read from it** -- date, time and type, marked `(declared)`, with what
+   may run unattended around it and any problem in the declaration -- instead of being inferred from
+   the newest note. Absent, the line is what it was.
 2. **Chain integrity** — whether the newest note ends with `## Carried forward`. The one failure in the
    loop that announces nothing: without it the next agenda carries zero items and looks correct.
 3. **What is carrying** — each item with sessions, age and owner. `UNOWNED` is counted and named,
@@ -1611,6 +1732,11 @@ it sent; nothing writes that unprompted, because the click is where the posted m
 
 ### Where it is manual, and why
 
+**A scheduler may run `prepare` and `process` (CR-179)** where the series declares it in `meetings:`.
+It changes who starts the step, not where a person decides: the run stops at drafts, marks every
+question it would have asked as `[OPEN]`, proposes ledger changes for `/ops apply`, and never chooses
+between duplicate recordings -- see *Unattended runs*.
+
 **Steps 3, 4 and 6 stay in human hands, and should.** The facilitator sheet is judgement
 about people — drafted by `prepare` (CR-082) but never finished by it;
 choosing between duplicate transcripts is a judgement the machine cannot make honestly;
@@ -1676,6 +1802,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 | `workflows.action_propagation` | Propagate actions to external files |
 | `workflows.agenda_management` | Post-meeting agenda updates |
 | `meeting_types[<type>].preparation_mode` | `single` (default) or `dual` -- whether `/ops prepare` produces one file or a facilitator/agenda pair |
+| `meetings` | CR-179: when each recurring meeting happens and what may run around it -- `days`, `time`, `timezone`, `duration`, `prepare_lead`, `transcript_wait`, `unattended` (`prepare`, `process`; absent = nothing) and `apply_ledgers`. Read by `orient` for the next session and by an unattended run for permission. Absent means off |
 | `workflows.meeting_templates` | Per-meeting-type shape contracts + lint mode (`warn`/`strict`) -- see ops-base Template Contracts (CR-018) |
 | `workflows.post_processing` | Task import, optional priorities artifact (`priorities_artifact.enabled`), **recap on request** (`recap_artifact.enabled`), and **carry-forward -> next agenda** (`carry_forward.enabled`, see `build_agenda.py`) after meeting |
 | `workflows.rolling_plans` | Participant-triggered per-axis living planning docs (update after a matching 1-on-1) |
@@ -1752,6 +1879,9 @@ For each entry in `domain_additions` from config:
 Append domain-specific sections after the standard summary structure.
 
 ### Step 5: Update Files
+
+*Unattended (CR-179):* nothing in Steps 5 to 9 writes a shared ledger; each change is proposed for the
+run report instead -- see *Unattended runs*.
 
 Update files per `workflows.update_files` from config:
 

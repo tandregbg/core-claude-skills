@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_agenda import (COMPANION, config, carried, has_section, key, owner_of, details_name, definitions, CONFIG_MARKER,
                           streak, next_session, recorded_since, since,
                           fetch_record, fetch_status)   # noqa: E402
+import meeting_schedule   # noqa: E402  (CR-179)
 
 # CR-088: which archive a declared external system is fetched into.
 ARCHIVES = (("chat", "chats", ".teamschats"), ("repo", "repos", ".githubmeta"),
@@ -89,13 +90,37 @@ def slurp(f: Path) -> str | None:
         return None
 
 
+def schedule_lines(nxt_decl, sched: dict, nxt: str | None, state: str) -> list[str]:
+    """CR-179: the declared next session, what may run around it, and any problem with
+    the declaration -- read from `meetings:`, never inferred from the last two notes."""
+    entry, start = nxt_decl
+    day = start.strftime("%y%m%d")
+    tail = f"  — agenda {state}" if state else ""
+    lines = [f"    next session    {day} {entry['time']} {entry['type']} (declared){tail}"]
+    un = entry["unattended"]
+    if un:
+        w = meeting_schedule.windows(entry, start)
+        bits = [f"prepare from {w['prepare_at'].strftime('%H:%M')}" if s_ == "prepare" else s_ for s_ in un]
+        lines.append(f"    unattended      {', '.join(bits)} — ledgers "
+                     + ("applied by the run" if entry["apply_ledgers"] else "proposed, `/ops apply`"))
+    for p_ in sched["problems"]:
+        lines.append(f"    schedule        ⚠ {p_}")
+    return lines
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".", help="the project's meetings folder")
+    ap.add_argument("--now", help="ISO datetime the brief is read at (default: now); CR-179")
     a = ap.parse_args()
     md = Path(a.dir).resolve()
     cf = config(md)
-    root, today = cf["_root"], datetime.date.today()
+    now = meeting_schedule._aware(datetime.datetime.fromisoformat(a.now) if a.now else None)
+    root, today = cf["_root"], now.date()
+    # CR-179: a declared schedule names the next session. Absent, nothing below changes:
+    # the next session is inferred from the newest note, as it always was.
+    sched = meeting_schedule.declared(md)
+    declared_next = meeting_schedule.next_meeting(sched["meetings"], now) if sched["meetings"] else None
     project_names = {root.name} | ({cf["project"]} if cf.get("project") else set())
     # An org-level series lives in a folder whose config sits further up, so root.name
     # is the venture, not the series. The declared title is the only honest label.
@@ -131,10 +156,16 @@ def main() -> None:
     # 1-3. loop position, chain, what is carrying
     hist = notes(md, cf)
     if not hist:
-        out += ["  Loop", f"    no YYMMDD-{cf['note_suffix']}.md in {md.name}/", ""]
+        out += ["  Loop", f"    no YYMMDD-{cf['note_suffix']}.md in {md.name}/"]
+        if declared_next:
+            out += schedule_lines(declared_next, sched, None, "")
+        else:
+            out += [f"    schedule        ⚠ {p_}" for p_ in sched["problems"]]
+        out.append("")
     else:
         last_date, last = hist[-1]
-        nxt = next_session(last_date, cf.get("schedule_days"))
+        nxt = (declared_next[1].strftime("%y%m%d") if declared_next
+               else next_session(last_date, cf.get("schedule_days")))
         agenda = md / f"{nxt}-{cf['agenda_suffix']}.md"
         out += ["  Loop",
                 f"    newest note     {last.name}  ({days(last_date, today)}d ago)"]
@@ -177,7 +208,11 @@ def main() -> None:
             state = "generated, config review not stated"
         else:
             state = "exists"
-        out.append(f"    next session    {nxt}  — agenda {state}")
+        if declared_next:
+            out += schedule_lines(declared_next, sched, nxt, state)
+        else:
+            out.append(f"    next session    {nxt}  — agenda {state}")
+            out += [f"    schedule        ⚠ {p_}" for p_ in sched["problems"]]
         if has_section(last):
             out.append("    chain           intact")
         else:
