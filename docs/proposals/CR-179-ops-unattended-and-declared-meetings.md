@@ -101,9 +101,11 @@ run cleanly for a while — trust that is earned, per series, in config, not ass
 
 ## As implemented (v1.97.0)
 
-- **The reader** is `skills/ops/meeting_schedule.py`: `declared()` resolves `meetings:` through the
-  config chain (project, `_ops.yaml` walking up, `_config/base.yaml`), nearest declaration taken whole,
-  `meetings: []` stopping the walk. Defaults where a field is absent: `duration` 30m, `prepare_lead`
+- **The reader** is `skills/ops/meeting_schedule.py`: `declared()` resolves `meetings:` from the
+  folder's own config only -- the first directory walking up that holds `.claude/ops-config.yaml` or
+  `_ops.yaml`; if neither file there declares `meetings:`, nothing is declared, so an org's schedule and
+  unattended permission never reach a project beneath it (review fix; the first cut walked on to
+  ancestors and `_config/base.yaml`). The list is taken whole; `meetings: []` declares none. Defaults where a field is absent: `duration` 30m, `prepare_lead`
   45m, `transcript_wait` 4h, `timezone` the machine's own zone, `unattended` nothing, `apply_ledgers`
   false. A malformed entry is a reported problem, never a crash; an unknown day or step is dropped and
   reported. `build_agenda.py` re-exports its config-file pair from here, and reads the declared days
@@ -119,6 +121,6 @@ run cleanly for a while — trust that is earned, per series, in config, not ass
   for a subset, `--unattended` for a run applying its own proposals (refused unless `apply_ledgers:
   true`). Four operations; all or nothing; YAML ledgers re-parsed; dot-folders and paths out of the vault
   refused; applied ids recorded in the report.
-- **Tests:** `tests/test_cr179_unattended.py`, 47 tests, one class per bullet of the Tests section.
+- **Tests:** `tests/test_cr179_unattended.py`, 58 tests (47 at implementation, 11 from the review), one class per bullet of the Tests section.
 - **[H] Not run against a live series.** The scheduler (vault-tools CR-009) does not exist yet; the
   unattended path has run only in the test vaults.

@@ -36,8 +36,14 @@ A proposed ledger change is one of four operations, and nothing else can be expr
 
 `apply` computes every change in memory first and writes nothing if any of them fails --
 an anchor missing or repeated, a YAML ledger that would no longer parse, a `create` over a
-file that exists. Then it writes exactly the proposed text, and records in the report which
-changes were applied and when, so the same change cannot be applied twice.
+file that exists or into a folder that does not. Then every new content is written to a
+temporary file beside its target (a failure there removes them all and writes nothing), and
+each is renamed into place; the report records which changes were applied and when, file by
+file as each rename lands, so the same change cannot be applied twice -- not even after a
+failure part-way.
+
+Change ids are numbered per report. `--only` takes bare ids when one report is pending and
+`<report>#<id>` (the report's file name, with or without `.md`) when more than one is.
 """
 from __future__ import annotations
 
@@ -45,6 +51,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -58,7 +65,9 @@ import meeting_schedule as ms  # noqa: E402
 import resolved  # noqa: E402  (the outbox manifest reader; one vocabulary for status)
 
 RUNS = ".runs"
-OPEN = re.compile(r"\[OPEN:\s*(.+?)\]")
+# One level of nested brackets is part of the question (a markdown link, a `[x]`), so the
+# marker ends at the first `]` that closes it, not at the first `]` inside it.
+OPEN = re.compile(r"\[OPEN:\s*((?:[^\[\]]|\[[^\[\]]*\])+?)\s*\]")
 OPS = ("insert_before", "insert_after", "append", "create")
 DATED = re.compile(r"^\d{6}[a-z]?-")
 FETCH_BLOCK = re.compile(r"^## Fetch problems\s*$(.*?)(?=^## |\Z)", re.M | re.S)
@@ -241,7 +250,8 @@ def render(fm: dict) -> str:
     B += [f"- `{w}`" for w in fm["written"]] or ["*None.*"]
     B.append("")
     if fm["apply_ledgers"]:
-        how = "the series declares `apply_ledgers: true`; the run applies them"
+        how = ("the series declares `apply_ledgers: true`: the run applies them with "
+               "`apply --write --unattended`; each is marked applied below once written")
     else:
         how = f"not written. From the attended session: `/ops apply <folder> {fm['date']}`"
     B += [f"## Ledger changes proposed ({len(fm['proposed'])}) -- {how}", ""]
@@ -299,30 +309,104 @@ def cmd_write(a) -> int:
 # ---- apply ----------------------------------------------------------------------------
 
 def read_report(p: Path) -> dict | None:
-    txt = p.read_text(encoding="utf-8")
+    """The report's frontmatter, or None when the file is not a run report -- or is one
+    that no longer parses (hand-edited, truncated). `report_problem` says which."""
+    try:
+        txt = p.read_text(encoding="utf-8")
+    except OSError:
+        return None
     m = re.match(r"^---\n(.*?)\n---\n", txt, re.S)
     if not m:
         return None
-    fm = yaml.safe_load(m.group(1)) or {}
+    try:
+        fm = yaml.safe_load(m.group(1)) or {}
+    except yaml.YAMLError:
+        return None
     return fm if isinstance(fm, dict) and fm.get("run_report") else None
 
 
-def pending_reports(folder: Path, date: str | None) -> tuple[Path, list[tuple[Path, dict]]]:
+def report_problem(fm: dict) -> str:
+    """Why a report cannot be applied from, or "". Checked before anything indexes it."""
+    if not isinstance(fm.get("proposed") or [], list):
+        return "`proposed` is not a list"
+    if not isinstance(fm.get("applied") or [], list):
+        return "`applied` is not a list"
+    ids = []
+    for n, c in enumerate(fm.get("proposed") or [], 1):
+        if not isinstance(c, dict):
+            return f"proposed entry {n} is not a mapping"
+        if not isinstance(c.get("id"), int) or isinstance(c.get("id"), bool):
+            return f"proposed entry {n} has no integer id"
+        if c.get("op") not in OPS:
+            return f"proposed entry {n}: op {c.get('op')!r} is not one of {', '.join(OPS)}"
+        if not isinstance(c.get("file"), str) or not isinstance(c.get("text"), str):
+            return f"proposed entry {n} lacks `file` or `text`"
+        if c["op"].startswith("insert_") and not isinstance(c.get("anchor"), str):
+            return f"proposed entry {n} is an insert without an anchor"
+        ids.append(c["id"])
+    if len(ids) != len(set(ids)):
+        return "two proposed entries share an id"
+    return ""
+
+
+def pending_reports(folder: Path, date: str | None):
+    """(root, [(path, frontmatter)] with pending changes, [unreadable report messages])."""
     root = project_root(folder)
     runs = sorted((root / RUNS).glob("*.md")) if (root / RUNS).is_dir() else []
-    found = []
+    found, skipped = [], []
     for p in runs:
         if date and not p.name.startswith(date):
             continue
         fm = read_report(p)
         if not fm:
+            if re.match(r"^\d{6}", p.name):
+                skipped.append(f"{p.name}: not a readable run report -- skipped")
+            continue
+        why = report_problem(fm)
+        if why:
+            skipped.append(f"{p.name}: {why} -- skipped")
             continue
         if any(c["id"] not in (fm.get("applied") or []) for c in fm.get("proposed") or []):
             found.append((p, fm))
     if not date and found:
-        newest = max(str(fm["date"]) for _p, fm in found)
-        found = [(p, fm) for p, fm in found if str(fm["date"]) == newest]
-    return root, found
+        newest = max(str(fm.get("date")) for _p, fm in found)
+        found = [(p, fm) for p, fm in found if str(fm.get("date")) == newest]
+    return root, found, skipped
+
+
+def parse_only(raw: str | None, reports) -> tuple[dict | None, str]:
+    """--only as {report path: {ids}}, or (None, why). Ids are per report, so a bare id is
+    accepted only when one report is pending; otherwise it must name its report."""
+    if not raw:
+        return None, ""
+    names = {}
+    for rp, _fm in reports:
+        names[rp.name] = rp
+        names[rp.stem] = rp
+    out: dict[Path, set[int]] = {}
+    for tok in (t.strip() for t in raw.split(",")):
+        if not tok:
+            continue
+        rname, sep, num = tok.rpartition("#")
+        if not num.isdigit():
+            return None, f"--only {tok!r}: an id is a number, optionally `<report>#<n>`"
+        if sep:
+            rp = names.get(rname)
+            if rp is None:
+                return None, f"--only {tok!r}: no pending report named {rname!r}"
+        elif len(reports) == 1:
+            rp = reports[0][0]
+        else:
+            return None, (f"--only {tok!r}: {len(reports)} reports are pending and ids are per "
+                          "report -- write `<report>#<n>`, e.g. " + f"{reports[0][0].stem}#{num}")
+        out.setdefault(rp, set()).add(int(num))
+    return out, ""
+
+
+def _skip(rp: Path, c: dict, fm: dict, only) -> bool:
+    if c["id"] in (fm.get("applied") or []):
+        return True
+    return only is not None and c["id"] not in only.get(rp, set())
 
 
 def _edit(content: str | None, c: dict) -> tuple[str | None, str]:
@@ -343,21 +427,28 @@ def _edit(content: str | None, c: dict) -> tuple[str | None, str]:
     return "".join(lines[:i]) + text + "".join(lines[i:]), ""
 
 
-def plan(root: Path, reports, only: set[int] | None):
-    """Every change computed in memory, in report order. (new contents, notes, errors)."""
+def plan(root: Path, reports, only):
+    """Every change computed in memory, in report order. (new contents, chosen, notes, errors)."""
     state: dict[Path, str | None] = {}
     notes, errors, chosen = [], [], []
     for rp, fm in reports:
         for c in fm.get("proposed") or []:
-            if c["id"] in (fm.get("applied") or []) or (only and c["id"] not in only):
+            if _skip(rp, c, fm, only):
                 continue
             label = f"{rp.name}#{c['id']}"
             tp, why = target_path(root, c["file"])
             if why:
                 errors.append(f"{label}: {why}")
                 continue
+            if not tp.parent.is_dir():
+                errors.append(f"{label}: {c['file']}: folder {_rel(tp.parent, root)} does not exist")
+                continue
             if tp not in state:
-                state[tp] = tp.read_text(encoding="utf-8") if tp.exists() else None
+                try:
+                    state[tp] = tp.read_text(encoding="utf-8") if tp.exists() else None
+                except (OSError, UnicodeDecodeError) as e:
+                    errors.append(f"{label}: {c['file']}: cannot be read ({e})")
+                    continue
                 if c.get("base_sha256") and _sha(tp) not in (None, c["base_sha256"]):
                     notes.append(f"{label}: {c['file']} changed since the run -- applied by anchor")
             new, why = _edit(state[tp], c)
@@ -365,7 +456,7 @@ def plan(root: Path, reports, only: set[int] | None):
                 errors.append(f"{label}: {c['file']}: {why}")
                 continue
             state[tp] = new
-            chosen.append((rp, c))
+            chosen.append((rp, c, tp))
     for tp, txt in state.items():
         if tp.suffix in (".yaml", ".yml") and txt is not None:
             try:
@@ -379,12 +470,27 @@ def show(reports, only) -> None:
     for rp, fm in reports:
         print(f"{rp.name} -- {fm.get('step')} {fm.get('type') or ''} {fm.get('date')}".rstrip())
         for c in fm.get("proposed") or []:
-            if c["id"] in (fm.get("applied") or []) or (only and c["id"] not in only):
+            if _skip(rp, c, fm, only):
                 continue
             where = f" {c['anchor']!r}" if c.get("anchor") else ""
             print(f"  {c['id']}. {c['file']} {c['op']}{where}" + (f" -- {c['why']}" if c.get("why") else ""))
             for l in c["text"].rstrip("\n").splitlines():
                 print(f"     + {l}")
+
+
+def _tmp(p: Path) -> Path:
+    return p.with_name(f".{p.name}.apply-{os.getpid()}.tmp")
+
+
+def _replace(p: Path, text: str) -> None:
+    """Write `text` to `p` through a temporary file and a rename: `p` is old or new, never half."""
+    t = _tmp(p)
+    try:
+        t.write_text(text, encoding="utf-8")
+        os.replace(t, p)
+    finally:
+        if t.exists():
+            t.unlink()
 
 
 def mark_applied(rp: Path, ids: list[int], by: str) -> None:
@@ -393,7 +499,46 @@ def mark_applied(rp: Path, ids: list[int], by: str) -> None:
     fm["applied"] = sorted(set(fm.get("applied") or []) | set(ids))
     fm["applied_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     fm["applied_by"] = by
-    rp.write_text(render(fm), encoding="utf-8")
+    _replace(rp, render(fm))
+
+
+def write_all(state: dict, chosen: list, by: str) -> list[str]:
+    """Stage every new content beside its target, then rename each into place, recording
+    the changes of each file in its report as soon as that file has landed. Returns the
+    errors; empty when everything was written."""
+    targets = [tp for tp, txt in state.items() if txt is not None]
+    staged: dict[Path, Path] = {}
+    try:
+        for tp in targets:
+            t = _tmp(tp)
+            t.write_text(state[tp], encoding="utf-8")
+            staged[tp] = t
+    except OSError as e:
+        for t in staged.values():
+            t.unlink(missing_ok=True)
+        _tmp(tp).unlink(missing_ok=True)
+        return [f"{tp.name}: could not be staged ({e}) -- nothing written"]
+    errors = []
+    for i, tp in enumerate(targets):
+        try:
+            os.replace(staged[tp], tp)
+        except OSError as e:
+            for t in list(staged.values())[i:]:
+                t.unlink(missing_ok=True)
+            left = ", ".join(x.name for x in targets[i:])
+            errors.append(f"{tp.name}: could not be written ({e}) -- not written: {left}")
+            break
+        landed: dict[Path, list[int]] = {}
+        for rp, c, ctp in chosen:
+            if ctp == tp:
+                landed.setdefault(rp, []).append(c["id"])
+        for rp, ids in landed.items():
+            try:
+                mark_applied(rp, ids, by)
+            except OSError as e:
+                errors.append(f"{rp.name}: {tp.name} was written but the report could not record "
+                              f"ids {ids} ({e}) -- do not apply them again")
+    return errors
 
 
 def cmd_apply(a, write: bool) -> int:
@@ -401,8 +546,9 @@ def cmd_apply(a, write: bool) -> int:
     if a.date and not re.fullmatch(r"\d{6}", a.date):
         print("date must be YYMMDD")
         return EXIT_REFUSED
-    only = {int(x) for x in a.only.split(",")} if getattr(a, "only", None) else None
-    root, reports = pending_reports(folder, a.date)
+    root, reports, skipped = pending_reports(folder, a.date)
+    for s_ in skipped:
+        print(f"  ! {s_}")
     if not reports:
         print("no run report with pending ledger changes" + (f" for {a.date}" if a.date else ""))
         return EXIT_NOTHING
@@ -414,6 +560,10 @@ def cmd_apply(a, write: bool) -> int:
                 print(f"not applied -- `apply_ledgers` is not true for {fm.get('type')!r}"
                       + (f" ({why})" if why else "") + "; the changes stay proposed")
                 return EXIT_NOT_ALLOWED
+    only, why = parse_only(getattr(a, "only", None), reports)
+    if why:
+        print(why)
+        return EXIT_REFUSED
     show(reports, only)
     state, chosen, notes, errors = plan(root, reports, only)
     for n in notes:
@@ -426,14 +576,13 @@ def cmd_apply(a, write: bool) -> int:
     if not write:
         print(f"\n{len(chosen)} change(s) shown, nothing written. Run with --write to apply.")
         return 0
-    for tp, txt in state.items():
-        if txt is not None:
-            tp.write_text(txt, encoding="utf-8")
     by = "unattended run" if getattr(a, "unattended", False) else "attended session"
-    for rp, _fm in reports:
-        ids = [c["id"] for r_, c in chosen if r_ == rp]
-        if ids:
-            mark_applied(rp, ids, by)
+    errors = write_all(state, chosen, by)
+    if errors:
+        print("\nstopped:")
+        for e in errors:
+            print(f"  ! {e}")
+        return EXIT_REFUSED
     print(f"\n{len(chosen)} change(s) written to {len(state)} file(s).")
     return 0
 

@@ -200,6 +200,10 @@ def config(meetings: Path) -> dict:
             # as before, and BEFORE the older meeting_types.<type>.schedule shape it exists
             # to replace. The union of the declared days, because one folder's agenda serves
             # every declared occurrence of its series.
+            # Read from the MEETINGS folder's own config (meeting_schedule.declared), not from
+            # the file carry_forward was found in: those can differ when the folder's own
+            # config does not declare carry_forward. Same answer as run_report and orient,
+            # and never an ancestor's schedule -- a parent's `meetings:` does not reach here.
             cf["meetings"] = meeting_schedule.declared(meetings)["meetings"]
             if not cf.get("schedule_days") and cf["meetings"]:
                 cf["schedule_days"] = sorted({meeting_schedule.DAY_NAMES[i]

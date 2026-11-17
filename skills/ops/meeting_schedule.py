@@ -24,10 +24,12 @@ Why one block: series wrote their meeting time in three shapes -- a
 read all three. **Absent means off**: a series without `meetings:` is never touched by a
 scheduler, and every reader here behaves exactly as it did before the block existed.
 
-Resolution is the normal config chain, nearest declaration wins, walking up: a project's
-`.claude/ops-config.yaml`, then `_ops.yaml`, then the vault's `_config/base.yaml`. The
-nearest `meetings:` is taken whole -- a list is not merged across layers, because a merged
-schedule is one nobody wrote. `meetings: []` declares "none here" and stops the walk.
+Resolution reads the folder's OWN configuration and nothing above it: walking up from the
+folder, the first directory that holds a config file (`.claude/ops-config.yaml`, then
+`_ops.yaml`) is where the declaration must be. If neither file there has `meetings:`, the
+folder declares nothing -- a schedule, and above all an unattended permission, is never
+inherited from an org or vault layer, because a project beneath an org that declares its
+weekly is not that weekly. The list is taken whole; `meetings: []` declares "none here".
 
 A malformed entry is a PROBLEM, reported by name and skipped -- never a crash, and never a
 guess. A typo in `days` drops that day and says so; it must not empty the schedule.
@@ -51,7 +53,6 @@ except ImportError:  # pragma: no cover -- python < 3.9
 # re-exports it, so a reader walking the chain itself cannot drift from the order the
 # agenda resolves.
 CONFIG_FILES = (Path(".claude") / "ops-config.yaml", Path("_ops.yaml"))
-VAULT_FILE = Path("_config") / "base.yaml"
 
 STEPS = ("prepare", "process")
 DAY_NAMES = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
@@ -182,23 +183,32 @@ def _load(p: Path) -> dict | None:
 
 
 def declared(start: Path) -> dict:
-    """The `meetings:` declaration that applies at `start`, through the config chain.
+    """The `meetings:` declaration that applies at `start`: the folder's own config only.
+
+    The walk up stops at the first directory holding either config file. That directory's
+    pair is read in order; the first file with a `meetings:` key declares. Neither has one:
+    not declared -- the walk does NOT continue to a parent, so an org's schedule (and its
+    unattended permission) never reaches a project beneath it that declares nothing.
 
     Returns {"meetings": [...], "problems": [...], "file": Path | None}. An absent block
     is `{"meetings": [], "problems": [], "file": None}` -- the shape every reader treats
     as "not declared", which is how an absent block changes nothing.
     """
     start = Path(start).resolve()
-    chain = [root / name for root in (start, *start.parents) for name in CONFIG_FILES]
-    chain += [root / VAULT_FILE for root in (start, *start.parents)]
-    for p in chain:
-        if not p.is_file():
+    for root in (start, *start.parents):
+        files = [root / name for name in CONFIG_FILES if (root / name).is_file()]
+        if not files:
             continue
-        d = _load(p)
-        if d is None or "meetings" not in d:
-            continue
-        entries, problems = parse(d.get("meetings"), d.get("meeting_types"))
-        return {"meetings": entries, "problems": problems, "file": p}
+        problems = []
+        for p in files:
+            d = _load(p)
+            if d is None:
+                problems.append(f"{p.name}: does not parse as a YAML mapping -- not read")
+                continue
+            if "meetings" in d:
+                entries, more = parse(d.get("meetings"), d.get("meeting_types"))
+                return {"meetings": entries, "problems": problems + more, "file": p}
+        return {"meetings": [], "problems": problems, "file": None}
     return {"meetings": [], "problems": [], "file": None}
 
 
@@ -265,13 +275,20 @@ def select(entries: list[dict], step: str | None = None, typ: str | None = None)
     return pool[0], ""
 
 
+def _dur_text(d: datetime.timedelta) -> str:
+    """`4h`, `1h30m`, `45m` -- the shape it was declared in, and `duration()` reads back."""
+    mins = int(d.total_seconds() // 60)
+    h, m = divmod(mins, 60)
+    return (f"{h}h" if h else "") + (f"{m}m" if m or not h else "")
+
+
 def public(entry: dict) -> dict:
     """An entry as plain data -- for JSON, the run report and the scheduler."""
     out = {k: v for k, v in entry.items() if not k.startswith("_")}
     out["days"] = [DAY_NAMES[d][:3] for d in entry["days"]]
     out["unattended"] = list(entry["unattended"])
     for k in DEFAULTS:
-        out[k] = f"{int(entry[k].total_seconds() // 60)}m"
+        out[k] = _dur_text(entry[k])
     return out
 
 

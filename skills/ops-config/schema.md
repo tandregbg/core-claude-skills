@@ -884,8 +884,11 @@ meetings:
 | `apply_ledgers` | No | `true` lets an unattended run write the ledger changes it proposes. Meant to be set once a series has run cleanly for a while |
 
 **Absent means off.** A series without `meetings:` is never touched by a scheduler and every
-reader behaves as before. Resolution is the normal chain, nearest declaration wins and is taken
-whole (a list is not merged across layers); `meetings: []` declares none and stops the walk.
+reader behaves as before. Resolution reads the folder's **own** config only: walking up, the first
+directory holding `.claude/ops-config.yaml` or `_ops.yaml` is where the declaration must be, and if
+neither file there has `meetings:` the folder declares nothing. A schedule -- and with it an
+unattended permission -- is never inherited from an org or vault layer. The list is taken whole;
+`meetings: []` declares none.
 `python3 ~/.claude/skills/ops/meeting_schedule.py --dir <folder>` prints what resolves, with the
 next meeting's windows and any problem.
 

@@ -6,13 +6,16 @@ scripts.
 
     python3 -m unittest discover -s tests
 """
+import contextlib
 import datetime
 import hashlib
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import yaml
@@ -138,12 +141,67 @@ class Resolution(unittest.TestCase):
             "meetings:\n  - type: weekly\n    days: [fri]\n    time: \"10:00\"\n", encoding="utf-8")
         self.assertEqual(ms.declared(md)["meetings"], [])
 
-    def test_the_vault_layer_is_read_last(self):
+    def test_the_vault_layer_is_never_read(self):
         v, proj, md = vault(CF)
         (v / "_config").mkdir()
         (v / "_config" / "base.yaml").write_text(
             "meetings:\n  - type: weekly\n    days: [fri]\n    time: \"10:00\"\n", encoding="utf-8")
-        self.assertEqual([e["type"] for e in ms.declared(md)["meetings"]], ["weekly"])
+        self.assertEqual(ms.declared(md)["meetings"], [])
+
+    # Review fix: a child that declares nothing does not inherit an ancestor's schedule.
+    ORG = ("meetings:\n  - type: weekly\n    days: [mon]\n    time: \"10:00\"\n"
+           "    unattended: [prepare, process]\n    apply_ledgers: true\n")
+
+    def child(self):
+        v = Path(tempfile.mkdtemp())
+        (v / "_outbox").mkdir()
+        org = v / "org"
+        md = org / "proj" / "meetings"
+        md.mkdir(parents=True)
+        (org / "_ops.yaml").write_text(self.ORG, encoding="utf-8")
+        (org / "proj" / ".claude").mkdir()
+        (org / "proj" / ".claude" / "ops-config.yaml").write_text(
+            CF + "meeting_types:\n  standup:\n    schedule:\n      days: [tue, wed, thu]\n", encoding="utf-8")
+        return v, org, md
+
+    def test_a_child_project_does_not_inherit_an_ancestors_schedule(self):
+        _v, _org, md = self.child()
+        self.assertEqual(ms.declared(md), {"meetings": [], "problems": [], "file": None})
+        r = script("run_report.py", "allowed", "--dir", md, "--step", "prepare")
+        self.assertEqual(r.returncode, rr.EXIT_NOT_ALLOWED, r.stdout)
+        self.assertEqual(ba.config(md)["schedule_days"], ["tue", "wed", "thu"])
+
+    def test_an_org_meetings_folder_without_its_own_config_reads_the_org(self):
+        _v, org, _md = self.child()
+        weekly = org / "meetings" / "weekly"
+        weekly.mkdir(parents=True)
+        self.assertEqual([e["type"] for e in ms.declared(weekly)["meetings"]], ["weekly"])
+        self.assertEqual(script("run_report.py", "allowed", "--dir", weekly, "--step", "prepare").returncode, 0)
+
+    def test_the_agenda_reads_the_folders_own_declaration_not_the_carry_forward_file(self):
+        # carry_forward declared only at the org; the project's own _ops.yaml declares meetings.
+        v = Path(tempfile.mkdtemp())
+        org = v / "org"
+        md = org / "proj" / "meetings"
+        md.mkdir(parents=True)
+        (org / "_ops.yaml").write_text(CF + self.ORG, encoding="utf-8")
+        (org / "proj" / "_ops.yaml").write_text(
+            "meetings:\n  - type: standup\n    days: [fri]\n    time: \"09:00\"\n", encoding="utf-8")
+        cf = ba.config(md)
+        self.assertEqual(cf["_root"], org)   # carry_forward came from the org's file
+        self.assertEqual([e["type"] for e in cf["meetings"]], ["standup"])
+        self.assertEqual(cf["schedule_days"], ["friday"])
+        # and the project's own config without `meetings:` declares nothing, even though
+        # the file carry_forward came from declares a weekly
+        (org / "proj" / "_ops.yaml").write_text("people: []\n", encoding="utf-8")
+        self.assertEqual(ba.config(md)["meetings"], [])
+
+    def test_durations_are_rendered_in_their_declared_shape(self):
+        e = ms.parse([{"type": "x", "days": ["mon"], "time": "08:30", "duration": "1h30m"}])[0][0]
+        pub = ms.public(e)
+        self.assertEqual((pub["duration"], pub["prepare_lead"], pub["transcript_wait"]), ("1h30m", "45m", "4h"))
+        for k in ("duration", "prepare_lead", "transcript_wait"):
+            self.assertEqual(ms.duration(pub[k]), e[k])
 
     def test_absent_is_not_declared(self):
         _v, _p, md = vault(CF)
@@ -477,6 +535,109 @@ class Apply(unittest.TestCase):
         r = script("run_report.py", "apply", self.proj, "--write")
         self.assertEqual(r.returncode, rr.EXIT_REFUSED)
         self.assertEqual((self.proj / "CHANGELOG.md").read_text(encoding="utf-8"), self.CHANGELOG)
+
+
+class ApplyFailures(unittest.TestCase):
+    """Review fixes: a failure part-way never leaves a change applied but unrecorded, and a
+    second run never applies the same change twice."""
+
+    CHANGELOG = Apply.CHANGELOG
+
+    def setUp(self):
+        self.v, self.proj, self.md = vault(CF + STANDUP)
+        (self.proj / "CHANGELOG.md").write_text(self.CHANGELOG, encoding="utf-8")
+        (self.proj / "_tasks.yaml").write_text(Apply.TASKS, encoding="utf-8")
+
+    def report(self, changes, step="process"):
+        f = self.v / f"p-{step}.yaml"
+        f.write_text(yaml.safe_dump(changes, sort_keys=False), encoding="utf-8")
+        r = script("run_report.py", "write", "--dir", self.md, "--step", step, "--date", "261119",
+                   "--proposed", f)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        return self.proj / ".runs" / f"261119-{step}-standup.md"
+
+    INSERT = {"file": "CHANGELOG.md", "op": "insert_before", "anchor": "## [2026-11-16]",
+              "text": "## [2026-11-19]\n- y\n"}
+
+    def test_a_create_into_a_missing_folder_is_refused_and_nothing_is_written(self):
+        rp = self.report([self.INSERT, {"file": "newdir/261119-note.md", "op": "create", "text": "x\n"}])
+        before = snapshot(self.v)
+        for _ in range(2):
+            r = script("run_report.py", "apply", self.proj, "261119", "--write")
+            self.assertEqual(r.returncode, rr.EXIT_REFUSED, r.stdout + r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+            self.assertIn("does not exist", r.stdout)
+        self.assertEqual(snapshot(self.v), before)
+        self.assertEqual(rr.read_report(rp)["applied"], [])
+
+    def test_a_write_failing_part_way_records_what_landed_and_never_duplicates(self):
+        rp = self.report([self.INSERT, {"file": "_tasks.yaml", "op": "append", "text": "- id: t2\n  task: n\n"}])
+        real = rr.os.replace
+        calls = []
+
+        def flaky(src, dst):
+            calls.append(Path(dst).name)
+            if Path(dst).name == "_tasks.yaml":
+                raise OSError("disk full")
+            return real(src, dst)
+
+        with mock.patch.object(rr.os, "replace", side_effect=flaky), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            code = rr.main(["apply", str(self.proj), "261119", "--write"])
+        self.assertEqual(code, rr.EXIT_REFUSED, out.getvalue())
+        self.assertIn("could not be written", out.getvalue())
+        self.assertEqual(rr.read_report(rp)["applied"], [1])
+        self.assertEqual((self.proj / "_tasks.yaml").read_text(encoding="utf-8"), Apply.TASKS)
+        self.assertEqual([p.name for p in self.proj.iterdir() if p.name.endswith(".tmp")], [])
+        # The second run applies only what is left: the changelog block appears once.
+        r = script("run_report.py", "apply", self.proj, "261119", "--write")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertEqual((self.proj / "CHANGELOG.md").read_text(encoding="utf-8").count("## [2026-11-19]"), 1)
+        self.assertEqual(rr.read_report(rp)["applied"], [1, 2])
+
+    def test_only_is_scoped_to_a_report_when_two_are_pending(self):
+        a = self.report([self.INSERT], step="prepare")
+        b = self.report([{"file": "_tasks.yaml", "op": "append", "text": "- id: t2\n  task: n\n"}])
+        r = script("run_report.py", "apply", self.proj, "261119", "--only", "1")
+        self.assertEqual(r.returncode, rr.EXIT_REFUSED, r.stdout)
+        self.assertIn("ids are per report", r.stdout)
+        r = script("run_report.py", "apply", self.proj, "261119", "--only", f"{b.stem}#1", "--write")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((rr.read_report(a)["applied"], rr.read_report(b)["applied"]), ([], [1]))
+        self.assertEqual((self.proj / "CHANGELOG.md").read_text(encoding="utf-8"), self.CHANGELOG)
+
+    def test_a_bad_only_is_refused_not_a_traceback(self):
+        self.report([self.INSERT])
+        for bad in ("x", "nosuch#1"):
+            r = script("run_report.py", "apply", self.proj, "261119", "--only", bad)
+            self.assertEqual(r.returncode, rr.EXIT_REFUSED, r.stdout + r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+
+    def test_a_damaged_report_is_named_and_skipped(self):
+        rp = self.report([self.INSERT])
+        good = rp.read_text(encoding="utf-8")
+        for damaged in (good.replace("file: CHANGELOG.md", "fil: CHANGELOG.md"),
+                        good.replace("run_report: 1", "run_report: 1\n  : : ["),
+                        good[:good.index("proposed:")]):
+            rp.write_text(damaged, encoding="utf-8")
+            r = script("run_report.py", "apply", self.proj, "261119", "--write")
+            self.assertEqual(r.returncode, rr.EXIT_NOTHING, r.stdout + r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+            self.assertIn(rp.name, r.stdout)
+        self.assertEqual((self.proj / "CHANGELOG.md").read_text(encoding="utf-8"), self.CHANGELOG)
+
+    def test_an_open_question_with_brackets_is_read_whole(self):
+        f = self.md / "261119-summary-standup.md"
+        f.write_text("Owner [OPEN: see [the plan](x.md) -- Alex or Alice?] here\n", encoding="utf-8")
+        self.assertEqual(rr.open_markers([f], self.proj)[0]["question"],
+                         "see [the plan](x.md) -- Alex or Alice?")
+
+    def test_the_report_does_not_claim_the_changes_are_applied(self):
+        (self.proj / "_ops.yaml").write_text(CF + STANDUP + "    apply_ledgers: true\n", encoding="utf-8")
+        rp = self.report([self.INSERT])
+        text = rp.read_text(encoding="utf-8")
+        self.assertIn("`apply --write --unattended`", text)
+        self.assertIn("(pending)", text)
 
 
 # ---- the contract and the skill say the same thing -------------------------------------

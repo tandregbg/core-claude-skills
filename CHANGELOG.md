@@ -25,8 +25,9 @@ the run stops at drafts and proposals, and a person applies the rest.
   - **`meetings:`** in the project's config: `type`, `days`, `time`, `timezone`, `duration`,
     `prepare_lead`, `transcript_wait`, `unattended` (`prepare`, `process`; opt-in per step) and
     `apply_ledgers`. **Absent means off.** One reader, `skills/ops/meeting_schedule.py`, resolves it
-    through the normal chain (nearest declaration wins whole, `meetings: []` stops the walk), reports
-    a malformed entry instead of crashing, and never lets a typo in `days` empty the schedule. Its
+    from the folder's own config only -- never inherited from an org or vault layer, so a project
+    beneath an org that declares its weekly gets neither its schedule nor its unattended permission;
+    reports a malformed entry instead of crashing, and never lets a typo in `days` empty the schedule. Its
     `--json` output is the scheduler's arithmetic: start, `prepare_at`, `ready_by`, `transcript_by`.
   - **`/ops orient`** block 1 reads the next session from the declaration -- date, time, type,
     `(declared)`, what may run unattended -- instead of inferring it from the newest note.
@@ -45,11 +46,14 @@ the run stops at drafts and proposals, and a person applies the rest.
   - **`/ops apply <folder> [YYMMDD]`** shows a report's pending ledger changes and writes them on
     confirmation -- four operations only (`insert_before`, `insert_after`, `append`, `create`), all or
     nothing, a YAML ledger re-parsed before anything is written, never into a dot-folder or out of the
-    vault -- then records them as applied so none is applied twice. The interactive session is where
+    vault, never into a folder that does not exist -- each file staged beside its target and renamed
+    into place, and recorded as applied file by file as it lands, so none is applied twice even after
+    a failure part-way. Ids are per report: with two reports pending, `--only` takes `<report>#<id>`.
+    A damaged report is named and skipped, never a traceback. The interactive session is where
     shared files are edited, so two writers never touch the same ledger at once.
 
   Unchanged: the attended path in every step; nothing in this suite sends; the read restriction on raw
-  transcripts. 47 new tests.
+  transcripts. 58 new tests.
 
 ## [1.96.1] - 2026-11-05
 

@@ -469,9 +469,10 @@ task_attributes:
 # A scheduler outside this suite can START a step at a fixed time; it cannot decide what a run
 # may do with nobody there. That is this suite's to say, because it owns what the files mean.
 # Three series wrote their meeting time in three shapes and nothing could read all three, so
-# the declaration is one block in the project's config (ops_config schema 1.8), resolved
-# through the normal chain -- nearest `meetings:` wins whole, `meetings: []` stops the walk --
-# by one reader, skills/ops/meeting_schedule.py.
+# the declaration is one block in the project's config (ops_config schema 1.8), read from the
+# folder's OWN config only (the first directory walking up that holds a config file) -- never
+# inherited from an org or vault layer, `meetings: []` declares none -- by one reader,
+# skills/ops/meeting_schedule.py.
 meetings:
   config_key: meetings
   absent: "off -- a series without `meetings:` is never touched by a scheduler, and every reader behaves as before"

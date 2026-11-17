@@ -850,7 +850,8 @@ scheduler outside this suite, never by a person who is present. A skill cannot s
 suite owns is what such a run **may do**, because it owns what the files mean.
 
 **Absent means off.** A run is allowed only where the series declares it, in `meetings:` (ops-config
-schema 1.8), resolved through the normal config chain:
+schema 1.8), in the folder's **own** config -- the first directory walking up that holds
+`.claude/ops-config.yaml` or `_ops.yaml`. An org's declaration never reaches a project beneath it:
 
 ```
 python3 ~/.claude/skills/ops/run_report.py allowed --dir <project>/meetings --step prepare [--type standup]
@@ -933,17 +934,23 @@ date, or the newest date with any -- and **shows them before anything is written
 python3 ~/.claude/skills/ops/run_report.py apply <folder> [YYMMDD]            # shows, writes nothing
 python3 ~/.claude/skills/ops/run_report.py apply <folder> [YYMMDD] --write    # after confirmation
 python3 ~/.claude/skills/ops/run_report.py apply <folder> [YYMMDD] --only 1,3 --write
+python3 ~/.claude/skills/ops/run_report.py apply <folder> 261119 --only 261119-prepare-standup#1 --write
 ```
+
+Change ids are numbered per report: bare ids are accepted only when one report is pending; with more
+than one, name the report (`<report>#<id>`), or `--only` is refused.
 
 1. Answer the report's `[OPEN]` questions first. A change that depended on one may need editing in the
    summary before it is applied -- or leaving out with `--only`.
 2. Show the changes and ask. **Write only on confirmation.**
 3. `--write` computes every change in memory first and **writes nothing if any fails**: an anchor
    missing or present more than once, a YAML ledger that would no longer parse, a `create` over an
-   existing file, a path into a dot-folder or outside the vault. A file changed since the run is named
+   existing file or into a folder that does not exist, a path into a dot-folder or outside the vault.
+   A report that no longer parses is named and skipped, never a crash. A file changed since the run is named
    and still applied by its anchor.
-4. It writes exactly the proposed text, and nothing else, then records in the report which changes were
-   applied, when and by whom -- so the same change is never applied twice.
+4. It writes exactly the proposed text, and nothing else -- each file staged beside its target and
+   renamed into place -- and records in the report which changes were applied, when and by whom, file
+   by file as each lands -- so the same change is never applied twice, not even after a failure part-way.
 
 **Never edit a run report by hand to change what is applied**; propose again from the summary instead.
 
