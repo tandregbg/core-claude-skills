@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-17) |
+| **Status** | **Implemented** v1.97.0, contract 51 (2026-11-17) |
 | **Contract** | New: `meetings:` in a project's ops config — when a recurring meeting happens and what may run around it. Additive; a reader that ignores it reads what it read before |
 | **Date** | 2026-11-17 |
 | **Area** | `ecosystem.yaml` (`meetings` schema), `ops` (`prepare`, the process path, a new `apply` step, `orient` block 1), `build_agenda.py` / `project_brief.py` (read the declaration) |
@@ -98,3 +98,27 @@ run cleanly for a while — trust that is earned, per series, in config, not ass
   ledger written.
 - An existing file at an output path: the run stops and reports it; the file is unchanged.
 - `apply` writes exactly the proposed changes and nothing else.
+
+## As implemented (v1.97.0)
+
+- **The reader** is `skills/ops/meeting_schedule.py`: `declared()` resolves `meetings:` through the
+  config chain (project, `_ops.yaml` walking up, `_config/base.yaml`), nearest declaration taken whole,
+  `meetings: []` stopping the walk. Defaults where a field is absent: `duration` 30m, `prepare_lead`
+  45m, `transcript_wait` 4h, `timezone` the machine's own zone, `unattended` nothing, `apply_ledgers`
+  false. A malformed entry is a reported problem, never a crash; an unknown day or step is dropped and
+  reported. `build_agenda.py` re-exports its config-file pair from here, and reads the declared days
+  where `schedule_days`/`meets` are absent -- ahead of the older `meeting_types.<type>.schedule`.
+- **`orient`** prints `next session    <YYMMDD> <HH:MM> <type> (declared)`, an `unattended` line and
+  any declaration problem; `--now` was added so the line can be tested. Absent, the output is as before.
+- **The unattended differences that can be checked are in scripts**, the rest in SKILL.md:
+  `run_report.py allowed` (permission from the declaration), `guard` (existing output stops the run),
+  `write` (the report in `<project>/.runs/`, collecting `[OPEN: ...]` markers and `## Fetch problems`,
+  reporting undated files and non-draft outbox status), and `build_agenda.py --unattended` (the whole
+  agenda set checked before writing; a mandatory `## Fetch problems` block on the card).
+- **`/ops apply`** is `run_report.py apply`: shows by default, `--write` after confirmation, `--only`
+  for a subset, `--unattended` for a run applying its own proposals (refused unless `apply_ledgers:
+  true`). Four operations; all or nothing; YAML ledgers re-parsed; dot-folders and paths out of the vault
+  refused; applied ids recorded in the report.
+- **Tests:** `tests/test_cr179_unattended.py`, 47 tests, one class per bullet of the Tests section.
+- **[H] Not run against a live series.** The scheduler (vault-tools CR-009) does not exist yet; the
+  unattended path has run only in the test vaults.

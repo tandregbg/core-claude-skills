@@ -96,7 +96,11 @@ def is_compact(cf: dict) -> bool:
 # folder-level one. Named once so a reader that walks the chain itself (`hygiene_check`)
 # cannot drift from the order `config()` resolves -- the two disagreeing would mean a key
 # the agenda reads from one file and the lint reads from another.
-CONFIG_FILES = (Path(".claude") / "ops-config.yaml", Path("_ops.yaml"))
+# CR-179: declared in meeting_schedule.py and re-exported here, so the reader of `meetings:`
+# walks the same pair in the same order.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import meeting_schedule  # noqa: E402
+CONFIG_FILES = meeting_schedule.CONFIG_FILES
 
 
 def external(start: Path) -> dict:
@@ -191,6 +195,16 @@ def config(meetings: Path) -> dict:
             # already declares it behaves exactly as before.
             if not cf.get("schedule_days") and cf.get("meets"):
                 cf["schedule_days"] = cf["meets"]
+            # CR-179: a declared `meetings:` schedule answers the same question. It comes
+            # AFTER schedule_days and meets, so a config that declares those behaves exactly
+            # as before, and BEFORE the older meeting_types.<type>.schedule shape it exists
+            # to replace. The union of the declared days, because one folder's agenda serves
+            # every declared occurrence of its series.
+            cf["meetings"] = meeting_schedule.declared(meetings)["meetings"]
+            if not cf.get("schedule_days") and cf["meetings"]:
+                cf["schedule_days"] = sorted({meeting_schedule.DAY_NAMES[i]
+                                              for m_ in cf["meetings"] for i in m_["days"]},
+                                             key=meeting_schedule.DAY_NAMES.index)
             if not cf.get("schedule_days"):
                 mt = (d.get("meeting_types") or {}).values()
                 sched = next((m.get("schedule", {}).get("days") for m in mt
@@ -200,6 +214,7 @@ def config(meetings: Path) -> dict:
             return cf
     return {"note_suffix": "daily-standup", "agenda_suffix": "agenda-daily-standup",
             "escalate_after": 3, "escalate_after_days": 14, "people": [],
+            "meetings": meeting_schedule.declared(meetings)["meetings"],   # CR-179
             "ext": external(meetings.parent),
             "_root": meetings.parent}
 
@@ -2983,6 +2998,15 @@ def next_session(yymmdd: str, days: list[str] | None) -> str:
     return d.strftime("%y%m%d")
 
 
+def agenda_set(cf: dict, md: Path, target: str) -> list[Path]:
+    """CR-179: every file one build may write for `target` -- the agenda, its details file,
+    the facilitator document and both posts. An unattended run refuses if any exists."""
+    suf = cf["agenda_suffix"]
+    return [md / f"{target}-{suf}.md", md / details_name(cf, target),
+            md / facilitator_name(cf, target),
+            md / f"{target}-teams-{suf}.txt", md / f"{target}-teams-{suf}.md"]
+
+
 def default_target(now: datetime.date, hist: list[tuple[str, Path]] | None = None,
                    days: list[str] | None = None) -> str:
     """CR-139: the date an agenda is for when the caller does not say.
@@ -3506,6 +3530,11 @@ def main() -> None:
                     help="CR-140: print one table of source states and exit non-zero on any stale "
                          "or missing source. Seconds, not the full build's minutes: no repository "
                          "read beyond one status call per declared report")
+    ap.add_argument("--unattended", action="store_true",
+                    help="CR-179: a run with nobody there. Writes new files only -- refuses when ANY "
+                         "file of the agenda set already exists, not only the agenda -- and the "
+                         "card carries a '## Fetch problems' block whenever a declared source's "
+                         "fetch record is not ok")
     a = ap.parse_args()
 
     md = Path(a.dir).resolve()
@@ -3562,6 +3591,13 @@ def main() -> None:
                     for n, g, f in [streak(key(l), hist)]),
                    key=lambda t: (-t[2], -t[4]))
     out = md / f"{target}-{cf['agenda_suffix']}.md"
+    if a.unattended:
+        # CR-179: an unattended run creates new dated files and edits none. The attended
+        # guard below checks the agenda alone, so a details file or a post left from an
+        # earlier run would be overwritten silently -- acceptable with a person watching,
+        # not without one. Nothing is written when any of the set exists.
+        if (taken := [p_.name for p_ in agenda_set(cf, md, target) if p_.exists()]):
+            sys.exit("unattended run stopped -- output exists, nothing written: " + ", ".join(taken))
     if out.exists():
         sys.exit(f"{out.name} exists -- delete it first if you mean to regenerate")
 
@@ -3708,6 +3744,10 @@ def main() -> None:
         # which is what the reader needs in order to decide whether to read on.
         L += [f"> ⚠ **Fetch failed — {'; '.join(ff)}.** What follows is the last good data for that"
               " source, not today's.", ""]
+        if a.unattended:
+            # CR-179: with nobody there to read the header line and act on it, the block is
+            # mandatory and on the card itself -- the run report lists it from here.
+            L += ["## Fetch problems", ""] + [f"- {x}" for x in ff] + [""]
     # CR-147, proposal 2: a line that leaves the card leaves a trace where every reader
     # passes. The agenda's own rule is that a machine which closes items silently is
     # worse than one that repeats them, so the ids go in the header and the basis and

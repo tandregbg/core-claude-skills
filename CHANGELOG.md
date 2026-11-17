@@ -7,6 +7,50 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.97.0] - 2026-11-17
+
+**Contract 51.** A series can declare when it meets and what may run around it with nobody there;
+the run stops at drafts and proposals, and a person applies the rest.
+
+### Added
+
+- **CR-179 -- `meetings:` and `/ops` unattended (`ecosystem.yaml`, `ops`, `ops-config` schema 1.8,
+  contract 51, additive).** Recurring series ran the same loop by hand every day they met -- fetch,
+  prepare, finish the card, stage, meet, process, recap, stage -- and most of it was already
+  deterministic. A companion scheduler can start a step at a fixed time; what it cannot decide is
+  what a run may do with nobody there, and that is this suite's to say because it owns what the files
+  mean. Two gaps made it impossible: the series wrote their meeting time in three shapes nothing could
+  read together, and every step assumed someone answers.
+
+  - **`meetings:`** in the project's config: `type`, `days`, `time`, `timezone`, `duration`,
+    `prepare_lead`, `transcript_wait`, `unattended` (`prepare`, `process`; opt-in per step) and
+    `apply_ledgers`. **Absent means off.** One reader, `skills/ops/meeting_schedule.py`, resolves it
+    through the normal chain (nearest declaration wins whole, `meetings: []` stops the walk), reports
+    a malformed entry instead of crashing, and never lets a typo in `days` empty the schedule. Its
+    `--json` output is the scheduler's arithmetic: start, `prepare_at`, `ready_by`, `transcript_by`.
+  - **`/ops orient`** block 1 reads the next session from the declaration -- date, time, type,
+    `(declared)`, what may run unattended -- instead of inferring it from the newest note.
+    `build_agenda.py` reads the declared days where `schedule_days`/`meets` are not set.
+  - **`--unattended` for `prepare` and the process path**, with four differences from the attended
+    path: a question is written as `[OPEN: <question>]` where it arises and listed first in the run
+    report; outbox status is always `draft`; shared ledgers are proposed, not written, unless
+    `apply_ledgers: true`; and only new dated files are created -- an existing file at an output path
+    stops the run. `build_agenda.py --unattended` refuses when any file of the agenda set exists (the
+    attended guard checks the agenda alone) and puts a `## Fetch problems` block on the card whenever a
+    declared source's fetch record is not ok.
+  - **The run report** (`skills/ops/run_report.py write`): open questions, fetch problems, files
+    written, ledger changes proposed, and any undated file or non-draft outbox status it finds. Kept
+    in `<project>/.runs/` as a new dated file and printed as the session's final output, so the
+    scheduler can forward it.
+  - **`/ops apply <folder> [YYMMDD]`** shows a report's pending ledger changes and writes them on
+    confirmation -- four operations only (`insert_before`, `insert_after`, `append`, `create`), all or
+    nothing, a YAML ledger re-parsed before anything is written, never into a dot-folder or out of the
+    vault -- then records them as applied so none is applied twice. The interactive session is where
+    shared files are edited, so two writers never touch the same ledger at once.
+
+  Unchanged: the attended path in every step; nothing in this suite sends; the read restriction on raw
+  transcripts. 47 new tests.
+
 ## [1.96.1] - 2026-11-05
 
 ### Fixed

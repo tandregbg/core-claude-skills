@@ -107,7 +107,8 @@ class Contract(unittest.TestCase):
     def test_contract_declares_the_cr(self):
         eco = yaml.safe_load((ROOT / "ecosystem.yaml").read_text(encoding="utf-8"))
         self.assertGreaterEqual(eco["contract_version"], 44)
-        self.assertEqual(eco["schemas"]["ops_config"], "1.7")
+        # CR-127 introduced 1.7; later additive bumps (CR-179: 1.8) must not fail this test.
+        self.assertGreaterEqual(tuple(int(x) for x in eco["schemas"]["ops_config"].split(".")), (1, 7))
         self.assertEqual(eco["schemas"]["tasks"], 2)
 
 
