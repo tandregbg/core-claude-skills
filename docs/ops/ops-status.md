@@ -1,6 +1,6 @@
 # Ops status — core-skills: what is released, what is configured, what waits
 
-**Last verified: 2026-11-17 (release 1.97.0 / contract 51, CR-179, read back on its own worktree branch: `README.md` **Version** 1.97.0, `ecosystem.yaml` 1.97.0 / 51, first `CHANGELOG.md` entry `[1.97.0]`, test suite run in full. **Not re-checked today:** the hosts, Marvin and the live landing page -- the readings below stand for those, and the landing page and Marvin now trail by one contract)**
+**Last verified: 2026-11-20 (release 1.97.1 / contract 51 unchanged, CR-181: `README.md` **Version** 1.97.1, `ecosystem.yaml` 1.97.1 / 51, first `CHANGELOG.md` entry `[1.97.1]`, alignment check run -- 5 aligned, 2 drifted: Marvin's CLAUDE.md and the live landing page still at 1.96.0 / contract 50, unchanged by this release. **Not re-checked today:** the hosts)**
 
 This is core-skills' own board: what is released, what is configured, what waits and on whom, for this product
 only. core-skills is a sibling product family, not a Deep Thought component; Deep Thought's cross-product board and
@@ -16,7 +16,7 @@ version rows in A, and any row the release closes or opens. Then re-stamp the "L
 
 | Item | State | Next step | Who | Since | Source |
 |---|---|---|---|---|---|
-| core-skills release | **1.97.0** (2026-11-17), contract **51** -- CR-179: `meetings:` declares when a series meets and what may run unattended; `--unattended` for `prepare` and processing stops at drafts, `[OPEN]` markers and proposed ledger changes; `/ops apply` writes them from the attended session. Since 1.95.0: **1.96.0** (CR-178, contract 50) and **1.96.1** (CR-173). Committed on a branch, **not merged or pushed** by the session that made it | Merge, push, tag | The maintainer | 2026-11-17 | [CHANGELOG](../../CHANGELOG.md) |
+| core-skills release | **1.97.1** (2026-11-20), contract **51** -- CR-181: the survey table view is the only task-review surface (regenerated before use, grouping from the venture map, no parallel files, reviewing is never an entry) and *validate before write* for register edits. Docs only, no script changed. Before it: **1.97.0** (CR-179, `meetings:` and `/ops` unattended) | -- | The maintainer | 2026-11-20 | [CHANGELOG](../../CHANGELOG.md) |
 
 | Ecosystem contract | `contract_version` **51** from 1.97.0 (CR-179: the `meetings` block, ops_config schema 1.8, the run report in `<project>/.runs/`, `apply` among the `/ops` subcommands). 50 was CR-178 (`feedback_steps`). Both additive. The live landing page and Marvin were last read at 49/50 and need the usual rebuild and tracking note | Rebuild the landing page; Marvin's tracking note for 51 | The maintainer | 2026-11-17 | [`ecosystem.yaml`](../../ecosystem.yaml) |
 

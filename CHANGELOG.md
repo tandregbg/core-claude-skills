@@ -7,6 +7,23 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.97.1] - 2026-11-20
+
+**Contract 51 (unchanged).** One surface for reviewing tasks, and no save of a broken task file.
+
+### Changed
+
+- **CR-181 -- `/inbox`: one review surface for tasks (`inbox`, `ops-base`, `tasks`).** The survey
+  table view is now the **only** place a task review happens: regenerated before every review, the
+  grouping taken from the venture map (never rebuilt, never derived from `context`), a subset is a
+  filter or a list of ids into the view rather than a new file, and reviewing is never itself an
+  entry in the register. Removing entries that stopped being actionable from an external task app is
+  the companion sync tool's job. Prompted by two ad-hoc dated audit files in two days, both archived.
+- **Validate before write (`ops-base`, *Editing YAML files*; pointer in `tasks`).** A targeted edit to
+  a register is parsed as new text before it is saved, and a parse error refuses the save -- extends
+  CR-096's re-read-after-writing from catching a broken file to preventing it. The failure it stops: a
+  `notes:` item appended after an entry's last key instead of inside its `notes:` list.
+
 ## [1.97.0] - 2026-11-17
 
 **Contract 51.** A series can declare when it meets and what may run around it with nobody there;

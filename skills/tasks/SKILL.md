@@ -103,6 +103,9 @@ next_id: 2
   and do not write the entry if it exits 1 (it prints `[REFUSED]` lines; ask for a corrected value instead).
   The check is a script, not an instruction to remember: any writer (the add flow, transcript task extraction, an inbox importer) calls it.
   Only the author knows the venture then; `/ops check` reports the rest and never rewrites.
+- **Validate the file before saving it (CR-181):** every change to a `_tasks.yaml` -- status, date, a
+  note -- is parsed as new text before the save, and a parse error refuses the save. Notes go *inside*
+  the entry's `notes:` list. Full rule: `ops-base`, *Editing YAML files*.
 - **The enums are checked (CR-122):** `/ops check` reports a missing `task` (often written as `title`), a
   `status`, `priority`, `source.type`, `scope` or `kind` outside the declared values. Report only.
 

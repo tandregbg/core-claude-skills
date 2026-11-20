@@ -335,6 +335,26 @@ called `Ålder`.
 decides nothing. A check that the file holds as many rows as the ledger has open
 entries would be cheap, but it is a separate decision and does not exist.
 
+#### Reviewing tasks -- one surface, never a parallel file (CR-181)
+
+CR-138 made the audit generated; this makes it the **only** place a task review happens.
+In two consecutive sessions an assistant ignored the existing view and built its own --
+first a dated "overdue audit" grouped by areas it derived from the free-text `context`
+field, the next day a second dated file of only the entries stale in the external mirror.
+The operator archived both the same day.
+
+| Rule | What it means |
+|---|---|
+| **One surface** | Overdue, clean-up, undated, stale-in-the-mirror -- every task review is done in the `--table --markdown` view. **Never create a dated audit or selection file for tasks.** A subset is a filter on the view (or a list of ids pointing into it), not a new file |
+| **The grouping is given** | Venture -> project -> entry, from the venture map. It is never rebuilt by hand and never derived from `context` |
+| **Regenerate before every review** | Run the view immediately before it is used and state its generation time first. A view older than the last register change is not reviewed |
+| **Reviewing is never a task** | A review is a conversation -- spoken, or written in the `Godta` column -- whose decisions are then applied to the register. Do not add "go through the task view" as an entry |
+| **The mirror is a companion's job** | Which entries an external task app carries, and removing the ones that stopped being actionable, belong to the companion sync tool, not to the review. Decide in the view; let the tool make the mirror follow |
+
+Other audits (meetings over a period, a vault sweep, the outbox) keep their own dated
+files while active; this rule is about task review only. Writing the decisions back
+follows **Editing YAML files** in `ops-base`, including *validate before write*.
+
 ### `/inbox help` -- Usage Guide
 
 Print this usage guide:

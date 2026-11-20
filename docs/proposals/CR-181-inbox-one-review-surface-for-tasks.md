@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-20) |
+| **Status** | **Implemented v1.97.1** (2026-11-20, proposed and implemented the same day) |
 | **Contract** | No schema change. Documents an existing view (`survey.py --table --markdown`) as the **only** surface for reviewing tasks, adds two rules (regenerate before review; validate the register before every write) and one prohibition (no ad-hoc selection files) |
 | **Date** | 2026-11-20 |
 | **Area** | `skills/inbox/SKILL.md` (the survey section), `skills/tasks/SKILL.md` (write rule), `ops-base` (pointer) |
@@ -79,3 +79,7 @@ sweep, outbox) keep their dated files; this CR is about task review only.
 1. A session asked to "go through overdue tasks" regenerates the view and works in it; no new file. **[H]**
 2. A session asked for "only the ones stale in the mirror" filters the view; no new file. **[H]**
 3. A deliberately misplaced notes item is refused before save. **[H]**
+
+## Outcome (2026-11-20)
+
+Implemented as text in `skills/inbox/SKILL.md` (new subsection *Reviewing tasks -- one surface*, under the survey contract), `skills/ops-base/SKILL.md` (*Validate before write*, under *Editing YAML files*) and a pointer in `skills/tasks/SKILL.md`. No script changed: the view already existed; the rule is where it is applied. Verification 1-3 remain **[H]** until observed in a session.

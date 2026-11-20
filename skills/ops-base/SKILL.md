@@ -438,6 +438,14 @@ person wrote. Where a full write is unavoidable (a migration), use
 count of `å/ä/ö`, and comments kept or their loss reported. `/ops check` reports re-dump signatures
 (`hygiene_check.py`, kind `yaml`).
 
+**Validate before write (CR-181).** A targeted edit is built as new text in memory, **parsed**, and
+saved only if the parse succeeds -- a parse error refuses the save and leaves the file as it was.
+CR-096's *re-read after writing* catches a positional error; this prevents the broken file from
+existing. The common failure it stops: a `notes:` item appended after an entry's last key instead of
+inside the entry's `notes:` list, which breaks the whole register. Insert into the list, after its last
+item; if the entry has no `notes:` list, add one. Where `notes` is a scalar or block string, do not
+turn it into a list -- add the remark in a way the existing type allows, or ask.
+
 ---
 
 ## OUTPUT INSTRUCTIONS
