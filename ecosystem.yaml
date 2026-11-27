@@ -12,6 +12,16 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 52 (CR-180 + CR-182, 2026-11-27, v1.98.0): two READING SURFACES for a person,
+#   and the folders every walk skips declared in one place. `_callcards/` (one generated card per
+#   contact) and `_toread/` (reading copies of material written for the user to go through) carry
+#   an underscore so a phone can pin them, which a dot-folder cannot -- and that underscore is what
+#   makes a dot-only filter walk into them. New convention `walk_skip` lists every blocked folder;
+#   `skills/ops-base/walk_skip.py` reads it and every script walk uses it. Also CR-182's routing:
+#   a contact folder holds the relationship, not the work; `_outbox/` holds what leaves; and an
+#   optional `vault_conventions.binary_archive` per venture (extends CR-170). Additive: a reader
+#   at 51 that ignores the new keys walks two more folders than it should, nothing else.
+#
 # contract_version 51 (CR-179, 2026-11-17, v1.97.0): `meetings` declares when a recurring
 #   meeting happens and what may run around it with nobody there. Additive: the block is read
 #   from a project's config (ops_config schema 1.8), absent means off, and a reader that
@@ -404,8 +414,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 51
-core_skills_version: "1.97.1"
+contract_version: 52
+core_skills_version: "1.98.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -906,6 +916,25 @@ vault_conventions:
       readers: ["user (explicit request only)", "/handoff read"]
       lifecycle: "written once, never updated, never archived, never indexed; ALL other skills must skip this folder entirely — no parse, index, summarise, sweep or lint"
 
+    # CR-180 and CR-182: two views for a PERSON, read on a phone. Underscore, not dot, because a
+    # dot-folder is hidden in the editor and the phone's file app and cannot be pinned -- so the
+    # structural isolation of generated_view_isolation is given up deliberately and replaced by
+    # the walk_skip convention below. Both are BLOCKED for skills exactly as .handoff/ is.
+    - path: "_callcards/"
+      purpose: "One short card per contact folder, read in a minute before the next conversation: situation, what to do and say, what NOT to say (copied from the strategy document, never inferred), what to ask, what is open by task id. _index.md is the cross-section of who is next (CR-180)"
+      schema: null  # five fixed headings: situation, do_say, do_not_say, ask, open; at most 15 bullets per person
+      writers: ["a vault-side renderer only (never a skill, never by hand)"]
+      readers: ["user only"]
+      naming: "<contact-folder-name>.md, lower-cased; never a YYMMDD- prefix or a role keyword"
+      lifecycle: "regenerated from its sources; a card that disagrees with its strategy document is stale and the strategy wins; cards out of the window move to .archive/; BLOCKED for skills -- no parse, index, summarise, sweep, lint or insight extraction (walk_skip)"
+
+    - path: "_toread/"
+      purpose: "Reading surface: copies of material written for the user to go through -- a review, a reflection, a decision basis, a meeting card -- in one place visible on a phone. _index.md lists what is waiting (CR-182)"
+      schema: null  # each copy opens with one line pointing at its source; the source stays in its home and wins on conflict
+      writers: ["any skill or session, in the same step as the material it copies"]
+      readers: ["user only"]
+      lifecycle: "a copy per item, never the original; read -> the copy moves to .archive/ and anything the user wrote in it is carried back to the source; BLOCKED for skills -- no parse, index, summarise, sweep, lint or insight extraction (walk_skip). Not _outbox/ (nothing leaves the vault) and not .handoff/ (a different session, invisible on a phone)"
+
     # CR-085: declared, late. The folder has been in use and read-blocked since the
     # transcript skill's Step 2.5, and the rules block already names it as a surface
     # folder walks must skip — but it was never a declared path, so a loop step naming
@@ -1160,7 +1189,7 @@ vault_conventions:
 
     - id: "singleton_surfaces"
       level: invariant
-      surfaces: ["INDEX.md", "CONTEXT.md", "_inbox/", "_outbox/", "_config/", ".handoff/", ".knowledge/", ".transcripts/", ".ephemeral/"]
+      surfaces: ["INDEX.md", "CONTEXT.md", "_inbox/", "_outbox/", "_config/", ".handoff/", ".knowledge/", ".transcripts/", ".ephemeral/", "_callcards/", "_toread/"]
       rule: "The test for singleton status is stronger than counting instances: would a SECOND, FOLDER-SCOPED instance defeat the reason the surface exists? (CR-036). .handoff/ is outward-facing, self-carrying and holds no vault links (CR-033) — a scoped copy would make the snapshot inherit a context it is built to survive without. .knowledge/ synthesises ACROSS sources with INDEX.md as the single entry point (CR-027) — a scoped copy would prevent the cross-source synthesis that justifies the layer. RESOLVED 260907: .transcripts/ and .ephemeral/ are now singleton. Both had scoped copies — .transcripts/ one level down (consolidated to root under human authorisation, with relative links repaired in the same operation) and .ephemeral/ in three places (all empty, removed). Read-blocked content is only ever relocated on explicit human instruction, never by a skill acting on its own; the link repair is part of the same operation because a moved read-blocked file whose references still point at the old path is worse than the duplication it fixed."
 
     - id: "changelog_readme_conditions"
@@ -1195,8 +1224,14 @@ vault_conventions:
       level: invariant
       rule: "Dot surfaces are of two kinds and skills must treat the second as a typed category, not a list of names. DORMANT (.archive/, .notes/, .ephemeral/, .analytics/): present, rarely read, safe to read on demand. BLOCKED — read access itself is constrained: .transcripts/ = read-block, never read back unattended and never quoted into summaries or insights; .handoff/ = total block, untouched by ops/insights/analytics/sweep/lint/normalize, never indexed, read only when named (CR-033). A new blocked surface must inherit the behaviour without patching each skill. NOTE: .knowledge/wiki/ is NOT blocked — it is read freely and often. Its constraint is WRITE-side (generated, hand-editing forbidden, owned by /insights synthesize, CR-027), which is a different axis; see prefix_known_exception."
 
+    - id: "walk_skip"
+      level: invariant
+      paths: [".archive/", ".transcripts/", ".handoff/", ".status/", "_callcards/", "_toread/"]
+      rule: "Every folder walk that indexes, counts, summarises, sweeps, lints or extracts insights skips these folders (CR-180, CR-182). Most carry a dot, so a walker that drops every dot-folder skips them already; _callcards/ and _toread/ do not, because they are views for a person read on a phone, and a phone cannot pin a dot-folder. A dot-only filter therefore walks straight into them, and a view read back as source synthesises a view of itself. ONE LIST, READ, NOT COPIED: scripts read it through skills/ops-base/walk_skip.py; skill prose names the list rather than repeating it. A vault may ADD names in its config chain (vault_conventions.walk_skip), e.g. after renaming a surface; it can never remove one. The three guards that replace structural isolation for the underscore surfaces: this declared list, no file in them ever carrying a YYMMDD- prefix or a role keyword (the patterns that leaked .handoff/, CR-033), and one root folder each rather than one per contact."
+
     - id: "generated_view_isolation"
       level: standard
+      exceptions: ["_callcards/"]   # CR-180: read on a phone, which cannot pin a dot-folder; protected by walk_skip instead
       rule: "A generated READ view that lives among its own source material must be isolated STRUCTURALLY, not by a skip flag. Put it in a hidden subfolder (<folder>/.status/current.md) rather than beside the sources as <folder>/_status.md. Reason: CR-033 found four skills reaching .handoff/ files despite an explicit skip-list, because they globbed on the YYMMDD- filename prefix rather than consulting the list. A per-folder markdown file among meeting documents is easier to hit by accident than one in a dot-folder. The dot here does not mean rarely read — the user opens it deliberately; it means unreachable by scanners, which is the .knowledge/wiki/ pattern applied at folder scope."
 
     - id: "system_file_language"
@@ -1226,6 +1261,10 @@ vault_conventions:
     - id: "stale_vs_junk"
       level: standard
       rule: "Stale is not junk, and IN TRANSIT is neither (CR-169). Three destinations, one question each, and the question is asked AT THE DROP rather than later by gravity. .archive/: was it current and is now outdated? Kept, never deleted. <inbox>/.files/: does it have a vault destination it has not reached yet? It is in transit, and its age is a promise nobody kept. .ephemeral/: does it have no vault destination at all? It may die, swept after 14 days (CR-024). Deciding at the drop is exactly what makes the sweep safe -- anything allowed to die was declared homeless on arrival; a sweep over material routed by gravity is a guess. BOTH drop zones age, with different meanings, and both declare stale_after_days (default 14) on their vault_root entry; /ops check reports each and says which meaning applies. Measured once on a live vault: .files/ had no ageing rule at all, so nothing in it could ever be late -- it held an entry five weeks past use, and material whose real owner was another repository and which belonged in .ephemeral/ where it would have been swept; .ephemeral/ had 33 of 44 entries past the sweep. The two zones failed in opposite directions, which is what an uncounted rule does."
+
+    - id: "binary_archive"
+      level: guideline
+      rule: "Heavy binaries (slides, screenshots, decks, PDF bundles, video) are archived OUTSIDE the vault and the vault keeps a pointer -- the same exit as audio (CR-170), generalised by CR-182. Where they go is a vault decision, declared in its config chain as an optional map vault_conventions.binary_archive: {personal: <host address>, <venture>: <host address>}. THE DESTINATION FOLLOWS WHOSE WORK THE MATERIAL IS, not whose name it was presented under: a person's own talk given in an employer's name is the person's. Declare the host address, not a machine-local mount point (as for audio). Absent, a skill asks rather than guessing; the prose rule in a vault's CLAUDE.md stays the explanation."
 
     - id: "audio_transcript_pairing"
       level: invariant

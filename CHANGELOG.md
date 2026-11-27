@@ -7,6 +7,44 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.98.0] - 2026-11-27
+
+**Contract 52.** Two reading surfaces for a person, one list of folders every walk skips, and a
+rule for where material goes.
+
+### Added
+
+- **CR-180 -- `_callcards/` declared (`ecosystem.yaml`, `ops-base`).** One short card per contact
+  folder, read in a minute before the next conversation, and `_index.md` as the cross-section of who is
+  next. Written only by a vault-side renderer; blocked for skills. It carries an **underscore** so a
+  phone can pin it -- which gives up the structural isolation of `generated_view_isolation`, now a
+  named exception, and puts a declared skip list in its place.
+- **CR-182 -- `_toread/` declared (`ecosystem.yaml`, `ops-base`, `outbox`).** A reading surface:
+  copies of material written for the user to go through, each opening with a line pointing at its
+  source, which stays in its home and wins. Read -> the copy moves to `.archive/` and what the user
+  wrote in it goes back to the source. Blocked for skills, like `_callcards/`.
+- **`walk_skip` -- one list, read, not copied (`ecosystem.yaml`, new `skills/ops-base/walk_skip.py`).**
+  An invariant convention naming every folder a walk must not enter: `.archive/`, `.transcripts/`,
+  `.handoff/`, `.status/`, `_callcards/`, `_toread/`. A vault may add names
+  (`vault_conventions.walk_skip`), never remove one. Seven script walks that filtered only on a leading
+  dot -- and so would have walked into both new surfaces -- now read the list: `compile_status.py`,
+  `promotion_candidates.py`, `hygiene_check.py`, `themes.py`, `list_projects.py` (both walks) and
+  `resolved.py`. The inline skip lists in `insights`, `transcript`, `ops` and `analytics` name both.
+- **`binary_archive` (`ecosystem.yaml`, `ops-config/schema.md`).** An optional per-venture map of where
+  heavy binaries go, extending CR-170 from audio to slides, decks, screenshots and video. The
+  destination follows whose work the material is, not whose name it was presented under.
+
+### Changed
+
+- **CR-182 -- where material goes (`ops-base`, *Where material goes*).** One question per surface: a
+  contact folder holds the relationship, not the work; the user's own work lives in the venture's
+  project folder with occasions as subfolders, and the contact gets a pointer; prospects live in their
+  own folder; decide at creation.
+- **CR-182 -- `_outbox/` holds what leaves the vault (`outbox`, *Scope*).** Not storage, not a third
+  copy of a publication drafted in an external workspace, and not a reading copy -- that is `_toread/`.
+
+18 new tests (`tests/test_cr180_cr182_walk_skip.py`); each walker test fails when the list is ignored.
+
 ## [1.97.1] - 2026-11-20
 
 **Contract 51 (unchanged).** One surface for reviewing tasks, and no save of a broken task file.

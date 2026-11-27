@@ -1312,7 +1312,7 @@ spelled in code is the same literal one indirection further away.
 `scripts/check-terms.py` rejects any of these values written as a literal in skill code, skill
 prose or a test. The settings file is where they live; nowhere else.
 
-## `vault_conventions:` -- a vault's overrides of the shared contract (CR-170)
+## `vault_conventions:` -- a vault's overrides of the shared contract (CR-170, CR-180, CR-182)
 
 **Optional.** `ecosystem.yaml` carries the contract and its defaults. Where a vault's own
 arrangement differs, it says so here rather than by having someone remember -- and **the vault's
@@ -1321,11 +1321,17 @@ declaration wins over the contract default.**
 ```yaml
 vault_conventions:
   audio_archive: "//<host>/<share>/<path>/"   # where routed audio goes (CR-170)
+  binary_archive:                             # where heavy binaries go, per venture (CR-182)
+    personal: "//<host>/<share>/<personal>/"
+    <venture>: "//<host>/<share>/<venture folder>/"
+  walk_skip: ["_cards/"]                      # extra folders every walk skips (CR-180, CR-182)
 ```
 
 | Key | Means |
 |---|---|
 | `audio_archive` | Where audio goes when its entry is routed. The contract's default is `.archive/.audio/`; a vault whose audio archive lives **outside** the vault declares the real destination here. The contract requires only that a destination exist and that the inbox not be it |
+| `binary_archive` | Where heavy binaries (slides, screenshots, decks, PDF bundles, video) go, one host address per venture plus `personal`. **The destination follows whose work the material is**, not whose name it was presented under. Absent, a skill asks. Same pointer rule as `audio_archive`: the host address, never a mount point |
+| `walk_skip` | Folder names **added** to the contract's `walk_skip` list -- for a vault that renamed `_callcards/` or `_toread/`, or has a view of its own. Additive only: a vault cannot remove a contract name. Read by `skills/ops-base/walk_skip.py` |
 
 **Why a vault would override it.** The shipped default keeps audio inside the vault, which is
 right for a vault that is not synced and wrong for one that is: the raw recording is the source of

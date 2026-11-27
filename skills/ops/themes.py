@@ -51,6 +51,8 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-config"))
 import profiles  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-base"))
+import walk_skip  # noqa: E402  (CR-180/CR-182: the folders every walk skips)
 
 REGISTRY = "_themes.yaml"
 THEME_ID = re.compile(r"\bT\d{2,3}\b")
@@ -71,7 +73,8 @@ def enabled(project: Path) -> bool:
 
 def _walk(root: Path):
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+        dirnames[:] = sorted(d for d in dirnames
+                             if not d.startswith(".") and not walk_skip.skip(d, root))
         for name in sorted(filenames):
             yield Path(dirpath) / name
 

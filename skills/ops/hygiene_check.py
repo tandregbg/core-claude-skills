@@ -95,6 +95,7 @@ import themes as themes_mod  # noqa: E402
 import build_agenda  # noqa: E402
 sys.path.insert(0, str(HERE.parent / "ops-base"))
 import raw_archive  # noqa: E402
+import walk_skip  # noqa: E402  (CR-180/CR-182)
 sys.path.insert(0, str(HERE.parent / "tasks"))
 import task_attributes  # noqa: E402
 
@@ -136,7 +137,8 @@ HEADING = re.compile(r"^#{1,6}\s")
 
 def walk(root: Path):
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+        dirnames[:] = sorted(d for d in dirnames
+                             if not d.startswith(".") and not walk_skip.skip(d, root))
         for name in sorted(filenames):
             yield Path(dirpath) / name
 

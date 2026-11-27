@@ -1528,7 +1528,7 @@ To fix the files: edit manually or re-run /ops on the source transcripts.
 
 ### `check` -- Vault-wide closure/staleness audit (CR-019; was `sweep`)
 
-**Trigger:** `/ops check` with no folder, or `/ops check --vault <scope>` for a subtree (default scope: vault root; depth 6; skip `.archive/`, `.transcripts/`, `.handoff/`, `clones/`, `node_modules/`, `.ephemeral/`)
+**Trigger:** `/ops check` with no folder, or `/ops check --vault <scope>` for a subtree (default scope: vault root; depth 6; skip `.archive/`, `.transcripts/`, `.handoff/`, `_callcards/`, `_toread/`, `clones/`, `node_modules/`, `.ephemeral/`)
 
 Skills append reliably but never reconcile: indexes lag, ledgers rot, migrations leave live-looking corpses, sent outbox items never get archived. Bookkeeping follows attention, not structure -- so nothing catches the abandoned lane until a human stumbles on it. `/ops check` is the missing sweeper: one read-only pass that detects the closure-debt classes and **offers** fixes (report-only by default; every fix is confirmed, never automatic).
 
@@ -1818,7 +1818,7 @@ When `/ops` and `/transcript` both apply, prefer `/ops` -- it is a superset of `
 
 Before parsing the input, load any promoted **rules** from the `_insights.yaml` chain in scope:
 
-1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `.handoff/`, `clones/`).
+1. **Walk up from CWD** collecting `_insights.yaml` files at each level (max depth 6, skip `.archive/`, `.handoff/`, `_callcards/`, `_toread/`, `clones/`).
 2. **Filter to rules:** entries where `confidence: rule` AND `status: active`. **`consensus` is never loaded** (CR-123): it records what independent voices said, not how this session should work. An unknown confidence is read as `hypothesis`, never `rule`.
 3. **Cap to 20 entries** — if more, prefer highest `confirmation_count`, ties broken by most recent confirmation date.
 4. **Build a one-line-per-rule preamble** in the form `[type] summary` and treat it as additional standing instructions for this run. For example:

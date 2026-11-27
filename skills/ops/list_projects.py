@@ -22,7 +22,9 @@ except ImportError:
     sys.exit("needs pyyaml")
 
 TREES = ("_projects", "_products")
-SKIP = {".archive", ".transcripts", ".handoff", "clones", "node_modules"}
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-base"))
+import walk_skip  # noqa: E402  (CR-180/CR-182: the folders every walk skips)
+SKIP = {"clones", "node_modules"} | set(walk_skip.names())
 DATED = re.compile(r"^(\d{6})-.*\.md$")
 
 
@@ -169,7 +171,7 @@ def main() -> None:
     for tree in root.rglob("*"):
         if tree.name not in TREES or not tree.is_dir():
             continue
-        if any(part.startswith(".") for part in tree.relative_to(root).parts):
+        if any(part.startswith(".") or part in SKIP for part in tree.relative_to(root).parts):
             continue
         for d in sorted(tree.iterdir()):
             if not d.is_dir() or d.name.startswith("."):
