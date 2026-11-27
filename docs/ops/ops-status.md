@@ -1,6 +1,6 @@
 # Ops status — core-skills: what is released, what is configured, what waits
 
-**Last verified: 2026-11-27 (release 1.98.0 / contract 52, CR-180 + CR-182: `README.md` **Version** 1.98.0, `ecosystem.yaml` 1.98.0 / 52, first `CHANGELOG.md` entry `[1.98.0]`, alignment check run -- Marvin's CLAUDE.md and the live landing page still behind (1.96.x / contract 50). **Not re-checked today:** the hosts)**
+**Last verified: 2026-11-27 (release 1.98.1 / contract 52 unchanged, CR-183; before it 1.98.0, CR-180 + CR-182: `README.md` **Version** 1.98.1, `ecosystem.yaml` 1.98.1 / 52, first `CHANGELOG.md` entry `[1.98.1]`, alignment check run -- Marvin's CLAUDE.md and the live landing page still behind (1.96.x / contract 50). **Not re-checked today:** the hosts)**
 
 This is core-skills' own board: what is released, what is configured, what waits and on whom, for this product
 only. core-skills is a sibling product family, not a Deep Thought component; Deep Thought's cross-product board and
@@ -16,7 +16,7 @@ version rows in A, and any row the release closes or opens. Then re-stamp the "L
 
 | Item | State | Next step | Who | Since | Source |
 |---|---|---|---|---|---|
-| core-skills release | **1.98.0** (2026-11-27), contract **52** -- CR-180 + CR-182: `_callcards/` and `_toread/` declared as blocked reading surfaces, one `walk_skip` list read by every script walk (`skills/ops-base/walk_skip.py`), *Where material goes* in `ops-base`, `_outbox/` scope, optional `binary_archive`. Before it: **1.97.1** (2026-11-20) -- CR-181: the survey table view is the only task-review surface (regenerated before use, grouping from the venture map, no parallel files, reviewing is never an entry) and *validate before write* for register edits. Docs only, no script changed. Before it: **1.97.0** (CR-179, `meetings:` and `/ops` unattended) | -- | The maintainer | 2026-11-20 | [CHANGELOG](../../CHANGELOG.md) |
+| core-skills release | **1.98.1** (2026-11-27), contract **52** -- CR-183: `/preparation` Step 3.5 asks what the user must have decided before the meeting, and opens the document with it. Before it: **1.98.0** -- CR-180 + CR-182: `_callcards/` and `_toread/` declared as blocked reading surfaces, one `walk_skip` list read by every script walk (`skills/ops-base/walk_skip.py`), *Where material goes* in `ops-base`, `_outbox/` scope, optional `binary_archive`. Before it: **1.97.1** (2026-11-20) -- CR-181: the survey table view is the only task-review surface (regenerated before use, grouping from the venture map, no parallel files, reviewing is never an entry) and *validate before write* for register edits. Docs only, no script changed. Before it: **1.97.0** (CR-179, `meetings:` and `/ops` unattended) | -- | The maintainer | 2026-11-20 | [CHANGELOG](../../CHANGELOG.md) |
 
 | Ecosystem contract | `contract_version` **52** from 1.98.0 (CR-180 + CR-182: `_callcards/`, `_toread/`, `walk_skip`, `binary_archive`; additive). 51 was 1.97.0 (CR-179: the `meetings` block, ops_config schema 1.8, the run report in `<project>/.runs/`, `apply` among the `/ops` subcommands). 50 was CR-178 (`feedback_steps`). Both additive. The live landing page and Marvin were last read at 49/50 and need the usual rebuild and tracking note | Rebuild the landing page; Marvin's tracking note for 51 | The maintainer | 2026-11-17 | [`ecosystem.yaml`](../../ecosystem.yaml) |
 

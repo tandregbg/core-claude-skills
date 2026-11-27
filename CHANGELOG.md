@@ -7,6 +7,22 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.98.1] - 2026-11-27
+
+**Contract 52 (unchanged).** A preparation asks what the user must have decided, not only what to report.
+
+### Changed
+
+- **CR-183 -- `/preparation` Step 3.5: what does the user need to have thought through?** Before
+  writing, the skill looks for a question the other party is likely to open that no file answers
+  (direction, budget, whether to continue), an unresolved signal from an earlier meeting, and a
+  decision that commits the user beyond this one. If any applies the document **opens** with it,
+  before what was delivered: material can be read at the table, a position cannot be formed there.
+  Two or three questions with the trade-offs named. It also separates pitching from opening a door and
+  names an opening line the user could use. Prompted by six preparations for one contact, none of
+  which asked. Written on a second machine as an unpushed commit numbered CR-179, which was already
+  taken; renumbered on release. 2 new tests.
+
 ## [1.98.0] - 2026-11-27
 
 **Contract 52.** Two reading surfaces for a person, one list of folders every walk skips, and a
