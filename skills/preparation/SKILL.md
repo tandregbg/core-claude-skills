@@ -209,6 +209,35 @@ After gathering file-based context, ask the user. Use the resolved language (see
 
 If the user provides additional context (email threads, voice notes, specific topics), incorporate that.
 
+### Step 3.5: What does the USER need to have thought through? (CR-183)
+
+A preparation document that only lists what to report is half a preparation. It answers
+*what do I say* and never *what do I need to have decided before I walk in*.
+
+**Before writing, ask yourself -- and if unclear, ask the user:**
+
+- Is there a question the other party is likely to open, that the user cannot answer by
+  reading a file? Direction, budget, whether to continue, what the user themselves wants
+  from the relationship.
+- Has the other party signalled something unresolved? A pending internal decision, a
+  change of plan, a hint about the future. **Those land in conversations, not emails.**
+- Does any decision on the agenda commit the user to something beyond this meeting?
+
+If yes to any, the document opens with a section on it, **before** what was delivered.
+Material can be read at the table; a position cannot be formed there.
+
+Keep it to what the user must think through, not a strategy essay. Two or three questions
+with the trade-offs named.
+
+**Distinguish pitching from opening a door.** Telling a customer what they should buy is
+pitching. Saying what you see ahead, and asking whether they want to go there together, is
+how continuation gets discussed at all. A preparation that only warns against the first
+leaves the user mute on the second. Name the opening line the user could actually use.
+
+**Look back through the previous preparations for the same contact.** A signal given in
+one meeting ("we are discussing internally whether to invest") often goes unanswered for
+weeks and then surfaces at the next one.
+
 ### Step 4: Generate Preparation Document
 
 Create the file using the template below.
