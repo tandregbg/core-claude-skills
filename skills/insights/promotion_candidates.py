@@ -88,6 +88,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-config"))
 import profiles  # noqa: E402  (CR-123: one resolver for every script)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-base"))
+import walk_skip  # noqa: E402  (CR-180/CR-182: the folders every walk skips)
 
 try:
     import yaml
@@ -124,12 +126,14 @@ def find_config(start: Path) -> dict:
 
 
 def insight_files(root: Path):
-    """Every _insights.yaml under root; dot-folders (incl. .archive/) are skipped."""
+    """Every _insights.yaml under root; dot-folders (incl. .archive/) and the declared
+    walk_skip surfaces (_callcards/, _toread/ -- CR-180/CR-182) are skipped."""
     if root.is_file():
         yield root
         return
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+        dirnames[:] = sorted(d for d in dirnames
+                             if not d.startswith(".") and not walk_skip.skip(d, root))
         if "_insights.yaml" in filenames:
             yield Path(dirpath) / "_insights.yaml"
 

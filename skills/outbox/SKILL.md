@@ -29,6 +29,20 @@ vault/_contacts/<contact>/
 
 For project-scoped outbox items the destination is the project folder (`<vault>/<venture>/_projects/<project>/` or similar). The skill detects scope from the manifest or asks.
 
+## Scope: what leaves the vault, and nothing else (CR-182)
+
+> **Is it going to leave the vault?** If not, it does not belong in `_outbox/`.
+
+| Material | Goes to |
+|---|---|
+| A send -- email, attachment, print | **`_outbox/`**, as below, with `Kanonisk källa` pointing at the work |
+| "Put the material in an outbox" -- storage | The venture's **project folder** (`ops-base`, *Where material goes*) |
+| A publication drafted in an external content workspace | **Not staged.** When the vault declares such a workspace, the post is drafted and archived there; the vault records the publication as a changelog line in the folder the post is about. A third copy in `_outbox/` is the defect |
+| Material written for the user to read -- a review, a meeting card, a decision basis | **`_toread/`**, as a reading copy (`ops-base`). `hanterad` (CR-120) stays for legacy items worked from here, but a new reading item is not staged in `_outbox/` |
+
+`_outbox/` is one of the folders a dispatching surface reads to find work; filling it with storage
+and reading copies makes every item look unsent.
+
 ## Manifest schema
 
 `_manifest.md` is the canonical state file for an outbox item. The skill reads/writes these fields.
@@ -540,7 +554,7 @@ The skill suggests a default but always asks before renaming. For ambassadörs-s
 
 An outbox item is **addressed to a person** and has a send event, an expected reply, and a resolution. A handoff snapshot is addressed to a **future work session**, is never sent, and is resolved only when a human opens it and starts new work.
 
-If material is going to someone, it is outbox. If it is bounded context for different work, it is `/handoff`. This skill never reads or writes `.handoff/`.
+If material is going to someone, it is outbox. If it is bounded context for different work, it is `/handoff`. If it is for the user to read, it is a reading copy in `_toread/` (CR-182). This skill never reads or writes `.handoff/`, `_toread/` or `_callcards/`.
 
 ## Out of scope
 

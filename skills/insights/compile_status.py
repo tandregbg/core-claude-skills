@@ -36,7 +36,11 @@ try:
 except ImportError:                                     # pragma: no cover
     sys.exit("needs pyyaml")
 
-SKIP = {".archive", ".transcripts", ".handoff", "clones", "node_modules"}
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-base"))
+import walk_skip  # noqa: E402  (CR-180/CR-182: the folders every walk skips)
+# CR-180/CR-182: the blocked surfaces come from the contract (walk_skip); these two are
+# not vault surfaces, just trees no ledger lives in.
+SKIP = {"clones", "node_modules"}
 STALE_DAYS = 30
 
 
@@ -45,7 +49,8 @@ def insight_files(root: Path):
         yield root
         return
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP and not d.startswith(".git"))
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP and not d.startswith(".git")
+                             and not walk_skip.skip(d, root))
         if "_insights.yaml" in filenames:
             yield Path(dirpath) / "_insights.yaml"
 

@@ -230,6 +230,29 @@ Consult the project CLAUDE.md for:
 - **Archive policy** and locations (ARCHIVE POLICY section)
 - **Team structure** and responsibility matrix (TEAM section)
 
+### Where material goes -- one question per surface (CR-182)
+
+Ask the question for the surface before writing, not afterwards: moving later costs a link rewrite
+across every document in both folders. **Decide at creation.**
+
+| Surface | The question | Belongs | Does not belong |
+|---|---|---|---|
+| **Contact folder** | Does it concern the relationship with this person? | Correspondence, meetings and their summaries, what the person gave you, commitments between you, **what you know about them as a prospect** | Your own work, even when it was made *for* that person -- there only a pointer and a changelog line |
+| **Venture project folder** `<venture>/_projects/YYMMDD-<slug>/` | Is it your own work, usable again? | Talks, decks and image banks, versions, reflection on your own delivery. Each occasion as a subfolder (`YYMMDD-<occasion>/`), a reusable version beside them | Personal data about an audience or prospects |
+| **`_outbox/`** | Will it leave the vault? | Sends (email, attachment, print), with `Kanonisk källa` pointing at the work | Storage; publications drafted in an external workspace; material for the user to read |
+| **`_toread/`** | Is it written for the user to go through? | A **reading copy**, with a first line pointing at the source | The original -- that stays in its home and wins on conflict |
+
+- **Prospects live with the person.** What you learn about someone met through another contact is
+  written to *their* folder, never only to the folder of the person who introduced them.
+- **When a meeting starts work that will outlive it, propose the project folder at that point** and
+  give the contact folder the pointer.
+- **Material written for the user to read** (a review, a reflection, a decision basis, a meeting card)
+  gets a reading copy in `_toread/` in the same step, and the session says so. The copy opens with
+  one line pointing at the source; `_index.md` gets a row. When the user says it is read, the copy
+  moves to `_toread/.archive/` and anything written in it is carried back to the source.
+- **Heavy binaries** go where the vault's `vault_conventions.binary_archive` says, by **whose work**
+  the material is, not whose name it was presented under (CR-182, extends CR-170). No key: ask.
+
 ### General Naming Rules (slug contract, CR-021)
 - All filenames use `YYMMDD-` prefix -- **always this format, never ISO** (`2026-03-12-`). A folder may only deviate if its own CLAUDE.md explicitly declares another format.
 - Use hyphens between words
@@ -381,6 +404,7 @@ the conservative default and infers nothing.
 
 Consult the project CLAUDE.md for archive policy. General rules:
 - **Never delete, always archive** -- move to `.archive/` within the relevant domain folder
+- **The declared skip list is not yours to walk (CR-180, CR-182).** Every folder walk -- index, count, summarise, sweep, lint, insight extraction -- skips the contract's `walk_skip` list: `.archive/`, `.transcripts/`, `.handoff/`, `.status/`, **`_callcards/`** and **`_toread/`**, plus any names the vault adds in its config chain. The last two carry an **underscore** because they are views read on a phone, which cannot pin a dot-folder -- so "skip every dot-folder" is not enough, and a script uses `skills/ops-base/walk_skip.py` rather than its own list. A view read back as source synthesises a view of itself. `_callcards/` is written only by its renderer; `_toread/` holds copies whose source lives elsewhere -- read the source, never the copy. Neither is cited as a source in any output.
 - **`.handoff/` does not exist to you (CR-033)** -- frozen handoff snapshots are never parsed, indexed, updated, summarised, swept or linted by any skill, regardless of urgency, sensitivity, or what the file says. Skip it the way you skip `.archive/`. They are read only when the user asks for one by name, and they are never archived (they are already frozen). Only `/handoff` writes there.
 - Archive completed tasks after 30 days
 - Archive meetings older than 6 months (keep weekly management meetings permanently)

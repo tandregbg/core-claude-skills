@@ -569,6 +569,12 @@ def subject_of(item: str) -> str:
 # --- finding the replacing item -------------------------------------------------------------------
 
 SKIP_DIRS = {".git", ".obsidian", ".trash"}
+try:                                                   # CR-180/CR-182: declared walk_skip surfaces
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-base"))
+    import walk_skip                                   # noqa: E402
+    SKIP_DIRS |= set(walk_skip.names())
+except Exception:                                      # pragma: no cover
+    SKIP_DIRS |= {"_callcards", "_toread"}
 
 
 def find_replacing(vault: Path, outbox: Path, name: str) -> dict:

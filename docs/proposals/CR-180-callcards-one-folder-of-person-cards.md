@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-19) |
+| **Status** | **Implemented v1.98.0, contract 52** (2026-11-27). Proposed 2026-11-19 |
 | **Contract** | New declared path `_callcards/` in `vault_conventions` (configurable through the config chain), a card format, and the folder added to the set every folder walk skips. Additive |
 | **Date** | 2026-11-19 |
 | **Area** | `ecosystem.yaml` (`vault_conventions` paths + skip rule), `ops-base` (folder-walk skip list), vault-side renderer (outside this repo) |

@@ -65,7 +65,7 @@ The core scanning step shared by all subcommands.
 
 ### YYMMDD File Detection
 
-Scan vault recursively (max depth 8, skip `.archive/`, `.handoff/`, `.git/`, `node_modules/`, `clones/`). Match files where the basename starts with 6 digits followed by a separator:
+Scan vault recursively (max depth 8, skip `.archive/`, `.handoff/`, `_callcards/`, `_toread/`, `.git/`, `node_modules/`, `clones/`). Match files where the basename starts with 6 digits followed by a separator:
 
 ```
 Pattern: /^(\d{6})[-_ ]/
