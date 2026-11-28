@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-184**
+Next available CR number: **CR-185**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-184**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| [CR-184](CR-184-a-call-card-is-as-long-as-its-material.md) | `ecosystem.yaml` (`_callcards/` schema line), CR-180 text | Medium | **Proposed** (2026-11-28). Replace CR-180's *"at most 15 bullets per person"* with the two rules that actually bound a card: every point in situation, do_say and ask ends with the date of the material it rests on, and a point whose date is not in the material is dropped; the number of points follows the material (a renderer may cap a section, never the card); and open lists every open task connected to the person, not one folder's. A fixed small count made the model choose, and it chose the general lines -- the padding the cap was meant to prevent. Measured on one card: 13 dated conversations in three weeks shown as 3 points, about 200 open tasks shown as none. do_not_say is unchanged |
 | [CR-183](CR-183-preparation-asks-what-the-user-must-decide.md) | `preparation` (Step 3.5) | Medium | **Implemented v1.98.1** (2026-11-27). A preparation asks what the user must have **decided** before the meeting -- a question no file answers, an unresolved signal from earlier, a decision that commits beyond this meeting -- and opens with it, before what was delivered. Separates pitching from opening a door. Six preparations for one contact, none of which asked, prompted it. Written as an unpushed commit under a number already taken (CR-179); renumbered on release |
 | [CR-182](CR-182-contact-folder-is-the-relationship-not-the-work.md) | `ops-base` (routing), `outbox` (scope), `ops-config/schema.md` (`vault_conventions.binary_archive`) | Medium | **Implemented v1.98.0, contract 52** (2026-11-27). A contact folder holds the relationship, not the work: own work made for a contact lives in the venture's project folder with occasions as subfolders, the contact gets a pointer; prospects live in the prospect's own folder. `_outbox/` holds what leaves the vault -- not storage, not a third copy of a post drafted in an external content workspace. Binary destinations per venture become an optional config key (extends CR-170). One talk, where 9 of 14 kinds of material were placed without a rule, prompted it. **As implemented** the addendum's reading surface `_toread/` is declared too, and `walk_skip` is one list read by every script walk |
 | [CR-181](CR-181-inbox-one-review-surface-for-tasks.md) | `inbox` (SKILL.md, survey section), `tasks` (write rule), `ops-base` (pointer) | Medium | **Implemented v1.97.1** (2026-11-20). The survey table view is the **only** surface for reviewing tasks: regenerated before every review, grouping from the venture map, subsets are filters not files, reviewing is never a task. Every register write is validated **before** save (extends CR-096). Names the mirror gap and points to vault-tools CR-012. Two ad-hoc audit files in two days, and two broken register writes, prompted it |
