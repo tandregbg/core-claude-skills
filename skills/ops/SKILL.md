@@ -1432,6 +1432,13 @@ Read-only version of the CR-018 pre-save template-contract check, run across a f
    the check's scope list, and its drafts passed the gate against the project's roster and
    then became findings against the venture's.
 
+   **`contacts` (CR-185): a folder whose `contact:` names no contact.** A folder outside `_contacts/`
+   may say which contact it is about (contact-meta v1.2), and a call card and every person lookup
+   follow it -- so a `contact:` naming no folder under `_contacts/` sends both to nobody. One finding
+   per `_meta.yaml`, naming the value. Report only: the fix is the folder name in the key, or the
+   contact folder that should exist. Read through `skills/ops-base/contact_names.py`, the one module
+   every reader of the key uses.
+
 2b. **Company profile (CR-125).** If the folder or its organisation has a `_company/`, run
    `python3 ~/.claude/skills/company/company_tool.py check <folder>` and report its lines under their kinds:
    `stale`, `schema` (frontmatter, `sources.yaml`, `brands.yaml`), `unsourced`, `credential` (a key value in

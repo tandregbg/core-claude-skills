@@ -7,6 +7,40 @@ Short form: implement generic -> private CR spec updated same session ->
 CHANGELOG/README/ecosystem bump -> alignment check -> commit -> push
 (pre-push guard scans added lines) -> webpage+Marvin on version change. -->
 
+## [1.99.0] - 2026-11-28
+
+**Contract 53.** Who a card, a folder and a name are about: a call card follows its material, a folder
+outside `_contacts/` names its contact, and an alias can hold only under a path.
+
+### Changed
+
+- **CR-184 -- `_callcards/` loses its fixed count (`ecosystem.yaml`, CR-180's text).** CR-180 capped a
+  card at 15 bullets; the renderer that implemented it cut a week of material to three lines, and a
+  model choosing a few lines picks the general ones -- the padding the cap was meant to prevent. Now
+  every point in situation, do_say and ask ends with the date of the material it rests on and a point
+  whose date is not in the material is dropped; the number of points follows the material (a renderer
+  may cap a section, never the card); open lists the open tasks connected to the person, not one
+  folder's. do_not_say is unchanged: copied from the strategy document, never inferred.
+
+### Added
+
+- **CR-185 -- `contact:` on a folder outside `_contacts/` (contact-meta v1.2).** A one-to-one series
+  kept under a venture, as CR-182 routes it, names the contact it is about. A call card is named after
+  it, and a reader looking for the person behind a folder asks for `contact`, then `display_name`, then
+  the folder name. `/preparation` reads the contact folder as the relationship's context. `/ops check`
+  gains `contacts`: a `contact:` naming no folder under `_contacts/` is reported, never guessed.
+- **CR-186 -- `aliases_within` on a contact (contact-meta v1.2).** An alias that holds only under a
+  path, for a bare first name that means one person inside a venture and others elsewhere. Five rules:
+  a fuller name matches as itself first, a scoped alias wins over the name's global meaning inside its
+  scope, the longest prefix wins, a same-prefix tie is nobody's (not a global owner's), and a typed query
+  is unchanged. A `contact:` must be one plain folder name, matched exactly. `/transcript`
+  and `/preparation` apply it for names found in files.
+- **`skills/ops-base/contact_names.py`** -- the one reader of both keys (`load`, `resolve_in_file`,
+  `resolve_query`, `folder_contact`, `person_of_folder`, `dangling`), so every skill and the check
+  apply the same rules. 19 new tests, five of them for edge cases a pre-push review found
+  (a same-prefix tie falling through to a global owner, a scalar alias read as letters, a null alias
+  read as the word "None", the check reporting valid keys outside a vault, a `contact:` that is a path).
+
 ## [1.98.1] - 2026-11-27
 
 **Contract 52 (unchanged).** A preparation asks what the user must have decided, not only what to report.

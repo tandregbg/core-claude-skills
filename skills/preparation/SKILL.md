@@ -72,6 +72,13 @@ The `--force` override exists for legitimate fix-ups (e.g., correcting a typo fo
 
 Find the matching folder inside `_contacts/` at the vault root using the name resolution algorithm.
 
+**A meeting folder outside `_contacts/` (CR-185).** When the preparation is for a meeting in a folder
+that is not the contact folder -- a one-to-one series kept under a venture -- read that folder's
+`_meta.yaml` first: if it names a `contact:`, that contact folder is the relationship's context
+(`_meta.yaml`, strategy, CHANGELOG) and the meeting folder's own dated files are the conversations.
+Without the key, resolve the person from the folder's `display_name`, then its name
+(`contact_names.person_of_folder`).
+
 **Resolution order:**
 1. Scan `_contacts/*/_meta.yaml` files for `display_name` or `aliases` match
 2. Match against folder names (case-insensitive, partial first name, fuzzy)
@@ -135,7 +142,7 @@ After gathering context from the contact's own folder, scan the vault for **late
 
 1. Glob `YYMMDD-*.md` files across the vault (last 60 days by date prefix). Include `_contacts/*/`, venture meeting folders, and `_projects/*/`. **Skip `.archive/`, `.transcripts/`, `.handoff/`, `.ephemeral/` and `clones/`** — frozen handoff snapshots (CR-033) share the `YYMMDD-` prefix and would otherwise match this glob; they are never cross-referenced.
 2. **Exclude** files from the target contact's own folder -- those are *history*, not lateral references. We want references *elsewhere*.
-3. Grep the result set for: the contact's display name, the contact's company name, and the 2-3 top topic keywords from the upcoming meeting context (gathered in Step 3).
+3. Grep the result set for: the contact's display name, the contact's company name, and the 2-3 top topic keywords from the upcoming meeting context (gathered in Step 3). If the contact declares `aliases_within` (CR-186), also grep its scoped aliases -- but only in files under each alias's own path; a bare first name outside its scope is somebody else's.
 4. For each hit, **read the matching section** and write **one line**:
 
    ```

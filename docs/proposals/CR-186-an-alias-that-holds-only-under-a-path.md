@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-28) |
+| **Status** | **Implemented v1.99.0, contract 53** (2026-11-28). Proposed the same day |
 | **Contract** | One optional key in a contact's `_meta.yaml`; contact-meta schema v1.2 (with CR-185) or v1.3. Additive: a reader that ignores it reads what it read before |
 | **Date** | 2026-11-28 |
 | **Area** | `skills/ops-config/contact-meta-schema.md` (`aliases_within`, Resolution Algorithm), readers that resolve participant names (`/transcript`, `/preparation`) |

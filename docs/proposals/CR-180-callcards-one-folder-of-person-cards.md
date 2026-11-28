@@ -40,7 +40,7 @@ _callcards/
   .archive/                         cards whose contact fell out of the window
 ```
 
-- **The card's filename is the contact folder's name, lower-cased** — including any company or product
+- **The card's filename is the contact folder's name, lower-cased** *(1.99.0, CR-185: a folder outside `_contacts/` names its contact with `contact:` and the card takes that name)* — including any company or product
   suffix (`first-last_company.md`) and any non-ASCII letters. The folder name is already the identity
   everywhere else; lower-casing is the only transformation, because a list read on a phone with mixed
   case looks broken where some vaults capitalise organisational folders. Two folders that lower-case to
@@ -52,7 +52,7 @@ _callcards/
 
 ### 2. The card format
 
-Five headings, fixed, in this order. **At most 15 bullets per person.** Display labels come from the
+Five headings, fixed, in this order. ~~At most 15 bullets per person.~~ *(Superseded by CR-184 in 1.99.0: every point carries the date of its material, and the count follows the material.)* Display labels come from the
 vault's vocabulary (CR-171); the identifiers are:
 
 | Identifier | Answers |
