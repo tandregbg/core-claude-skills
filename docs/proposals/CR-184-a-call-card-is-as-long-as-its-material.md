@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-28) |
+| **Status** | **Implemented v1.99.0, contract 53** (2026-11-28). Proposed the same day |
 | **Contract** | The `_callcards/` schema line in `ecosystem.yaml` (a comment today); no new key. Whether it is a `contract_version` bump is the release's call -- a renderer that keeps a cap reads the same paths as before |
 | **Date** | 2026-11-28 |
 | **Area** | `ecosystem.yaml` (`vault_conventions` path `_callcards/`, its `schema` line); CR-180's text where it states the cap |

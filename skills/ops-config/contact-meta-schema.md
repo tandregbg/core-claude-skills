@@ -1,8 +1,10 @@
-# Contact Metadata Schema v1.1
+# Contact Metadata Schema v1.2
 
 ## Overview
 
 This document defines the YAML schema for `_meta.yaml` files in contact folders (`_contacts/*/`). These files provide canonical name spelling and aliases for participant resolution in transcripts and filename generation.
+
+**v1.2 (1.99.0, contract 53)** adds two keys: `aliases_within` on a contact (CR-186), and `contact:` on a folder **outside** `_contacts/` that is about one contact (CR-185). Both are read through one module, `skills/ops-base/contact_names.py`, so every reader applies the same rules.
 
 ---
 
@@ -30,6 +32,8 @@ display_name: string            # Required: Canonical name for filenames/display
 
 # Matching (optional)
 aliases: [string]               # Optional: Name variations for transcript matching
+aliases_within:                 # Optional (v1.2, CR-186): aliases that hold only under a path
+  "<path prefix>/": [string]    #   vault-relative folder, trailing slash
 
 # Context (optional)
 company: string                 # Optional: Company/organization affiliation
@@ -64,6 +68,57 @@ Array of name variations that should match this contact during transcript proces
 - Abbreviations: "DE"
 
 Matching is case-insensitive with Swedish character folding ("Andre" matches "André").
+
+### aliases_within (optional, v1.2, CR-186)
+
+An alias that holds **only under a vault path**. Use it when a bare first name means one person inside
+a venture and somebody else -- or several people -- elsewhere:
+
+```yaml
+# _contacts/erik-sandberg/_meta.yaml
+display_name: "Erik Sandberg"
+aliases: ["Sandberg"]
+aliases_within:
+  "acme/": ["Erik"]
+```
+
+In a file whose vault-relative path starts with `acme/`, "Erik" is this contact. Outside it the name
+means what it meant before -- if two contacts list "Erik" as a global alias it is shared, and a shared
+name is nobody's. A global alias would be wrong (every "Erik" in the vault becomes him); no alias leaves
+him invisible in the material where he is named most.
+
+Rules, for a name found **in a file**:
+
+1. **A fuller name matches as itself first** -- readers try longer names before shorter, so the other
+   Erik written with his surname is still the other Erik inside `acme/`.
+2. **A scoped alias wins over the name's global meaning** inside its scope -- shared or not: declaring
+   the scope says that inside the path the bare name is this contact.
+3. **The longest matching prefix wins** (`acme/meetings/` over `acme/`).
+4. **Two contacts claiming the same name under the same prefix is a tie, and the name is nobody's** --
+   never the first one found, and not a third contact's global alias either.
+5. **A typed query is unchanged.** "Erik" typed by a user stays ambiguous: the scope belongs to files,
+   not to questions.
+
+### contact (optional, v1.2, CR-185) -- on a folder OUTSIDE `_contacts/`
+
+A folder that is about one contact but is not the contact folder -- a one-to-one series kept under a
+venture, as CR-182 routes it -- names that contact by its folder name:
+
+```yaml
+# acme/meetings/management/Erik/_meta.yaml
+version: 1
+display_name: "Erik Sandberg"
+contact: erik-sandberg
+classification: professional
+```
+
+- It is the identifier (the contact folder's name), never the display name.
+- A call card for the folder is named after it (`_callcards/erik-sandberg.md`, CR-180), and a reader
+  looking for the person behind the folder asks for `contact`, then `display_name`, then the folder name.
+- It moves nothing and makes the folder no second contact folder: classification, aliases and the
+  relationship stay in `_contacts/<name>/_meta.yaml`. One folder, one contact; a team meeting has none.
+- Inside `_contacts/` it is ignored -- that folder **is** the contact.
+- A `contact` naming no folder under `_contacts/` is reported by `/ops check` (`contacts`), never guessed.
 
 ### relationship (optional)
 
@@ -153,6 +208,8 @@ These defaults are encoded in `base.yaml` under `privacy_defaults` and can be ov
 When resolving a participant name (from transcript or user input):
 
 **Priority order:**
+0. **For a name found in a file (v1.2, CR-186):** a contact's `aliases_within` whose prefix the file is
+   under -- after any fuller name on the same line has been matched as itself
 1. Contact folder `_meta.yaml` display_name/aliases
 2. Config `team[]` with aliases
 3. Folder name fallback (title-case, hyphen -> space)
@@ -276,6 +333,8 @@ When processing a transcript:
 ### /preparation
 
 When preparing for a meeting:
+0. If the meeting's folder is outside `_contacts/` and its `_meta.yaml` names a `contact:` (CR-185),
+   that contact folder is the relationship's context; the folder's own dated files are the conversations
 1. Match user input against `_meta.yaml` files
 2. Load contact context from matching folder
 3. Use `display_name` in document heading
@@ -288,6 +347,7 @@ When processing meeting content:
    - Config `team[]` (internal team)
    - `_contacts/*/_meta.yaml` (external contacts)
 2. Use canonical names in attribution
+3. `/ops check` (`contacts`, CR-185) reports a folder whose `contact:` names no contact folder
 
 ### /analytics (CR-009)
 

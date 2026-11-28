@@ -12,6 +12,14 @@
 # Nothing reads the field back, so nothing caught it. Corrected to 7 in one step;
 # no client was ever served 3, 4, 5 or 6.
 #
+# contract_version 53 (CR-184 + CR-185 + CR-186, 2026-11-28, v1.99.0): who a card, a folder and a
+#   name are about. `_callcards/` loses its fixed count -- every point carries the date of its
+#   material instead, and open lists every task connected to the person (CR-184). A folder outside
+#   `_contacts/` may name its contact with `contact:` and a card takes that name (CR-185). A contact
+#   may declare `aliases_within`, an alias that holds only under a path (CR-186). contact-meta v1.2,
+#   read through `skills/ops-base/contact_names.py`; `/ops check` gains `contacts`. Additive: a
+#   reader at 52 ignores both keys and keeps its own cap.
+#
 # contract_version 52 (CR-180 + CR-182, 2026-11-27, v1.98.0): two READING SURFACES for a person,
 #   and the folders every walk skips declared in one place. `_callcards/` (one generated card per
 #   contact) and `_toread/` (reading copies of material written for the user to go through) carry
@@ -414,8 +422,8 @@
 #
 # Bumps are additive — clients on contract_version 1 ignore the new block;
 # clients on version 2 or later get the structured vault-file declarations.
-contract_version: 52
-core_skills_version: "1.98.1"
+contract_version: 53
+core_skills_version: "1.99.0"
 
 # --- Schema versions ---
 # insights schema 2 (CR-013): adds optional `confidence` (hypothesis|rule),
@@ -922,10 +930,12 @@ vault_conventions:
     # the walk_skip convention below. Both are BLOCKED for skills exactly as .handoff/ is.
     - path: "_callcards/"
       purpose: "One short card per contact folder, read in a minute before the next conversation: situation, what to do and say, what NOT to say (copied from the strategy document, never inferred), what to ask, what is open by task id. _index.md is the cross-section of who is next (CR-180)"
-      schema: null  # five fixed headings: situation, do_say, do_not_say, ask, open; at most 15 bullets per person
+      # CR-184: no fixed count. The cap (15 per person) made the model choose, and it chose the
+      # general lines -- the padding it was meant to prevent. The date rule bounds a card instead.
+      schema: null  # five fixed headings: situation, do_say, do_not_say, ask, open. Every point in situation, do_say and ask ends with the date (YYMMDD) of the material it rests on, and a point whose date is not in the material is dropped. The number of points follows the material; a renderer may cap a section, never the card. open lists the open tasks connected to the person, not only the folder's own. do_not_say is copied from the strategy document, never inferred
       writers: ["a vault-side renderer only (never a skill, never by hand)"]
       readers: ["user only"]
-      naming: "<contact-folder-name>.md, lower-cased; never a YYMMDD- prefix or a role keyword"
+      naming: "<contact-folder-name>.md, lower-cased; a folder outside _contacts/ names its contact with `contact:` in its _meta.yaml and the card takes that name (CR-185); never a YYMMDD- prefix or a role keyword"
       lifecycle: "regenerated from its sources; a card that disagrees with its strategy document is stale and the strategy wins; cards out of the window move to .archive/; BLOCKED for skills -- no parse, index, summarise, sweep, lint or insight extraction (walk_skip)"
 
     - path: "_toread/"
@@ -1130,8 +1140,8 @@ vault_conventions:
       lifecycle: "append-mostly; auto-applied edits via /insights propose"
 
     - path: "<folder>/_meta.yaml"
-      purpose: "Folder metadata (esp. _contacts/<name>/ classification)"
-      schema: "contact-meta v1.1"
+      purpose: "Folder metadata (esp. _contacts/<name>/ classification). A contact may declare aliases that hold only under a path (`aliases_within`, CR-186); a folder outside _contacts/ may name the contact it is about (`contact:`, CR-185). Read through skills/ops-base/contact_names.py"
+      schema: "contact-meta v1.2"
       writers: ["user (manual)", "/ops"]
       readers: ["/ops", "/insights", "/analytics"]
       lifecycle: "stable"

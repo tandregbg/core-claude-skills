@@ -96,6 +96,7 @@ import build_agenda  # noqa: E402
 sys.path.insert(0, str(HERE.parent / "ops-base"))
 import raw_archive  # noqa: E402
 import walk_skip  # noqa: E402  (CR-180/CR-182)
+import contact_names  # noqa: E402  (CR-185/CR-186)
 sys.path.insert(0, str(HERE.parent / "tasks"))
 import task_attributes  # noqa: E402
 
@@ -121,7 +122,8 @@ ESCAPE = re.compile(r"\\x([0-9A-Fa-f]{2})|\\u([0-9A-Fa-f]{4})")
 SOURCE_TYPES = ("meeting", "decision", "manual", "imported", "content", "correspondence", "analysis")
 SCOPES = ("root", "org", "project", "personal", "contact")
 PRIORITIES = ("P0", "P1", "P2", "P3")
-CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred", "persons", "pronouns")
+CHECKS = ("links", "yaml", "tasks", "profile", "themes", "raw", "inferred", "persons", "pronouns",
+          "contacts")
 RAW_PENDING_DAYS = 14
 # CR-142: what was inferred, pulled out of the marker the agenda's reader matched, so the
 # finding can name the phrase to go and ask about. The agenda's own, not a copy: the module
@@ -711,6 +713,27 @@ def check_persons(root: Path) -> list:
     return found
 
 
+# --- contacts ------------------------------------------------------------
+
+def check_contacts(root: Path) -> list:
+    """CR-185: a folder outside `_contacts/` that names, with `contact:`, no contact that exists.
+
+    The key says which contact a folder is about -- a one-to-one series kept under a venture, as
+    CR-182 routes it. A call card is named after it and a reader looking for the person behind the
+    folder asks for it first, so a `contact:` naming no folder sends both to nobody. Reported, never
+    guessed at: the fix is the folder name in the key, or the contact folder that should exist.
+    The reading is `contact_names` -- the one module every reader of the key uses.
+    """
+    vault = walk_skip.vault_root(root)
+    if vault is None:               # not inside a vault: no `_contacts/` to check against, so no
+        return []                   # finding -- reporting every `contact:` as dangling would be noise
+    folders = [p.parent for p in walk(root) if p.name == "_meta.yaml"]
+    return [_finding("contacts", f / "_meta.yaml", 1,
+                     f"`contact: {c}` names no folder under `_contacts/` -- write the contact folder's"
+                     " exact name (one folder, no path), or create the contact (CR-185)", root)
+            for f, c in contact_names.dangling(vault, folders)]
+
+
 # --- pronouns ------------------------------------------------------------
 
 def check_pronouns(root: Path) -> list:
@@ -786,7 +809,7 @@ def run(root, only=CHECKS) -> list:
         out += {"links": check_links, "yaml": check_yaml, "tasks": check_tasks,
                 "profile": check_profile, "themes": check_themes, "raw": check_raw,
                 "inferred": check_inferred, "persons": check_persons,
-                "pronouns": check_pronouns}[name](root)
+                "pronouns": check_pronouns, "contacts": check_contacts}[name](root)
     return out
 
 

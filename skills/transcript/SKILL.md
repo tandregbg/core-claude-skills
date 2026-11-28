@@ -168,7 +168,11 @@ The skill picks a variant by estimating meeting duration from transcript metadat
 
 1. Check the filename for correct spelling
 2. Check config `people[]` roster for `canonical` + `aliases` (CR-017 -- covers non-contact persons: colleagues-of-counterparts, remote team members, recurring third parties)
-3. Check `_contacts/*/_meta.yaml` for `display_name` and `aliases`
+3. Check `_contacts/*/_meta.yaml` for `display_name` and `aliases` -- and, for a bare name, any
+   `aliases_within` whose prefix the summary's destination folder is under (contact-meta v1.2, CR-186):
+   inside that path the bare name is that contact, outside it the name stays shared. Match a fuller
+   name as itself first; a same-prefix tie between two contacts resolves to nobody -- ask instead.
+   The rules are `skills/ops-base/contact_names.py` (`resolve_in_file`)
 4. Check config `team[]` for canonical names
 5. Use the resolved canonical name throughout the summary
 
@@ -247,7 +251,8 @@ Default format: `YYMMDD-participant-topic-description.md`
 Example: `250721-summary-Alex-Bob-strategisk-genomgång.md` (files written before v1.79.0 as `samtal` are never renamed and are still read)
 
 **Participant name resolution:**
-1. Match transcript speaker names against `_contacts/*/_meta.yaml` (display_name, aliases)
+1. Match transcript speaker names against `_contacts/*/_meta.yaml` (display_name, aliases, and
+   `aliases_within` for the destination folder's path -- CR-186)
 2. Match against config `team[]` (name, aliases) if loaded
 3. Fallback: title-case the name from transcript
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Proposed** (2026-11-28) |
+| **Status** | **Implemented v1.99.0, contract 53** (2026-11-28). Proposed the same day |
 | **Contract** | One optional key in `<folder>/_meta.yaml` for folders outside `_contacts/`; contact-meta schema v1.1 -> v1.2. Additive: a reader that ignores it reads what it read before |
 | **Date** | 2026-11-28 |
 | **Area** | `skills/ops-config/contact-meta-schema.md`, `ecosystem.yaml` (`<folder>/_meta.yaml` entry), CR-180's naming rule for `_callcards/` |
