@@ -4,7 +4,7 @@ Tracking spec for core-skills changes. Each CR is a single markdown file in this
 
 Existing CRs are also tracked in [CHANGELOG.md](../../CHANGELOG.md) as `(CR-NNN)` mentions in the `### Added` / `### Changed` lines once implemented.
 
-Next available CR number: **CR-186**
+Next available CR number: **CR-187**
 
 ---
 
@@ -12,6 +12,7 @@ Next available CR number: **CR-186**
 
 | CR | Area | Priority | Summary |
 |----|------|----------|---------|
+| [CR-186](CR-186-an-alias-that-holds-only-under-a-path.md) | `contact-meta-schema.md` (`aliases_within`, Resolution Algorithm), `/transcript`, `/preparation` | Medium | **Proposed** (2026-11-28). An alias that holds only under a path: `aliases_within: {"acme/": ["Erik"]}` in a contact's `_meta.yaml`. In one venture a bare first name was one person -- 1,694 bare mentions in three weeks, 6 with the surname -- while elsewhere it was several; a global alias was wrong and no alias left him at zero mentions. Five rules: scoped wins over shared inside its scope, longest prefix wins, a same-prefix tie is nobody's, a fuller name still matches as itself, typed queries are unchanged. Additive |
 | [CR-185](CR-185-a-folder-says-which-contact-it-is-about.md) | `contact-meta-schema.md` (v1.2), `ecosystem.yaml` (`<folder>/_meta.yaml`), CR-180 naming | Medium | **Proposed** (2026-11-28). A folder outside `_contacts/` -- a one-to-one series kept under a venture, as CR-182 routes it -- may declare `contact: <contact folder name>` in its `_meta.yaml`. Call cards are named after it (CR-180 already says "named as the contact folder"), person lookup uses it before the folder's own name, and `/preparation` reads the contact folder as the relationship's context. Without it, one card was named after a first name, its person could not be found, and a dated conversation was read as the person's strategy. Additive; one folder, one contact |
 | [CR-184](CR-184-a-call-card-is-as-long-as-its-material.md) | `ecosystem.yaml` (`_callcards/` schema line), CR-180 text | Medium | **Proposed** (2026-11-28). Replace CR-180's *"at most 15 bullets per person"* with the two rules that actually bound a card: every point in situation, do_say and ask ends with the date of the material it rests on, and a point whose date is not in the material is dropped; the number of points follows the material (a renderer may cap a section, never the card); and open lists every open task connected to the person, not one folder's. A fixed small count made the model choose, and it chose the general lines -- the padding the cap was meant to prevent. Measured on one card: 13 dated conversations in three weeks shown as 3 points, about 200 open tasks shown as none. do_not_say is unchanged |
 | [CR-183](CR-183-preparation-asks-what-the-user-must-decide.md) | `preparation` (Step 3.5) | Medium | **Implemented v1.98.1** (2026-11-27). A preparation asks what the user must have **decided** before the meeting -- a question no file answers, an unresolved signal from earlier, a decision that commits beyond this meeting -- and opens with it, before what was delivered. Separates pitching from opening a door. Six preparations for one contact, none of which asked, prompted it. Written as an unpushed commit under a number already taken (CR-179); renumbered on release |
